@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import type { TeamProfile } from '@/types';
+import NationalChampionChecklistCard from '@/components/NationalChampionChecklistCard';
 
 export default function TeamProfilePage() {
   const params = useParams();
@@ -142,26 +143,157 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
 
 function OverviewTab({ stats }: { stats: any }) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <div>
-        <h3 className="text-lg font-bold mb-4">Efficiency Metrics</h3>
-        <div className="space-y-2">
-          <MetricRow label="Adjusted Efficiency Margin" value={stats.adj_em.toFixed(2)} />
-          <MetricRow label="Adjusted Offense" value={stats.adj_o.toFixed(1)} />
-          <MetricRow label="Adjusted Defense" value={stats.adj_d.toFixed(1)} />
-          <MetricRow label="Adjusted Tempo" value={stats.adj_tempo.toFixed(1)} />
+    <div className="space-y-6">
+      {/* National Champion Checklist */}
+      {stats.national_champion_checklist && (
+        <NationalChampionChecklistCard 
+          checklist={stats.national_champion_checklist} 
+        />
+      )}
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <h3 className="text-lg font-bold mb-4">Efficiency Metrics</h3>
+          <div className="space-y-2">
+            <MetricRow label="Adjusted Efficiency Margin" value={stats.adj_em.toFixed(2)} />
+            <MetricRow label="Adjusted Offense" value={stats.adj_o.toFixed(1)} />
+            <MetricRow label="Adjusted Defense" value={stats.adj_d.toFixed(1)} />
+            <MetricRow label="Adjusted Tempo" value={stats.adj_tempo.toFixed(1)} />
+          </div>
+        </div>
+        
+        <div>
+          <h3 className="text-lg font-bold mb-4">National Ranks</h3>
+          <div className="space-y-2">
+            <MetricRow label="Overall Rank" value={`#${stats.rank}`} />
+            <MetricRow label="AdjEM Rank" value={stats.rank_adj_em ? `#${stats.rank_adj_em}` : 'N/A'} />
+            <MetricRow label="AdjO Rank" value={stats.rank_adj_o ? `#${stats.rank_adj_o}` : 'N/A'} />
+            <MetricRow label="AdjD Rank" value={stats.rank_adj_d ? `#${stats.rank_adj_d}` : 'N/A'} />
+          </div>
         </div>
       </div>
       
-      <div>
-        <h3 className="text-lg font-bold mb-4">National Ranks</h3>
-        <div className="space-y-2">
-          <MetricRow label="Overall Rank" value={`#${stats.rank}`} />
-          <MetricRow label="AdjEM Rank" value={stats.rank_adj_em ? `#${stats.rank_adj_em}` : 'N/A'} />
-          <MetricRow label="AdjO Rank" value={stats.rank_adj_o ? `#${stats.rank_adj_o}` : 'N/A'} />
-          <MetricRow label="AdjD Rank" value={stats.rank_adj_d ? `#${stats.rank_adj_d}` : 'N/A'} />
+      {/* NEW: Game-Level Adjusted Ratings */}
+      {(stats.aor !== null || stats.adr !== null || stats.aem !== null) && (
+        <div className="border-t pt-6">
+          <h3 className="text-lg font-bold mb-4 text-purple-600">Game-Level Adjusted Ratings</h3>
+          <p className="text-sm text-gray-600 mb-4">
+            Computed from game-level boxscores with venue tax and opponent adjustments
+          </p>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-blue-50 rounded-lg p-4">
+              <h4 className="text-sm font-medium text-gray-700 mb-2">Adjusted Offensive Rating (Adj O)</h4>
+              <p className="text-3xl font-bold text-blue-600 mono">
+                {stats.aor?.toFixed(1) ?? 'N/A'}
+              </p>
+              <p className="text-sm text-gray-600 mt-1">
+                Rank: {stats.rank_aor ? `#${stats.rank_aor}` : 'N/A'}
+              </p>
+              {stats.aor_100 !== null && (
+                <p className="text-sm text-gray-600 mt-1">
+                  2K Rating: {stats.aor_100.toFixed(0)}/100
+                </p>
+              )}
+            </div>
+            
+            <div className="bg-green-50 rounded-lg p-4">
+              <h4 className="text-sm font-medium text-gray-700 mb-2">Adjusted Defensive Rating (Adj D)</h4>
+              <p className="text-3xl font-bold text-green-600 mono">
+                {stats.adr?.toFixed(1) ?? 'N/A'}
+              </p>
+              <p className="text-sm text-gray-600 mt-1">
+                Rank: {stats.rank_adr ? `#${stats.rank_adr}` : 'N/A'} (lower is better)
+              </p>
+              {stats.adr_100 !== null && (
+                <p className="text-sm text-gray-600 mt-1">
+                  2K Rating: {stats.adr_100.toFixed(0)}/100 (higher is better)
+                </p>
+              )}
+            </div>
+            
+            <div className="bg-purple-50 rounded-lg p-4">
+              <h4 className="text-sm font-medium text-gray-700 mb-2">Adjusted Net Rating (Net)</h4>
+              <p className="text-3xl font-bold text-purple-600 mono">
+                {stats.aem?.toFixed(2) ?? 'N/A'}
+              </p>
+              <p className="text-sm text-gray-600 mt-1">
+                Rank: {stats.rank_aem ? `#${stats.rank_aem}` : 'N/A'}
+              </p>
+              {stats.net_100 !== null && (
+                <p className="text-sm text-gray-600 mt-1">
+                  2K Rating: {stats.net_100.toFixed(0)}/100
+                </p>
+              )}
+            </div>
+          </div>
         </div>
-      </div>
+      )}
+      
+      {/* Four Factor Index */}
+      {stats.four_factor_index_100 !== null && (
+        <div className="border-t pt-6">
+          <h3 className="text-lg font-bold mb-4 text-orange-600">Four Factor Index</h3>
+          <p className="text-sm text-gray-600 mb-4">
+            Composite metric combining eFG margin, turnover edge, rebounding edge, and FTR margin using weighted Z-scores
+          </p>
+          
+          <div className="bg-orange-50 rounded-lg p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="text-sm font-medium text-gray-700 mb-1">Four Factor Index (0–100)</h4>
+                <p className="text-5xl font-bold text-orange-600 mono">
+                  {stats.four_factor_index_100.toFixed(1)}
+                </p>
+                {stats.rank_four_factor_index_100 && (
+                  <p className="text-lg text-gray-600 mt-2">
+                    National Rank: #{stats.rank_four_factor_index_100}
+                  </p>
+                )}
+              </div>
+              
+              {stats.four_factor_index_wz !== null && (
+                <div className="text-right">
+                  <p className="text-xs text-gray-500 mb-1">Weighted Z-Score</p>
+                  <p className="text-2xl font-bold text-gray-700 mono">
+                    {stats.four_factor_index_wz.toFixed(2)}
+                  </p>
+                </div>
+              )}
+            </div>
+            
+            <div className="mt-6 pt-4 border-t border-orange-200">
+              <p className="text-xs text-gray-600 mb-3 font-medium">Component Z-Scores:</p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {stats.efg_margin_z !== null && (
+                  <div>
+                    <p className="text-xs text-gray-500">eFG Margin</p>
+                    <p className="text-lg font-bold mono">{stats.efg_margin_z.toFixed(2)}</p>
+                  </div>
+                )}
+                {stats.tov_edge_z !== null && (
+                  <div>
+                    <p className="text-xs text-gray-500">TOV Edge</p>
+                    <p className="text-lg font-bold mono">{stats.tov_edge_z.toFixed(2)}</p>
+                  </div>
+                )}
+                {stats.reb_edge_z !== null && (
+                  <div>
+                    <p className="text-xs text-gray-500">Reb Edge</p>
+                    <p className="text-lg font-bold mono">{stats.reb_edge_z.toFixed(2)}</p>
+                  </div>
+                )}
+                {stats.ftr_margin_z !== null && (
+                  <div>
+                    <p className="text-xs text-gray-500">FTR Margin</p>
+                    <p className="text-lg font-bold mono">{stats.ftr_margin_z.toFixed(2)}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

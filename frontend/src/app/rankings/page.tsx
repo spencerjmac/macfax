@@ -19,8 +19,12 @@ export default function RankingsPage() {
   
   useEffect(() => {
     loadData();
-    loadConferences();
   }, [search, conferenceFilter, sortField, sortDir]);
+  
+  // Load conferences only once on mount
+  useEffect(() => {
+    loadConferences();
+  }, []);
   
   async function loadData() {
     try {
@@ -151,6 +155,15 @@ export default function RankingsPage() {
                   <SortableHeader field="adj_d" current={sortField} dir={sortDir} onClick={handleSort}>
                     AdjD
                   </SortableHeader>
+                  <SortableHeader field="aor_100" current={sortField} dir={sortDir} onClick={handleSort}>
+                    Adj O
+                  </SortableHeader>
+                  <SortableHeader field="adr_100" current={sortField} dir={sortDir} onClick={handleSort}>
+                    Adj D
+                  </SortableHeader>
+                  <SortableHeader field="net_100" current={sortField} dir={sortDir} onClick={handleSort}>
+                    Net
+                  </SortableHeader>
                   <SortableHeader field="adj_tempo" current={sortField} dir={sortDir} onClick={handleSort}>
                     Tempo
                   </SortableHeader>
@@ -165,6 +178,9 @@ export default function RankingsPage() {
                   </SortableHeader>
                   <SortableHeader field="ftr" current={sortField} dir={sortDir} onClick={handleSort}>
                     FTR
+                  </SortableHeader>
+                  <SortableHeader field="four_factor_index_100" current={sortField} dir={sortDir} onClick={handleSort}>
+                    4FI
                   </SortableHeader>
                 </tr>
               </thead>
@@ -185,11 +201,17 @@ export default function RankingsPage() {
                     <td className="mono font-bold">{row.adj_em.toFixed(2)}</td>
                     <td className="mono">{row.adj_o.toFixed(1)}</td>
                     <td className="mono">{row.adj_d.toFixed(1)}</td>
+                    <td className="mono font-medium text-blue-600">{row.aor_100?.toFixed(1) ?? 'N/A'}</td>
+                    <td className="mono font-medium text-green-600">{row.adr_100?.toFixed(1) ?? 'N/A'}</td>
+                    <td className="mono font-bold text-purple-600">{row.net_100?.toFixed(1) ?? 'N/A'}</td>
                     <td className="mono">{row.adj_tempo.toFixed(1)}</td>
                     <td className="mono">{row.efg_pct.toFixed(1)}</td>
                     <td className="mono">{row.tov_pct.toFixed(1)}</td>
                     <td className="mono">{row.orb_pct.toFixed(1)}</td>
                     <td className="mono">{row.ftr.toFixed(1)}</td>
+                    <td className="mono font-bold text-orange-600" title="Four Factor Index (0–100). Built from weighted Z-scores of eFG margin, turnover edge, rebounding edge, and FTR margin.">
+                      {row.four_factor_index_100?.toFixed(1) ?? '—'}
+                    </td>
                   </tr>
                 ))}
               </tbody>

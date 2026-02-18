@@ -362,11 +362,11 @@ CATEGORIES = {
             "Opponent 4-Factors_FTA Rate"
         ]
     },
-    # "traditional_shooting": {
-    #     "name": "Traditional Shooting",
-    #     "selector_text": "Traditional Shooting",
-    #     "columns": ["Team", "FTA/G", "FT%", "eFG%", "TS%", "3PAr", "FGA/G", "FG%", "2PA/G", "2P%", "3PA/G", "3P%"]
-    # },
+    "traditional_shooting": {
+        "name": "Traditional Shooting",
+        "selector_text": "Traditional Shooting",
+        "columns": ["Team", "FTA/G", "FT%", "eFG%", "TS%", "3PAr", "FGA/G", "FG%", "2PA/G", "2P%", "3PA/G", "3P%"]
+    },
     "traditional_boxscore": {
         "name": "Traditional Boxscore",
         "selector_text": "Traditional Boxscore",
@@ -686,9 +686,9 @@ class CBBAnalyticsScraper:
                 # Try clicking the option with the category name
                 # Try multiple variations of the selector
                 selectors_to_try = [
-                    f'text="{category["selector_text"]}"',
                     f'div[role="option"]:has-text("{category["selector_text"]}")',
                     f'[class*="option"]:has-text("{category["selector_text"]}")',
+                    f'text="{category["selector_text"]}"',
                 ]
                 
                 clicked_option = False
@@ -700,6 +700,21 @@ class CBBAnalyticsScraper:
                         break
                     except:
                         continue
+                
+                # If standard selectors fail, try manual iteration through options
+                if not clicked_option:
+                    try:
+                        options = page.locator('div[role="option"]')
+                        count = options.count()
+                        for i in range(count):
+                            option_text = options.nth(i).text_content().strip()
+                            if option_text == category["selector_text"]:
+                                options.nth(i).click()
+                                print(f"  ✓ Selected '{category['selector_text']}' (via iteration)")
+                                clicked_option = True
+                                break
+                    except Exception as iter_e:
+                        print(f"    Iteration attempt failed: {iter_e}")
                 
                 if not clicked_option:
                     print(f"  ⚠️  Could not find option: {category['selector_text']}")

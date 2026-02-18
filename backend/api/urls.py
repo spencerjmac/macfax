@@ -11,6 +11,9 @@ from .views import (
     TeamViewSet,
     MatchupViewSet,
 )
+from .trapezoid_views import TrapezoidView
+from .landscape_views import EfficiencyLandscapeView
+from .viz_builder_views import VizStatsView, VizScatterView
 
 router = DefaultRouter()
 router.register(r'seasons', SeasonViewSet, basename='season')
@@ -21,4 +24,8 @@ router.register(r'matchup', MatchupViewSet, basename='matchup')
 
 urlpatterns = [
     path('', include(router.urls)),
+    path('viz/trapezoid', TrapezoidView.as_view(), name='trapezoid'),
+    path('viz/landscape', EfficiencyLandscapeView.as_view(), name='landscape'),
+    path('viz/stats', VizStatsView.as_view(), name='viz-stats'),
+    path('viz/scatter', VizScatterView.as_view(), name='viz-scatter'),
 ]

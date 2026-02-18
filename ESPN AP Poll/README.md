@@ -2,10 +2,16 @@
 
 Scraper for ESPN's AP Top 25 Poll - Men's College Basketball (Week 6, December 2025)
 
+## ⚠️ IMPORTANT: DO NOT RE-RUN THIS SCRAPER
+
+The `ap_poll_week6.csv` file is a **STATIC SNAPSHOT** from Week 6 (December 8, 2025). 
+
+**DO NOT** run `scrape_ap_poll.py` to update this file - it will overwrite the Week 6 data with the current week's poll, which breaks the National Champion Checklist feature that specifically checks Week 6 AP Poll rankings.
+
 ## Files
 
-- **scrape_ap_poll.py**: Playwright-based scraper for ESPN AP Poll
-- **ap_poll_week6.csv**: AP Poll Week 6 data with KenPom-formatted team names
+- **scrape_ap_poll.py**: Playwright-based scraper for ESPN AP Poll (SNAPSHOT ONLY - do not re-run)
+- **ap_poll_week6.csv**: AP Poll Week 6 data with KenPom-formatted team names (from December 8, 2025)
 
 ## Features
 

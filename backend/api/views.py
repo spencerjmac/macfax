@@ -26,6 +26,7 @@ class SeasonViewSet(viewsets.ReadOnlyModelViewSet):
     """
     queryset = Season.objects.all()
     serializer_class = SeasonSerializer
+    pagination_class = None  # Disable pagination for seasons
 
 
 class ConferenceViewSet(viewsets.ReadOnlyModelViewSet):
@@ -35,6 +36,7 @@ class ConferenceViewSet(viewsets.ReadOnlyModelViewSet):
     """
     queryset = Conference.objects.all()
     serializer_class = ConferenceSerializer
+    pagination_class = None  # Disable pagination for conferences
 
 
 class RankingsViewSet(viewsets.ReadOnlyModelViewSet):
@@ -83,6 +85,9 @@ class RankingsViewSet(viewsets.ReadOnlyModelViewSet):
         # Validate sort field (prevent SQL injection)
         allowed_fields = [
             'rank', 'adj_em', 'adj_o', 'adj_d', 'adj_tempo',
+            'aor', 'adr', 'aem', 'aor_100', 'adr_100', 'net_100',
+            'rank_aor', 'rank_adr', 'rank_aem',
+            'four_factor_index_100', 'rank_four_factor_index_100',
             'efg_pct', 'tov_pct', 'orb_pct', 'ftr',
             'efg_pct_d', 'tov_pct_d', 'drb_pct', 'ftr_d',
             'team__name', 'conference__code',

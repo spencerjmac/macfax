@@ -11,3 +11,12 @@
 [2026-02-10 13:32:27] SUCCESS: Data scraped and exported to Tableau!
 [2026-02-10 13:32:27] ============================================================
 [2026-02-10 13:32:27] Next steps: Open Tableau Desktop and refresh your data source
+[2026-02-16 13:03:36] ============================================================
+[2026-02-16 13:03:36] KenPom Scrape & Export to Tableau - Starting
+[2026-02-16 13:03:36] ============================================================
+[2026-02-16 13:03:36] [Step 1/2] Scraping KenPom data...
+[2026-02-16 13:03:51] [Step 2/2] Exporting to Tableau format...
+[2026-02-16 13:03:51] ============================================================
+[2026-02-16 13:03:51] SUCCESS: Data scraped and exported to Tableau!
+[2026-02-16 13:03:51] ============================================================
+[2026-02-16 13:03:51] Next steps: Open Tableau Desktop and refresh your data source

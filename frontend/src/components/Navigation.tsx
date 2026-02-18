@@ -10,7 +10,7 @@ export default function Navigation() {
     { href: '/', label: 'Home' },
     { href: '/rankings', label: 'Rankings' },
     { href: '/matchup', label: 'Matchup' },
-    { href: '/viz/trapezoid', label: 'Visualizations' },
+    { href: '/viz', label: 'Visualizations' },
     { href: '/glossary', label: 'Glossary' },
     { href: '/about', label: 'About' },
   ];
