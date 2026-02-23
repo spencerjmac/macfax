@@ -1,0 +1,50 @@
+# Team Alias Overrides
+# Manual mappings for external team names/IDs to canonical team names
+# Format:
+#   source_name:
+#     external_id_or_name: "Canonical Team Name"
+
+ncaa:
+  # D1 Teams with abbreviations/alternate names
+  "App State": "Appalachian St."
+  "FGCU": "Florida Gulf Coast"
+  "N.C. A&T": "North Carolina A&T"
+  "West Ga.": "West Georgia"
+  "Northern Ky.": "Northern Kentucky"
+  "Eastern Ky.": "Eastern Kentucky"
+  "UT Martin": "Tennessee Martin"
+  "SIUE": "SIU Edwardsville"
+  "CSUN": "Cal St. Northridge"
+  "Omaha": "Nebraska Omaha"
+  "Loyola Maryland": "Loyola MD"
+  "UNI": "Northern Iowa"
+  "UIC": "Illinois Chicago"
+  "Western Ky.": "Western Kentucky"
+  "UIW": "Incarnate Word"
+  "LMU (CA)": "Loyola Marymount"
+  "UMES": "Maryland Eastern Shore"
+  "UConn": "Connecticut"
+  "USC": "USC"
+  "UNCW": "UNC Wilmington"
+  "SFA": "Stephen F. Austin"
+  "Central Conn.": "Central Connecticut"
+  "Charleston So.": "Charleston Southern"
+  "FDU": "Fairleigh Dickinson"
+  "ETSU": "East Tennessee St."
+  "A&M-Corpus Christi": "Texas A&M Corpus Chris"
+  "Col. of Charleston": "Charleston"
+  "ULM": "Louisiana Monroe"
+  "NIU": "Northern Illinois"
+  "UTRGV": "UT Rio Grande Valley"
+  "Army West Point": "Army"
+  "Ga. Southern": "Georgia Southern"
+  "Mississippi Val.": "Mississippi Valley St."
+  "N.C. Central": "North Carolina Central"
+  "Kansas City": "UMKC"
+  "Central Conn. St.": "Central Connecticut"
+  "Southern California": "USC"
+  # Ole Miss needs manual mapping
+  "Ole Miss": "Mississippi"
+
+
+espn: {}

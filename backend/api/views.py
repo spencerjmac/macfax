@@ -8,7 +8,10 @@ from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
 
-from core.models import Season, Conference, Team, TeamSeasonStats
+from core.models import (
+    Season, Conference, Team, TeamSeasonStats,
+    Game, TeamGameStats, TeamSeasonMetrics, TeamSeasonRatings
+)
 from .serializers import (
     SeasonSerializer, 
     ConferenceSerializer, 
@@ -16,6 +19,13 @@ from .serializers import (
     TeamSeasonStatsSerializer,
     RankingsSerializer,
     TeamDetailSerializer,
+    # Game log serializers
+    GameSerializer,
+    TeamGameStatsSerializer,
+    GameLogSerializer,
+    TeamSeasonMetricsSerializer,
+    TeamSeasonRatingsSerializer,
+    GameDetailSerializer,
 )
 
 
@@ -53,6 +63,7 @@ class RankingsViewSet(viewsets.ReadOnlyModelViewSet):
     - search: team name search
     """
     serializer_class = RankingsSerializer
+    # pagination_class uses default settings (PAGE_SIZE: 500, enough for all 365 D1 teams)
     
     def get_queryset(self):
         # Get season (default to current)
@@ -62,14 +73,8 @@ class RankingsViewSet(viewsets.ReadOnlyModelViewSet):
         else:
             season = Season.objects.filter(is_current=True).first()
         
-        queryset = TeamSeasonStats.objects.filter(season=season).select_related(
-            'team', 'conference'
-        )
-        
-        # Filter by conference
-        conference = self.request.query_params.get('conference')
-        if conference:
-            queryset = queryset.filter(conference__code=conference)
+        # Use TeamSeasonRatings (our computed data) instead of TeamSeasonStats
+        queryset = TeamSeasonRatings.objects.filter(season=season).select_related('team')
         
         # Search by team name
         search = self.request.query_params.get('search')
@@ -82,22 +87,73 @@ class RankingsViewSet(viewsets.ReadOnlyModelViewSet):
         sort_field = self.request.query_params.get('sort', 'rank')
         sort_dir = self.request.query_params.get('dir', 'asc')
         
-        # Validate sort field (prevent SQL injection)
-        allowed_fields = [
-            'rank', 'adj_em', 'adj_o', 'adj_d', 'adj_tempo',
-            'aor', 'adr', 'aem', 'aor_100', 'adr_100', 'net_100',
-            'rank_aor', 'rank_adr', 'rank_aem',
-            'four_factor_index_100', 'rank_four_factor_index_100',
-            'efg_pct', 'tov_pct', 'orb_pct', 'ftr',
-            'efg_pct_d', 'tov_pct_d', 'drb_pct', 'ftr_d',
-            'team__name', 'conference__code',
-        ]
+        # Map frontend field names to model field names
+        field_mapping = {
+            'rank': 'rank_adj_em',
+            'adj_em': 'adj_em',
+            'adj_o': 'adj_o',
+            'adj_d': 'adj_d',
+            'adj_tempo': 'adj_tempo',
+            'aor_100': 'adj_o',
+            'adr_100': 'adj_d',
+            'net_100': 'adj_em',
+            # Adjusted Four Factors - Offense
+            'efg_pct': 'adj_efg_pct',
+            'tov_pct': 'adj_tov_pct',
+            'orb_pct': 'adj_orb_pct',
+            'ftr': 'adj_ftr',
+            # Adjusted Four Factors - Defense
+            'efg_pct_d': 'adj_opp_efg_pct',
+            'tov_pct_d': 'adj_opp_tov_pct',
+            'orb_pct_d': 'adj_opp_orb_pct',
+            'ftr_d': 'adj_opp_ftr',
+            # Adjusted Four Factor Margins
+            'efg_margin': 'adj_efg_margin',
+            'tov_edge': 'adj_tov_edge',
+            'reb_edge': 'adj_reb_edge',
+            'ftr_margin': 'adj_ftr_margin',
+            # Four Factor Index
+            'four_factor_index_100': 'ffi_adj',
+            'raw_four_factor_index_100': 'ffi_raw',
+            # Other
+            'team__name': 'team__name',
+        }
         
-        if sort_field in allowed_fields:
-            order_prefix = '-' if sort_dir == 'desc' else ''
-            queryset = queryset.order_by(f'{order_prefix}{sort_field}')
+        # Get the actual field name to sort by
+        actual_field = field_mapping.get(sort_field, 'rank_adj_em')
+        
+        # Apply sort direction
+        order_prefix = '-' if sort_dir == 'desc' else ''
+        queryset = queryset.order_by(f'{order_prefix}{actual_field}')
         
         return queryset
+    
+    def list(self, request, *args, **kwargs):
+        """Override list to add conference filtering after serialization"""
+        queryset = self.filter_queryset(self.get_queryset())
+        
+        # Get conference filter
+        conference_filter = request.query_params.get('conference')
+        
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            data = serializer.data
+            
+            # Apply conference filter on serialized data
+            if conference_filter:
+                data = [item for item in data if item.get('conference') == conference_filter]
+            
+            return self.get_paginated_response(data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        data = serializer.data
+        
+        # Apply conference filter on serialized data
+        if conference_filter:
+            data = [item for item in data if item.get('conference') == conference_filter]
+        
+        return Response(data)
 
 
 class TeamViewSet(viewsets.ReadOnlyModelViewSet):
@@ -171,6 +227,103 @@ class TeamViewSet(viewsets.ReadOnlyModelViewSet):
         }
         
         return Response(response_data)
+    
+    @action(detail=True, methods=['get'])
+    def games(self, request, slug=None):
+        """
+        GET /api/teams/{slug}/games?season=2026
+        
+        Returns list of all games for a team in a season
+        """
+        team = self.get_object()
+        
+        # Get season
+        season_year = request.query_params.get('season')
+        if season_year:
+            season = get_object_or_404(Season, year=season_year)
+        else:
+            season = Season.objects.filter(is_current=True).first()
+        
+        # Get all games (home and away)
+        games = Game.objects.filter(
+            Q(home_team=team) | Q(away_team=team),
+            season_year=season.year
+        ).select_related('home_team', 'away_team').order_by('game_date')
+        
+        serializer = GameSerializer(games, many=True)
+        return Response({
+            'team': TeamSerializer(team).data,
+            'season_year': season.year,
+            'games': serializer.data,
+            'last_updated': games.latest('updated_at').updated_at if games.exists() else None,
+        })
+    
+    @action(detail=True, methods=['get'])
+    def gamelog(self, request, slug=None):
+        """
+        GET /api/teams/{slug}/gamelog?season=2026
+        
+        Returns game log with derived metrics (ORtg, Four Factors, etc.)
+        """
+        team = self.get_object()
+        
+        # Get season
+        season_year = request.query_params.get('season')
+        if season_year:
+            season = get_object_or_404(Season, year=season_year)
+        else:
+            season = Season.objects.filter(is_current=True).first()
+        
+        # Get game stats
+        game_stats = TeamGameStats.objects.filter(
+            team=team,
+            game__season_year=season.year
+        ).select_related('game', 'opponent').order_by('game__game_date')
+        
+        serializer = GameLogSerializer(game_stats, many=True)
+        
+        return Response({
+            'team': TeamSerializer(team).data,
+            'season_year': season.year,
+            'game_log': serializer.data,
+            'total_games': game_stats.count(),
+            'last_updated': game_stats.latest('updated_at').updated_at if game_stats.exists() else None,
+        })
+    
+    @action(detail=True, methods=['get'], url_path='season-stats')
+    def season_stats_combined(self, request, slug=None):
+        """
+        GET /api/teams/{slug}/season-stats?season=2026
+        
+        Returns combined season stats (metrics + ratings + kill shots)
+        """
+        team = self.get_object()
+        
+        # Get season
+        season_year = request.query_params.get('season')
+        if season_year:
+            season = get_object_or_404(Season, year=season_year)
+        else:
+            season = Season.objects.filter(is_current=True).first()
+        
+        # Get computed metrics
+        metrics = TeamSeasonMetrics.objects.filter(
+            team=team,
+            season=season
+        ).first()
+        
+        # Get adjusted ratings
+        ratings = TeamSeasonRatings.objects.filter(
+            team=team,
+            season=season
+        ).first()
+        
+        return Response({
+            'team': TeamSerializer(team).data,
+            'season_year': season.year,
+            'metrics': TeamSeasonMetricsSerializer(metrics).data if metrics else None,
+            'ratings': TeamSeasonRatingsSerializer(ratings).data if ratings else None,
+        })
 
 
 class MatchupViewSet(viewsets.ViewSet):
@@ -246,3 +399,50 @@ class MatchupViewSet(viewsets.ViewSet):
                 'edges': edges,
             }
         })
+
+
+class GameViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    GET /api/games?season=2026&team=michigan&date=2025-12-01
+    GET /api/games/{id}
+    
+    Returns game details with box scores
+    """
+    queryset = Game.objects.all().select_related('home_team', 'away_team')
+    serializer_class = GameSerializer
+    
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        
+        # Filter by season
+        season_year = self.request.query_params.get('season')
+        if season_year:
+            queryset = queryset.filter(season_year=season_year)
+        
+        # Filter by team (either home or away)
+        team_slug = self.request.query_params.get('team')
+        if team_slug:
+            team = get_object_or_404(Team, slug=team_slug)
+            queryset = queryset.filter(Q(home_team=team) | Q(away_team=team))
+        
+        # Filter by date
+        game_date = self.request.query_params.get('date')
+        if game_date:
+            queryset = queryset.filter(game_date=game_date)
+        
+        # Filter by status
+        status_filter = self.request.query_params.get('status')
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+        
+        return queryset.order_by('-game_date', '-start_time_utc')
+    
+    def retrieve(self, request, pk=None):
+        """
+        GET /api/games/{id}
+        
+        Returns full game details including team stats
+        """
+        game = self.get_object()
+        serializer = GameDetailSerializer(game)
+        return Response(serializer.data)

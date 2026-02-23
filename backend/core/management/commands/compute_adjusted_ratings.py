@@ -1,381 +1,281 @@
 """
-Django management command to compute AOR/ADR/AEM metrics
-
-This computes Adjusted Offensive Rating (AOR), Adjusted Defensive Rating (ADR),
-and Adjusted Net Rating (AEM) from game-level boxscore data with:
-- Venue tax (home/away/neutral adjustments via SiteFactor)
-- Opponent adjustments (using KenPom/Torvik adj_o/adj_d)
-- Bayesian shrinkage (k=300 possessions toward national average)
-
-Also computes 0-100 "2K-style" ratings via z-score mapping.
+Management command: compute_adjusted_ratings
+Computes adjusted offensive/defensive ratings using iterative opponent-adjustment
 
 Usage:
-    python manage.py compute_adjusted_ratings --season 2026
-    
-Requirements:
-    - GameLog records with boxscore data (pts, fga, or_total, to, fta, location)
-    - KenPom or Torvik opponent adjustments (adj_o, adj_d) by date
+    python manage.py compute_adjusted_ratings --season 2026 --iterations 3
 """
 
-import pandas as pd
-import numpy as np
-from datetime import datetime, timedelta
+import logging
 from django.core.management.base import BaseCommand
 from django.db import transaction
-from django.db.models import Sum, Count, F, Q
-from core.models import Season, Team, TeamSeasonStats, GameLog
+from django.db.models import Q, Count, Case, When, IntegerField, F
 
+from core.models import (
+    Season, Team, TeamGameStats, TeamSeasonMetrics,
+    TeamSeasonRatings, NationalAverages
+)
 
-# ==================== CONSTANTS ====================
-VENUE_TAX = {
-    'H': 0.9862,  # Home: slightly easier (multiply raw efficiency by this)
-    'A': 1.0140,  # Away: slightly harder
-    'N': 1.0000,  # Neutral: no adjustment
-}
+logger = logging.getLogger(__name__)
 
-BAYESIAN_K = 300  # Shrinkage parameter: 300 possessions toward national average
-
-Z_SCORE_SCALE = 15  # Standard deviations to map to +/- 50 points (0-100 scale)
-
-
-# ==================== HELPER FUNCTIONS ====================
-
-def compute_possessions(row):
-    """
-    Compute possessions for a game using the standard formula:
-    Poss = FGA - OR + TO + 0.475 * FTA
-    """
-    fga = row.get('fga', 0) or 0
-    or_total = row.get('or_total', 0) or 0
-    to = row.get('to', 0) or 0
-    fta = row.get('fta', 0) or 0
-    
-    return fga - or_total + to + 0.475 * fta
-
-
-def compute_raw_efficiency(pts, possessions):
-    """Compute raw efficiency: 100 * (pts / possessions)"""
-    if possessions <= 0:
-        return None
-    return 100 * (pts / possessions)
-
-
-def get_opponent_adjustments(game_date, opponent_name, season_year):
-    """
-    Retrieve opponent's adjusted offensive and defensive ratings
-    for the given date and season.
-    
-    Priority:
-    1. KenPom adj_o/adj_d from closest date <= game_date
-    2. Torvik adj_oe/adj_de as fallback
-    3. National average if not found
-    
-    Returns: (opp_adj_o, opp_adj_d) or (None, None)
-    """
-    # TODO: Implement opponent adjustment lookup
-    # This requires:
-    # 1. Daily snapshots of KenPom/Torvik data (adj_o, adj_d by date)
-    # 2. Team name normalization/alias matching
-    # 3. Temporal join: find closest snapshot before game_date
-    
-    # For now, return None (will use national average as fallback)
-    return None, None
-
-
-def apply_venue_tax(raw_efficiency, location):
-    """Apply venue tax multiplier based on home/away/neutral"""
-    site_factor = VENUE_TAX.get(location, 1.0)
-    return raw_efficiency * site_factor if raw_efficiency else None
-
-
-def compute_z_score_rating(values, invert=False):
-    """
-    Convert array of values to 0-100 rating via z-score mapping:
-    rating = clamp(50 + Z_SCORE_SCALE * z_score, 0, 100)
-    
-    If invert=True (for defense), lower values are better, so invert before z-score.
-    """
-    arr = np.array([v for v in values if v is not None])
-    if len(arr) == 0:
-        return []
-    
-    if invert:
-        # For defense: convert "lower is better" to "higher is better"
-        # DEFPLUS = NatAvg - ADR (so lower ADR = higher DEFPLUS)
-        nat_avg = arr.mean()
-        arr = nat_avg - arr
-    
-    mean = arr.mean()
-    std = arr.std()
-    
-    if std == 0:
-        return [50.0] * len(arr)
-    
-    z_scores = (arr - mean) / std
-    ratings = 50 + Z_SCORE_SCALE * z_scores
-    
-    # Clamp to [0, 100]
-    ratings = np.clip(ratings, 0, 100)
-    
-    return ratings.tolist()
-
-
-# ==================== MAIN COMPUTATION CLASS ====================
 
 class Command(BaseCommand):
-    help = 'Compute AOR/ADR/AEM metrics from game-level data'
+    help = 'Compute adjusted offensive/defensive ratings (iterative)'
     
     def add_arguments(self, parser):
         parser.add_argument(
             '--season',
             type=int,
             required=True,
-            help='Season year (e.g., 2026 for 2025-26 season)'
+            help='Season year (ending year, e.g., 2026 for 2025-26 season)'
         )
         parser.add_argument(
-            '--dry-run',
-            action='store_true',
-            help='Run computation without saving to database'
+            '--iterations',
+            type=int,
+            default=3,
+            help='Number of iterations (default: 3)'
+        )
+        parser.add_argument(
+            '--shrinkage',
+            type=int,
+            default=300,
+            help='Shrinkage constant in possessions (default: 300)'
         )
     
     def handle(self, *args, **options):
         season_year = options['season']
-        dry_run = options.get('dry_run', False)
-        
-        self.stdout.write(f"\n{'='*60}")
-        self.stdout.write(f"COMPUTING ADJUSTED RATINGS FOR SEASON {season_year}")
-        self.stdout.write(f"{'='*60}\n")
+        iterations = options['iterations']
+        shrinkage_k = options['shrinkage']
         
         # Get season
         try:
             season = Season.objects.get(year=season_year)
         except Season.DoesNotExist:
-            self.stderr.write(f"ERROR: Season {season_year} not found")
+            self.stderr.write(f"Season {season_year} not found")
             return
         
-        # ==================== STEP 1: Load GameLog data ====================
-        self.stdout.write(self.style.SUCCESS("\n[1/6] Loading game logs..."))
-        
-        game_logs = GameLog.objects.filter(season=season).select_related('team', 'opponent')
-        game_count = game_logs.count()
-        
-        if game_count == 0:
-            self.stderr.write(self.style.ERROR(
-                "\n❌ NO GAME LOGS FOUND!\n\n"
-                "To compute AOR/ADR/AEM metrics, you need game-level boxscore data.\n\n"
-                "Required fields per game:\n"
-                "  - pts, pts_allowed (points scored/allowed)\n"
-                "  - fga (field goal attempts)\n"
-                "  - or_total (offensive rebounds)\n"
-                "  - to (turnovers)\n"
-                "  - fta (free throw attempts)\n"
-                "  - location (H/A/N for home/away/neutral)\n"
-                "  - opponent_name (for opponent adjustment lookup)\n"
-                "  - date (for temporal matching)\n\n"
-                "TODO: Create a scraper or import process to populate the GameLog table.\n"
-                "See documentation for details on data sources.\n"
-            ))
+        # Get national averages
+        try:
+            nat_avg = NationalAverages.objects.get(season=season)
+        except NationalAverages.DoesNotExist:
+            self.stderr.write(f"National averages not found. Run compute_national_averages first.")
             return
         
-        self.stdout.write(f"  ✓ Found {game_count} game logs")
+        self.stdout.write(f"\nComputing Adjusted Ratings for {season.display_name}")
+        self.stdout.write(f"National Average ORtg: {nat_avg.avg_ortg:.2f}")
+        self.stdout.write(f"National Average Pace: {nat_avg.avg_pace:.2f}")
+        self.stdout.write(f"Iterations: {iterations}")
+        self.stdout.write(f"Shrinkage: {shrinkage_k} possessions")
+        self.stdout.write("=" * 60)
         
-        # ==================== STEP 2: Compute national average ====================
-        self.stdout.write(self.style.SUCCESS("\n[2/6] Computing national average efficiency..."))
+        # Get all D1 teams with season metrics
+        teams = Team.objects.filter(season_metrics__season=season, is_d1=True)
         
-        # Compute total points and possessions across all games
-        total_pts = 0
-        total_poss = 0
-        
-        for game in game_logs:
-            if game.possessions and game.possessions > 0:
-                total_pts += game.pts
-                total_poss += game.possessions
-        
-        if total_poss == 0:
-            self.stderr.write(self.style.ERROR("ERROR: No valid possessions found"))
+        if teams.count() == 0:
+            self.stderr.write("No teams found with season metrics")
             return
         
-        nat_avg = 100 * (total_pts / total_poss)
-        self.stdout.write(f"  ✓ National Average: {nat_avg:.4f} pts/100 poss")
-        self.stdout.write(f"  ✓ Total Points: {total_pts:,}")
-        self.stdout.write(f"  ✓ Total Possessions: {total_poss:,.1f}")
+        self.stdout.write(f"Processing {teams.count()} teams...")
         
-        # ==================== STEP 3: Compute game-level adjusted ratings ====================
-        self.stdout.write(self.style.SUCCESS("\n[3/6] Computing game-level adjusted ratings..."))
+        # Initialize ratings dictionary {team_id: {'aor': float, 'adr': float, 'pace': float}}
+        ratings = {}
         
-        games_processed = 0
-        games_skipped = 0
+        # Step 1: Initialize with raw ORtg/DRtg/Pace
+        self.stdout.write("\n[1/1] Initializing with raw ratings...")
+        for team in teams:
+            metrics = TeamSeasonMetrics.objects.get(team=team, season=season)
+            ratings[team.id] = {
+                'aor': metrics.ortg,
+                'adr': metrics.drtg,
+                'pace': metrics.pace,
+            }
         
-        # Convert to DataFrame for easier computation
-        games_df = pd.DataFrame(list(game_logs.values(
-            'id', 'team_id', 'date', 'opponent_name', 'location',
-            'pts', 'pts_allowed', 'fga', 'or_total', 'to', 'fta',
-            'possessions', 'raw_oe', 'raw_de', 'recency_mult', 'weight',
-            'opp_adj_o', 'opp_adj_d'
-        )))
-        
-        # Ensure all game logs have possessions computed (should be auto-computed in save())
-        for idx, row in games_df.iterrows():
-            if pd.isna(row['possessions']) or row['possessions'] <= 0:
-                poss = compute_possessions(row)
-                games_df.at[idx, 'possessions'] = poss
+        # Step 2: Iterate
+        for iteration in range(1, iterations + 1):
+            self.stdout.write(f"\n[2/{iterations}] Iteration {iteration}...")
+            
+            new_ratings = {}
+            
+            for team in teams:
+                # Get all games for this team (D1 vs D1 only)
+                games = TeamGameStats.objects.filter(
+                    team=team,
+                    game__season_year=season_year,
+                    game__status='final',
+                    opponent__is_d1=True  # Only include games vs D1 opponents
+                ).select_related('game', 'opponent')
                 
-                if poss > 0:
-                    games_df.at[idx, 'raw_oe'] = 100 * (row['pts'] / poss)
-                    games_df.at[idx, 'raw_de'] = 100 * (row['pts_allowed'] / poss)
-        
-        # Get opponent adjustments
-        # TODO: Implement proper opponent adjustment lookup
-        # For now, use national average as fallback
-        games_df['opp_adj_d'] = games_df['opp_adj_d'].fillna(nat_avg)
-        games_df['opp_adj_o'] = games_df['opp_adj_o'].fillna(nat_avg)
-        
-        # Compute game-level adjusted ratings WITH venue tax
-        games_df['aor_game'] = (
-            games_df['raw_oe'] * 
-            (nat_avg / games_df['opp_adj_d']) * 
-            games_df['location'].map(VENUE_TAX)
-        )
-        
-        games_df['adr_game'] = (
-            games_df['raw_de'] * 
-            (nat_avg / games_df['opp_adj_o']) * 
-            games_df['location'].map(VENUE_TAX)
-        )
-        
-        # Compute weights (possessions * recency_mult)
-        games_df['recency_mult'] = games_df['recency_mult'].fillna(1.0)
-        games_df['weight'] = games_df['possessions'] * games_df['recency_mult']
-        
-        self.stdout.write(f"  ✓ Computed adjusted ratings for {len(games_df)} games")
-        
-        # ==================== STEP 4: Aggregate to team-season level ====================
-        self.stdout.write(self.style.SUCCESS("\n[4/6] Aggregating to team-season level..."))
-        
-        # Group by team
-        team_metrics = []
-        
-        for team_id in games_df['team_id'].unique():
-            team_games = games_df[games_df['team_id'] == team_id]
+                if games.count() == 0:
+                    continue
+                
+                # Compute game-level adjusted ratings
+                sum_weighted_aor = 0.0
+                sum_weighted_adr = 0.0
+                sum_weighted_pace = 0.0
+                sum_weights = 0.0
+                
+                for game_stat in games:
+                    # Get opponent's current ratings
+                    opp_id = game_stat.opponent.id
+                    if opp_id not in ratings:
+                        continue  # Skip if opponent has no ratings
+                    
+                    opp_aor = ratings[opp_id]['aor']
+                    opp_adr = ratings[opp_id]['adr']
+                    opp_pace = ratings[opp_id]['pace']
+                    
+                    # Get game possessions
+                    poss_g = game_stat.poss_game
+                    if not poss_g or poss_g == 0:
+                        continue
+                    
+                    # Get raw game efficiencies and pace
+                    raw_oe_g = game_stat.ortg  # 100 * pts / poss_g
+                    raw_de_g = game_stat.drtg  # 100 * opp_pts / poss_g
+                    raw_pace_g = game_stat.pace  # Possessions per 40 minutes
+                    
+                    if raw_oe_g is None or raw_de_g is None or raw_pace_g is None:
+                        continue
+                    
+                    # Get site factor
+                    site_factor = game_stat.site_factor
+                    
+                    # Compute adjusted game ratings
+                    # AOR_g = RawOE_g * (NatAvg / OppAdjD) * SiteFactor
+                    aor_g = raw_oe_g * (nat_avg.avg_ortg / opp_adr) * site_factor if opp_adr > 0 else raw_oe_g
+                    
+                    # ADR_g = RawDE_g * (NatAvg / OppAdjO) * SiteFactor
+                    adr_g = raw_de_g * (nat_avg.avg_ortg / opp_aor) * site_factor if opp_aor > 0 else raw_de_g
+                    
+                    # AdjPace_g = RawPace_g * (NatAvgPace / OppPace)
+                    # Note: Site factor is typically not applied to pace
+                    pace_g = raw_pace_g * (nat_avg.avg_pace / opp_pace) if opp_pace > 0 else raw_pace_g
+                    
+                    # Weight by possessions (recency multiplier = 1.0 for now)
+                    weight = poss_g
+                    
+                    sum_weighted_aor += weight * aor_g
+                    sum_weighted_adr += weight * adr_g
+                    sum_weighted_pace += weight * pace_g
+                    sum_weights += weight
+                
+                # Aggregate to season rating with shrinkage
+                # AOR = (SUM(w*AOR_g) + k*NatAvg) / (SUM(w) + k)
+                if sum_weights > 0:
+                    aor_season = (sum_weighted_aor + shrinkage_k * nat_avg.avg_ortg) / (sum_weights + shrinkage_k)
+                    adr_season = (sum_weighted_adr + shrinkage_k * nat_avg.avg_ortg) / (sum_weights + shrinkage_k)
+                    pace_season = (sum_weighted_pace + shrinkage_k * nat_avg.avg_pace) / (sum_weights + shrinkage_k)
+                else:
+                    aor_season = nat_avg.avg_ortg
+                    adr_season = nat_avg.avg_ortg
+                    pace_season = nat_avg.avg_pace
+                
+                new_ratings[team.id] = {
+                    'aor': aor_season,
+                    'adr': adr_season,
+                    'pace': pace_season,
+                }
             
-            total_weight = team_games['weight'].sum()
-            
-            if total_weight == 0:
-                continue
-            
-            # Weighted average with Bayesian shrinkage (k=300)
-            weighted_aor_sum = (team_games['aor_game'] * team_games['weight']).sum()
-            weighted_adr_sum = (team_games['adr_game'] * team_games['weight']).sum()
-            
-            aor = (weighted_aor_sum + BAYESIAN_K * nat_avg) / (total_weight + BAYESIAN_K)
-            adr = (weighted_adr_sum + BAYESIAN_K * nat_avg) / (total_weight + BAYESIAN_K)
-            aem = aor - adr
-            
-            team_metrics.append({
-                'team_id': team_id,
-                'aor': round(aor, 4),
-                'adr': round(adr, 4),
-                'aem': round(aem, 4),
-                'games_count': len(team_games),
-                'total_possessions': team_games['possessions'].sum(),
-            })
+            # Update ratings for next iteration
+            ratings = new_ratings
         
-        metrics_df = pd.DataFrame(team_metrics)
-        self.stdout.write(f"  ✓ Computed metrics for {len(metrics_df)} teams")
+        # Step 3: Save to database
+        self.stdout.write(f"\n[3/3] Saving to database...")
         
-        # ==================== STEP 5: Compute 0-100 ratings ====================
-        self.stdout.write(self.style.SUCCESS("\n[5/6] Computing 0-100 ratings..."))
-        
-        # AOR: higher is better
-        aor_100 = compute_z_score_rating(metrics_df['aor'].values, invert=False)
-        metrics_df['aor_100'] = [round(v, 2) for v in aor_100]
-        
-        # ADR: lower is better, so invert
-        adr_100 = compute_z_score_rating(metrics_df['adr'].values, invert=True)
-        metrics_df['adr_100'] = [round(v, 2) for v in adr_100]
-        
-        # NET: higher is better
-        net_100 = compute_z_score_rating(metrics_df['aem'].values, invert=False)
-        metrics_df['net_100'] = [round(v, 2) for v in net_100]
-        
-        self.stdout.write(f"  ✓ Computed 0-100 ratings")
-        
-        # ==================== STEP 6: Compute ranks ====================
-        self.stdout.write(self.style.SUCCESS("\n[6/6] Computing ranks..."))
-        
-        # Rank by AOR (desc: higher is better)
-        metrics_df['rank_aor'] = metrics_df['aor'].rank(ascending=False, method='min').astype(int)
-        
-        # Rank by ADR (asc: lower is better)
-        metrics_df['rank_adr'] = metrics_df['adr'].rank(ascending=True, method='min').astype(int)
-        
-        # Rank by AEM/Net (desc: higher is better)
-        metrics_df['rank_aem'] = metrics_df['aem'].rank(ascending=False, method='min').astype(int)
-        
-        self.stdout.write(f"  ✓ Computed ranks")
-        
-        # ==================== STEP 7: Save to database ====================
-        if dry_run:
-            self.stdout.write(self.style.WARNING("\n[DRY RUN] Would update database with:"))
-            self.stdout.write(metrics_df.head(10).to_string())
-            return
-        
-        self.stdout.write(self.style.SUCCESS("\n[7/7] Saving to database..."))
-        
-        updated_count = 0
+        created = 0
+        updated = 0
         
         with transaction.atomic():
-            for _, row in metrics_df.iterrows():
-                try:
-                    team_stats = TeamSeasonStats.objects.get(
-                        team_id=row['team_id'],
-                        season=season
-                    )
+            for team in teams:
+                if team.id not in ratings:
+                    continue
+                
+                metrics = TeamSeasonMetrics.objects.get(team=team, season=season)
+                
+                # Count ALL games (including non-D1) for complete record
+                all_games = TeamGameStats.objects.filter(
+                    team=team,
+                    game__season_year=season_year,
+                    game__status='final'
+                ).select_related('game', 'opponent')
+                
+                total_games = all_games.count()
+                total_wins = 0
+                
+                # Count wins by comparing team pts to opponent pts
+                for game_stat in all_games:
+                    # Get opponent's stats for this game
+                    opp_stats = TeamGameStats.objects.filter(
+                        game=game_stat.game,
+                        team=game_stat.opponent
+                    ).first()
                     
-                    team_stats.aor = row['aor']
-                    team_stats.adr = row['adr']
-                    team_stats.aem = row['aem']
-                    team_stats.aor_100 = row['aor_100']
-                    team_stats.adr_100 = row['adr_100']
-                    team_stats.net_100 = row['net_100']
-                    team_stats.rank_aor = row['rank_aor']
-                    team_stats.rank_adr = row['rank_adr']
-                    team_stats.rank_aem = row['rank_aem']
-                    
-                    team_stats.save()
-                    updated_count += 1
-                    
-                except TeamSeasonStats.DoesNotExist:
-                    self.stdout.write(
-                        self.style.WARNING(f"  ⚠ TeamSeasonStats not found for team_id={row['team_id']}")
-                    )
+                    if opp_stats and game_stat.pts > opp_stats.pts:
+                        total_wins += 1
+                
+                total_losses = total_games - total_wins
+                
+                # D1 games count (from metrics which filters to D1 only)
+                d1_games_count = metrics.games
+                
+                aor = ratings[team.id]['aor']
+                adr = ratings[team.id]['adr']
+                aem = aor - adr
+                adj_pace = ratings[team.id]['pace']
+                
+                rating_obj, is_created = TeamSeasonRatings.objects.update_or_create(
+                    team=team,
+                    season=season,
+                    defaults={
+                        'adj_o': round(aor, 4),
+                        'adj_d': round(adr, 4),
+                        'adj_em': round(aem, 4),
+                        'adj_tempo': round(adj_pace, 4),
+                        'games_played': total_games,  # All games for record
+                        'wins': total_wins,
+                        'losses': total_losses,
+                        'd1_games_played': d1_games_count,  # D1 games only
+                        'total_possessions': metrics.total_possessions,
+                    }
+                )
+                
+                if is_created:
+                    created += 1
+                else:
+                    updated += 1
         
-        self.stdout.write(self.style.SUCCESS(f"  ✓ Updated {updated_count} teams"))
+        # Compute rankings
+        self.stdout.write(f"Computing rankings...")
         
-        # ==================== SUMMARY ====================
-        self.stdout.write(self.style.SUCCESS(f"\n{'='*60}"))
-        self.stdout.write(self.style.SUCCESS("COMPUTATION COMPLETE"))
-        self.stdout.write(self.style.SUCCESS(f"{'='*60}"))
+        all_ratings = TeamSeasonRatings.objects.filter(season=season).order_by('-adj_em')
+        for rank, rating in enumerate(all_ratings, start=1):
+            rating.rank_adj_em = rank
+            rating.save(update_fields=['rank_adj_em'])
         
-        # Display top 10 teams by Net Rating
-        top_teams_df = metrics_df.nlargest(10, 'aem')
+        all_ratings = TeamSeasonRatings.objects.filter(season=season).order_by('-adj_o')
+        for rank, rating in enumerate(all_ratings, start=1):
+            rating.rank_adj_o = rank
+            rating.save(update_fields=['rank_adj_o'])
         
-        self.stdout.write("\nTop 10 Teams by Net Rating (AEM):")
-        self.stdout.write("-" * 80)
-        self.stdout.write(f"{'Rank':<6} {'Team ID':<10} {'AOR':<10} {'ADR':<10} {'Net':<10} {'Net_100':<10}")
-        self.stdout.write("-" * 80)
+        all_ratings = TeamSeasonRatings.objects.filter(season=season).order_by('adj_d')
+        for rank, rating in enumerate(all_ratings, start=1):
+            rating.rank_adj_d = rank
+            rating.save(update_fields=['rank_adj_d'])
         
-        for _, row in top_teams_df.iterrows():
-            try:
-                team = Team.objects.get(id=row['team_id'])
-                team_name = team.name[:30]
-            except Team.DoesNotExist:
-                team_name = f"Team {row['team_id']}"
-            
+        self.stdout.write("\n" + "=" * 60)
+        self.stdout.write("SUMMARY")
+        self.stdout.write("=" * 60)
+        self.stdout.write(f"Created:  {created}")
+        self.stdout.write(f"Updated:  {updated}")
+        self.stdout.write("=" * 60)
+        
+        # Show top 10
+        self.stdout.write("\nTop 10 Teams by Adjusted Net Rating:")
+        self.stdout.write("=" * 60)
+        top_10 = TeamSeasonRatings.objects.filter(season=season).order_by('-adj_em')[:10]
+        for i, rating in enumerate(top_10, start=1):
             self.stdout.write(
-                f"{row['rank_aem']:<6} {team_name:<30} "
-                f"{row['aor']:<10.4f} {row['adr']:<10.4f} "
-                f"{row['aem']:<10.4f} {row['net_100']:<10.2f}"
+                f"{i:2}. {rating.team.name:30} AOR={rating.adj_o:6.2f} ADR={rating.adj_d:6.2f} "
+                f"Net={rating.adj_em:+6.2f} Pace={rating.adj_tempo:5.1f}"
             )
-        
-        self.stdout.write("\n✅ Done! Use --dry-run to test without saving.\n")
+        self.stdout.write("=" * 60)

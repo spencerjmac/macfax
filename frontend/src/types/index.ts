@@ -3,6 +3,9 @@
  * These mirror the Django models and API responses
  */
 
+// Re-export types from api.ts
+export type { GameLogEntry, TeamSeasonMetrics } from './api';
+
 export interface Season {
   id: number;
   year: number;
@@ -160,14 +163,34 @@ export interface RankingsRow {
   // Four Factor Index
   four_factor_index_100: number | null;
   rank_four_factor_index_100: number | null;
+  raw_four_factor_index_100: number | null;
+  // Raw Four Factors (unadjusted)
+  raw_efg_pct: number;
+  raw_tov_pct: number;
+  raw_orb_pct: number;
+  raw_ftr: number;
+  raw_efg_pct_d: number;
+  raw_tov_pct_d: number;
+  raw_orb_pct_d: number;  // Opponent ORB%
+  raw_ftr_d: number;
+  raw_efg_margin: number;
+  raw_tov_edge: number;
+  raw_reb_edge: number;
+  raw_ftr_margin: number;
+  // Adjusted Four Factors
   efg_pct: number;
   tov_pct: number;
   orb_pct: number;
   ftr: number;
   efg_pct_d: number;
   tov_pct_d: number;
-  drb_pct: number;
+  orb_pct_d: number;  // Opponent ORB%
   ftr_d: number;
+  // Four Factor Margins
+  efg_margin: number;
+  tov_edge: number;
+  reb_edge: number;
+  ftr_margin: number;
 }
 
 export interface TeamProfile {

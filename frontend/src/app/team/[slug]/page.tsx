@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import type { TeamProfile } from '@/types';
 import NationalChampionChecklistCard from '@/components/NationalChampionChecklistCard';
+import GameLog from '@/components/GameLog';
 
 export default function TeamProfilePage() {
   const params = useParams();
@@ -13,7 +14,7 @@ export default function TeamProfilePage() {
   const [profile, setProfile] = useState<TeamProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'four-factors' | 'splits' | 'resume'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'four-factors' | 'splits' | 'resume' | 'game-log'>('overview');
   
   useEffect(() => {
     loadProfile();
@@ -100,6 +101,9 @@ export default function TeamProfilePage() {
             <TabButton active={activeTab === 'splits'} onClick={() => setActiveTab('splits')}>
               Shooting Splits
             </TabButton>
+            <TabButton active={activeTab === 'game-log'} onClick={() => setActiveTab('game-log')}>
+              Game Log
+            </TabButton>
             <TabButton active={activeTab === 'resume'} onClick={() => setActiveTab('resume')}>
               Resume
             </TabButton>
@@ -110,6 +114,7 @@ export default function TeamProfilePage() {
           {activeTab === 'overview' && <OverviewTab stats={stats} />}
           {activeTab === 'four-factors' && <FourFactorsTab stats={stats} />}
           {activeTab === 'splits' && <SplitsTab stats={stats} />}
+          {activeTab === 'game-log' && <GameLog teamSlug={slug} seasonYear={2026} />}
           {activeTab === 'resume' && <ResumeTab stats={stats} />}
         </div>
       </div>

@@ -10,6 +10,7 @@ from .views import (
     RankingsViewSet,
     TeamViewSet,
     MatchupViewSet,
+    GameViewSet,
 )
 from .trapezoid_views import TrapezoidView
 from .landscape_views import EfficiencyLandscapeView
@@ -21,6 +22,7 @@ router.register(r'conferences', ConferenceViewSet, basename='conference')
 router.register(r'rankings', RankingsViewSet, basename='rankings')
 router.register(r'teams', TeamViewSet, basename='team')
 router.register(r'matchup', MatchupViewSet, basename='matchup')
+router.register(r'games', GameViewSet, basename='game')
 
 urlpatterns = [
     path('', include(router.urls)),

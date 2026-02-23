@@ -39,6 +39,30 @@ export interface TeamSeason {
   reb_edge: number;
   ftr_margin: number;
   
+  // Raw Four Factors - Offense
+  raw_eFG: number | null;
+  raw_tov: number | null;
+  raw_orb: number | null;
+  raw_ftr: number | null;
+  
+  // Raw Four Factors - Defense
+  raw_eFG_d: number | null;
+  raw_tov_d: number | null;
+  raw_orb_d: number | null;
+  raw_drb: number | null;
+  raw_ftr_d: number | null;
+  
+  // Raw Four Factors - Margins
+  raw_eFG_margin: number | null;
+  raw_tov_edge: number | null;
+  raw_reb_edge: number | null;
+  raw_ftr_margin: number | null;
+  
+  // Four Factor Index
+  four_factor_index_100: number | null;
+  raw_four_factor_index_100: number | null;
+  rank_four_factor_index_100: number | null;
+  
   // Shooting Splits
   fg2_pct: number | null;
   fg2_pct_d: number | null;
