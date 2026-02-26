@@ -19,8 +19,8 @@ export default function CrystalBallPage() {
           a rules engine with configurable thresholds for efficiency margins, Four Factors, 
           and other key metrics.
         </p>
-        <Link href="/viz/trapezoid" className="text-brand-orange hover:underline">
-          ← Back to Trapezoid
+        <Link href="/viz" className="text-brand-orange hover:underline">
+          ← Back to Visualizations
         </Link>
       </div>
     </div>

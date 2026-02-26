@@ -18,8 +18,8 @@ export default function KillShotPage() {
           This visualization will analyze kill shot opportunities - possessions that swing 
           game momentum by 5+ points or occur in critical late-game situations.
         </p>
-        <Link href="/viz/trapezoid" className="text-brand-orange hover:underline">
-          ← Back to Trapezoid
+        <Link href="/viz" className="text-brand-orange hover:underline">
+          ← Back to Visualizations
         </Link>
       </div>
     </div>

@@ -41,7 +41,7 @@ export default function HomePage() {
         </Link>
         
         <Link 
-          href="/viz/trapezoid" 
+          href="/viz" 
           className="block p-6 bg-ui-card border border-ui-border rounded-lg hover:border-brand-orange transition-colors"
         >
           <div className="text-4xl mb-3">📈</div>

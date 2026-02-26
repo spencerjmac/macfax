@@ -1,3 +1,4 @@
+
 """
 Management command: compute_adjusted_ratings
 Computes adjusted offensive/defensive ratings using iterative opponent-adjustment
@@ -32,19 +33,26 @@ class Command(BaseCommand):
         parser.add_argument(
             '--iterations',
             type=int,
-            default=3,
-            help='Number of iterations (default: 3)'
+            default=25,
+            help='Maximum number of iterations (default: 25)'
+        )
+        parser.add_argument(
+            '--convergence',
+            type=float,
+            default=0.001,
+            help='Convergence threshold for max AdjEM change (default: 0.001)'
         )
         parser.add_argument(
             '--shrinkage',
             type=int,
             default=300,
-            help='Shrinkage constant in possessions (default: 300)'
+            help='Shrinkage constant in possessions (default: 300, auto-adjusts based on games played; set to override)'
         )
     
     def handle(self, *args, **options):
         season_year = options['season']
-        iterations = options['iterations']
+        max_iterations = options['iterations']
+        convergence_threshold = options['convergence']
         shrinkage_k = options['shrinkage']
         
         # Get season
@@ -64,9 +72,8 @@ class Command(BaseCommand):
         self.stdout.write(f"\nComputing Adjusted Ratings for {season.display_name}")
         self.stdout.write(f"National Average ORtg: {nat_avg.avg_ortg:.2f}")
         self.stdout.write(f"National Average Pace: {nat_avg.avg_pace:.2f}")
-        self.stdout.write(f"Iterations: {iterations}")
-        self.stdout.write(f"Shrinkage: {shrinkage_k} possessions")
-        self.stdout.write("=" * 60)
+        self.stdout.write(f"Max Iterations: {max_iterations}")
+        self.stdout.write(f"Convergence Threshold: {convergence_threshold}")
         
         # Get all D1 teams with season metrics
         teams = Team.objects.filter(season_metrics__season=season, is_d1=True)
@@ -75,7 +82,31 @@ class Command(BaseCommand):
             self.stderr.write("No teams found with season metrics")
             return
         
-        self.stdout.write(f"Processing {teams.count()} teams...")
+        num_d1_teams = teams.count()
+        
+        # Calculate dynamic shrinkage k based on average games played
+        # Count team-games (NOT matchups - each game counts twice, once per team)
+        team_games_count = TeamGameStats.objects.filter(
+            game__season_year=season_year,
+            game__status='final',
+            opponent__is_d1=True,
+            team__is_d1=True
+        ).count()
+        
+        avg_games_played = team_games_count / num_d1_teams if num_d1_teams > 0 else 0
+        
+        # Dynamic k: starts at 300, decays to floor of 170
+        # At 16 games (midseason): k ≈ 200
+        # At 21+ games: k = 170 (floor)
+        # Clamped between 170 and 300 for safety
+        if shrinkage_k == 300:  # Only use dynamic if user didn't override
+            shrinkage_k = min(300, max(170, 300 - (avg_games_played * 6.25)))
+            self.stdout.write(f"Dynamic Shrinkage: k={shrinkage_k:.1f} (avg {avg_games_played:.1f} games/team)")
+        else:
+            self.stdout.write(f"Fixed Shrinkage: k={shrinkage_k} possessions (user override)")
+        
+        self.stdout.write("=" * 60)
+        self.stdout.write(f"Processing {num_d1_teams} teams...")
         
         # Initialize ratings dictionary {team_id: {'aor': float, 'adr': float, 'pace': float}}
         ratings = {}
@@ -90,11 +121,15 @@ class Command(BaseCommand):
                 'pace': metrics.pace,
             }
         
-        # Step 2: Iterate
-        for iteration in range(1, iterations + 1):
-            self.stdout.write(f"\n[2/{iterations}] Iteration {iteration}...")
+        # Step 2: Iterate until convergence
+        converged = False
+        iteration = 0
+        
+        for iteration in range(1, max_iterations + 1):
+            self.stdout.write(f"\n[Iteration {iteration}]")
             
             new_ratings = {}
+            max_aem_change = 0.0
             
             for team in teams:
                 # Get all games for this team (D1 vs D1 only)
@@ -137,15 +172,16 @@ class Command(BaseCommand):
                     if raw_oe_g is None or raw_de_g is None or raw_pace_g is None:
                         continue
                     
-                    # Get site factor
-                    site_factor = game_stat.site_factor
+                    # Get site factors (different for offense vs defense)
+                    off_site_factor = game_stat.site_factor  # Home: 0.9862, Away: 1.0140
+                    def_site_factor = game_stat.defensive_site_factor  # Home: 1.0140, Away: 0.9862
                     
                     # Compute adjusted game ratings
-                    # AOR_g = RawOE_g * (NatAvg / OppAdjD) * SiteFactor
-                    aor_g = raw_oe_g * (nat_avg.avg_ortg / opp_adr) * site_factor if opp_adr > 0 else raw_oe_g
+                    # AOR_g = RawOE_g * (NatAvg / OppAdjD) * OffSiteFactor
+                    aor_g = raw_oe_g * (nat_avg.avg_ortg / opp_adr) * off_site_factor if opp_adr > 0 else raw_oe_g
                     
-                    # ADR_g = RawDE_g * (NatAvg / OppAdjO) * SiteFactor
-                    adr_g = raw_de_g * (nat_avg.avg_ortg / opp_aor) * site_factor if opp_aor > 0 else raw_de_g
+                    # ADR_g = RawDE_g * (NatAvg / OppAdjO) * DefSiteFactor
+                    adr_g = raw_de_g * (nat_avg.avg_ortg / opp_aor) * def_site_factor if opp_aor > 0 else raw_de_g
                     
                     # AdjPace_g = RawPace_g * (NatAvgPace / OppPace)
                     # Note: Site factor is typically not applied to pace
@@ -175,9 +211,32 @@ class Command(BaseCommand):
                     'adr': adr_season,
                     'pace': pace_season,
                 }
+                
+                # Track max change in AdjEM for convergence check
+                if team.id in ratings:
+                    old_aem = ratings[team.id]['aor'] - ratings[team.id]['adr']
+                    new_aem = aor_season - adr_season
+                    aem_change = abs(new_aem - old_aem)
+                    max_aem_change = max(max_aem_change, aem_change)
+            
+            # Check for convergence
+            self.stdout.write(f"  Max AdjEM change: {max_aem_change:.4f}")
+            
+            if max_aem_change < convergence_threshold:
+                self.stdout.write(f"  ✓ Converged! (change < {convergence_threshold})")
+                converged = True
+                # Update ratings one last time before breaking
+                ratings = new_ratings
+                break
             
             # Update ratings for next iteration
             ratings = new_ratings
+        
+        # Report convergence status
+        if converged:
+            self.stdout.write(f"\n✓ Converged after {iteration} iterations")
+        else:
+            self.stdout.write(f"\n⚠ Did not converge after {max_iterations} iterations (max change: {max_aem_change:.4f})")
         
         # Step 3: Save to database
         self.stdout.write(f"\n[3/3] Saving to database...")

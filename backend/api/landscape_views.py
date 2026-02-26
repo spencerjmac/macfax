@@ -2,8 +2,9 @@
 Efficiency Landscape API View
 
 Provides data for the Efficiency Landscape visualization showing team positioning
-by offensive rating (O-Rate/AOR), defensive rating (D-Rate/ADR), and net rating (AEM).
-Teams are categorized into tiers based on their net rating relative to the best team.
+by our computed Adjusted Offensive (Adj O), Adjusted Defensive (Adj D), and 
+Adjusted Efficiency Margin (Adj EM) ratings.
+Teams are categorized into tiers based on their Adj EM relative to the best team.
 """
 
 from rest_framework.views import APIView
@@ -11,7 +12,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import get_object_or_404
 
-from core.models import Season, TeamSeasonStats
+from core.models import Season, TeamSeasonRatings
 
 
 # Default tier deltas (can be made configurable later)
@@ -78,51 +79,79 @@ class EfficiencyLandscapeView(APIView):
                     status=status.HTTP_404_NOT_FOUND
                 )
         
-        # Build base queryset
-        queryset = TeamSeasonStats.objects.filter(
-            season=season,
-            em_o_rate__isnull=False,  # Only include teams with Evan Miya ratings
-            em_d_rate__isnull=False,
-            em_rating__isnull=False,
-        ).select_related('team', 'conference')
+        # Build base queryset - use our computed ratings from TeamSeasonRatings
+        queryset = TeamSeasonRatings.objects.filter(
+            season=season
+        ).select_related('team')
         
-        # Apply conference filter
-        if conference_filter and conference_filter.upper() != 'ALL':
-            queryset = queryset.filter(conference__code=conference_filter)
+        # Order by Adj EM descending
+        queryset = queryset.order_by('-adj_em')
         
-        # Order by Evan Miya relative rating descending
-        queryset = queryset.order_by('-em_rating')
+        # Get all teams for conference filtering
+        all_ratings = list(queryset)
         
-        # Limit to top N
-        if top_n and top_n > 0:
-            queryset = queryset[:top_n]
-        
-        # Convert to list to compute max_net
-        teams_data = list(queryset)
-        
-        if not teams_data:
+        if not all_ratings:
             return Response(
                 {'error': 'No teams found with computed ratings for this season'},
                 status=status.HTTP_404_NOT_FOUND
             )
         
-        # Compute max_net from the filtered dataset (Evan Miya Relative Rating)
-        max_net = max(team.em_rating for team in teams_data)
+        # Use RankingsSerializer for conference lookup (same as trapezoid)
+        from .serializers import RankingsSerializer
+        serializer = RankingsSerializer()
+        
+        # Build team data with conference info
+        all_teams_data = []
+        for rating in all_ratings:
+            conference_code = serializer.get_conference(rating)
+            # Get conference name from code
+            from core.models import Conference as ConfModel
+            try:
+                conf_obj = ConfModel.objects.get(code=conference_code)
+                conference_name = conf_obj.name
+            except ConfModel.DoesNotExist:
+                conference_name = conference_code
+            
+            all_teams_data.append({
+                'rating': rating,
+                'conference_code': conference_code,
+                'conference_name': conference_name,
+            })
+        
+        # NATIONAL BASELINE: Calculate max_net from ALL D1 teams (before conference filter)
+        # This ensures tier boundaries stay constant regardless of conference selection
+        max_net = max(t['rating'].adj_em for t in all_teams_data)
+        
+        # Filter by conference AFTER computing national baseline
+        if conference_filter and conference_filter.upper() != 'ALL':
+            teams_data = [t for t in all_teams_data if t['conference_code'] == conference_filter]
+        else:
+            teams_data = all_teams_data
+        
+        # Take top N teams
+        teams_data = teams_data[:top_n]
+        
+        if not teams_data:
+            return Response(
+                {'error': 'No teams found matching criteria'},
+                status=status.HTTP_404_NOT_FOUND
+            )
         
         # Build response
         teams_list = []
-        for team_stats in teams_data:
+        for team_data in teams_data:
+            rating = team_data['rating']
             teams_list.append({
-                'team_name': team_stats.team.name,
-                'team_slug': team_stats.team.slug,
-                'conference': team_stats.conference.code if team_stats.conference else 'N/A',
-                'conference_name': team_stats.conference.name if team_stats.conference else 'N/A',
-                'o_rate': round(team_stats.em_o_rate, 1),
-                'd_rate': round(team_stats.em_d_rate, 1),
-                'net': round(team_stats.em_rating, 1),
-                'logo_url': team_stats.team.logo_url,
-                'rank': team_stats.rank,
-                'record': team_stats.record,
+                'team_name': rating.team.name,
+                'team_slug': rating.team.slug,
+                'conference': team_data['conference_code'],
+                'conference_name': team_data['conference_name'],
+                'o_rate': round(rating.adj_o, 1),
+                'd_rate': round(rating.adj_d, 1),
+                'net': round(rating.adj_em, 1),
+                'logo_url': rating.team.logo_url,
+                'rank': rating.rank_adj_em,
+                'record': f"{rating.wins}-{rating.losses}",
             })
         
         response_data = {

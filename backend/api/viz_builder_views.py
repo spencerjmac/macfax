@@ -4,6 +4,8 @@ API Views for Viz Builder
 Endpoints:
 - GET /api/viz/stats - Returns stat catalog
 - GET /api/viz/scatter - Returns scatter plot data with correlation/regression
+
+All stats are computed from our game log scraper and rating system.
 """
 
 import numpy as np
@@ -15,7 +17,7 @@ from django.shortcuts import get_object_or_404
 from django.db.models import Q
 from django.core.cache import cache
 
-from core.models import Season, TeamSeasonStats
+from core.models import Season, TeamSeasonRatings
 from .stat_catalog import get_stat_catalog, get_stat_metadata, is_valid_stat_key, get_stats_by_group
 
 
@@ -49,8 +51,8 @@ class VizStatsView(APIView):
         # Get season parameter (optional)
         season_year = request.query_params.get('season')
         
-        # Get grouped stats
-        grouped_stats = get_stats_by_group()
+        # Get grouped stats (exclude external sources by default)
+        grouped_stats = get_stats_by_group(exclude_external=True)
         
         # Format response
         response_data = {
@@ -154,33 +156,40 @@ class VizScatterView(APIView):
         if cached_data:
             return Response(cached_data)
         
-        # Query database
-        queryset = TeamSeasonStats.objects.filter(season=season).select_related(
-            'team', 'conference'
+        # Query database - use TeamSeasonRatings (our computed data)
+        queryset = TeamSeasonRatings.objects.filter(season=season).select_related(
+            'team'
         ).only(
-            'team__name', 'team__slug', 'team__logo_url', 'conference__code',
-            x_key, y_key, 'last_updated'
+            'team__name', 'team__slug', 'team__logo_url',
+            x_key, y_key, 'computed_at'
         )
+        
+        # Use RankingsSerializer for conference lookup (same as trapezoid/landscape)
+        from .serializers import RankingsSerializer
+        serializer = RankingsSerializer()
         
         # Extract data
         points = []
         x_values = []
         y_values = []
-        last_updated = None
+        computed_at = None
         
-        for stat in queryset:
-            x_val = getattr(stat, x_key, None)
-            y_val = getattr(stat, y_key, None)
+        for rating in queryset:
+            x_val = getattr(rating, x_key, None)
+            y_val = getattr(rating, y_key, None)
             
             # Skip if either value is None
             if x_val is None or y_val is None:
                 continue
             
+            # Get conference using RankingsSerializer
+            conference_code = serializer.get_conference(rating)
+            
             point = {
-                'team': stat.team.name,
-                'slug': stat.team.slug,
-                'conference': stat.conference.code if stat.conference else 'IND',
-                'logo_url': stat.team.logo_url,
+                'team': rating.team.name,
+                'slug': rating.team.slug,
+                'conference': conference_code,
+                'logo_url': rating.team.logo_url,
                 'x': float(x_val),
                 'y': float(y_val),
             }
@@ -190,8 +199,8 @@ class VizScatterView(APIView):
             y_values.append(float(y_val))
             
             # Track most recent update
-            if last_updated is None or stat.last_updated > last_updated:
-                last_updated = stat.last_updated
+            if computed_at is None or rating.computed_at > computed_at:
+                computed_at = rating.computed_at
         
         # Compute statistics
         stats_data = {}
@@ -245,7 +254,7 @@ class VizScatterView(APIView):
             } if y_meta else {'key': y_key, 'label': y_key},
             'stats': stats_data,
             'points': points,
-            'last_updated': last_updated.isoformat() if last_updated else None,
+            'last_updated': computed_at.isoformat() if computed_at else None,
         }
         
         # Cache for 5 minutes

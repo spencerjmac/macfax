@@ -199,27 +199,145 @@ export interface TeamProfile {
   seasons: TeamSeasonStats[];
 }
 
-export interface MatchupEdges {
-  efficiency: number;
-  offensive: number;
-  defensive: number;
-  tempo: number;
-  efg: number;
-  tov: number;
-  reb: number;
-  ftr: number;
+// ==================== Matchup Prediction ====================
+
+export interface MatchupTeam {
+  id: number;
+  name: string;
+  slug: string;
+  logo_url: string | null;
+  conference: string;
+  rank: number;
+  record: string;
+  adj_em: number;
+  adj_o: number;
+  adj_d: number;
+  adj_tempo: number;
+  ffi: number;
+}
+
+export interface MatchupForecast {
+  predicted_score_a: number;
+  predicted_score_b: number;
+  predicted_margin: number;
+  win_probability_a: number;
+  win_probability_b: number;
+  confidence_interval_low: number;
+  confidence_interval_high: number;
+  game_pace: number;
+}
+
+export interface FourFactorEdges {
+  efg_edge: number;
+  tov_edge: number;
+  reb_edge: number;
+  ftr_edge: number;
+  
+  efg_a: number;
+  efg_b: number;
+  tov_a: number;
+  tov_b: number;
+  reb_a: number;
+  reb_b: number;
+  ftr_a: number;
+  ftr_b: number;
+}
+
+export interface PointsBreakdown {
+  efg: {
+    points_a: number;
+    points_b: number;
+    edge: number;
+  };
+  tov: {
+    points_a: number;
+    points_b: number;
+    edge: number;
+  };
+  reb: {
+    points_a: number;
+    points_b: number;
+    edge: number;
+  };
+  ftr: {
+    points_a: number;
+    points_b: number;
+    edge: number;
+  };
+}
+
+export interface TopDriver {
+  factor: string;
+  edge: number;
+  impact: number;
+  description: string;
+}
+
+export interface ShotProfile {
+  fg3_rate_edge: number;
+  fg3_pct_edge: number;
+  fg2_pct_edge: number;
+  fg3_rate_a: number;
+  fg3_rate_b: number;
+  fg3_pct_a: number;
+  fg3_pct_b: number;
+  fg2_pct_a: number;
+  fg2_pct_b: number;
+}
+
+export interface Volatility {
+  score: number;
+  pace_score: number;
+  three_pt_score: number;
+  variance_score: number;
+  reasons: string[];
+}
+
+export interface RecentGame {
+  date: string;
+  opponent: string;
+  result: 'W' | 'L';
+  score: string;
+  margin: number;
+}
+
+export interface RecentForm {
+  games_analyzed: number;
+  record: string;
+  avg_margin: number;
+  avg_ortg: number | null;
+  variance: number;
+  games: RecentGame[];
+}
+
+export interface MatchupMetadata {
+  hca_points: number;
+  prediction_sigma: number;
+  nat_avg_ortg: number;
+  coefficients: {
+    efg: number | null;
+    tov: number | null;
+    orb: number | null;
+    ftr: number | null;
+    r_squared: number | null;
+  };
 }
 
 export interface MatchupResult {
-  teamA: TeamSeasonStats;
-  teamB: TeamSeasonStats;
-  matchup: {
-    site: 'neutral' | 'home' | 'away';
-    win_probability_a: number;
-    win_probability_b: number;
-    predicted_margin: number;
-    edges: MatchupEdges;
-  };
+  season: string;
+  site: 'neutral' | 'home' | 'away';
+  teamA: MatchupTeam;
+  teamB: MatchupTeam;
+  forecast: MatchupForecast;
+  four_factor_edges: FourFactorEdges;
+  ffi_edge: number;
+  points_breakdown: PointsBreakdown;
+  top_drivers: TopDriver[];
+  shot_profile: ShotProfile | null;
+  volatility: Volatility;
+  recent_form_a: RecentForm;
+  recent_form_b: RecentForm;
+  metadata: MatchupMetadata;
 }
 
 export interface PaginatedResponse<T> {

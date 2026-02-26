@@ -543,11 +543,26 @@ class TeamGameStats(models.Model):
     
     @property
     def site_factor(self):
-        """Site adjustment factor based on home/away/neutral"""
+        """Offensive site adjustment factor based on home/away/neutral"""
         if self.home_away == 'H':
             return 0.9862
         elif self.home_away == 'A':
             return 1.0140
+        else:  # 'N' neutral
+            return 1.0000
+    
+    @property
+    def defensive_site_factor(self):
+        """Defensive site adjustment factor (inverse of offensive)
+        
+        Home court makes defense look better (fewer points allowed),
+        so we inflate to neutralize. Road makes defense look worse,
+        so we deflate.
+        """
+        if self.home_away == 'H':
+            return 1.0140  # Inverse of offensive home factor
+        elif self.home_away == 'A':
+            return 0.9862  # Inverse of offensive away factor
         else:  # 'N' neutral
             return 1.0000
     
@@ -602,6 +617,7 @@ class TeamGameStats(models.Model):
     # ==================== SHOOTING PERCENTAGES ====================
     
     @property
+    @property
     def fg_pct(self):
         """Field Goal Percentage"""
         return round(self.fgm / self.fga * 100, 1) if self.fga > 0 else None
@@ -609,7 +625,9 @@ class TeamGameStats(models.Model):
     @property
     def fg2_pct(self):
         """2-Point Percentage"""
-        return round(self.fg2m / self.fg2a * 100, 1) if self.fg2a > 0 else None
+        fg2a = self.fga - self.fg3a
+        fg2m = self.fgm - self.fg3m if self.fgm else 0
+        return round(fg2m / fg2a * 100, 1) if fg2a > 0 else None
     
     @property
     def fg3_pct(self):
@@ -1074,6 +1092,50 @@ class NationalAverages(models.Model):
     # Total possessions (for weighting)
     total_possessions = models.FloatField(help_text="Total possessions across all games")
     total_games = models.IntegerField(help_text="Total games in dataset")
+    
+    # Matchup prediction parameters
+    hca_points = models.FloatField(
+        null=True,
+        blank=True,
+        help_text="Home court advantage in points (estimated from game logs)"
+    )
+    prediction_sigma = models.FloatField(
+        null=True,
+        blank=True,
+        help_text="Standard deviation of prediction errors (for win probability)"
+    )
+    
+    # Four factor regression coefficients
+    coef_efg = models.FloatField(
+        null=True,
+        blank=True,
+        help_text="Regression coefficient for eFG% edge (points per % edge)"
+    )
+    coef_tov = models.FloatField(
+        null=True,
+        blank=True,
+        help_text="Regression coefficient for TOV% edge (points per % edge)"
+    )
+    coef_orb = models.FloatField(
+        null=True,
+        blank=True,
+        help_text="Regression coefficient for ORB% edge (points per % edge)"
+    )
+    coef_ftr = models.FloatField(
+        null=True,
+        blank=True,
+        help_text="Regression coefficient for FTR edge (points per % edge)"
+    )
+    coef_intercept = models.FloatField(
+        null=True,
+        blank=True,
+        help_text="Regression intercept (baseline margin)"
+    )
+    coef_r_squared = models.FloatField(
+        null=True,
+        blank=True,
+        help_text="R-squared of four factor regression model"
+    )
     
     # Metadata
     last_updated = models.DateTimeField(auto_now=True)

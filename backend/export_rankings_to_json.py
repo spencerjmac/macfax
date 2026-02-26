@@ -90,14 +90,14 @@ def transform_to_frontend_format(api_data):
             'raw_four_factor_index_100': team.get('raw_four_factor_index_100'),
             'rank_four_factor_index_100': team.get('rank_four_factor_index_100'),
             
-            # Legacy compatibility (shooting splits - not available in current API)
-            'fg2_pct': None,
-            'fg2_pct_d': None,
-            'fg3_pct': None,
-            'fg3_pct_d': None,
-            'fg3_rate': None,
-            'fg3_rate_d': None,
-            'ft_pct': None,
+            # Shooting Splits (convert from percentage to decimal)
+            'fg2_pct': team.get('fg2_pct') / 100.0 if team.get('fg2_pct') is not None else None,
+            'fg2_pct_d': None,  # Not yet available
+            'fg3_pct': team.get('fg3_pct') / 100.0 if team.get('fg3_pct') is not None else None,
+            'fg3_pct_d': None,  # Not yet available
+            'fg3_rate': team.get('fg3_rate') / 100.0 if team.get('fg3_rate') is not None else None,
+            'fg3_rate_d': None,  # Not yet available
+            'ft_pct': team.get('ft_pct') / 100.0 if team.get('ft_pct') is not None else None,
             
             # Resume metrics (not available in current API)
             'wab': None,

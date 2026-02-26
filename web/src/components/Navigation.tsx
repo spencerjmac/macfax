@@ -7,7 +7,7 @@ import clsx from 'clsx';
 const navItems = [
   { href: '/rankings', label: 'Rankings' },
   { href: '/matchup', label: 'Matchup' },
-  { href: '/viz/trapezoid', label: 'Visualizations' },
+  { href: '/viz', label: 'Visualizations' },
   { href: '/glossary', label: 'Glossary' },
   { href: '/about', label: 'About' },
 ];
@@ -29,7 +29,7 @@ export default function Navigation() {
           <div className="hidden md:flex items-center space-x-1">
             {navItems.map((item) => {
               const isActive = pathname === item.href || 
-                (item.href === '/viz/trapezoid' && pathname?.startsWith('/viz'));
+                (item.href === '/viz' && pathname?.startsWith('/viz'));
               
               return (
                 <Link

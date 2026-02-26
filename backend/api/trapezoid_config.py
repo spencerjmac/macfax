@@ -1,28 +1,37 @@
 """
 Trapezoid of Excellence Configuration
 
-These quantile values define the trapezoid boundaries based on the 
-distribution of teams in the current filtered dataset.
+NATIONAL BASELINE APPROACH:
+The trapezoid boundaries are computed from ALL Division I teams in the 
+current season snapshot, NOT from filtered teams. Filters only affect 
+which teams are displayed.
 
-Adjust these constants to fine-tune the trapezoid shape without 
-changing the core calculation logic.
+Concept by Ryan Hammer
 """
 
-# Quantile values for trapezoid X-axis (Adjusted Tempo)
-X_LEFT_TOP_QUANTILE = 0.05      # Left edge at top (5th percentile)
-X_RIGHT_TOP_QUANTILE = 0.95     # Right edge at top (95th percentile)
-X_LEFT_BOT_QUANTILE = 0.25      # Left edge at bottom (25th percentile)
-X_RIGHT_BOT_QUANTILE = 0.75     # Right edge at bottom (75th percentile)
+# ==================== Y-AXIS (Efficiency Margin) ====================
+# Elite floor: bottom boundary is computed from national distribution
+Q_BOT_EM = 0.965  # 96.5th percentile of national Adj EM distribution
 
-# Quantile values for trapezoid Y-axis (Adjusted Efficiency Margin)
-Y_TOP_QUANTILE = 1.0            # Top edge (100th percentile - includes all teams)
-Y_BOT_QUANTILE = 0.90           # Bottom edge (90th percentile)
+# Top boundary: always above the best team in the nation
+Y_PAD_MIN = 0.50  # Minimum padding above max EM
+Y_PAD_RATE = 0.02  # Additional padding as % of (y_max - y_bot) range
 
-# Fallback quantiles if primary quantiles create invalid shape
-X_LEFT_BOT_FALLBACK = 0.33
-X_RIGHT_BOT_FALLBACK = 0.67
-Y_BOT_FALLBACK = 0.85
+# ==================== X-AXIS (Tempo/Pace) ====================
+# X-bounds are computed from the ELITE SUBSET (teams with adj_em >= y_bot)
+# NOT from all teams - this creates the trapezoid shape
+# Top edge uses MIN/MAX to capture full elite pace range
+# (allows extreme-pace elite teams to be evaluated by slanted sides)
+# Q_X_LEFT_TOP and Q_X_RIGHT_TOP are NOT USED (kept for reference)
+Q_X_LEFT_TOP = 0.02   # NOT USED - top edge uses MIN(elite_tempo)
+Q_X_RIGHT_TOP = 0.98  # NOT USED - top edge uses MAX(elite_tempo)
+Q_X_LEFT_BOT = 0.25   # 25th percentile of elite subset tempo
+Q_X_RIGHT_BOT = 0.75  # 75th percentile of elite subset tempo
 
+# Padding to prevent logos from touching trapezoid outline
+PACE_PAD = 0.25  # Added/subtracted from left_top and right_top
+
+# ==================== COMPUTATION SETTINGS ====================
 # Quantile interpolation method
 # Options: 'linear', 'lower', 'higher', 'midpoint', 'nearest'
 QUANTILE_METHOD = 'linear'

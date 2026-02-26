@@ -1,0 +1,650 @@
+"""
+Matchup Prediction Engine
+
+Pure functions for game forecasting using our adjusted ratings and national averages.
+No external data - everything from our database.
+"""
+import math
+from typing import Dict, Tuple, Optional
+from scipy import stats as scipy_stats
+
+
+def compute_pace(tempo_a: float, tempo_b: float) -> float:
+    """
+    Compute expected game pace (possessions) from two teams' adjusted tempos.
+    
+    Formula: (2 * tempo_a * tempo_b) / (tempo_a + tempo_b)
+    
+    This is the harmonic mean weighted by 2, representing the interaction
+    of both teams' pace preferences.
+    """
+    if tempo_a <= 0 or tempo_b <= 0:
+        return 70.0  # Default college basketball pace
+    
+    return (2 * tempo_a * tempo_b) / (tempo_a + tempo_b)
+
+
+def compute_expected_efficiency(
+    adj_o: float,
+    opp_adj_d: float,
+    nat_avg_ortg: float
+) -> float:
+    """
+    Compute expected offensive efficiency for a team vs an opponent.
+    
+    Formula: (adj_o * opp_adj_d) / nat_avg_ortg
+    
+    This multiplicative approach accounts for:
+    - Team's offensive strength (adj_o)
+    - Opponent's defensive strength (opp_adj_d)
+    - National baseline (nat_avg_ortg)
+    
+    Returns: Expected points per 100 possessions
+    """
+    if nat_avg_ortg <= 0:
+        nat_avg_ortg = 108.0  # Fallback
+    
+    return (adj_o * opp_adj_d) / nat_avg_ortg
+
+
+def apply_hca_adjustment(
+    pts_a: float,
+    pts_b: float,
+    site: str,
+    hca_points: float
+) -> Tuple[float, float]:
+    """
+    Apply home court advantage adjustment to projected scores.
+    
+    Args:
+        pts_a: Team A's projected points (neutral site)
+        pts_b: Team B's projected points (neutral site)
+        site: 'home' (A home), 'away' (B home), or 'neutral'
+        hca_points: Total HCA in points
+    
+    Returns:
+        (adjusted_pts_a, adjusted_pts_b)
+    
+    Logic:
+        - Home team gets +HCA/2
+        - Away team gets -HCA/2
+        - Neutral: no adjustment
+    """
+    hca_half = hca_points / 2
+    
+    if site == 'home':
+        # Team A at home
+        return pts_a + hca_half, pts_b - hca_half
+    elif site == 'away':
+        # Team B at home (Team A away)
+        return pts_a - hca_half, pts_b + hca_half
+    else:
+        # Neutral site
+        return pts_a, pts_b
+
+
+def compute_win_probability(
+    margin: float,
+    sigma: float
+) -> Tuple[float, float]:
+    """
+    Compute win probability using normal CDF.
+    
+    Args:
+        margin: Expected margin (positive = Team A favored)
+        sigma: Standard deviation of prediction errors
+    
+    Returns:
+        (prob_a, prob_b) where each is in [0, 1]
+    
+    Formula: P(A wins) = Φ(margin / sigma)
+    where Φ is the cumulative distribution function of standard normal
+    """
+    if sigma <= 0:
+        sigma = 11.0  # Fallback
+    
+    # Standardize margin
+    z_score = margin / sigma
+    
+    # Compute CDF
+    prob_a = scipy_stats.norm.cdf(z_score)
+    prob_b = 1 - prob_a
+    
+    return prob_a, prob_b
+
+
+def compute_win_probability_with_confidence(
+    margin: float,
+    sigma: float
+) -> Dict[str, float]:
+    """
+    Compute win probability with confidence bands.
+    
+    Returns:
+        {
+            'prob_a': float,
+            'prob_b': float,
+            'margin_low': float (1 sigma below)
+            'margin_high': float (1 sigma above),
+            'prob_a_low': float,
+            'prob_a_high': float
+        }
+    """
+    if sigma <= 0:
+        sigma = 11.0
+    
+    prob_a, prob_b = compute_win_probability(margin, sigma)
+    
+    # Confidence band: ±1 sigma around predicted margin
+    margin_low = margin - sigma
+    margin_high = margin + sigma
+    
+    # Win probabilities at confidence bounds
+    prob_a_low, _ = compute_win_probability(margin_low, sigma)
+    prob_a_high, _ = compute_win_probability(margin_high, sigma)
+    
+    return {
+        'prob_a': prob_a,
+        'prob_b': prob_b,
+        'margin_low': margin_low,
+        'margin_high': margin_high,
+        'prob_a_low': prob_a_low,
+        'prob_a_high': prob_a_high,
+    }
+
+
+def forecast_game(
+    adj_o_a: float,
+    adj_d_a: float,
+    adj_em_a: float,
+    tempo_a: float,
+    adj_o_b: float,
+    adj_d_b: float,
+    adj_em_b: float,
+    tempo_b: float,
+    nat_avg_ortg: float,
+    hca_points: float,
+    sigma: float,
+    site: str = 'neutral'
+) -> Dict:
+    """
+    Complete game forecast using multiplicative efficiency model.
+    
+    Args:
+        adj_o_a, adj_d_a, adj_em_a, tempo_a: Team A's adjusted ratings
+        adj_o_b, adj_d_b, adj_em_b, tempo_b: Team B's adjusted ratings
+        nat_avg_ortg: National average offensive rating
+        hca_points: Home court advantage in points
+        sigma: Prediction error standard deviation
+        site: 'home', 'away', or 'neutral'
+    
+    Returns:
+        {
+            'pace': float,
+            'pts_a_neutral': float,
+            'pts_b_neutral': float,
+            'pts_a': float,
+            'pts_b': float,
+            'margin': float,
+            'spread': float,
+            'total': float,
+            'prob_a': float,
+            'prob_b': float,
+            'confidence': dict (optional confidence bands)
+        }
+    """
+    # 1. Compute expected pace
+    pace = compute_pace(tempo_a, tempo_b)
+    
+    # 2. Compute expected efficiencies (per 100 possessions)
+    exp_oe_a = compute_expected_efficiency(adj_o_a, adj_d_b, nat_avg_ortg)
+    exp_oe_b = compute_expected_efficiency(adj_o_b, adj_d_a, nat_avg_ortg)
+    
+    # 3. Convert to points (neutral site)
+    pts_a_neutral = exp_oe_a * (pace / 100)
+    pts_b_neutral = exp_oe_b * (pace / 100)
+    
+    # 4. Apply HCA adjustment
+    pts_a, pts_b = apply_hca_adjustment(pts_a_neutral, pts_b_neutral, site, hca_points)
+    
+    # 5. Compute margin and spread
+    margin = pts_a - pts_b
+    
+    # Spread convention: negative for favorite
+    if margin > 0:
+        spread = -abs(margin)  # Team A favored
+        spread_team = 'a'
+    else:
+        spread = abs(margin)  # Team B favored
+        spread_team = 'b'
+    
+    total = pts_a + pts_b
+    
+    # 6. Win probability
+    win_prob = compute_win_probability_with_confidence(margin, sigma)
+    
+    return {
+        'pace': round(pace, 1),
+        'pts_a_neutral': round(pts_a_neutral, 1),
+        'pts_b_neutral': round(pts_b_neutral, 1),
+        'pts_a': round(pts_a, 1),
+        'pts_b': round(pts_b, 1),
+        'margin': round(margin, 1),
+        'spread': round(spread, 1),
+        'spread_team': spread_team,
+        'total': round(total, 1),
+        'prob_a': round(win_prob['prob_a'], 3),
+        'prob_b': round(win_prob['prob_b'], 3),
+        'prob_a_low': round(win_prob['prob_a_low'], 3),
+        'prob_a_high': round(win_prob['prob_a_high'], 3),
+        'margin_low': round(win_prob['margin_low'], 1),
+        'margin_high': round(win_prob['margin_high'], 1),
+    }
+
+
+def compute_matchup_four_factors(
+    efg_a: float, tov_a: float, orb_a: float, ftr_a: float,
+    efg_d_a: float, tov_d_a: float, orb_d_a: float, ftr_d_a: float,
+    efg_b: float, tov_b: float, orb_b: float, ftr_b: float,
+    efg_d_b: float, tov_d_b: float, orb_d_b: float, ftr_d_b: float,
+    nat_efg: float, nat_tov: float, nat_orb: float, nat_ftr: float
+) -> Dict:
+    """
+    Compute matchup-specific four factor edges.
+    
+    Uses multiplicative adjustment relative to national average.
+    
+    Formula for Team A expected eFG%:
+        exp_efg_a = efg_a * (efg_d_b / nat_efg)
+    
+    This accounts for:
+        - Team A's offensive eFG% (efg_a)
+        - Team B's defensive eFG% allowed (efg_d_b)
+        - National baseline (nat_efg)
+    
+    Returns edges oriented positive = Team A advantage.
+    """
+    # Prevent division by zero
+    if nat_efg <= 0: nat_efg = 51.0
+    if nat_tov <= 0: nat_tov = 17.0
+    if nat_orb <= 0: nat_orb = 30.0
+    if nat_ftr <= 0: nat_ftr = 35.0
+    
+    # Expected values for Team A
+    exp_efg_a = efg_a * (efg_d_b / nat_efg)
+    exp_tov_a = tov_a * (tov_d_b / nat_tov)
+    exp_orb_a = orb_a * (orb_d_a / nat_orb)  # Using opponent's DRB% (their ORB allowed)
+    exp_ftr_a = ftr_a * (ftr_d_b / nat_ftr)
+    
+    # Expected values for Team B
+    exp_efg_b = efg_b * (efg_d_a / nat_efg)
+    exp_tov_b = tov_b * (tov_d_a / nat_tov)
+    exp_orb_b = orb_b * (orb_d_b / nat_orb)
+    exp_ftr_b = ftr_b * (ftr_d_a / nat_ftr)
+    
+    # Compute edges (positive = Team A advantage)
+    efg_edge = exp_efg_a - exp_efg_b
+    tov_edge = exp_tov_b - exp_tov_a  # Lower TOV is better
+    orb_edge = exp_orb_a - exp_orb_b
+    ftr_edge = exp_ftr_a - exp_ftr_b
+    
+    return {
+        'efg_edge': round(efg_edge, 3),
+        'tov_edge': round(tov_edge, 3),
+        'orb_edge': round(orb_edge, 3),
+        'ftr_edge': round(ftr_edge, 3),
+        'exp_efg_a': round(exp_efg_a, 1),
+        'exp_efg_b': round(exp_efg_b, 1),
+        'exp_tov_a': round(exp_tov_a, 1),
+        'exp_tov_b': round(exp_tov_b, 1),
+        'exp_orb_a': round(exp_orb_a, 1),
+        'exp_orb_b': round(exp_orb_b, 1),
+        'exp_ftr_a': round(exp_ftr_a, 1),
+        'exp_ftr_b': round(exp_ftr_b, 1),
+    }
+
+
+def compute_points_from_four_factors(
+    efg_edge: float,
+    tov_edge: float,
+    orb_edge: float,
+    ftr_edge: float,
+    coef_efg: float,
+    coef_tov: float,
+    coef_orb: float,
+    coef_ftr: float,
+    coef_intercept: float
+) -> Dict:
+    """
+    Compute predicted margin contribution from four factor edges using regression coefficients.
+    
+    Formula: margin = coef_efg*efg_edge + coef_tov*tov_edge + coef_orb*orb_edge + coef_ftr*ftr_edge + intercept
+    
+    This uses learned coefficients from historical games to weight each four factor's
+    contribution to the final score.
+    
+    Args:
+        efg_edge: eFG% edge (Team A - Team B)
+        tov_edge: TOV% edge (Team B - Team A, since lower is better)
+        orb_edge: ORB% edge (Team A - Team B)
+        ftr_edge: FTR edge (Team A - Team B)
+        coef_efg: Points per 1% eFG edge
+        coef_tov: Points per 1% TOV edge
+        coef_orb: Points per 1% ORB edge
+        coef_ftr: Points per 1% FTR edge
+        coef_intercept: Baseline margin
+    
+    Returns:
+        Dict with margin breakdown and total
+    """
+    # Compute contribution from each factor
+    pts_from_efg = efg_edge * coef_efg
+    pts_from_tov = tov_edge * coef_tov
+    pts_from_orb = orb_edge * coef_orb
+    pts_from_ftr = ftr_edge * coef_ftr
+    
+    # Total predicted margin
+    total_margin = pts_from_efg + pts_from_tov + pts_from_orb + pts_from_ftr + coef_intercept
+    
+    return {
+        'pts_from_efg': round(pts_from_efg, 2),
+        'pts_from_tov': round(pts_from_tov, 2),
+        'pts_from_orb': round(pts_from_orb, 2),
+        'pts_from_ftr': round(pts_from_ftr, 2),
+        'baseline': round(coef_intercept, 2),
+        'total_margin': round(total_margin, 2),
+    }
+
+
+def identify_top_drivers(
+    efg_edge: float,
+    tov_edge: float,
+    orb_edge: float,
+    ftr_edge: float,
+    coef_efg: float,
+    coef_tov: float,
+    coef_orb: float,
+    coef_ftr: float
+) -> list:
+    """
+    Identify the top 3 four factor drivers of the matchup.
+    
+    Returns factors sorted by their contribution to the margin (absolute value),
+    with sign indicating which team has the advantage.
+    
+    Args:
+        Four factor edges and their coefficients
+    
+    Returns:
+        List of dicts with factor name, edge, contribution, and team advantage
+        Example: [
+            {'factor': 'eFG%', 'edge': 3.7, 'points': 3.7, 'team': 'a'},
+            {'factor': 'ORB%', 'edge': 2.5, 'points': 1.2, 'team': 'a'},
+            {'factor': 'TOV%', 'edge': -1.3, 'points': -1.2, 'team': 'b'}
+        ]
+    """
+    drivers = [
+        {
+            'factor': 'eFG%',
+            'edge': efg_edge,
+            'points': efg_edge * coef_efg,
+            'team': 'a' if efg_edge > 0 else 'b'
+        },
+        {
+            'factor': 'TOV%',
+            'edge': tov_edge,
+            'points': tov_edge * coef_tov,
+            'team': 'a' if tov_edge > 0 else 'b'  # Already flipped (lower is better)
+        },
+        {
+            'factor': 'ORB%',
+            'edge': orb_edge,
+            'points': orb_edge * coef_orb,
+            'team': 'a' if orb_edge > 0 else 'b'
+        },
+        {
+            'factor': 'FTR',
+            'edge': ftr_edge,
+            'points': ftr_edge * coef_ftr,
+            'team': 'a' if ftr_edge > 0 else 'b'
+        }
+    ]
+    
+    # Sort by absolute contribution (most impactful first)
+    drivers.sort(key=lambda x: abs(x['points']), reverse=True)
+    
+    # Round values and take top 3
+    top_3 = []
+    for driver in drivers[:3]:
+        top_3.append({
+            'factor': driver['factor'],
+            'edge': round(driver['edge'], 2),
+            'points': round(driver['points'], 2),
+            'team': driver['team']
+        })
+    
+    return top_3
+
+
+def compute_shot_profile_edges(
+    fg3_rate_a: float,
+    fg3_pct_a: float,
+    fg2_pct_a: float,
+    fg3_rate_b: float,
+    fg3_pct_b: float,
+    fg2_pct_b: float
+) -> Dict:
+    """
+    Compute shot profile edges between two teams.
+    
+    Compares:
+    - 3-point attempt rate (% of FGA that are 3PA)
+    - 3-point shooting percentage
+    - 2-point shooting percentage
+    
+    Args:
+        fg3_rate_a: Team A's 3-point attempt rate (%)
+        fg3_pct_a: Team A's 3-point percentage (%)
+        fg2_pct_a: Team A's 2-point percentage (%)
+        fg3_rate_b: Team B's 3-point attempt rate (%)
+        fg3_pct_b: Team B's 3-point percentage (%)
+        fg2_pct_b: Team B's 2-point percentage (%)
+    
+    Returns:
+        Dict with edges (positive = Team A advantage)
+    """
+    # Compute edges (Team A - Team B)
+    fg3_rate_edge = fg3_rate_a - fg3_rate_b
+    fg3_pct_edge = fg3_pct_a - fg3_pct_b
+    fg2_pct_edge = fg2_pct_a - fg2_pct_b
+    
+    return {
+        'fg3_rate_edge': round(fg3_rate_edge, 2),
+        'fg3_pct_edge': round(fg3_pct_edge, 2),
+        'fg2_pct_edge': round(fg2_pct_edge, 2),
+        'fg3_rate_a': round(fg3_rate_a, 1),
+        'fg3_rate_b': round(fg3_rate_b, 1),
+        'fg3_pct_a': round(fg3_pct_a, 1),
+        'fg3_pct_b': round(fg3_pct_b, 1),
+        'fg2_pct_a': round(fg2_pct_a, 1),
+        'fg2_pct_b': round(fg2_pct_b, 1),
+    }
+
+
+def compute_volatility_score(
+    tempo_a: float,
+    tempo_b: float,
+    fg3_rate_a: float,
+    fg3_rate_b: float,
+    recent_variance_a: Optional[float] = None,
+    recent_variance_b: Optional[float] = None
+) -> Dict:
+    """
+    Compute game volatility score (0-100) based on factors that increase variance.
+    
+    Higher volatility = more unpredictable game, higher upset potential.
+    
+    Factors:
+    1. Pace (fast = more possessions = more variance): 30% weight
+    2. 3-point volume (more 3s = more variance): 40% weight
+    3. Recent performance variance (inconsistency): 30% weight
+    
+    Score interpretation:
+    - 0-30: Low volatility (predictable, slow, few 3s)
+    - 31-60: Medium volatility (typical game)
+    - 61-80: High volatility (fast pace, lots of 3s)
+    - 81-100: Extreme volatility (chaos game, upset alert)
+    
+    Args:
+        tempo_a: Team A's adjusted tempo
+        tempo_b: Team B's adjusted tempo
+        fg3_rate_a: Team A's 3-point attempt rate (%)
+        fg3_rate_b: Team B's 3-point attempt rate (%)
+        recent_variance_a: Team A's recent margin variance (optional)
+        recent_variance_b: Team B's recent margin variance (optional)
+    
+    Returns:
+        Dict with volatility score and breakdown
+    """
+    # 1. PACE SCORE (0-100)
+    # Actual D1 tempo range: 63.9 (slowest) to 75.2 (fastest), mean 69.3
+    avg_tempo = (tempo_a + tempo_b) / 2
+    pace_score = min(100, max(0, (avg_tempo - 63.9) / (75.2 - 63.9) * 100))
+    
+    # 2. THREE-POINT VOLUME SCORE (0-100)
+    # Actual D1 FG3 rate: 5th-95th percentile is 27.9% to 51.9%
+    avg_fg3_rate = (fg3_rate_a + fg3_rate_b) / 2
+    three_pt_score = min(100, max(0, (avg_fg3_rate - 27.9) / (51.9 - 27.9) * 100))
+    
+    # 3. VARIANCE SCORE (0-100)
+    # If recent variance provided, use it; otherwise default to 50
+    if recent_variance_a is not None and recent_variance_b is not None:
+        # Typical margin variance ~8-15 points
+        avg_variance = (recent_variance_a + recent_variance_b) / 2
+        variance_score = min(100, max(0, (avg_variance - 5) / (20 - 5) * 100))
+    else:
+        variance_score = 50  # Default (no data)
+    
+    # WEIGHTED VOLATILITY SCORE
+    volatility = (
+        0.30 * pace_score +
+        0.40 * three_pt_score +
+        0.30 * variance_score
+    )
+    volatility = round(volatility, 1)
+    
+    # Generate reasons
+    reasons = []
+    
+    if avg_tempo >= 72.5:  # ~90th percentile
+        reasons.append(f"Fast pace ({avg_tempo:.1f} possessions)")
+    elif avg_tempo <= 66.5:  # ~10th percentile
+        reasons.append(f"Slow pace ({avg_tempo:.1f} possessions)")
+    
+    if avg_fg3_rate >= 47:  # ~90th percentile
+        reasons.append(f"Heavy 3-point volume ({avg_fg3_rate:.1f}% of shots)")
+    elif avg_fg3_rate <= 32:  # ~10th percentile
+        reasons.append(f"Low 3-point rate ({avg_fg3_rate:.1f}% of shots)")
+    
+    if recent_variance_a and recent_variance_b:
+        avg_var = (recent_variance_a + recent_variance_b) / 2
+        if avg_var >= 15:
+            reasons.append(f"High recent variance (±{avg_var:.1f} pts)")
+        elif avg_var <= 8:
+            reasons.append(f"Consistent recent performance (±{avg_var:.1f} pts)")
+    
+    # Style contrast
+    tempo_diff = abs(tempo_a - tempo_b)
+    if tempo_diff >= 5:  # ~2 standard deviations (std = 2.2)
+        reasons.append(f"Major pace mismatch ({tempo_diff:.1f} possession gap)")
+    
+    fg3_diff = abs(fg3_rate_a - fg3_rate_b)
+    if fg3_diff >= 15:  # ~2 standard deviations (std = 7.6)
+        reasons.append(f"Contrasting shot styles ({fg3_diff:.1f}% 3P rate gap)")
+    
+    # Upset potential
+    upset_warning = None
+    if volatility >= 70:
+        upset_warning = "High upset potential"
+    elif volatility >= 85:
+        upset_warning = "Extreme upset potential - anything can happen"
+    
+    return {
+        'volatility_score': volatility,
+        'pace_component': round(pace_score, 1),
+        'three_pt_component': round(three_pt_score, 1),
+        'variance_component': round(variance_score, 1),
+        'reasons': reasons[:3],  # Max 3 reasons
+        'upset_warning': upset_warning,
+    }
+
+
+def format_recent_form(recent_games: list) -> Dict:
+    """
+    Format recent game results for API response.
+    
+    Args:
+        recent_games: List of TeamGameStats objects (most recent first)
+    
+    Returns:
+        Dict with recent performance summary
+    """
+    if not recent_games or len(recent_games) == 0:
+        return {
+            'games_analyzed': 0,
+            'record': '0-0',
+            'avg_margin': 0.0,
+            'avg_ortg': 0.0,
+            'variance': 0.0,
+            'games': []
+        }
+    
+    wins = 0
+    losses = 0
+    margins = []
+    ortgs = []
+    games_data = []
+    
+    for game_stat in recent_games:
+        # Margin (positive = won, negative = lost)
+        margin = game_stat.pts - game_stat.opponent_pts if hasattr(game_stat, 'opponent_pts') else 0
+        
+        # Determine W/L
+        if game_stat.pts > getattr(game_stat, 'opponent_pts', 0):
+            wins += 1
+            result = 'W'
+        else:
+            losses += 1
+            result = 'L'
+        
+        margins.append(margin)
+        
+        # Offensive rating (points per 100 possessions)
+        if hasattr(game_stat, 'ortg_team') and game_stat.ortg_team:
+            ortgs.append(game_stat.ortg_team)
+        
+        # Game data
+        games_data.append({
+            'date': game_stat.game.game_date.isoformat() if game_stat.game else None,
+            'opponent': game_stat.opponent.name if game_stat.opponent else 'Unknown',
+            'result': result,
+            'score': f"{game_stat.pts}-{getattr(game_stat, 'opponent_pts', 0)}",
+            'margin': margin,
+        })
+    
+    # Calculate stats
+    import statistics
+    avg_margin = statistics.mean(margins) if margins else 0.0
+    variance = statistics.stdev(margins) if len(margins) >= 2 else 0.0
+    avg_ortg = statistics.mean(ortgs) if ortgs else 0.0
+    
+    return {
+        'games_analyzed': len(recent_games),
+        'record': f"{wins}-{losses}",
+        'avg_margin': round(avg_margin, 1),
+        'avg_ortg': round(avg_ortg, 1) if ortgs else None,
+        'variance': round(variance, 1),
+        'games': games_data[:5],  # Return max 5 games for display
+    }
+
+

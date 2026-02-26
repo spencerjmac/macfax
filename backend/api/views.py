@@ -10,7 +10,7 @@ from django.db.models import Q
 
 from core.models import (
     Season, Conference, Team, TeamSeasonStats,
-    Game, TeamGameStats, TeamSeasonMetrics, TeamSeasonRatings
+    Game, TeamGameStats, TeamSeasonMetrics, TeamSeasonRatings, NationalAverages
 )
 from .serializers import (
     SeasonSerializer, 
@@ -26,6 +26,15 @@ from .serializers import (
     TeamSeasonMetricsSerializer,
     TeamSeasonRatingsSerializer,
     GameDetailSerializer,
+)
+from .matchup_engine import (
+    forecast_game,
+    compute_matchup_four_factors,
+    compute_points_from_four_factors,
+    identify_top_drivers,
+    compute_shot_profile_edges,
+    compute_volatility_score,
+    format_recent_form
 )
 
 
@@ -163,7 +172,7 @@ class TeamViewSet(viewsets.ReadOnlyModelViewSet):
     
     Returns team information and stats
     """
-    queryset = Team.objects.all()
+    queryset = Team.objects.filter(is_d1=True)
     serializer_class = TeamSerializer
     lookup_field = 'slug'
     
@@ -330,7 +339,19 @@ class MatchupViewSet(viewsets.ViewSet):
     """
     GET /api/matchup?season=2026&teamA=michigan&teamB=duke&site=neutral
     
-    Returns head-to-head matchup analysis
+    Returns comprehensive head-to-head matchup analysis using our forecast engine.
+    
+    Query Parameters:
+        - teamA: Team A slug (required)
+        - teamB: Team B slug (required)
+        - site: 'neutral', 'home' (A home), or 'away' (B home) - default: neutral
+        - season: Season year (default: current season)
+    
+    Returns:
+        - teamA, teamB: Full team data
+        - forecast: Projected score, spread, total, win%, pace
+        - four_factor_edges: Matchup-specific four factor analysis
+        - Overall FFI edge
     """
     
     def list(self, request):
@@ -344,6 +365,13 @@ class MatchupViewSet(viewsets.ViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
+        # Validate site parameter
+        if site not in ['neutral', 'home', 'away']:
+            return Response(
+                {'error': 'site must be neutral, home, or away'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
         # Get season
         season_year = request.query_params.get('season')
         if season_year:
@@ -351,54 +379,307 @@ class MatchupViewSet(viewsets.ViewSet):
         else:
             season = Season.objects.filter(is_current=True).first()
         
+        if not season:
+            return Response(
+                {'error': 'No current season found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
         # Get teams
         team_a = get_object_or_404(Team, slug=team_a_slug)
         team_b = get_object_or_404(Team, slug=team_b_slug)
         
-        # Get stats
-        stats_a = get_object_or_404(TeamSeasonStats, team=team_a, season=season)
-        stats_b = get_object_or_404(TeamSeasonStats, team=team_b, season=season)
+        # Get team ratings (using TeamSeasonRatings which has our computed data)
+        try:
+            ratings_a = TeamSeasonRatings.objects.get(team=team_a, season=season)
+            ratings_b = TeamSeasonRatings.objects.get(team=team_b, season=season)
+        except TeamSeasonRatings.DoesNotExist:
+            return Response(
+                {'error': 'Team ratings not found for this season'},
+                status=status.HTTP_404_NOT_FOUND
+            )
         
-        # Calculate matchup metrics
-        # Home court advantage: ~3.5 points in college basketball
-        hca = 3.5
+        # Get conferences from TeamSeasonStats (conference is stored there)
+        stats_a = None
+        conference_a_name = None
+        try:
+            stats_a = TeamSeasonStats.objects.get(team=team_a, season=season)
+            conference_a_name = stats_a.conference.name if stats_a.conference else None
+        except TeamSeasonStats.DoesNotExist:
+            pass
         
-        if site == 'home':
-            em_diff = stats_a.adj_em - stats_b.adj_em + hca
-        elif site == 'away':
-            em_diff = stats_a.adj_em - stats_b.adj_em - hca
-        else:  # neutral
-            em_diff = stats_a.adj_em - stats_b.adj_em
+        stats_b = None
+        conference_b_name = None
+        try:
+            stats_b = TeamSeasonStats.objects.get(team=team_b, season=season)
+            conference_b_name = stats_b.conference.name if stats_b.conference else None
+        except TeamSeasonStats.DoesNotExist:
+            pass
         
-        # Win probability using log5 formula
-        pythag_a = stats_a.barthag if stats_a.barthag else 0.5
-        pythag_b = stats_b.barthag if stats_b.barthag else 0.5
+        # Get national averages
+        try:
+            nat_avg = NationalAverages.objects.get(season=season)
+        except NationalAverages.DoesNotExist:
+            return Response(
+                {'error': 'National averages not computed for this season'},
+                status=status.HTTP_404_NOT_FOUND
+            )
         
-        win_prob_a = (pythag_a - pythag_a * pythag_b) / (pythag_a + pythag_b - 2 * pythag_a * pythag_b)
+        # Use HCA and sigma from national averages, with fallbacks
+        hca_points = nat_avg.hca_points if nat_avg.hca_points else 1.85
+        sigma = nat_avg.prediction_sigma if nat_avg.prediction_sigma else 11.08
         
-        # Key edges
-        edges = {
-            'efficiency': em_diff,
-            'offensive': stats_a.adj_o - stats_b.adj_o,
-            'defensive': stats_b.adj_d - stats_a.adj_d,  # Lower is better for defense
-            'tempo': stats_a.adj_tempo - stats_b.adj_tempo,
-            'efg': stats_a.efg_margin - stats_b.efg_margin,
-            'tov': stats_a.tov_edge - stats_b.tov_edge,
-            'reb': stats_a.reb_edge - stats_b.reb_edge,
-            'ftr': stats_a.ftr_margin - stats_b.ftr_margin,
+        # ===== FORECAST =====
+        forecast = forecast_game(
+            adj_o_a=ratings_a.adj_o,
+            adj_d_a=ratings_a.adj_d,
+            adj_em_a=ratings_a.adj_em,
+            tempo_a=ratings_a.adj_tempo,
+            adj_o_b=ratings_b.adj_o,
+            adj_d_b=ratings_b.adj_d,
+            adj_em_b=ratings_b.adj_em,
+            tempo_b=ratings_b.adj_tempo,
+            nat_avg_ortg=nat_avg.avg_ortg,
+            hca_points=hca_points,
+            sigma=sigma,
+            site=site
+        )
+        
+        # ===== FOUR FACTOR EDGES =====
+        ff_edges = compute_matchup_four_factors(
+            # Team A offense
+            efg_a=ratings_a.adj_efg_pct,
+            tov_a=ratings_a.adj_tov_pct,
+            orb_a=ratings_a.adj_orb_pct,
+            ftr_a=ratings_a.adj_ftr,
+            # Team A defense
+            efg_d_a=ratings_a.adj_opp_efg_pct,
+            tov_d_a=ratings_a.adj_opp_tov_pct,
+            orb_d_a=ratings_a.adj_opp_orb_pct,
+            ftr_d_a=ratings_a.adj_opp_ftr,
+            # Team B offense
+            efg_b=ratings_b.adj_efg_pct,
+            tov_b=ratings_b.adj_tov_pct,
+            orb_b=ratings_b.adj_orb_pct,
+            ftr_b=ratings_b.adj_ftr,
+            # Team B defense
+            efg_d_b=ratings_b.adj_opp_efg_pct,
+            tov_d_b=ratings_b.adj_opp_tov_pct,
+            orb_d_b=ratings_b.adj_opp_orb_pct,
+            ftr_d_b=ratings_b.adj_opp_ftr,
+            # National averages
+            nat_efg=nat_avg.avg_efg,
+            nat_tov=nat_avg.avg_tov,
+            nat_orb=nat_avg.avg_orb,
+            nat_ftr=nat_avg.avg_ftr
+        )
+        
+        # ===== OVERALL FFI EDGE =====
+        # Use adjusted FFI if available, otherwise raw
+        ffi_a = ratings_a.ffi_adj if ratings_a.ffi_adj else (ratings_a.ffi_raw if ratings_a.ffi_raw else 50.0)
+        ffi_b = ratings_b.ffi_adj if ratings_b.ffi_adj else (ratings_b.ffi_raw if ratings_b.ffi_raw else 50.0)
+        ffi_edge = ffi_a - ffi_b
+        
+        # ===== POINTS FROM FOUR FACTORS =====
+        # Use regression coefficients if available
+        pts_breakdown = None
+        top_drivers = None
+        
+        if all([
+            nat_avg.coef_efg is not None,
+            nat_avg.coef_tov is not None,
+            nat_avg.coef_orb is not None,
+            nat_avg.coef_ftr is not None,
+            nat_avg.coef_intercept is not None
+        ]):
+            pts_breakdown = compute_points_from_four_factors(
+                efg_edge=ff_edges['efg_edge'],
+                tov_edge=ff_edges['tov_edge'],
+                orb_edge=ff_edges['orb_edge'],
+                ftr_edge=ff_edges['ftr_edge'],
+                coef_efg=nat_avg.coef_efg,
+                coef_tov=nat_avg.coef_tov,
+                coef_orb=nat_avg.coef_orb,
+                coef_ftr=nat_avg.coef_ftr,
+                coef_intercept=nat_avg.coef_intercept
+            )
+            
+            top_drivers = identify_top_drivers(
+                efg_edge=ff_edges['efg_edge'],
+                tov_edge=ff_edges['tov_edge'],
+                orb_edge=ff_edges['orb_edge'],
+                ftr_edge=ff_edges['ftr_edge'],
+                coef_efg=nat_avg.coef_efg,
+                coef_tov=nat_avg.coef_tov,
+                coef_orb=nat_avg.coef_orb,
+                coef_ftr=nat_avg.coef_ftr
+            )
+        
+        # ===== SHOT PROFILE EDGES =====
+        shot_profile = None
+        if stats_a and stats_b:
+            # Use TeamSeasonStats for shot profile data
+            shot_profile = compute_shot_profile_edges(
+                fg3_rate_a=stats_a.fg3_rate if stats_a.fg3_rate else 35.0,
+                fg3_pct_a=stats_a.fg3_pct if stats_a.fg3_pct else 33.0,
+                fg2_pct_a=stats_a.fg2_pct if stats_a.fg2_pct else 50.0,
+                fg3_rate_b=stats_b.fg3_rate if stats_b.fg3_rate else 35.0,
+                fg3_pct_b=stats_b.fg3_pct if stats_b.fg3_pct else 33.0,
+                fg2_pct_b=stats_b.fg2_pct if stats_b.fg2_pct else 50.0
+            )
+        
+        # ===== RECENT FORM =====
+        # Get last 10 games for each team
+        recent_games_a = TeamGameStats.objects.filter(
+            team=team_a,
+            game__season_year=season.year,
+            game__status='final'
+        ).select_related('game', 'opponent').order_by('-game__game_date')[:10]
+        
+        recent_games_b = TeamGameStats.objects.filter(
+            team=team_b,
+            game__season_year=season.year,
+            game__status='final'
+        ).select_related('game', 'opponent').order_by('-game__game_date')[:10]
+        
+        # Format recent form with opponent scores
+        recent_form_a_data = []
+        margins_a = []
+        for game_stat in recent_games_a:
+            # Get opponent's score from same game
+            try:
+                opp_stat = TeamGameStats.objects.get(
+                    game=game_stat.game,
+                    team=game_stat.opponent
+                )
+                opp_pts = opp_stat.pts
+            except TeamGameStats.DoesNotExist:
+                opp_pts = 0
+            
+            margin = game_stat.pts - opp_pts
+            margins_a.append(margin)
+            
+            recent_form_a_data.append({
+                'date': game_stat.game.game_date.isoformat(),
+                'opponent': game_stat.opponent.name,
+                'result': 'W' if margin > 0 else 'L',
+                'score': f"{game_stat.pts}-{opp_pts}",
+                'margin': margin,
+            })
+        
+        recent_form_b_data = []
+        margins_b = []
+        for game_stat in recent_games_b:
+            try:
+                opp_stat = TeamGameStats.objects.get(
+                    game=game_stat.game,
+                    team=game_stat.opponent
+                )
+                opp_pts = opp_stat.pts
+            except TeamGameStats.DoesNotExist:
+                opp_pts = 0
+            
+            margin = game_stat.pts - opp_pts
+            margins_b.append(margin)
+            
+            recent_form_b_data.append({
+                'date': game_stat.game.game_date.isoformat(),
+                'opponent': game_stat.opponent.name,
+                'result': 'W' if margin > 0 else 'L',
+                'score': f"{game_stat.pts}-{opp_pts}",
+                'margin': margin,
+            })
+        
+        # Calculate variance for volatility
+        import statistics
+        variance_a = statistics.stdev(margins_a) if len(margins_a) >= 2 else None
+        variance_b = statistics.stdev(margins_b) if len(margins_b) >= 2 else None
+        
+        recent_form_a = {
+            'games_analyzed': len(recent_games_a),
+            'record': f"{sum(1 for m in margins_a if m > 0)}-{sum(1 for m in margins_a if m <= 0)}",
+            'avg_margin': round(statistics.mean(margins_a), 1) if margins_a else 0.0,
+            'variance': round(variance_a, 1) if variance_a else 0.0,
+            'games': recent_form_a_data[:5]  # Return only last 5 for display
         }
         
+        recent_form_b = {
+            'games_analyzed': len(recent_games_b),
+            'record': f"{sum(1 for m in margins_b if m > 0)}-{sum(1 for m in margins_b if m <= 0)}",
+            'avg_margin': round(statistics.mean(margins_b), 1) if margins_b else 0.0,
+            'variance': round(variance_b, 1) if variance_b else 0.0,
+            'games': recent_form_b_data[:5]
+        }
+        
+        # ===== VOLATILITY SCORE =====
+        # Compute volatility using tempo and variance (fg3_rate from stats or defaults)
+        fg3_rate_a = stats_a.fg3_rate if (stats_a and stats_a.fg3_rate) else 35.0
+        fg3_rate_b = stats_b.fg3_rate if (stats_b and stats_b.fg3_rate) else 35.0
+        
+        volatility = compute_volatility_score(
+            tempo_a=ratings_a.adj_tempo,
+            tempo_b=ratings_b.adj_tempo,
+            fg3_rate_a=fg3_rate_a,
+            fg3_rate_b=fg3_rate_b,
+            recent_variance_a=variance_a,
+            recent_variance_b=variance_b
+        )
+        
+        # Build response
         return Response({
-            'teamA': TeamSeasonStatsSerializer(stats_a).data,
-            'teamB': TeamSeasonStatsSerializer(stats_b).data,
-            'matchup': {
-                'site': site,
-                'win_probability_a': round(win_prob_a, 3),
-                'win_probability_b': round(1 - win_prob_a, 3),
-                'predicted_margin': round(em_diff, 1),
-                'edges': edges,
+            'season': season.display_name,
+            'site': site,
+            'teamA': {
+                'id': team_a.id,
+                'name': team_a.name,
+                'slug': team_a.slug,
+                'logo_url': team_a.logo_url,
+                'conference': conference_a_name,
+                'rank': ratings_a.rank_adj_em,
+                'record': f"{ratings_a.wins}-{ratings_a.losses}",
+                'adj_em': round(ratings_a.adj_em, 1),
+                'adj_o': round(ratings_a.adj_o, 1),
+                'adj_d': round(ratings_a.adj_d, 1),
+                'adj_tempo': round(ratings_a.adj_tempo, 1),
+                'ffi': round(ffi_a, 1),
+            },
+            'teamB': {
+                'id': team_b.id,
+                'name': team_b.name,
+                'slug': team_b.slug,
+                'logo_url': team_b.logo_url,
+                'conference': conference_b_name,
+                'rank': ratings_b.rank_adj_em,
+                'record': f"{ratings_b.wins}-{ratings_b.losses}",
+                'adj_em': round(ratings_b.adj_em, 1),
+                'adj_o': round(ratings_b.adj_o, 1),
+                'adj_d': round(ratings_b.adj_d, 1),
+                'adj_tempo': round(ratings_b.adj_tempo, 1),
+                'ffi': round(ffi_b, 1),
+            },
+            'forecast': forecast,
+            'four_factor_edges': ff_edges,
+            'ffi_edge': round(ffi_edge, 1),
+            'points_breakdown': pts_breakdown,
+            'top_drivers': top_drivers,
+            'shot_profile': shot_profile,
+            'volatility': volatility,
+            'recent_form_a': recent_form_a,
+            'recent_form_b': recent_form_b,
+            'metadata': {
+                'hca_points': round(hca_points, 2),
+                'prediction_sigma': round(sigma, 2),
+                'nat_avg_ortg': round(nat_avg.avg_ortg, 1),
+                'coefficients': {
+                    'efg': round(nat_avg.coef_efg, 3) if nat_avg.coef_efg else None,
+                    'tov': round(nat_avg.coef_tov, 3) if nat_avg.coef_tov else None,
+                    'orb': round(nat_avg.coef_orb, 3) if nat_avg.coef_orb else None,
+                    'ftr': round(nat_avg.coef_ftr, 3) if nat_avg.coef_ftr else None,
+                    'r_squared': round(nat_avg.coef_r_squared, 3) if nat_avg.coef_r_squared else None,
+                }
             }
         })
+
 
 
 class GameViewSet(viewsets.ReadOnlyModelViewSet):

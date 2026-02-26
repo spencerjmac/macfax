@@ -158,6 +158,12 @@ class RankingsSerializer(serializers.Serializer):
     reb_edge = serializers.FloatField(source='adj_reb_edge')
     ftr_margin = serializers.FloatField(source='adj_ftr_margin')
     
+    # Shooting Splits (from TeamSeasonMetrics)
+    fg2_pct = serializers.SerializerMethodField()
+    fg3_pct = serializers.SerializerMethodField()
+    ft_pct = serializers.SerializerMethodField()
+    fg3_rate = serializers.SerializerMethodField()
+    
     # Legacy fields for compatibility
     aor_100 = serializers.FloatField(source='adj_o')
     adr_100 = serializers.FloatField(source='adj_d')
@@ -434,6 +440,33 @@ class RankingsSerializer(serializers.Serializer):
     def get_raw_ftr_margin(self, obj):
         metrics = self._get_metrics(obj)
         return metrics.ftr_margin if metrics else 0.0
+    
+    # SHOOTING SPLITS - Calculated directly to avoid property caching issues
+    def get_fg2_pct(self, obj):
+        metrics = self._get_metrics(obj)
+        if not metrics:
+            return None
+        fg2a = (metrics.total_fga or 0) - (metrics.total_fg3a or 0)
+        fg2m = (metrics.total_fgm or 0) - (metrics.total_fg3m or 0)
+        return round(fg2m / fg2a * 100, 1) if fg2a > 0 else None
+    
+    def get_fg3_pct(self, obj):
+        metrics = self._get_metrics(obj)
+        if not metrics:
+            return None
+        return round((metrics.total_fg3m or 0) / (metrics.total_fg3a or 0) * 100, 1) if (metrics.total_fg3a or 0) > 0 else None
+    
+    def get_ft_pct(self, obj):
+        metrics = self._get_metrics(obj)
+        if not metrics:
+            return None
+        return round((metrics.total_ftm or 0) / (metrics.total_fta or 0) * 100, 1) if (metrics.total_fta or 0) > 0 else None
+    
+    def get_fg3_rate(self, obj):
+        metrics = self._get_metrics(obj)
+        if not metrics:
+            return None
+        return round((metrics.total_fg3a or 0) / (metrics.total_fga or 0) * 100, 1) if (metrics.total_fga or 0) > 0 else None
 
 
 class TeamDetailSerializer(serializers.Serializer):

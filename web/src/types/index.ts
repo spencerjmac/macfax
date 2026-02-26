@@ -1,5 +1,13 @@
 // Core data types for the application
 
+export interface Team {
+  id: number;
+  slug: string;
+  name: string;
+  aliases: string[];
+  logo_url: string | null;
+}
+
 export interface TeamSeason {
   // Identity
   teamId: string;
@@ -70,6 +78,7 @@ export interface TeamSeason {
   fg3_pct_d: number | null;
   fg3_rate: number | null;
   fg3_rate_d: number | null;
+  ft_pct: number | null;
   
   // Resume Metrics
   wab: number | null;
@@ -112,4 +121,266 @@ export interface MetricDefinition {
   interpretation: string;
   range?: string;
   higherIsBetter: boolean;
+}
+
+// Conference types
+export interface Conference {
+  id: number;
+  code: string;
+  name: string;
+}
+
+// Trapezoid types
+export interface TrapezoidBoundaries {
+  x_left_top: number;
+  x_right_top: number;
+  x_left_bot: number;
+  x_right_bot: number;
+  y_top: number;
+  y_bot: number;
+}
+
+export interface TrapezoidTeam {
+  team_id: number;
+  team_name: string;
+  team_slug: string;
+  adj_tempo: number;
+  adj_em: number;
+  conference: string;
+  conference_name: string;
+  logo_url: string | null;
+  rank: number | null;
+  record: string;
+  inside_trapezoid: boolean;
+}
+
+export interface TrapezoidData {
+  meta: {
+    season: number;
+    season_display: string;
+    conference: string;
+    top: number;
+    total_teams: number;
+    quantiles_used: {
+      x_left_top: number;
+      x_right_top: number;
+      x_left_bot: number;
+      x_right_bot: number;
+      y_top: number;
+      y_bot: number;
+      method: string;
+    };
+  };
+  trapezoid: TrapezoidBoundaries;
+  averages: {
+    avg_tempo: number;
+    avg_em: number;
+  };
+  teams: TrapezoidTeam[];
+}
+
+// Efficiency Landscape types
+export interface EfficiencyLandscapeTeam {
+  team_name: string;
+  team_slug: string;
+  conference: string;
+  conference_name: string;
+  o_rate: number;
+  d_rate: number;
+  net: number;
+  logo_url: string | null;
+  rank: number | null;
+  record: string;
+}
+
+export interface EfficiencyLandscapeData {
+  season: number;
+  season_display: string;
+  conference: string;
+  top: number;
+  max_net: number;
+  defaults: {
+    title_delta: number;
+    final4_delta: number;
+    hit_miss_delta: number;
+  };
+  teams: EfficiencyLandscapeTeam[];
+}
+
+// ==================== Matchup Prediction ====================
+
+export interface MatchupTeam {
+  id: number;
+  name: string;
+  slug: string;
+  logo_url: string | null;
+  conference: string | null;
+  rank: number;
+  record: string;
+  adj_em: number;
+  adj_o: number;
+  adj_d: number;
+  adj_tempo: number;
+  ffi: number;
+}
+
+export interface MatchupForecast {
+  pace: number;
+  pts_a_neutral: number;
+  pts_b_neutral: number;
+  pts_a: number;
+  pts_b: number;
+  margin: number;
+  spread: number;
+  spread_team: string;
+  total: number;
+  prob_a: number;
+  prob_b: number;
+  prob_a_low: number;
+  prob_a_high: number;
+  margin_low: number;
+  margin_high: number;
+}
+
+export interface FourFactorEdges {
+  efg_edge: number;
+  tov_edge: number;
+  orb_edge: number;
+  ftr_edge: number;
+  
+  exp_efg_a: number;
+  exp_efg_b: number;
+  exp_tov_a: number;
+  exp_tov_b: number;
+  exp_orb_a: number;
+  exp_orb_b: number;
+  exp_ftr_a: number;
+  exp_ftr_b: number;
+}
+
+export interface PointsBreakdown {
+  pts_from_efg: number;
+  pts_from_tov: number;
+  pts_from_orb: number;
+  pts_from_ftr: number;
+  baseline: number;
+  total_margin: number;
+}
+
+export interface TopDriver {
+  factor: string;
+  edge: number;
+  points: number;
+  team: string;
+}
+
+export interface ShotProfile {
+  fg3_rate_edge: number;
+  fg3_pct_edge: number;
+  fg2_pct_edge: number;
+  fg3_rate_a: number;
+  fg3_rate_b: number;
+  fg3_pct_a: number;
+  fg3_pct_b: number;
+  fg2_pct_a: number;
+  fg2_pct_b: number;
+}
+
+export interface Volatility {
+  volatility_score: number;
+  pace_component: number;
+  three_pt_component: number;
+  variance_component: number;
+  reasons: string[];
+}
+
+export interface RecentGame {
+  date: string;
+  opponent: string;
+  result: 'W' | 'L';
+  score: string;
+  margin: number;
+}
+
+export interface RecentForm {
+  games_analyzed: number;
+  record: string;
+  avg_margin: number;
+  avg_ortg: number | null;
+  variance: number;
+  games: RecentGame[];
+}
+
+export interface MatchupMetadata {
+  hca_points: number;
+  prediction_sigma: number;
+  nat_avg_ortg: number;
+  coefficients: {
+    efg: number | null;
+    tov: number | null;
+    orb: number | null;
+    ftr: number | null;
+    r_squared: number | null;
+  };
+}
+
+export interface MatchupResult {
+  season: string;
+  site: 'neutral' | 'home' | 'away';
+  teamA: MatchupTeam;
+  teamB: MatchupTeam;
+  forecast: MatchupForecast;
+  four_factor_edges: FourFactorEdges;
+  ffi_edge: number;
+  points_breakdown: PointsBreakdown;
+  top_drivers: TopDriver[];
+  shot_profile: ShotProfile | null;
+  volatility: Volatility;
+  recent_form_a: RecentForm;
+  recent_form_b: RecentForm;
+  metadata: MatchupMetadata;
+}
+
+// Viz Builder types
+export interface StatMetadata {
+  key: string;
+  label: string;
+  group: string;
+  description: string;
+  format: string;
+  decimals: number;
+  higher_is_better: boolean;
+}
+
+export interface VizStats {
+  groups: {
+    [groupName: string]: StatMetadata[];
+  };
+  count: number;
+  season?: string;
+}
+
+export interface VizScatterPoint {
+  team: string;
+  slug: string;
+  conference: string;
+  logo_url: string | null;
+  x: number;
+  y: number;
+}
+
+export interface VizScatterData {
+  season: string;
+  x: StatMetadata;
+  y: StatMetadata;
+  stats: {
+    n: number;
+    pearson_r: number | null;
+    r2: number | null;
+    slope: number | null;
+    intercept: number | null;
+    p_value: number | null;
+  };
+  points: VizScatterPoint[];
+  last_updated: string | null;
 }

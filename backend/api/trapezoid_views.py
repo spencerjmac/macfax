@@ -11,13 +11,12 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import get_object_or_404
 
-from core.models import Season, TeamSeasonStats
+from core.models import Season, TeamSeasonRatings, TeamSeasonStats
 from .trapezoid_config import (
-    X_LEFT_TOP_QUANTILE, X_RIGHT_TOP_QUANTILE,
-    X_LEFT_BOT_QUANTILE, X_RIGHT_BOT_QUANTILE,
-    Y_TOP_QUANTILE, Y_BOT_QUANTILE,
-    X_LEFT_BOT_FALLBACK, X_RIGHT_BOT_FALLBACK,
-    Y_BOT_FALLBACK, QUANTILE_METHOD
+    Q_BOT_EM, Q_X_LEFT_TOP, Q_X_RIGHT_TOP,
+    Q_X_LEFT_BOT, Q_X_RIGHT_BOT,
+    Y_PAD_MIN, Y_PAD_RATE, PACE_PAD,
+    QUANTILE_METHOD
 )
 
 
@@ -28,34 +27,53 @@ def calculate_quantile(values, q, method='linear'):
 
 def compute_trapezoid_boundaries(tempo_values, em_values):
     """
-    Compute trapezoid boundaries from tempo and em arrays using quantiles.
+    Compute trapezoid boundaries using NATIONAL BASELINE approach.
+    
+    Algorithm (Ryan Hammer's method):
+    1. Compute y_bot from national EM distribution (elite floor)
+    2. Compute y_top to be ABOVE the best team nationally
+    3. Define elite subset C = teams where adj_em >= y_bot
+    4. Compute x-bounds from tempo distribution of elite subset C
+    
+    Args:
+        tempo_values: numpy array of ALL D1 adj_tempo values (national)
+        em_values: numpy array of ALL D1 adj_em values (national)
     
     Returns:
         dict: Dictionary with trapezoid boundary coordinates
     """
-    # Calculate initial quantiles
-    x_left_top = calculate_quantile(tempo_values, X_LEFT_TOP_QUANTILE, QUANTILE_METHOD)
-    x_right_top = calculate_quantile(tempo_values, X_RIGHT_TOP_QUANTILE, QUANTILE_METHOD)
-    x_left_bot = calculate_quantile(tempo_values, X_LEFT_BOT_QUANTILE, QUANTILE_METHOD)
-    x_right_bot = calculate_quantile(tempo_values, X_RIGHT_BOT_QUANTILE, QUANTILE_METHOD)
+    # Step 1: Compute y_bot from national EM distribution (elite floor)
+    y_bot = calculate_quantile(em_values, Q_BOT_EM, QUANTILE_METHOD)
     
-    y_top = calculate_quantile(em_values, Y_TOP_QUANTILE, QUANTILE_METHOD)
-    y_bot = calculate_quantile(em_values, Y_BOT_QUANTILE, QUANTILE_METHOD)
+    # Step 2: Compute y_top so it's ALWAYS above the best team
+    y_max = float(np.max(em_values))
+    y_range = y_max - y_bot
+    y_pad = max(Y_PAD_MIN, Y_PAD_RATE * y_range)
+    y_top = y_max + y_pad
     
-    # Validate and fix X-axis ordering
+    # Step 3: Define elite subset C (teams with adj_em >= y_bot)
+    elite_mask = em_values >= y_bot
+    elite_tempo_values = tempo_values[elite_mask]
+    
+    # Step 4: Compute x-bounds from tempo distribution of elite subset C
+    # Top edge: Use MIN/MAX to capture full elite pace range
+    # Bottom edge: Use 25th/75th percentiles for control band
+    # If elite subset is too small, fall back to all teams
+    if len(elite_tempo_values) < 10:
+        elite_tempo_values = tempo_values
+    
+    x_left_top = float(np.min(elite_tempo_values)) - PACE_PAD
+    x_right_top = float(np.max(elite_tempo_values)) + PACE_PAD
+    x_left_bot = calculate_quantile(elite_tempo_values, Q_X_LEFT_BOT, QUANTILE_METHOD)
+    x_right_bot = calculate_quantile(elite_tempo_values, Q_X_RIGHT_BOT, QUANTILE_METHOD)
+    
+    # Validate X-axis ordering
     if not (x_left_top < x_left_bot < x_right_bot < x_right_top):
-        # Fallback: use min/max for top, fallback quantiles for bottom
-        x_left_top = float(np.min(tempo_values))
-        x_right_top = float(np.max(tempo_values))
-        x_left_bot = calculate_quantile(tempo_values, X_LEFT_BOT_FALLBACK, QUANTILE_METHOD)
-        x_right_bot = calculate_quantile(tempo_values, X_RIGHT_BOT_FALLBACK, QUANTILE_METHOD)
-    
-    # Validate and fix Y-axis ordering
-    if y_bot >= y_top:
-        y_bot = calculate_quantile(em_values, Y_BOT_FALLBACK, QUANTILE_METHOD)
-        # If still invalid, use a fixed offset
-        if y_bot >= y_top:
-            y_bot = y_top - 1.0
+        # Fallback: recompute from all teams if elite subset creates invalid ordering
+        x_left_top = float(np.min(tempo_values)) - PACE_PAD
+        x_right_top = float(np.max(tempo_values)) + PACE_PAD
+        x_left_bot = calculate_quantile(tempo_values, Q_X_LEFT_BOT, QUANTILE_METHOD)
+        x_right_bot = calculate_quantile(tempo_values, Q_X_RIGHT_BOT, QUANTILE_METHOD)
     
     return {
         'x_left_top': float(x_left_top),
@@ -110,8 +128,8 @@ def is_inside_trapezoid(x, y, trapezoid):
         if x_right_top == x_right_bot:
             y_min = y_bot
         else:
-            slope = (y_bot - y_top) / (x_right_top - x_right_bot)
-            y_min = y_top + slope * (x - x_right_bot)
+            slope = (y_top - y_bot) / (x_right_top - x_right_bot)
+            y_min = y_bot + slope * (x - x_right_bot)
     
     # Must be above bottom boundary
     return y >= y_min
@@ -187,7 +205,7 @@ class TrapezoidView(APIView):
                 )
         
         # Build queryset for ALL teams (for trapezoid boundary calculation)
-        all_teams_queryset = TeamSeasonStats.objects.filter(
+        all_teams_queryset = TeamSeasonRatings.objects.filter(
             season=season
         ).values('adj_tempo', 'adj_em')
         
@@ -209,32 +227,50 @@ class TrapezoidView(APIView):
         avg_tempo = float(np.mean(all_tempo_values))
         avg_em = float(np.mean(all_em_values))
         
-        # Now build filtered queryset for display
-        display_queryset = TeamSeasonStats.objects.filter(
+        # Now build queryset for display (get all teams first)
+        display_queryset = TeamSeasonRatings.objects.filter(
             season=season
-        ).select_related('team', 'conference')
+        ).select_related('team').order_by('-adj_em')
         
-        # Apply conference filter to display queryset only
+        # Use the same serializer to get conference data (it has comprehensive mapping)
+        # Import locally to avoid circular import
+        from .serializers import RankingsSerializer
+        serializer = RankingsSerializer()
+        
+        # For each rating, get the conference using the serializer
+        all_teams_data = []
+        for rating in display_queryset:
+            conference_code = serializer.get_conference(rating)
+            # Get conference name from code
+            from core.models import Conference as ConfModel
+            try:
+                conf_obj = ConfModel.objects.get(code=conference_code)
+                conference_name = conf_obj.name
+            except ConfModel.DoesNotExist:
+                conference_name = conference_code
+            
+            all_teams_data.append({
+                'team_id': rating.team_id,
+                'team__name': rating.team.name,
+                'team__slug': rating.team.slug,
+                'team__logo_url': rating.team.logo_url,
+                'adj_tempo': rating.adj_tempo,
+                'adj_em': rating.adj_em,
+                'conference__code': conference_code,
+                'conference__name': conference_name,
+                'rank_adj_em': rating.rank_adj_em,
+                'wins': rating.wins,
+                'losses': rating.losses,
+            })
+        
+        # Filter by conference AFTER getting conference data
         if conference_filter and conference_filter != 'ALL':
-            display_queryset = display_queryset.filter(conference__code=conference_filter)
+            teams_data = [t for t in all_teams_data if t['conference__code'] == conference_filter]
+        else:
+            teams_data = all_teams_data
         
-        # Get top N teams by adj_em (descending)
-        display_queryset = display_queryset.order_by('-adj_em')[:top_n]
-        
-        # Convert to list for processing
-        teams_data = list(display_queryset.values(
-            'team_id',
-            'team__name',
-            'team__slug',
-            'team__logo_url',
-            'adj_tempo',
-            'adj_em',
-            'conference__code',
-            'conference__name',
-            'rank',
-            'wins',
-            'losses',
-        ))
+        # Take top N teams
+        teams_data = teams_data[:top_n]
         
         if not teams_data:
             return Response(
@@ -255,7 +291,7 @@ class TrapezoidView(APIView):
                 'conference': t['conference__code'],
                 'conference_name': t['conference__name'],
                 'logo_url': t['team__logo_url'],
-                'rank': t['rank'],
+                'rank': t['rank_adj_em'],
                 'record': f"{t['wins']}-{t['losses']}",
                 'inside_trapezoid': inside,
             })
@@ -268,13 +304,16 @@ class TrapezoidView(APIView):
                 'conference': conference_filter,
                 'top': top_n,
                 'total_teams': len(teams),
+                'trapezoid_basis': 'NATIONAL_D1',
                 'quantiles_used': {
-                    'x_left_top': X_LEFT_TOP_QUANTILE,
-                    'x_right_top': X_RIGHT_TOP_QUANTILE,
-                    'x_left_bot': X_LEFT_BOT_QUANTILE,
-                    'x_right_bot': X_RIGHT_BOT_QUANTILE,
-                    'y_top': Y_TOP_QUANTILE,
-                    'y_bot': Y_BOT_QUANTILE,
+                    'q_bot_em': Q_BOT_EM,
+                    'q_x_left_top': Q_X_LEFT_TOP,
+                    'q_x_right_top': Q_X_RIGHT_TOP,
+                    'q_x_left_bot': Q_X_LEFT_BOT,
+                    'q_x_right_bot': Q_X_RIGHT_BOT,
+                    'y_pad_min': Y_PAD_MIN,
+                    'y_pad_rate': Y_PAD_RATE,
+                    'pace_pad': PACE_PAD,
                     'method': QUANTILE_METHOD,
                 }
             },
