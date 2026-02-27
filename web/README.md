@@ -49,6 +49,8 @@ This will:
 npm run dev
 ```
 
+`npm run dev` automatically runs the data pipeline first (`build:data`) and then starts Next.js, ensuring `public/data/teams.json` is refreshed before the app loads.
+
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ### Production Build
@@ -58,7 +60,7 @@ npm run build
 npm start
 ```
 
-The build process automatically runs the data pipeline (`build:data` script).
+Both build and start commands automatically run the data pipeline (`build:data` script) before launching.
 
 ## 📂 Project Structure
 

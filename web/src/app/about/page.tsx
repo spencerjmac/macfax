@@ -7,8 +7,8 @@ export const metadata: Metadata = {
   description: 'Learn about our data sources, methodology, and how we calculate advanced college basketball metrics.',
 };
 
-export default function AboutPage() {
-  const meta = getMetadata();
+export default async function AboutPage() {
+  const meta = await getMetadata();
   
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">

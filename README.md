@@ -1,301 +1,449 @@
-# 🏀 College Basketball Analytics - Web Application
+# 🏀 College Basketball Analytics Dashboard
 
-## 🎉 Now with Production-Ready Web App!
+A full-stack web application for advanced college basketball analytics with live game data and KenPom-style adjusted efficiency ratings.
 
-This repository includes a **full-stack web application** that transforms your scraped data into an interactive analytics platform. Think KenPom meets FiveThirtyEight.
+## 🎯 Overview
+
+This is a production-ready analytics platform featuring:
+- **Live game data** from NCAA API (5,000+ games ingested)
+- **Adjusted efficiency ratings** using iterative opponent-adjustment methodology
+- **Four Factor analysis** with z-score normalization
+- **Interactive web interface** built with Next.js 14 and TypeScript
+- **Django REST API** backend with SQLite database
 
 ### Quick Links
-- **Web App**: [web/README.md](web/README.md)
-- **Implementation Guide**: [IMPLEMENTATION.md](IMPLEMENTATION.md)
-- **Live Demo**: (Deploy to Vercel)
+- **Documentation**: [docs/](docs/)
+- **Quick Start**: [docs/QUICK_START.md](docs/QUICK_START.md)
+- **API Documentation**: [backend/docs/](backend/docs/)
+- **Deployment Guide**: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
 
 ---
 
-## 📊 What's Included
+## 🚀 Key Features
 
 ### Web Application (`/web`)
-A Next.js 14 application with TypeScript and Tailwind CSS featuring:
+Next.js 14 application with TypeScript and Tailwind CSS:
 
-**5 Core Pages:**
-1. **Rankings** - Sortable table with 365 D1 teams
-2. **Team Profiles** - Detailed pages with 5 tabs
-3. **Matchup Tool** - Head-to-head comparison
-4. **Glossary** - Metric definitions with LaTeX
-5. **About** - Data sources and methodology
+**Core Pages:**
+1. **Rankings** - Sortable table with 365 D1 teams + advanced metrics
+2. **Team Profiles** - Detailed multi-tab team pages
+3. **Game Logs** - Complete season schedules with box scores
+4. **Four Factors** - eFG%, TOV%, REB%, FTR analysis
+5. **Glossary** - Metric definitions and methodology
 
-**4 Visualizations:**
-- Trapezoid of Excellence ✅
-- Efficiency Landscape (coming soon)
-- Kill Shot Analysis (coming soon)
-- Crystal Ball Predictor (coming soon)
+**Visualizations:**
+- Trapezoid of Excellence (Four Factors)
+- Efficiency ratings and tempo analysis
+- Win-loss records with strength metrics
 
-### Data Pipeline (`/scripts`)
-Unified data pipeline that merges KenPom, Torvik, and CBB Analytics CSVs.
+### Django Backend (`/backend`)
+Django 6.0 REST API with comprehensive data models:
 
-### Original Scraping Scripts
-Comprehensive data collection from four major sources:
-- **KenPom** - Adjusted efficiency metrics
-- **Bart Torvik** - Four Factors analysis  
-- **CBB Analytics** - Advanced ratings
-- **ESPN AP Poll** - Weekly rankings
+**Data Pipeline:**
+1. **`ingest_gamelogs`** - NCAA API scraper with box scores (5,000+ games)
+2. **`compute_team_metrics`** - Aggregate season statistics
+3. **`compute_adjusted_ratings`** - Iterative opponent-adjustment (correct method)
+4. **`compute_four_factor_index`** - Z-score normalized four factors
 
-All data sources provide metrics for **365 NCAA Division I teams**.
+**Key Models:**
+- `Game` - Game results with scores
+- `TeamGameStats` - Box score statistics (FG, 3PT, FT, rebounds, etc.)
+- `TeamSeasonMetrics` - Aggregate raw metrics (eFG%, TOV%, etc.)
+- `TeamSeasonRatings` - Adjusted efficiency ratings (AdjO, AdjD, AdjEM)
+
+### Data Coverage
+- **365 NCAA Division I teams**
+- **2025-26 season** (Nov 2025 - Feb 2026)
+- **5,327 games** (5,260 final, 67 scheduled)
+- **Updated through:** February 26, 2026
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
-- **Python 3.14.0** (or compatible version)
-- **Virtual environment** (shared across all scrapers)
-- **Playwright** for browser automation
+- **Python 3.14** (or compatible version)
+- **Node.js 18+** and npm
+- **Git** for version control
 
-### Initial Setup
+### Setup (5 minutes)
 
-1. **Activate the virtual environment:**
-   ```powershell
-   .\.venv\Scripts\Activate.ps1
-   ```
-
-2. **Install dependencies (if needed):**
-   ```powershell
-   pip install playwright beautifulsoup4 pandas
-   playwright install chromium
-   ```
-
-### Running the Scrapers
-
-**Update all data sources for Tableau:**
-
+**1. Clone and setup virtual environment:**
 ```powershell
-# KenPom Data
-cd "KenPom Data"
-python main.py
-python export_to_tableau.py
-
-# Evan Miya
-cd "..\Evan Miya\scraper"
-python scrape_team_ratings.py
-
-# Bart Torvik (may timeout occasionally)
-cd "..\..\Bart Torvik"
-python export_to_tableau.py
+cd "CBB Analytical Dashboard"
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
 ```
+
+**2. Backend setup:**
+```powershell
+cd backend
+pip install -r requirements.txt
+copy .env.example .env
+python manage.py migrate
+```
+
+**3. Frontend setup:**
+```powershell
+cd ..\web
+npm install
+copy .env.local.example .env.local
+```
+
+**4. Start servers:**
+```powershell
+# Terminal 1 - Backend (Django)
+cd backend
+python manage.py runserver
+
+# Terminal 2 - Frontend (Next.js)
+cd web
+npm run dev
+```
+
+`npm run dev` in `web` now auto-runs the data build first, so `web/public/data/teams.json` is refreshed from the latest backend data before the frontend starts.
+
+Visit **http://localhost:3000** to see the dashboard!
+
+### Updating Data
+
+**Ingest latest games:**
+```powershell
+cd backend
+python manage.py ingest_gamelogs --start-date 2026-02-21 --end-date 2026-02-26
+python manage.py compute_team_metrics --season 2025-26
+python manage.py compute_adjusted_ratings --season 2025-26
+python manage.py compute_four_factor_index --season 2025-26
+```
+
+**Or use the complete pipeline script:**
+```powershell
+cd backend
+python scripts/complete_pipeline.py
+```
+
+See [docs/QUICK_START.md](docs/QUICK_START.md) for detailed setup instructions.
 
 ## 📁 Project Structure
 
 ```
-Tableau Final Project/
+CBB Analytical Dashboard/
 ├── README.md                          # This file
-├── .venv/                            # Shared Python virtual environment
+├── .gitignore                        # Git ignore rules
+├── .venv/                            # Python virtual environment
 │
-├── KenPom Data/                      # KenPom.com scraper
-│   ├── main.py                       # Main scraper (Playwright)
-│   ├── scraper_playwright.py        # Browser automation scraper
-│   ├── export_to_tableau.py         # Export to kenpom_tableau.csv
-│   ├── database.py                   # SQLite database operations
-│   ├── kenpom_data.db               # SQLite database
-│   ├── kenpom_tableau.csv           # Tableau-ready CSV export
-│   └── README.md                     # Detailed KenPom documentation
+├── backend/                          # Django REST API
+│   ├── scripts/                      # Utility scripts
+│   │   ├── complete_pipeline.py      # Full data pipeline
+│   │   ├── backfill_season.py        # Weekly backfill utility
+│   │   ├── validate_pipeline.py      # Validation script
+│   │   ├── export_rankings_to_json.py # Export utility
+│   │   ├── update_logos_fixed.py     # Logo updater
+│   │   ├── preflight_check.py        # System validation
+│   │   └── create_external_ids.py    # Setup utility
+│   │
+│   ├── core/                         # Main Django app
+│   │   ├── models.py                 # Data models (Game, TeamStats, etc.)
+│   │   ├── management/commands/      # Django commands
+│   │   │   ├── ingest_gamelogs.py    # NCAA API scraper
+│   │   │   ├── compute_team_metrics.py # Season aggregation
+│   │   │   ├── compute_adjusted_ratings.py # Efficiency ratings ✅
+│   │   │   ├── compute_four_factor_index.py # Four Factors
+│   │   │   └── compute_national_averages.py # League averages
+│   │   └── ...
+│   │
+│   ├── api/                          # REST API endpoints
+│   │   ├── views.py                  # API views
+│   │   ├── serializers.py            # JSON serializers
+│   │   └── urls.py                   # API routes
+│   │
+│   ├── config/                       # Django settings
+│   ├── docs/                         # API documentation
+│   ├── manage.py                     # Django CLI
+│   ├── db.sqlite3                    # Database (5,327 games)
+│   ├── requirements.txt              # Python dependencies
+│   ├── ncaa_team_name_mappings.yml   # Team name mappings
+│   └── team_alias_overrides.yml      # Name overrides
 │
-├── Evan Miya/                        # evanmiya.com scraper
-│   └── scraper/
-│       ├── scrape_team_ratings.py   # Main scraper (Playwright)
-│       ├── team_ratings.csv         # Tableau-ready CSV export
-│       ├── team_ratings.db          # SQLite database
-│       └── README.md                 # Detailed Evan Miya documentation
+├── web/                              # Next.js frontend
+│   ├── src/
+│   │   ├── app/                      # Next.js App Router
+│   │   │   ├── page.tsx              # Home page
+│   │   │   ├── rankings/             # Rankings page
+│   │   │   ├── teams/                # Team profiles
+│   │   │   └── ...
+│   │   ├── components/               # React components
+│   │   │   ├── RankingsTable.tsx     # Sortable table
+│   │   │   ├── FourFactorsTrapezoid.tsx # Trapezoid viz
+│   │   │   └── ...
+│   │   └── lib/                      # Utilities
+│   ├── public/                       # Static assets
+│   ├── package.json                  # Node dependencies
+│   └── next.config.js                # Next.js config
 │
-├── Bart Torvik/                      # barttorvik.com scraper
-│   ├── scraper_torvik.py            # Browser automation scraper
-│   ├── export_to_tableau.py         # Scrape & export to torvik_tableau.csv
-│   └── torvik_tableau.csv           # Tableau-ready CSV export
+├── docs/                             # Documentation
+│   ├── QUICK_START.md                # Setup guide
+│   ├── GAME_LOG_QUICK_START.md       # Game log pipeline guide
+│   ├── FOUR_FACTOR_INDEX_GUIDE.md    # FFI methodology
+│   ├── DEPLOYMENT.md                 # Production deployment
+│   └── PROJECT_README.md             # Detailed project overview
 │
-└── ESPN AP Poll/                     # ESPN AP Poll scraper
-    ├── scrape_ap_poll.py            # AP Poll Week 6 scraper
-    └── ap_poll_week6.csv            # Tableau-ready CSV export
+└── [Data Folders]                    # Historical data sources
+    ├── Bart Torvik/                  # Torvik data
+    ├── KenPom Data/                  # KenPom data
+    ├── Evan Miya/                    # Evan Miya data
+    └── ESPN AP Poll/                 # AP Poll data
 ```
 
-## 📊 Data Sources
+## 📊 Data Pipeline
 
-### KenPom (kenpom.com)
-**Status:** ✅ Working consistently  
-**Teams:** 365  
-**Update Frequency:** Daily  
-**Key Metrics:**
-- Adjusted Efficiency Margin (AdjEM)
-- Adjusted Offense (AdjO) / Defense (AdjD)
-- Adjusted Tempo (AdjT)
-- Luck rating
-- Strength of Schedule (SOS)
+### NCAA Game Log Ingestion
 
-**Export:** `KenPom Data/kenpom_tableau.csv`
-
-### Evan Miya (evanmiya.com)
-**Status:** ✅ Working consistently  
-**Teams:** 365  
-**Update Frequency:** Daily  
-**Key Metrics:**
-- Overall team ratings
-- Advanced efficiency metrics
-- Offensive/defensive ratings
-
-**Export:** `Evan Miya/scraper/team_ratings.csv`
-
-### Bart Torvik (barttorvik.com)
+**Primary Data Source:** NCAA.com Stats API  
 **Status:** ✅ Working reliably  
-**Teams:** 365  
-**Update Frequency:** Daily  
-**Key Metrics:**
-- Four Factors (eFG%, TOV%, ORB%, FTRate)
-- Barthag rating
-- Adjusted efficiency metrics
-- 25+ statistical categories
+**Coverage:** All 365 D1 teams, full season  
+**Update Frequency:** Run after each game day
 
-**Export:** `Bart Torvik/torvik_tableau.csv`
+**Pipeline Flow:**
+```
+NCAA API → ingest_gamelogs → compute_team_metrics → compute_adjusted_ratings
+```
 
-### ESPN AP Poll
-**Status:** ✅ One-time scrape  
-**Teams:** 25 (ranked teams only)  
-**Update Frequency:** Manual (by week)  
-**Key Metrics:**
-- AP Poll rank
-- Poll points
-- Previous rank
-- Team record
+**What's Captured:**
+- Game results (scores, dates, locations)
+- Complete box scores (FG, 3PT, FT, rebounds, assists, turnovers, etc.)
+- Play-by-play events (scoring runs, etc.)
+- Team identification with fuzzy name matching
+- Automatic handling of duplicates via `update_or_create()`
 
-**Export:** `ESPN AP Poll/ap_poll_week6.csv`
+### Key Metrics Calculated
 
-## 🔗 Team Name Normalization
+**Adjusted Efficiency Ratings** (KenPom-style):
+- **AdjO** - Adjusted Offensive Efficiency (points per 100 possessions)
+- **AdjD** - Adjusted Defensive Efficiency (points allowed per 100 possessions)
+- **AdjEM** - Adjusted Efficiency Margin (AdjO - AdjD)
+- **AdjT** - Adjusted Tempo (possessions per 40 minutes)
+- **Methodology:** Iterative opponent-adjustment (15 iterations to convergence)
 
-All scrapers normalize team names for **100% compatibility** across datasets:
+**Four Factors** (Dean Oliver):
+- **eFG%** - Effective Field Goal Percentage: `(FGM + 0.5 * 3PM) / FGA`
+- **TOV%** - Turnover Percentage: `TOV / (FGA + 0.44 * FTA + TOV)`
+- **ORB%** - Offensive Rebound Percentage: `ORB / (ORB + Opp DRB)`
+- **FTR** - Free Throw Rate: `FT / FGA`
+- **Z-Score Normalized:** Standardized to league averages
 
-| Source Name | Normalized Name |
-|-------------|-----------------|
-| Iowa State | Iowa St. |
-| UConn | Connecticut |
-| Michigan State | Michigan St. |
-| UMKC | Kansas City |
-| SIUE | SIU Edwardsville |
-| NC State | North Carolina St. |
-| VCU | Virginia Commonwealth |
-| USC | Southern California |
+**Raw Season Metrics:**
+- Offensive/Defensive Ratings (per 100 possessions)
+- Pace (possessions per game)
+- Win-Loss records
+- Conference standings
 
-This ensures seamless joins and relationships in Tableau across all 365 teams.
+### Data Quality
 
-## 📈 Tableau Integration
+**Validation Checks:**
+- ✅ All 365 D1 teams mapped with NCAA IDs
+- ✅ Fuzzy name matching with 95%+ accuracy
+- ✅ Conference alignments verified
+- ✅ Historical game data retained
+- ✅ No duplicate games (unique on `ncaa_game_id`)
 
-### Connecting Data Sources
+**Current Database Status:**
+- **Total Games:** 5,327
+- **Final Games:** 5,260 (98.7%)
+- **Scheduled:** 67 (1.3%)
+- **Season:** 2025-26 (Nov 4, 2025 - Feb 26, 2026)
+- **Teams with Ratings:** 365/365 (100%)
 
-1. **Open Tableau Desktop**
-2. **Connect → Text file**
-3. **Load each CSV:**
-   - `KenPom Data/kenpom_tableau.csv`
-   - `Evan Miya/scraper/team_ratings.csv`
-   - `Bart Torvik/torvik_tableau.csv`
-   - `ESPN AP Poll/ap_poll_week6.csv`
+## � Technology Stack
 
-4. **Create relationships:**
-   - Join on `team_name` field (or equivalent)
-   - All team names are normalized for compatibility
+### Backend
+- **Framework:** Django 6.0 (Python 3.14)
+- **Database:** SQLite (5,327 games, 365 teams)
+- **API:** Django REST Framework
+- **Scraping:** Requests + BeautifulSoup4 (NCAA API)
+- **Team Matching:** FuzzyWuzzy (Levenshtein distance)
 
-5. **Refresh data:**
-   - Data → Refresh All Extracts
-   - Or right-click data source → Refresh
+### Frontend
+- **Framework:** Next.js 14 (React 18)
+- **Language:** TypeScript
+- **Styling:** Tailwind CSS
+- **UI Components:** Headless UI
+- **Charts:** Recharts (coming soon)
+- **Deployment:** Vercel-ready
 
-### Recommended Visualizations
+### Data Processing
+- **Pandas** - Data manipulation
+- **NumPy** - Numerical computations
+- **SciPy** - Statistical analysis (z-scores)
+- **YAML** - Configuration files
 
-- **Efficiency Analysis:** AdjEM vs SOS scatter plots
-- **Four Factors:** eFG%, TOV%, ORB%, FTRate comparisons
-- **Tempo Analysis:** Adjusted tempo vs offensive/defensive efficiency
-- **Poll Tracking:** AP Poll rankings over time
-- **Conference Comparisons:** Aggregate metrics by conference
-- **Team Dashboards:** Multi-metric team cards with normalized names
+## 🔗 API Endpoints
 
-## 🔧 Technical Details
+Base URL: `http://localhost:8000/api/`
 
-### Browser Automation (Playwright)
+**Teams:**
+- `GET /teams/` - List all 365 teams
+- `GET /teams/{id}/` - Team details
+- `GET /teams/{id}/ratings/` - Season ratings
+- `GET /teams/{id}/metrics/` - Season metrics
+- `GET /teams/{id}/games/` - Game log
 
-All scrapers use Playwright for browser automation to handle:
-- JavaScript-rendered content
-- Dynamic page loading
-- Anti-scraping protections (403 Forbidden errors)
-- Multi-section tables (10 tbody elements)
+**Games:**
+- `GET /games/` - List games (filterable by date, team, status)
+- `GET /games/{id}/` - Game details with box scores
 
-### Database Storage
+**Rankings:**
+- `GET /rankings/` - Current rankings with all metrics
+- Query params: `?season=2025-26&order_by=-adj_em`
 
-- **SQLite databases** for historical data persistence
-- **CSV exports** optimized for Tableau consumption
-- **Timestamp tracking** for data versioning
+**Stats:**
+- `GET /national-averages/` - League-wide averages
+- `GET /four-factors/` - Four Factors for all teams
 
-### Error Handling
+See [backend/docs/](backend/docs/) for detailed API documentation.
 
-- **Timeouts:** 90-second page loads, 60-second element waits
-- **Retry logic:** Automatic retries on intermittent failures
-- **Fallback data:** Last successful scrape retained on timeout
+## ⚙️ Django Management Commands
 
-## 🐛 Known Issues
+### Essential Commands
 
-1. **Bart Torvik Timeouts:**
-   - Site occasionally unresponsive (timeout issues on ~30% of attempts)
-   - Last successful data is retained in CSV when scraping fails
-   - Typically resolves within 24-48 hours
+**Data Ingestion:**
+```powershell
+# Ingest games for date range
+python manage.py ingest_gamelogs --start-date 2026-02-21 --end-date 2026-02-26
 
-2. **Excel Export (KenPom):**
-   - Excel export has undefined variable error
-   - CSV export works perfectly (recommended for Tableau)
+# Force refresh (re-scrape existing games)
+python manage.py ingest_gamelogs --start-date 2026-02-21 --end-date 2026-02-26 --refresh
+```
 
-3. **Rate Limiting:**
-   - Avoid running scrapers more than once per day
-   - Excessive requests may trigger temporary blocks
+**Metrics Computation:**
+```powershell
+# Compute raw season metrics (eFG%, TOV%, etc.)
+python manage.py compute_team_metrics --season 2025-26
 
-## 📅 Update Schedule
+# Compute national averages (required for Four Factors)
+python manage.py compute_national_averages --season 2025-26
 
-**Recommended:** Run scrapers once daily
+# Compute adjusted ratings (AdjO, AdjD, AdjEM) ✅ USE THIS ONE
+python manage.py compute_adjusted_ratings --season 2025-26
+
+# Compute Four Factor Index (z-scores)
+python manage.py compute_four_factor_index --season 2025-26
+```
+
+**⚠️ Important:** Always use `compute_adjusted_ratings` (iterative method). Do NOT use `compute_game_adjusted_ratings` (ridge regression) - it has scaling issues.
+
+### Utility Scripts
+
+Located in `backend/scripts/`:
 
 ```powershell
-# Daily update script (run all scrapers)
-cd "c:\Users\spenc\OneDrive\Workspace\Tableau Final Project"
-.\.venv\Scripts\Activate.ps1
+# Run complete pipeline (ingest → metrics → ratings)
+python scripts/complete_pipeline.py
 
-# KenPom
-cd "KenPom Data"; python main.py; python export_to_tableau.py
+# Backfill entire season in weekly chunks
+python scripts/backfill_season.py
 
-# Evan Miya
-cd "..\Evan Miya\scraper"; python scrape_team_ratings.py
+# Validate pipeline execution
+python scripts/validate_pipeline.py
 
-# Bart Torvik (may timeout)
-cd "..\..\Bart Torvik"; python export_to_tableau.py
+# Export rankings to JSON
+python scripts/export_rankings_to_json.py
 ```
 
 ## 🎓 Use Cases
 
-- **Team Performance Analysis:** Compare efficiency metrics across sources
-- **Recruiting Analytics:** Identify undervalued programs
+- **Live Game Tracking:** Ingest and display games in real-time
+- **Team Performance Analysis:** Compare efficiency metrics across all teams
+- **Four Factors Analysis:** Identify team strengths/weaknesses
 - **Conference Strength:** Aggregate team metrics by conference
-- **Tournament Predictions:** Multi-factor models using KenPom + Torvik
-- **Tempo Analysis:** Pace-adjusted offensive/defensive ratings
-- **Poll Movement:** Track AP Poll changes vs efficiency metrics
+- **Historical Trends:** Track team performance over time
+- **Tournament Predictions:** Multi-factor models using adjusted ratings
+- **Recruiting Analytics:** Identify undervalued programs
 
-## 📝 Notes
+## 🐛 Known Issues & Notes
 
-- **Data Freshness:** KenPom and Evan Miya update daily; check timestamps
-- **Historical Data:** Databases store historical data; CSVs contain latest snapshot
-- **Team Count:** 365 teams represent all NCAA Division I programs
-- **Logo Files:** Sequential numbering (001-365) for Tableau shape palettes
+### Data Pipeline
+- **NCAA API Reliability:** Generally stable, occasional timeouts (retry recommended)
+- **Fuzzy Matching:** 95%+ accuracy, manual overrides in `team_alias_overrides.yml`
+- **Duplicate Prevention:** All games use `update_or_create()` - safe to re-run
+- **Incremental Updates:** Just ingest new dates and re-compute metrics
+
+### Performance
+- **Low RAM Systems:** Next.js dev mode uses 500MB-1GB (use production build if needed)
+- **Large API Responses:** 365 teams = ~500KB JSON (consider pagination for production)
+- **Database Size:** SQLite ~100-200MB for full season
+
+### Deployment
+- **Database:** SQLite OK for single-user, consider PostgreSQL for production
+- **Static Files:** Serve via CDN in production
+- **Environment Variables:** Set `DEBUG=False` and `SECRET_KEY` in production
+
+## 📅 Development Workflow
+
+**Daily Update Workflow:**
+```powershell
+# 1. Activate virtual environment
+.\.venv\Scripts\Activate.ps1
+
+# 2. Ingest yesterday's games
+cd backend
+python manage.py ingest_gamelogs --start-date 2026-02-26 --end-date 2026-02-26
+
+# 3. Update metrics and ratings
+python manage.py compute_team_metrics --season 2025-26
+python manage.py compute_adjusted_ratings --season 2025-26
+python manage.py compute_four_factor_index --season 2025-26
+
+# 4. Verify on website
+# Backend: http://localhost:8000
+# Frontend: http://localhost:3000
+```
+
+**Adding New Features:**
+1. Update Django models in `backend/core/models.py`
+2. Create/update management commands as needed
+3. Add API endpoints in `backend/api/views.py`
+4. Update frontend components in `web/src/components/`
+5. Test locally before deploying
+
+## 🚢 Deployment
+
+See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for production deployment guide.
+
+**Quick Deploy:**
+- **Backend:** Railway, Render, or DigitalOcean App Platform
+- **Frontend:** Vercel (recommended), Netlify, or AWS Amplify
+- **Database:** PostgreSQL (Railway/Render) or keep SQLite and copy file
+
+## 📚 Documentation
+
+- **[Quick Start Guide](docs/QUICK_START.md)** - Complete setup instructions
+- **[Game Log Guide](docs/GAME_LOG_QUICK_START.md)** - Data pipeline details
+- **[Four Factor Guide](docs/FOUR_FACTOR_INDEX_GUIDE.md)** - Calculation methodology
+- **[Project Overview](docs/PROJECT_README.md)** - Detailed architecture
+- **[Deployment Guide](docs/DEPLOYMENT.md)** - Production deployment
+- **[Backend Scripts](backend/scripts/README.md)** - Utility script documentation
 
 ## 🤝 Contributing
 
-This is a final project for Tableau analytics. Data sources are publicly available college basketball statistics.
+This is an active college basketball analytics project. Key areas for contribution:
+- Additional visualizations (efficiency landscape, shot charts, etc.)
+- Advanced metrics (BPR, RAPM, etc.)
+- Matchup predictor tool
+- Historical season comparison
+- Conference tournament simulations
 
 ## 📧 Support
 
-For issues or questions about:
-- **KenPom scraper:** See `KenPom Data/README.md`
-- **Evan Miya scraper:** See `Evan Miya/scraper/README.md`
-- **Data compatibility:** All team names normalized to KenPom standard
-- **Tableau connection:** See `KenPom Data/TABLEAU_CONNECTION.md`
+For issues or questions:
+- **Data Pipeline:** See [GAME_LOG_QUICK_START.md](docs/GAME_LOG_QUICK_START.md)
+- **API Endpoints:** Check [backend/docs/](backend/docs/)
+- **Frontend Components:** See [web/README.md](web/README.md)
+- **General Setup:** See [QUICK_START.md](docs/QUICK_START.md)
 
 ---
 
-**Last Updated:** December 2025  
-**Python Version:** 3.14.0  
-**Key Dependencies:** Playwright, BeautifulSoup4, Pandas, SQLite3
+**Last Updated:** February 26, 2026  
+**Python Version:** 3.14  
+**Django Version:** 6.0.2  
+**Next.js Version:** 14.2.35  
+**Database:** SQLite (5,327 games, 365 teams)

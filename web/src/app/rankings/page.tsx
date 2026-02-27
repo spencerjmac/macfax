@@ -7,9 +7,9 @@ export const metadata: Metadata = {
   description: 'Complete NCAA Division I men\'s basketball rankings with adjusted efficiency metrics, four factors, and advanced statistics.',
 };
 
-export default function RankingsPage() {
-  const teams = getAllTeams();
-  const meta = getMetadata();
+export default async function RankingsPage() {
+  const teams = await getAllTeams();
+  const meta = await getMetadata();
   
   return (
     <div className="container mx-auto px-4 py-8">

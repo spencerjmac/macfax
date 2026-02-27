@@ -143,6 +143,15 @@ class Command(BaseCommand):
                 if games.count() == 0:
                     continue
                 
+                # Pre-fetch opponent stats for all games (optimize: single query instead of N queries)
+                game_ids = [g.game_id for g in games]
+                all_game_stats = TeamGameStats.objects.filter(
+                    game_id__in=game_ids
+                ).select_related('team')
+                
+                # Build dict: (game_id, team_id) -> stats
+                stats_lookup = {(gs.game_id, gs.team_id): gs for gs in all_game_stats}
+                
                 # Compute game-level adjusted ratings
                 sum_weighted_aor = 0.0
                 sum_weighted_adr = 0.0
@@ -159,15 +168,22 @@ class Command(BaseCommand):
                     opp_adr = ratings[opp_id]['adr']
                     opp_pace = ratings[opp_id]['pace']
                     
-                    # Get game possessions
-                    poss_g = game_stat.poss_game
+                    # Get game possessions (use poss_team directly to avoid property queries)
+                    poss_g = game_stat.poss_team
                     if not poss_g or poss_g == 0:
                         continue
                     
-                    # Get raw game efficiencies and pace
-                    raw_oe_g = game_stat.ortg  # 100 * pts / poss_g
-                    raw_de_g = game_stat.drtg  # 100 * opp_pts / poss_g
-                    raw_pace_g = game_stat.pace  # Possessions per 40 minutes
+                    # Get opponent stats for this game (use dict lookup)
+                    opp_stats = stats_lookup.get((game_stat.game_id, game_stat.opponent_id))
+                    
+                    if not opp_stats:
+                        continue
+                    
+                    # Calculate raw game efficiencies and pace manually
+                    raw_oe_g = 100 * game_stat.pts / poss_g if poss_g > 0 else None
+                    raw_de_g = 100 * opp_stats.pts / poss_g if poss_g > 0 else None
+                    minutes = game_stat.game_minutes or 40
+                    raw_pace_g = 40 * poss_g / minutes if minutes > 0 else None
                     
                     if raw_oe_g is None or raw_de_g is None or raw_pace_g is None:
                         continue

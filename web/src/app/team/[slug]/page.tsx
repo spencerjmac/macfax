@@ -11,14 +11,14 @@ interface TeamPageProps {
 }
 
 export async function generateStaticParams() {
-  const teams = getAllTeams();
+  const teams = await getAllTeams();
   return teams.map((team) => ({
     slug: team.teamId,
   }));
 }
 
 export async function generateMetadata({ params }: TeamPageProps): Promise<Metadata> {
-  const teamData = getTeamWithContext(params.slug);
+  const teamData = await getTeamWithContext(params.slug);
   
   if (!teamData) {
     return {
@@ -34,8 +34,8 @@ export async function generateMetadata({ params }: TeamPageProps): Promise<Metad
   };
 }
 
-export default function TeamPage({ params }: TeamPageProps) {
-  const teamData = getTeamWithContext(params.slug);
+export default async function TeamPage({ params }: TeamPageProps) {
+  const teamData = await getTeamWithContext(params.slug);
   
   if (!teamData) {
     notFound();

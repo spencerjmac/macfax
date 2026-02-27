@@ -122,6 +122,8 @@ class Command(BaseCommand):
                 f"✓ Model solved\n"
                 f"  Baseline PPP: {baseline:.3f}\n"
                 f"  HCA estimate: {hca_est:.2f} pts/100\n"
+                f"  Off rating range: [{off_ratings.min():.3f}, {off_ratings.max():.3f}]\n"
+                f"  Def rating range: [{def_ratings.min():.3f}, {def_ratings.max():.3f}]\n"
             )
         )
         
@@ -142,9 +144,27 @@ class Command(BaseCommand):
                 games_played = team_stats.count()
                 total_poss = sum(gs.possessions_est for gs in team_stats)
                 
+                # Count wins and losses by comparing team pts to opponent pts
+                total_wins = 0
+                for game_stat in team_stats:
+                    # Get opponent's stats for this game
+                    opp_stats = TeamGameStats.objects.filter(
+                        game=game_stat.game,
+                        team=game_stat.opponent
+                    ).first()
+                    
+                    if opp_stats and game_stat.pts > opp_stats.pts:
+                        total_wins += 1
+                
+                total_losses = games_played - total_wins
+                
+                # Count D1 games only (for advanced metrics)
+                d1_games = team_stats.filter(opponent__is_d1=True).count()
+                
                 # Compute adjusted ratings
-                adj_o = 100 * (baseline + off_ratings[idx])
-                adj_d = 100 * (baseline - def_ratings[idx])
+                # Scale so that 100 = average (baseline is in PPP, off/def_ratings are deviations)
+                adj_o = 100.0 + (100 * off_ratings[idx])
+                adj_d = 100.0 - (100 * def_ratings[idx])
                 adj_em = adj_o - adj_d
                 adj_tempo = tempo_ratings.get(team.id, 0.0)
                 
@@ -158,6 +178,9 @@ class Command(BaseCommand):
                         'adj_em': adj_em,
                         'adj_tempo': adj_tempo,
                         'games_played': games_played,
+                        'wins': total_wins,
+                        'losses': total_losses,
+                        'd1_games_played': d1_games,
                         'total_possessions': total_poss,
                         'hca_estimate': hca_est,
                     }
@@ -281,10 +304,12 @@ class Command(BaseCommand):
             # Weight by possessions
             weights[i] = obs['possessions']
         
-        # Weighted ridge regression
-        W = np.diag(weights)
-        XtWX = X.T @ W @ X
-        XtWy = X.T @ W @ y
+        # Weighted ridge regression (memory-efficient: avoid creating full diagonal matrix)
+        # Instead of W = diag(weights), use: X'WX = X' @ diag(w) @ X = sum_i w[i] * X[i,:].T @ X[i,:]
+        # Equivalently: X'WX = X.T @ (X * weights[:, None])
+        weighted_X = X * weights[:, np.newaxis]
+        XtWX = X.T @ weighted_X
+        XtWy = X.T @ (weights * y)
         
         # Add L2 regularization (ridge)
         reg_matrix = alpha * np.eye(n_params)
