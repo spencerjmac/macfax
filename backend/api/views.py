@@ -83,7 +83,11 @@ class RankingsViewSet(viewsets.ReadOnlyModelViewSet):
             season = Season.objects.filter(is_current=True).first()
         
         # Use TeamSeasonRatings (our computed data) instead of TeamSeasonStats
-        queryset = TeamSeasonRatings.objects.filter(season=season).select_related('team')
+        # ONLY show Division I teams
+        queryset = TeamSeasonRatings.objects.filter(
+            season=season,
+            team__is_d1=True
+        ).select_related('team')
         
         # Search by team name
         search = self.request.query_params.get('search')

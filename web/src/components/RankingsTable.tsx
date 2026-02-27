@@ -214,7 +214,7 @@ export default function RankingsTable({ data }: RankingsTableProps) {
         if (value == null) return '-';
         return (
           <span className={clsx('stat-number px-2 py-1 rounded', getColorClass(value, 'raw_eFG', true))}>
-            {(value * 100).toFixed(1)}%
+            {value.toFixed(1)}%
           </span>
         );
       },
@@ -229,7 +229,7 @@ export default function RankingsTable({ data }: RankingsTableProps) {
         if (value == null) return '-';
         return (
           <span className={clsx('stat-number px-2 py-1 rounded', getColorClass(value, 'raw_eFG_d', false))}>
-            {(value * 100).toFixed(1)}%
+            {value.toFixed(1)}%
           </span>
         );
       },
@@ -244,7 +244,7 @@ export default function RankingsTable({ data }: RankingsTableProps) {
         if (value == null) return '-';
         return (
           <span className={clsx('stat-number px-2 py-1 rounded', getColorClass(value, 'raw_eFG_margin', true))}>
-            {value >= 0 ? '+' : ''}{(value * 100).toFixed(1)}
+            {value >= 0 ? '+' : ''}{value.toFixed(1)}
           </span>
         );
       },
@@ -260,7 +260,7 @@ export default function RankingsTable({ data }: RankingsTableProps) {
         if (value == null) return '-';
         return (
           <span className={clsx('stat-number px-2 py-1 rounded', getColorClass(value, 'raw_tov', false))}>
-            {(value * 100).toFixed(1)}%
+            {value.toFixed(1)}%
           </span>
         );
       },
@@ -275,7 +275,7 @@ export default function RankingsTable({ data }: RankingsTableProps) {
         if (value == null) return '-';
         return (
           <span className={clsx('stat-number px-2 py-1 rounded', getColorClass(value, 'raw_tov_d', true))}>
-            {(value * 100).toFixed(1)}%
+            {value.toFixed(1)}%
           </span>
         );
       },
@@ -290,7 +290,7 @@ export default function RankingsTable({ data }: RankingsTableProps) {
         if (value == null) return '-';
         return (
           <span className={clsx('stat-number px-2 py-1 rounded', getColorClass(value, 'raw_tov_edge', true))}>
-            {value >= 0 ? '+' : ''}{(value * 100).toFixed(1)}
+            {value >= 0 ? '+' : ''}{value.toFixed(1)}
           </span>
         );
       },
@@ -306,7 +306,7 @@ export default function RankingsTable({ data }: RankingsTableProps) {
         if (value == null) return '-';
         return (
           <span className={clsx('stat-number px-2 py-1 rounded', getColorClass(value, 'raw_orb', true))}>
-            {(value * 100).toFixed(1)}%
+            {value.toFixed(1)}%
           </span>
         );
       },
@@ -319,7 +319,7 @@ export default function RankingsTable({ data }: RankingsTableProps) {
       cell: (info) => {
         const value = info.getValue<number>();
         if (value == null) return '-';
-        const oppORB = (1 - value) * 100;
+        const oppORB = 100 - value;
         return (
           <span className={clsx('stat-number px-2 py-1 rounded', getColorClass(value, 'raw_drb', true))}>
             {oppORB.toFixed(1)}%
@@ -337,7 +337,7 @@ export default function RankingsTable({ data }: RankingsTableProps) {
         if (value == null) return '-';
         return (
           <span className={clsx('stat-number px-2 py-1 rounded', getColorClass(value, 'raw_reb_edge', true))}>
-            {value >= 0 ? '+' : ''}{(value * 100).toFixed(1)}
+            {value >= 0 ? '+' : ''}{value.toFixed(1)}
           </span>
         );
       },
@@ -353,7 +353,7 @@ export default function RankingsTable({ data }: RankingsTableProps) {
         if (value == null) return '-';
         return (
           <span className={clsx('stat-number px-2 py-1 rounded', getColorClass(value, 'raw_ftr', true))}>
-            {(value * 100).toFixed(1)}%
+            {value.toFixed(1)}%
           </span>
         );
       },
@@ -368,7 +368,7 @@ export default function RankingsTable({ data }: RankingsTableProps) {
         if (value == null) return '-';
         return (
           <span className={clsx('stat-number px-2 py-1 rounded', getColorClass(value, 'raw_ftr_d', false))}>
-            {(value * 100).toFixed(1)}%
+            {value.toFixed(1)}%
           </span>
         );
       },
@@ -383,7 +383,7 @@ export default function RankingsTable({ data }: RankingsTableProps) {
         if (value == null) return '-';
         return (
           <span className={clsx('stat-number px-2 py-1 rounded', getColorClass(value, 'raw_ftr_margin', true))}>
-            {value >= 0 ? '+' : ''}{(value * 100).toFixed(1)}
+            {value >= 0 ? '+' : ''}{value.toFixed(1)}
           </span>
         );
       },
@@ -418,7 +418,7 @@ export default function RankingsTable({ data }: RankingsTableProps) {
         const value = info.getValue<number>();
         return (
           <span className={clsx('stat-number px-2 py-1 rounded', getColorClass(value, 'eFG', true))}>
-            {(value * 100).toFixed(1)}%
+            {value.toFixed(1)}%
           </span>
         );
       },
@@ -432,7 +432,7 @@ export default function RankingsTable({ data }: RankingsTableProps) {
         const value = info.getValue<number>();
         return (
           <span className={clsx('stat-number px-2 py-1 rounded', getColorClass(value, 'eFG_d', false))}>
-            {(value * 100).toFixed(1)}%
+            {value.toFixed(1)}%
           </span>
         );
       },
@@ -446,7 +446,7 @@ export default function RankingsTable({ data }: RankingsTableProps) {
         const value = info.getValue<number>();
         return (
           <span className={clsx('stat-number px-2 py-1 rounded', getColorClass(value, 'eFG_margin', true))}>
-            {value >= 0 ? '+' : ''}{(value * 100).toFixed(1)}
+            {value >= 0 ? '+' : ''}{value.toFixed(1)}
           </span>
         );
       },
@@ -461,7 +461,7 @@ export default function RankingsTable({ data }: RankingsTableProps) {
         const value = info.getValue<number>();
         return (
           <span className={clsx('stat-number px-2 py-1 rounded', getColorClass(value, 'tov', false))}>
-            {(value * 100).toFixed(1)}%
+            {value.toFixed(1)}%
           </span>
         );
       },
@@ -475,7 +475,7 @@ export default function RankingsTable({ data }: RankingsTableProps) {
         const value = info.getValue<number>();
         return (
           <span className={clsx('stat-number px-2 py-1 rounded', getColorClass(value, 'tov_d', true))}>
-            {(value * 100).toFixed(1)}%
+            {value.toFixed(1)}%
           </span>
         );
       },
@@ -489,7 +489,7 @@ export default function RankingsTable({ data }: RankingsTableProps) {
         const value = info.getValue<number>();
         return (
           <span className={clsx('stat-number px-2 py-1 rounded', getColorClass(value, 'tov_edge', true))}>
-            {value >= 0 ? '+' : ''}{(value * 100).toFixed(1)}
+            {value >= 0 ? '+' : ''}{value.toFixed(1)}
           </span>
         );
       },
@@ -504,7 +504,7 @@ export default function RankingsTable({ data }: RankingsTableProps) {
         const value = info.getValue<number>();
         return (
           <span className={clsx('stat-number px-2 py-1 rounded', getColorClass(value, 'orb', true))}>
-            {(value * 100).toFixed(1)}%
+            {value.toFixed(1)}%
           </span>
         );
       },
@@ -533,7 +533,7 @@ export default function RankingsTable({ data }: RankingsTableProps) {
         const value = info.getValue<number>();
         return (
           <span className={clsx('stat-number px-2 py-1 rounded', getColorClass(value, 'reb_edge', true))}>
-            {value >= 0 ? '+' : ''}{(value * 100).toFixed(1)}
+            {value >= 0 ? '+' : ''}{value.toFixed(1)}
           </span>
         );
       },
@@ -548,7 +548,7 @@ export default function RankingsTable({ data }: RankingsTableProps) {
         const value = info.getValue<number>();
         return (
           <span className={clsx('stat-number px-2 py-1 rounded', getColorClass(value, 'ftr', true))}>
-            {(value * 100).toFixed(1)}%
+            {value.toFixed(1)}%
           </span>
         );
       },
@@ -562,7 +562,7 @@ export default function RankingsTable({ data }: RankingsTableProps) {
         const value = info.getValue<number>();
         return (
           <span className={clsx('stat-number px-2 py-1 rounded', getColorClass(value, 'ftr_d', false))}>
-            {(value * 100).toFixed(1)}%
+            {value.toFixed(1)}%
           </span>
         );
       },
@@ -576,7 +576,7 @@ export default function RankingsTable({ data }: RankingsTableProps) {
         const value = info.getValue<number>();
         return (
           <span className={clsx('stat-number px-2 py-1 rounded', getColorClass(value, 'ftr_margin', true))}>
-            {value >= 0 ? '+' : ''}{(value * 100).toFixed(1)}
+            {value >= 0 ? '+' : ''}{value.toFixed(1)}
           </span>
         );
       },
