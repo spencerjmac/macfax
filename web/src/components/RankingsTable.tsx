@@ -516,9 +516,9 @@ export default function RankingsTable({ data }: RankingsTableProps) {
       header: 'ORB%D',
       cell: (info) => {
         const value = info.getValue<number>();
-        const oppORB = (1 - value) * 100;
+        const oppORB = 100 - value;
         return (
-          <span className={clsx('stat-number px-2 py-1 rounded', getColorClass(value, 'drb', false))}>
+          <span className={clsx('stat-number px-2 py-1 rounded', getColorClass(value, 'drb', true))}>
             {oppORB.toFixed(1)}%
           </span>
         );
