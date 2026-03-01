@@ -58,7 +58,7 @@ Backend runs on `http://localhost:8000`
 
 3. **Frontend Setup**
 ```bash
-cd ../frontend
+cd ../web
 
 # Install dependencies
 npm install
@@ -83,7 +83,7 @@ CBB Analytical Dashboard/
 │   ├── manage.py
 │   └── requirements.txt
 │
-├── frontend/               # Next.js frontend
+├── web/                   # Next.js frontend
 │   ├── src/
 │   │   ├── app/           # Pages (App Router)
 │   │   ├── components/    # React components
@@ -192,7 +192,7 @@ See [`backend/README.md`](backend/README.md) for details.
 2. Set `NEXT_PUBLIC_API_URL` environment variable
 3. Deploy
 
-See [`frontend/README.md`](frontend/README.md) for details.
+See [`web/README.md`](web/README.md) for details.
 
 ## 🛠️ Development
 
@@ -234,7 +234,7 @@ npm run lint
 ## 📚 Documentation
 
 - [`backend/README.md`](backend/README.md) - Backend setup, API docs, deployment
-- [`frontend/README.md`](frontend/README.md) - Frontend setup, pages, deployment
+- [`web/README.md`](web/README.md) - Frontend setup, pages, deployment
 - [`IMPLEMENTATION_CHECKLIST.md`](IMPLEMENTATION_CHECKLIST.md) - Detailed progress tracker
 
 ## 🔮 Roadmap

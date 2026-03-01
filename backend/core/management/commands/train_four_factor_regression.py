@@ -96,8 +96,13 @@ class Command(BaseCommand):
             # Actual margin (Team A perspective)
             margin = stat_a.pts - stat_b.pts
             
+            # Normalize by possessions to get efficiency margin (per 100 poss)
+            # This makes coefficients pace-aware
+            poss_a = stat_a.poss_game if stat_a.poss_game else nat_avg.avg_pace
+            efficiency_margin = (margin / poss_a) * 100 if poss_a > 0 else 0
+            
             X.append([efg_edge, tov_edge, orb_edge, ftr_edge])
-            y.append(margin)
+            y.append(efficiency_margin)
         
         self.stdout.write(f'Built training set with {len(X)} games')
         
@@ -181,18 +186,19 @@ class Command(BaseCommand):
         nat_avg.coef_r_squared = r_squared
         nat_avg.save()
         
-        self.stdout.write(self.style.SUCCESS('\n✓ Four factor coefficients computed and stored:'))
-        self.stdout.write(f'  eFG% edge:  {coef_efg:+.3f} points per %')
-        self.stdout.write(f'  TOV% edge:  {coef_tov:+.3f} points per %')
-        self.stdout.write(f'  ORB% edge:  {coef_orb:+.3f} points per %')
-        self.stdout.write(f'  FTR edge:   {coef_ftr:+.3f} points per %')
-        self.stdout.write(f'  Intercept:  {intercept:+.3f} points')
+        self.stdout.write(self.style.SUCCESS('\n✓ Four factor coefficients computed and stored (PACE-AWARE):'))
+        self.stdout.write(f'  eFG% edge:  {coef_efg:+.3f} efficiency pts per 100 poss per %')
+        self.stdout.write(f'  TOV% edge:  {coef_tov:+.3f} efficiency pts per 100 poss per %')
+        self.stdout.write(f'  ORB% edge:  {coef_orb:+.3f} efficiency pts per 100 poss per %')
+        self.stdout.write(f'  FTR edge:   {coef_ftr:+.3f} efficiency pts per 100 poss per %')
+        self.stdout.write(f'  Intercept:  {intercept:+.3f} efficiency pts per 100 poss')
         if r_squared is not None:
             self.stdout.write(f'  R²:         {r_squared:.3f}')
         
         # Interpretation
-        self.stdout.write('\nInterpretation:')
-        self.stdout.write(f'  • Each 1% advantage in eFG% is worth {coef_efg:.2f} points')
-        self.stdout.write(f'  • Each 1% advantage in TOV% is worth {coef_tov:.2f} points')
-        self.stdout.write(f'  • Each 1% advantage in ORB% is worth {coef_orb:.2f} points')
-        self.stdout.write(f'  • Each 1% advantage in FTR is worth {coef_ftr:.2f} points')
+        self.stdout.write('\nInterpretation (at average pace of {:.1f} possessions):'.format(nat_avg.avg_pace))
+        self.stdout.write(f'  • Each 1% advantage in eFG% is worth {coef_efg * nat_avg.avg_pace / 100:.2f} points')
+        self.stdout.write(f'  • Each 1% advantage in TOV% is worth {coef_tov * nat_avg.avg_pace / 100:.2f} points')
+        self.stdout.write(f'  • Each 1% advantage in ORB% is worth {coef_orb * nat_avg.avg_pace / 100:.2f} points')
+        self.stdout.write(f'  • Each 1% advantage in FTR is worth {coef_ftr * nat_avg.avg_pace / 100:.2f} points')
+        self.stdout.write(f'\n  Note: These coefficients scale with game pace automatically.')

@@ -222,86 +222,84 @@ class ComputePointsFromFourFactorsTestCase(TestCase):
     
     def test_points_breakdown_with_regression(self):
         """Test points breakdown using regression coefficients"""
-        ff_edges = {
-            'efg_edge': 5.0,
-            'tov_edge': 3.0,
-            'reb_edge': 4.0,
-            'ftr_edge': 2.0,
-        }
         
         result = compute_points_from_four_factors(
-            ff_edges,
-            game_pace=70.0,
+            efg_edge=5.0,
+            tov_edge=3.0,
+            orb_edge=4.0,
+            ftr_edge=2.0,
             coef_efg=0.995,
             coef_tov=0.912,
             coef_orb=0.464,
             coef_ftr=0.084,
             coef_intercept=0.0,
-            nat_avg_ortg=108.0
+            pace=70.0
         )
         
-        # Each factor should have points_a, points_b, edge
-        self.assertIn('efg', result)
-        self.assertIn('tov', result)
-        self.assertIn('reb', result)
-        self.assertIn('ftr', result)
+        # Check all expected fields
+        self.assertIn('pts_from_efg', result)
+        self.assertIn('pts_from_tov', result)
+        self.assertIn('pts_from_orb', result)
+        self.assertIn('pts_from_ftr', result)
+        self.assertIn('total_margin', result)
         
-        # eFG should have largest coefficient
-        efg_impact = abs(result['efg']['edge'])
-        tov_impact = abs(result['tov']['edge'])
-        self.assertGreater(efg_impact, tov_impact * 0.8)  # eFG should dominate
+        # eFG should have largest impact (5% edge * 0.995 coef * 0.70 pace)
+        expected_efg = 5.0 * 0.995 * 0.70  # ~3.48
+        self.assertAlmostEqual(result['pts_from_efg'], expected_efg, places=1)
     
     def test_points_breakdown_sum_meaningful(self):
-        """Test points breakdown sums are reasonable"""
-        ff_edges = {
-            'efg_edge': 4.0,
-            'tov_edge': 2.0,
-            'reb_edge': 3.0,
-            'ftr_edge': 1.0,
-        }
+        """Test points breakdown sums to total margin"""
         
         result = compute_points_from_four_factors(
-            ff_edges,
-            game_pace=70.0,
+            efg_edge=4.0,
+            tov_edge=2.0,
+            orb_edge=3.0,
+            ftr_edge=1.0,
             coef_efg=0.995,
             coef_tov=0.912,
             coef_orb=0.464,
             coef_ftr=0.084,
             coef_intercept=0.0,
-            nat_avg_ortg=108.0
+            pace=70.0
         )
         
-        # Total edge should be sum of individual edges
-        total_edge = (result['efg']['edge'] + result['tov']['edge'] + 
-                     result['reb']['edge'] + result['ftr']['edge'])
+        # Total should be sum of components
+        computed_total = (result['pts_from_efg'] + result['pts_from_tov'] + 
+                         result['pts_from_orb'] + result['pts_from_ftr'] + 
+                         result['baseline'])
+        
+        self.assertAlmostEqual(result['total_margin'], computed_total, places=1)
         
         # Should be non-zero if there are edges
-        self.assertNotEqual(total_edge, 0.0)
+        self.assertNotEqual(result['total_margin'], 0.0)
 
 
 class IdentifyTopDriversTestCase(TestCase):
     """Tests for identify_top_drivers function"""
     
     def test_top_drivers_sorted_by_impact(self):
-        """Test top drivers are sorted by absolute impact"""
-        points_breakdown = {
-            'efg': {'edge': 5.2, 'points_a': 78.0, 'points_b': 72.8},
-            'tov': {'edge': -2.1, 'points_a': 75.0, 'points_b': 77.1},
-            'reb': {'edge': 1.5, 'points_a': 76.5, 'points_b': 75.0},
-            'ftr': {'edge': 0.8, 'points_a': 75.8, 'points_b': 75.0},
-        }
+        """Test top drivers are sorted by absolute impact (pace-aware)"""
         
-        drivers = identify_top_drivers(points_breakdown, 'Duke', 'UNC')
+        drivers = identify_top_drivers(
+            efg_edge=5.0,
+            tov_edge=3.0,
+            orb_edge=2.0,
+            ftr_edge=1.0,
+            coef_efg=1.601,
+            coef_tov=1.324,
+            coef_orb=0.859,
+            coef_ftr=0.192,
+            pace=70.0
+        )
         
         # Should return top 3
         self.assertEqual(len(drivers), 3)
         
         # First driver should be eFG (largest impact)
-        self.assertEqual(drivers[0]['factor'], 'Effective FG%')
-        self.assertAlmostEqual(drivers[0]['impact'], 5.2, places=1)
+        self.assertEqual(drivers[0]['factor'], 'eFG%')
         
-        # Should be sorted by |impact|
-        impacts = [abs(d['impact']) for d in drivers]
+        # Should be sorted by |impact| (scaled by pace)
+        impacts = [abs(d['points']) for d in drivers]
         self.assertEqual(impacts, sorted(impacts, reverse=True))
 
 

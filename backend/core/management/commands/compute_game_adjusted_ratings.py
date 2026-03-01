@@ -2,6 +2,14 @@
 Management command: compute_game_adjusted_ratings
 Computes adjusted offensive/defensive ratings from game log pipeline data
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+WARNING: THIS COMMAND HAS A KNOWN BUG THAT PRODUCES INFLATED RATINGS!
+Use compute_adjusted_ratings (iterative method) instead.
+This regression-based implementation produces AdjEM values that are 
+approximately 2x what they should be.
+Bug tracked for future fix, but use compute_adjusted_ratings for now.
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 This is the NEW implementation using Game/TeamGameStats models (not old GameLog)
 
 Methodology:
@@ -94,17 +102,18 @@ class Command(BaseCommand):
         
         self.stdout.write(f"Processed {len(game_data)} game records")
         
-        # Get unique teams
+        # Get unique teams (D1 ONLY)
         teams = Team.objects.filter(
             Q(home_games__season_year=season_year) | 
-            Q(away_games__season_year=season_year)
+            Q(away_games__season_year=season_year),
+            is_d1=True  # CRITICAL: Only compute ratings for D1 teams
         ).distinct()
         
         team_list = list(teams)
         team_to_idx = {team.id: idx for idx, team in enumerate(team_list)}
         n_teams = len(team_list)
         
-        self.stdout.write(f"Found {n_teams} teams")
+        self.stdout.write(f"Found {n_teams} D1 teams")
         
         # Solve for offensive and defensive ratings
         self.stdout.write("\nSolving regression model...")
@@ -162,9 +171,10 @@ class Command(BaseCommand):
                 d1_games = team_stats.filter(opponent__is_d1=True).count()
                 
                 # Compute adjusted ratings
-                # Scale so that 100 = average (baseline is in PPP, off/def_ratings are deviations)
-                adj_o = 100.0 + (100 * off_ratings[idx])
-                adj_d = 100.0 - (100 * def_ratings[idx])
+                # Convert from PPP scale to per-100-possessions scale
+                # baseline is the intercept from regression (average PPP)
+                adj_o = 100 * (baseline + off_ratings[idx])
+                adj_d = 100 * (baseline - def_ratings[idx])
                 adj_em = adj_o - adj_d
                 adj_tempo = tempo_ratings.get(team.id, 0.0)
                 

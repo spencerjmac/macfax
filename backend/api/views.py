@@ -33,6 +33,7 @@ from .matchup_engine import (
     compute_points_from_four_factors,
     identify_top_drivers,
     compute_shot_profile_edges,
+    compute_volatility_ranges,
     compute_volatility_score,
     format_recent_form
 )
@@ -339,6 +340,90 @@ class TeamViewSet(viewsets.ReadOnlyModelViewSet):
         })
 
 
+def compute_adjusted_variance(team, season, recent_games, nat_avg_ortg, hca_points):
+    """
+    Compute variance of (actual margin - expected margin) for recent games.
+    
+    This adjusts for opponent strength and site, giving a true measure of 
+    "swinginess" rather than schedule-dependent variance.
+    
+    Args:
+        team: Team object
+        season: Season object
+        recent_games: QuerySet of TeamGameStats (most recent first)
+        nat_avg_ortg: National average offensive rating
+        hca_points: Home court advantage in points
+    
+    Returns:
+        float: Standard deviation of margin residuals, or None if insufficient data
+    """
+    if len(recent_games) < 2:
+        return None
+    
+    import statistics
+    residuals = []
+    
+    for game_stat in recent_games:
+        # Get actual margin
+        try:
+            opp_stat = TeamGameStats.objects.get(
+                game=game_stat.game,
+                team=game_stat.opponent
+            )
+            actual_margin = game_stat.pts - opp_stat.pts
+        except TeamGameStats.DoesNotExist:
+            continue
+        
+        # Get team and opponent ratings
+        try:
+            team_ratings = TeamSeasonRatings.objects.get(team=team, season=season)
+            opp_ratings = TeamSeasonRatings.objects.get(
+                team=game_stat.opponent,
+                season=season
+            )
+        except TeamSeasonRatings.DoesNotExist:
+            # If ratings not available, skip this game
+            continue
+        
+        # Determine site from team's perspective
+        if game_stat.home_away == 'H':
+            site = 'home'
+        elif game_stat.home_away == 'A':
+            site = 'away'
+        else:
+            site = 'neutral'
+        
+        # Predict expected margin using forecast_game
+        from .matchup_engine import forecast_game
+        forecast = forecast_game(
+            adj_o_a=team_ratings.adj_o,
+            adj_d_a=team_ratings.adj_d,
+            adj_em_a=team_ratings.adj_em,
+            tempo_a=team_ratings.adj_tempo,
+            adj_o_b=opp_ratings.adj_o,
+            adj_d_b=opp_ratings.adj_d,
+            adj_em_b=opp_ratings.adj_em,
+            tempo_b=opp_ratings.adj_tempo,
+            nat_avg_ortg=nat_avg_ortg,
+            hca_points=hca_points,
+            sigma=11.08,  # Default sigma
+            site=site
+        )
+        
+        expected_margin = forecast['margin']
+        
+        # Calculate residual (how much team over/under-performed expectation)
+        residual = actual_margin - expected_margin
+        residuals.append(residual)
+    
+    # Need at least 2 residuals to calculate variance
+    if len(residuals) < 2:
+        return None
+    
+    # Return standard deviation of residuals
+    return statistics.stdev(residuals)
+
+
 class MatchupViewSet(viewsets.ViewSet):
     """
     GET /api/matchup?season=2026&teamA=michigan&teamB=duke&site=neutral
@@ -505,7 +590,8 @@ class MatchupViewSet(viewsets.ViewSet):
                 coef_tov=nat_avg.coef_tov,
                 coef_orb=nat_avg.coef_orb,
                 coef_ftr=nat_avg.coef_ftr,
-                coef_intercept=nat_avg.coef_intercept
+                coef_intercept=nat_avg.coef_intercept,
+                pace=forecast['pace']
             )
             
             top_drivers = identify_top_drivers(
@@ -516,7 +602,8 @@ class MatchupViewSet(viewsets.ViewSet):
                 coef_efg=nat_avg.coef_efg,
                 coef_tov=nat_avg.coef_tov,
                 coef_orb=nat_avg.coef_orb,
-                coef_ftr=nat_avg.coef_ftr
+                coef_ftr=nat_avg.coef_ftr,
+                pace=forecast['pace']
             )
         
         # ===== SHOT PROFILE EDGES =====
@@ -595,9 +682,41 @@ class MatchupViewSet(viewsets.ViewSet):
             })
         
         # Calculate variance for volatility
+        # Use adjusted variance (residuals from expected margin) instead of raw margin variance
+        # This accounts for opponent strength and site, measuring "genuine swinginess"
         import statistics
-        variance_a = statistics.stdev(margins_a) if len(margins_a) >= 2 else None
-        variance_b = statistics.stdev(margins_b) if len(margins_b) >= 2 else None
+        
+        # Try to compute adjusted variance (opponent-adjusted residuals)
+        variance_a = compute_adjusted_variance(
+            team=team_a,
+            season=season,
+            recent_games=recent_games_a,
+            nat_avg_ortg=nat_avg.avg_ortg,
+            hca_points=hca_points
+        )
+        
+        variance_b = compute_adjusted_variance(
+            team=team_b,
+            season=season,
+            recent_games=recent_games_b,
+            nat_avg_ortg=nat_avg.avg_ortg,
+            hca_points=hca_points
+        )
+        
+        # Fallback to raw margin variance if adjusted variance couldn't be computed
+        # (e.g., if opponent ratings not available for some games)
+        if variance_a is None:
+            variance_a = statistics.stdev(margins_a) if len(margins_a) >= 2 else None
+        if variance_b is None:
+            variance_b = statistics.stdev(margins_b) if len(margins_b) >= 2 else None
+        
+        # Calculate average fg3_rate from recent games (for volatility score)
+        # This ensures we use actual team data even if TeamSeasonStats is not populated
+        fg3_rates_a = [g.fg3_rate for g in recent_games_a if g.fg3_rate is not None]
+        fg3_rates_b = [g.fg3_rate for g in recent_games_b if g.fg3_rate is not None]
+        
+        avg_fg3_rate_a = statistics.mean(fg3_rates_a) if fg3_rates_a else None
+        avg_fg3_rate_b = statistics.mean(fg3_rates_b) if fg3_rates_b else None
         
         recent_form_a = {
             'games_analyzed': len(recent_games_a),
@@ -616,9 +735,44 @@ class MatchupViewSet(viewsets.ViewSet):
         }
         
         # ===== VOLATILITY SCORE =====
-        # Compute volatility using tempo and variance (fg3_rate from stats or defaults)
-        fg3_rate_a = stats_a.fg3_rate if (stats_a and stats_a.fg3_rate) else 35.0
-        fg3_rate_b = stats_b.fg3_rate if (stats_b and stats_b.fg3_rate) else 35.0
+        # Compute dynamic ranges from current season distribution (P5 to P95)
+        # Query all teams in the season for tempo and fg3_rate
+        season_ratings = TeamSeasonRatings.objects.filter(season=season).values_list('adj_tempo', flat=True)
+        season_stats = TeamSeasonStats.objects.filter(season=season, fg3_rate__isnull=False).values_list('fg3_rate', flat=True)
+        
+        # Calculate dynamic ranges if we have enough data, otherwise use defaults
+        if len(season_ratings) >= 10 and len(season_stats) >= 10:
+            vol_ranges = compute_volatility_ranges(
+                tempo_values=list(season_ratings),
+                fg3_rate_values=list(season_stats),
+                variance_values=None  # Could add recent variance from games if desired
+            )
+            tempo_range = vol_ranges['tempo_range']
+            fg3_range = vol_ranges['fg3_rate_range']
+            var_range = vol_ranges['variance_range']
+        else:
+            # Not enough data, use defaults
+            tempo_range = None
+            fg3_range = None
+            var_range = None
+        
+        # Determine fg3_rate for each team with three-tier fallback:
+        # 1. Average from recent games (most current)
+        # 2. Season stats (if available)
+        # 3. Default to 35.0
+        if avg_fg3_rate_a is not None:
+            fg3_rate_a = avg_fg3_rate_a
+        elif stats_a and stats_a.fg3_rate:
+            fg3_rate_a = stats_a.fg3_rate
+        else:
+            fg3_rate_a = 35.0
+        
+        if avg_fg3_rate_b is not None:
+            fg3_rate_b = avg_fg3_rate_b
+        elif stats_b and stats_b.fg3_rate:
+            fg3_rate_b = stats_b.fg3_rate
+        else:
+            fg3_rate_b = 35.0
         
         volatility = compute_volatility_score(
             tempo_a=ratings_a.adj_tempo,
@@ -626,7 +780,10 @@ class MatchupViewSet(viewsets.ViewSet):
             fg3_rate_a=fg3_rate_a,
             fg3_rate_b=fg3_rate_b,
             recent_variance_a=variance_a,
-            recent_variance_b=variance_b
+            recent_variance_b=variance_b,
+            tempo_range=tempo_range,
+            fg3_rate_range=fg3_range,
+            variance_range=var_range
         )
         
         # Build response

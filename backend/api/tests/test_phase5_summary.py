@@ -59,7 +59,7 @@ class Phase5SmokeTestCase(TestCase):
         
         # 6. Volatility score
         vol_high = compute_volatility_score(
-            tempo_a=75.0, tempo_b=74.0,
+            tempo_a=64.0, tempo_b=65.0,  # SLOW pace = high volatility
             fg3_rate_a=48.0, fg3_rate_b=50.0,
             recent_variance_a=18.0, recent_variance_b=20.0
         )
@@ -67,7 +67,7 @@ class Phase5SmokeTestCase(TestCase):
         self.assertGreater(vol_high['volatility_score'], 60)  # Should be high volatility
         
         vol_low = compute_volatility_score(
-            tempo_a=65.0, tempo_b=66.0,
+            tempo_a=74.0, tempo_b=75.0,  # FAST pace = low volatility
             fg3_rate_a=30.0, fg3_rate_b=32.0,
             recent_variance_a=6.0, recent_variance_b=7.0
         )

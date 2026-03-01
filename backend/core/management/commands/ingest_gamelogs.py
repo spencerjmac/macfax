@@ -75,7 +75,7 @@ class Command(BaseCommand):
         refresh = options['refresh']
         dry_run = options['dry_run']
         rebuild_mappings = options['rebuild_mappings']
-        source = options.get('source', 'espn')
+        source = options.get('source', 'ncaa')
         
         # Get or create season
         try:
@@ -145,7 +145,7 @@ class Command(BaseCommand):
     
     def _build_team_mappings(
         self,
-        source: str = 'espn',
+        source: str = 'ncaa',
         rebuild: bool = False,
         dry_run: bool = False
     ) -> TeamMapper:

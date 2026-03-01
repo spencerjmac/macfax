@@ -229,7 +229,7 @@ CORS_ALLOWED_ORIGINS = [
 
 See deployment guides:
 - Backend: [`backend/README.md`](backend/README.md#production-deployment)
-- Frontend: [`frontend/README.md`](frontend/README.md#deployment)
+- Frontend: [`web/README.md`](web/README.md#deployment)
 - Or check [`DEPLOYMENT.md`](DEPLOYMENT.md)
 
 ---

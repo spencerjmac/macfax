@@ -608,11 +608,15 @@ python manage.py shell
 # 1. Ingest yesterday's games
 python manage.py ingest_gamelogs --season 2026 --start $(date -d "yesterday" +%Y-%m-%d) --end $(date +%Y-%m-%d)
 
-# 2. Compute metrics for updated teams
+# 2. Compute metrics for updated teams (D1 only)
 python manage.py compute_team_metrics --season 2026
 
-# 3. Recompute ratings (includes new data)
-python manage.py compute_game_adjusted_ratings --season 2026
+# 3. Recompute ratings (includes new data) - USE ITERATIVE METHOD, NOT REGRESSION
+# CRITICAL: This command automatically filters to D1-only teams
+python manage.py compute_adjusted_ratings --season 2026
+
+# IMPORTANT: Always use compute_adjusted_ratings (iterative) for daily updates
+# The compute_game_adjusted_ratings (regression) command has known bugs
 ```
 
 ### 7-Day Test Window (Development)
@@ -624,8 +628,8 @@ python manage.py ingest_gamelogs --season 2026 --start 2025-11-04 --end 2025-11-
 # Compute metrics
 python manage.py compute_team_metrics --season 2026
 
-# Compute ratings
-python manage.py compute_game_adjusted_ratings --season 2026
+# Compute ratings - USE ITERATIVE METHOD
+python manage.py compute_adjusted_ratings --season 2026
 
 # Verify API
 curl http://localhost:8000/api/teams/duke/gamelog?season=2026
@@ -642,7 +646,8 @@ python manage.py ingest_gamelogs --season 2026
 
 # Then compute metrics and ratings
 python manage.py compute_team_metrics --season 2026
-python manage.py compute_game_adjusted_ratings --season 2026
+# IMPORTANT: Use iterative method, NOT regression (compute_game_adjusted_ratings has known bugs)
+python manage.py compute_adjusted_ratings --season 2026
 ```
 
 ---

@@ -273,13 +273,13 @@ def compute_matchup_four_factors(
     # Expected values for Team A
     exp_efg_a = efg_a * (efg_d_b / nat_efg)
     exp_tov_a = tov_a * (tov_d_b / nat_tov)
-    exp_orb_a = orb_a * (orb_d_a / nat_orb)  # Using opponent's DRB% (their ORB allowed)
+    exp_orb_a = orb_a * (orb_d_b / nat_orb)  # Team A offense vs Team B defense
     exp_ftr_a = ftr_a * (ftr_d_b / nat_ftr)
     
     # Expected values for Team B
     exp_efg_b = efg_b * (efg_d_a / nat_efg)
     exp_tov_b = tov_b * (tov_d_a / nat_tov)
-    exp_orb_b = orb_b * (orb_d_b / nat_orb)
+    exp_orb_b = orb_b * (orb_d_a / nat_orb)  # Team B offense vs Team A defense
     exp_ftr_b = ftr_b * (ftr_d_a / nat_ftr)
     
     # Compute edges (positive = Team A advantage)
@@ -313,45 +313,58 @@ def compute_points_from_four_factors(
     coef_tov: float,
     coef_orb: float,
     coef_ftr: float,
-    coef_intercept: float
+    coef_intercept: float,
+    pace: float
 ) -> Dict:
     """
     Compute predicted margin contribution from four factor edges using regression coefficients.
     
-    Formula: margin = coef_efg*efg_edge + coef_tov*tov_edge + coef_orb*orb_edge + coef_ftr*ftr_edge + intercept
+    Formula: 
+        efficiency_margin_100 = coef_efg*efg_edge + coef_tov*tov_edge + coef_orb*orb_edge + coef_ftr*ftr_edge + intercept
+        game_margin = efficiency_margin_100 * (pace / 100)
     
     This uses learned coefficients from historical games to weight each four factor's
-    contribution to the final score.
+    contribution to the final score, then scales by game pace.
     
     Args:
         efg_edge: eFG% edge (Team A - Team B)
         tov_edge: TOV% edge (Team B - Team A, since lower is better)
         orb_edge: ORB% edge (Team A - Team B)
         ftr_edge: FTR edge (Team A - Team B)
-        coef_efg: Points per 1% eFG edge
-        coef_tov: Points per 1% TOV edge
-        coef_orb: Points per 1% ORB edge
-        coef_ftr: Points per 1% FTR edge
-        coef_intercept: Baseline margin
+        coef_efg: Efficiency points per 100 poss per 1% eFG edge
+        coef_tov: Efficiency points per 100 poss per 1% TOV edge
+        coef_orb: Efficiency points per 100 poss per 1% ORB edge
+        coef_ftr: Efficiency points per 100 poss per 1% FTR edge
+        coef_intercept: Baseline efficiency margin per 100 poss
+        pace: Expected game pace (possessions per game)
     
     Returns:
-        Dict with margin breakdown and total
+        Dict with margin breakdown and total (scaled by pace)
     """
-    # Compute contribution from each factor
-    pts_from_efg = efg_edge * coef_efg
-    pts_from_tov = tov_edge * coef_tov
-    pts_from_orb = orb_edge * coef_orb
-    pts_from_ftr = ftr_edge * coef_ftr
+    # Compute contribution from each factor (per 100 possessions)
+    eff_from_efg = efg_edge * coef_efg
+    eff_from_tov = tov_edge * coef_tov
+    eff_from_orb = orb_edge * coef_orb
+    eff_from_ftr = ftr_edge * coef_ftr
     
-    # Total predicted margin
-    total_margin = pts_from_efg + pts_from_tov + pts_from_orb + pts_from_ftr + coef_intercept
+    # Total predicted efficiency margin (per 100 possessions)
+    efficiency_margin_100 = eff_from_efg + eff_from_tov + eff_from_orb + eff_from_ftr + coef_intercept
+    
+    # Scale by pace to get game margin
+    pace_factor = pace / 100
+    pts_from_efg = eff_from_efg * pace_factor
+    pts_from_tov = eff_from_tov * pace_factor
+    pts_from_orb = eff_from_orb * pace_factor
+    pts_from_ftr = eff_from_ftr * pace_factor
+    baseline = coef_intercept * pace_factor
+    total_margin = efficiency_margin_100 * pace_factor
     
     return {
         'pts_from_efg': round(pts_from_efg, 2),
         'pts_from_tov': round(pts_from_tov, 2),
         'pts_from_orb': round(pts_from_orb, 2),
         'pts_from_ftr': round(pts_from_ftr, 2),
-        'baseline': round(coef_intercept, 2),
+        'baseline': round(baseline, 2),
         'total_margin': round(total_margin, 2),
     }
 
@@ -364,7 +377,8 @@ def identify_top_drivers(
     coef_efg: float,
     coef_tov: float,
     coef_orb: float,
-    coef_ftr: float
+    coef_ftr: float,
+    pace: float
 ) -> list:
     """
     Identify the top 3 four factor drivers of the matchup.
@@ -373,7 +387,8 @@ def identify_top_drivers(
     with sign indicating which team has the advantage.
     
     Args:
-        Four factor edges and their coefficients
+        Four factor edges and their coefficients (per 100 poss)
+        pace: Game pace (possessions per game) for scaling to game points
     
     Returns:
         List of dicts with factor name, edge, contribution, and team advantage
@@ -383,29 +398,32 @@ def identify_top_drivers(
             {'factor': 'TOV%', 'edge': -1.3, 'points': -1.2, 'team': 'b'}
         ]
     """
+    # Scale coefficients by pace to get game impact (not per-100-poss)
+    pace_factor = pace / 100
+    
     drivers = [
         {
             'factor': 'eFG%',
             'edge': efg_edge,
-            'points': efg_edge * coef_efg,
+            'points': efg_edge * coef_efg * pace_factor,
             'team': 'a' if efg_edge > 0 else 'b'
         },
         {
             'factor': 'TOV%',
             'edge': tov_edge,
-            'points': tov_edge * coef_tov,
+            'points': tov_edge * coef_tov * pace_factor,
             'team': 'a' if tov_edge > 0 else 'b'  # Already flipped (lower is better)
         },
         {
             'factor': 'ORB%',
             'edge': orb_edge,
-            'points': orb_edge * coef_orb,
+            'points': orb_edge * coef_orb * pace_factor,
             'team': 'a' if orb_edge > 0 else 'b'
         },
         {
             'factor': 'FTR',
             'edge': ftr_edge,
-            'points': ftr_edge * coef_ftr,
+            'points': ftr_edge * coef_ftr * pace_factor,
             'team': 'a' if ftr_edge > 0 else 'b'
         }
     ]
@@ -471,29 +489,78 @@ def compute_shot_profile_edges(
     }
 
 
+def compute_volatility_ranges(tempo_values, fg3_rate_values, variance_values=None):
+    """
+    Compute dynamic volatility ranges from current season distribution.
+    Uses P5 and P95 to capture the practical range of D1 basketball.
+    
+    Args:
+        tempo_values: Array-like of adj_tempo values (all teams in season)
+        fg3_rate_values: Array-like of fg3_rate values (all teams in season)
+        variance_values: Optional array-like of recent variance values
+    
+    Returns:
+        Dict with ranges: {
+            'tempo_range': (p5, p95),
+            'fg3_rate_range': (p5, p95),
+            'variance_range': (p5, p95) or default (5, 20)
+        }
+    """
+    import numpy as np
+    
+    # Convert to numpy arrays if not already
+    tempo_arr = np.array(tempo_values)
+    fg3_arr = np.array(fg3_rate_values)
+    
+    # Calculate P5 and P95 for tempo and fg3_rate
+    tempo_p5 = float(np.percentile(tempo_arr, 5))
+    tempo_p95 = float(np.percentile(tempo_arr, 95))
+    fg3_p5 = float(np.percentile(fg3_arr, 5))
+    fg3_p95 = float(np.percentile(fg3_arr, 95))
+    
+    # Variance range (if provided, otherwise use sensible defaults)
+    if variance_values is not None and len(variance_values) > 0:
+        var_arr = np.array(variance_values)
+        var_p5 = float(np.percentile(var_arr, 5))
+        var_p95 = float(np.percentile(var_arr, 95))
+    else:
+        # Default variance range based on typical D1 game variance
+        var_p5 = 5.0
+        var_p95 = 20.0
+    
+    return {
+        'tempo_range': (tempo_p5, tempo_p95),
+        'fg3_rate_range': (fg3_p5, fg3_p95),
+        'variance_range': (var_p5, var_p95),
+    }
+
+
 def compute_volatility_score(
     tempo_a: float,
     tempo_b: float,
     fg3_rate_a: float,
     fg3_rate_b: float,
     recent_variance_a: Optional[float] = None,
-    recent_variance_b: Optional[float] = None
+    recent_variance_b: Optional[float] = None,
+    tempo_range: Optional[Tuple[float, float]] = None,
+    fg3_rate_range: Optional[Tuple[float, float]] = None,
+    variance_range: Optional[Tuple[float, float]] = None
 ) -> Dict:
     """
-    Compute game volatility score (0-100) based on factors that increase variance.
+    Compute game volatility score (0-100) based on factors that increase upset potential.
     
-    Higher volatility = more unpredictable game, higher upset potential.
+    Higher volatility = more unpredictable outcome, higher upset potential.
     
     Factors:
-    1. Pace (fast = more possessions = more variance): 30% weight
+    1. Pace (SLOWER = more variance, fewer possessions for talent to prevail): 30% weight
     2. 3-point volume (more 3s = more variance): 40% weight
     3. Recent performance variance (inconsistency): 30% weight
     
     Score interpretation:
-    - 0-30: Low volatility (predictable, slow, few 3s)
+    - 0-30: Low volatility (predictable, fast pace settling to talent)
     - 31-60: Medium volatility (typical game)
-    - 61-80: High volatility (fast pace, lots of 3s)
-    - 81-100: Extreme volatility (chaos game, upset alert)
+    - 61-80: High volatility (slow pace + lots of 3s = upset potential)
+    - 81-100: Extreme volatility (chaos game, anything can happen)
     
     Args:
         tempo_a: Team A's adjusted tempo
@@ -502,26 +569,41 @@ def compute_volatility_score(
         fg3_rate_b: Team B's 3-point attempt rate (%)
         recent_variance_a: Team A's recent margin variance (optional)
         recent_variance_b: Team B's recent margin variance (optional)
+        tempo_range: (P5, P95) tuple for tempo. If None, uses default (63.9, 75.2)
+        fg3_rate_range: (P5, P95) tuple for fg3_rate. If None, uses default (27.9, 51.9)
+        variance_range: (P5, P95) tuple for variance. If None, uses default (5, 20)
     
     Returns:
         Dict with volatility score and breakdown
     """
+    # Helper function to normalize to 0-100 range with clamping
+    def norm_to_100(x: float, lo: float, hi: float) -> float:
+        """Normalize x from range [lo, hi] to [0, 100], clamped to bounds"""
+        return max(0, min(100, ((x - lo) / (hi - lo)) * 100))
+    
+    # Use provided ranges or fall back to historical defaults
+    tempo_lo, tempo_hi = tempo_range if tempo_range else (63.9, 75.2)
+    fg3_lo, fg3_hi = fg3_rate_range if fg3_rate_range else (27.9, 51.9)
+    var_lo, var_hi = variance_range if variance_range else (5.0, 20.0)
+    
     # 1. PACE SCORE (0-100)
-    # Actual D1 tempo range: 63.9 (slowest) to 75.2 (fastest), mean 69.3
+    # INVERTED: Slower pace = higher volatility (fewer possessions = more random outcome)
+    # tempo_range is dynamically calculated from current season (P5 to P95)
     avg_tempo = (tempo_a + tempo_b) / 2
-    pace_score = min(100, max(0, (avg_tempo - 63.9) / (75.2 - 63.9) * 100))
+    pace_percentile = norm_to_100(avg_tempo, tempo_lo, tempo_hi)
+    pace_score = 100 - pace_percentile  # Invert: slow = volatile, fast = less volatile
     
     # 2. THREE-POINT VOLUME SCORE (0-100)
-    # Actual D1 FG3 rate: 5th-95th percentile is 27.9% to 51.9%
+    # fg3_rate_range is dynamically calculated from current season (P5 to P95)
     avg_fg3_rate = (fg3_rate_a + fg3_rate_b) / 2
-    three_pt_score = min(100, max(0, (avg_fg3_rate - 27.9) / (51.9 - 27.9) * 100))
+    three_pt_score = norm_to_100(avg_fg3_rate, fg3_lo, fg3_hi)
     
     # 3. VARIANCE SCORE (0-100)
     # If recent variance provided, use it; otherwise default to 50
     if recent_variance_a is not None and recent_variance_b is not None:
-        # Typical margin variance ~8-15 points
+        # variance_range is dynamically calculated from current season (P5 to P95)
         avg_variance = (recent_variance_a + recent_variance_b) / 2
-        variance_score = min(100, max(0, (avg_variance - 5) / (20 - 5) * 100))
+        variance_score = norm_to_100(avg_variance, var_lo, var_hi)
     else:
         variance_score = 50  # Default (no data)
     
@@ -533,17 +615,23 @@ def compute_volatility_score(
     )
     volatility = round(volatility, 1)
     
+    # Calculate thresholds for reasons (approximate P10 and P90)
+    tempo_p10 = tempo_lo + 0.05 * (tempo_hi - tempo_lo)  # ~10th percentile
+    tempo_p90 = tempo_lo + 0.95 * (tempo_hi - tempo_lo)  # ~90th percentile
+    fg3_p10 = fg3_lo + 0.05 * (fg3_hi - fg3_lo)  # ~10th percentile
+    fg3_p90 = fg3_lo + 0.95 * (fg3_hi - fg3_lo)  # ~90th percentile
+    
     # Generate reasons
     reasons = []
     
-    if avg_tempo >= 72.5:  # ~90th percentile
-        reasons.append(f"Fast pace ({avg_tempo:.1f} possessions)")
-    elif avg_tempo <= 66.5:  # ~10th percentile
-        reasons.append(f"Slow pace ({avg_tempo:.1f} possessions)")
+    if avg_tempo <= tempo_p10:  # ~10th percentile (SLOW)
+        reasons.append(f"Slow pace increases upset potential ({avg_tempo:.1f} possessions)")
+    elif avg_tempo >= tempo_p90:  # ~90th percentile (FAST)
+        reasons.append(f"Fast pace favors the better team ({avg_tempo:.1f} possessions)")
     
-    if avg_fg3_rate >= 47:  # ~90th percentile
+    if avg_fg3_rate >= fg3_p90:  # ~90th percentile
         reasons.append(f"Heavy 3-point volume ({avg_fg3_rate:.1f}% of shots)")
-    elif avg_fg3_rate <= 32:  # ~10th percentile
+    elif avg_fg3_rate <= fg3_p10:  # ~10th percentile
         reasons.append(f"Low 3-point rate ({avg_fg3_rate:.1f}% of shots)")
     
     if recent_variance_a and recent_variance_b:
@@ -646,5 +734,91 @@ def format_recent_form(recent_games: list) -> Dict:
         'variance': round(variance, 1),
         'games': games_data[:5],  # Return max 5 games for display
     }
+
+
+def compute_wab_for_team(
+    team_ratings,
+    bubble_ratings,
+    team_games,
+    nat_avg_ortg: float,
+    hca_points: float,
+    sigma: float
+) -> float:
+    """
+    Compute WAB (Wins Above Bubble) for a team.
+    
+    WAB_T = Σ (Result_g - pBubble_g)
+    where:
+    - Result_g = 1 if team won game g, else 0
+    - pBubble_g = probability that Bubble Team (#45 ranked) would win that same game
+    
+    Args:
+        team_ratings: TeamSeasonRatings for the team
+        bubble_ratings: TeamSeasonRatings for the Bubble Team (#45 ranked)
+        team_games: QuerySet of TeamGameStats for the team (completed games only)
+        nat_avg_ortg: National average offensive rating
+        hca_points: Home court advantage in points
+        sigma: Prediction standard deviation
+    
+    Returns:
+        WAB value (float)
+    """
+    wab = 0.0
+    
+    for game_stat in team_games:
+        # Get opponent ratings
+        from core.models import TeamSeasonRatings
+        try:
+            opp_ratings = TeamSeasonRatings.objects.get(
+                team=game_stat.opponent,
+                season=team_ratings.season
+            )
+        except TeamSeasonRatings.DoesNotExist:
+            # Skip non-D1 opponents or opponents without ratings
+            continue
+        
+        # Determine result (1 if won, 0 if lost)
+        try:
+            from core.models import TeamGameStats
+            opp_stat = TeamGameStats.objects.get(
+                game=game_stat.game,
+                team=game_stat.opponent
+            )
+            result = 1.0 if game_stat.pts > opp_stat.pts else 0.0
+        except TeamGameStats.DoesNotExist:
+            continue
+        
+        # Determine site from team perspective
+        if game_stat.home_away == 'H':
+            site = 'home'  # Team at home
+        elif game_stat.home_away == 'A':
+            site = 'away'  # Team away
+        else:
+            site = 'neutral'
+        
+        # Compute pBubble_g: probability that Bubble Team would win
+        # Treat Bubble Team as if it were the actual team in this game
+        forecast = forecast_game(
+            adj_o_a=bubble_ratings.adj_o,
+            adj_d_a=bubble_ratings.adj_d,
+            adj_em_a=bubble_ratings.adj_em,
+            tempo_a=bubble_ratings.adj_tempo,
+            adj_o_b=opp_ratings.adj_o,
+            adj_d_b=opp_ratings.adj_d,
+            adj_em_b=opp_ratings.adj_em,
+            tempo_b=opp_ratings.adj_tempo,
+            nat_avg_ortg=nat_avg_ortg,
+            hca_points=hca_points,
+            sigma=sigma,
+            site=site
+        )
+        
+        # Extract bubble win probability
+        p_bubble = forecast['prob_a']  # Bubble team is "Team A" in forecast
+        
+        # Add contribution to WAB
+        wab += (result - p_bubble)
+    
+    return wab
 
 

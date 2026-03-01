@@ -80,8 +80,10 @@ class EfficiencyLandscapeView(APIView):
                 )
         
         # Build base queryset - use our computed ratings from TeamSeasonRatings
+        # CRITICAL: Only include D1 teams
         queryset = TeamSeasonRatings.objects.filter(
-            season=season
+            season=season,
+            team__is_d1=True  # Only D1 teams
         ).select_related('team')
         
         # Order by Adj EM descending

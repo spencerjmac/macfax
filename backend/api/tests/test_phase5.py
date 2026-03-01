@@ -109,18 +109,18 @@ class MathFunctionsTestCase(TestCase):
     
     def test_volatility_score_range(self):
         """Test volatility score is 0-100"""
-        # Low volatility: slow, few 3s, consistent
+        # Low volatility: FAST (talent prevails), few 3s, consistent
         result = compute_volatility_score(
-            tempo_a=65.0, tempo_b=66.0,
+            tempo_a=74.0, tempo_b=75.0,  # Fast pace (low volatility with new logic)
             fg3_rate_a=30.0, fg3_rate_b=32.0,
             recent_variance_a=6.0, recent_variance_b=7.0
         )
         self.assertTrue(0 <= result['volatility_score'] <= 100)
         self.assertLess(result['volatility_score'], 50)
         
-        # High volatility: fast, lots of 3s, inconsistent
+        # High volatility: SLOW (upset potential), lots of 3s, inconsistent
         result = compute_volatility_score(
-            tempo_a=74.0, tempo_b=75.0,
+            tempo_a=64.0, tempo_b=65.0,  # Slow pace (high volatility with new logic)
             fg3_rate_a=48.0, fg3_rate_b=50.0,
             recent_variance_a=18.0, recent_variance_b=20.0
         )

@@ -201,7 +201,7 @@ echo "Daily update complete: $(date)"
 
 ### Add Game Log Tab to Team Profile
 
-In your team profile page (e.g., `frontend/src/app/teams/[slug]/page.tsx`):
+In your team profile page (e.g., `web/src/app/teams/[slug]/page.tsx`):
 
 ```tsx
 import GameLog from '@/components/GameLog';

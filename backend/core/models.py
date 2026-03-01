@@ -515,6 +515,13 @@ class TeamGameStats(models.Model):
     tov = models.IntegerField(default=0, help_text="Turnovers")
     pf = models.IntegerField(default=0, help_text="Personal fouls")
     
+    # Resume metrics
+    game_value = models.FloatField(
+        null=True,
+        blank=True,
+        help_text="Game Value: Result (1=W, 0=L) - P(bubble team wins). Higher = better resume win"
+    )
+    
     # Raw API data for debugging
     raw_json = models.JSONField(null=True, blank=True)
     
@@ -616,7 +623,6 @@ class TeamGameStats(models.Model):
     
     # ==================== SHOOTING PERCENTAGES ====================
     
-    @property
     @property
     def fg_pct(self):
         """Field Goal Percentage"""
@@ -942,6 +948,13 @@ class TeamSeasonRatings(models.Model):
     # ==================== Four Factor Index ====================
     ffi_raw = models.FloatField(default=50.0, help_text="Four Factor Index (from raw margins, 0-100 scale)")
     ffi_adj = models.FloatField(default=50.0, help_text="Four Factor Index (from adjusted margins, 0-100 scale)")
+    
+    # ==================== Resume Metrics ====================
+    wab = models.FloatField(null=True, blank=True, help_text="Wins Above Bubble")
+    sor_rank = models.IntegerField(null=True, blank=True, help_text="Strength of Record rank")
+    net_rank = models.IntegerField(null=True, blank=True, help_text="NCAA NET ranking")
+    sos_rank = models.IntegerField(null=True, blank=True, help_text="Strength of Schedule rank (1 = hardest)")
+    sos_win_pct = models.FloatField(null=True, blank=True, help_text="Expected win% for an average D1 team vs this schedule")
     
     # Rankings
     rank_adj_o = models.IntegerField(null=True, blank=True)

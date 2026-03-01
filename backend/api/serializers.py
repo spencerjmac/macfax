@@ -164,6 +164,13 @@ class RankingsSerializer(serializers.Serializer):
     ft_pct = serializers.SerializerMethodField()
     fg3_rate = serializers.SerializerMethodField()
     
+    # Resume Metrics
+    wab = serializers.FloatField()
+    sor_rank = serializers.IntegerField()
+    net_rank = serializers.IntegerField()
+    sos_rank = serializers.IntegerField()
+    sos_win_pct = serializers.FloatField()
+    
     # Legacy fields for compatibility
     aor_100 = serializers.FloatField(source='adj_o')
     adr_100 = serializers.FloatField(source='adj_d')
@@ -561,6 +568,8 @@ class GameLogSerializer(serializers.ModelSerializer):
     team_name = serializers.CharField(source='team.name', read_only=True)
     opponent_name = serializers.CharField(source='opponent.name', read_only=True)
     opponent_slug = serializers.CharField(source='opponent.slug', read_only=True)
+    opponent_net_rank = serializers.SerializerMethodField()
+    quadrant = serializers.SerializerMethodField()
     game_date = serializers.DateField(source='game.game_date', read_only=True)
     went_to_ot = serializers.BooleanField(source='game.went_to_ot', read_only=True)
     
@@ -627,12 +636,16 @@ class GameLogSerializer(serializers.ModelSerializer):
     result = serializers.SerializerMethodField()
     margin = serializers.SerializerMethodField()
     
+    # Resume metrics
+    game_value = serializers.FloatField(read_only=True)
+    
     class Meta:
         model = TeamGameStats
         fields = [
             # Game info
             'id', 'game_date', 'team_name', 'opponent_name', 'opponent_slug',
-            'home_away', 'went_to_ot', 'result', 'margin',
+            'opponent_net_rank', 'quadrant',
+            'home_away', 'went_to_ot', 'result', 'margin', 'game_value',
             
             # Scoring
             'pts',
@@ -688,6 +701,32 @@ class GameLogSerializer(serializers.ModelSerializer):
         if opp_stats:
             return obj.pts - opp_stats.pts
         return 0
+    
+    def get_opponent_net_rank(self, obj):
+        """Get opponent's NET rank (use rank_adj_em as proxy if net_rank not available)"""
+        try:
+            from core.models import TeamSeasonRatings, Season
+            # Get season from game
+            season = Season.objects.get(year=obj.game.season_year)
+            opp_ratings = TeamSeasonRatings.objects.get(
+                team=obj.opponent,
+                season=season
+            )
+            return opp_ratings.net_rank or opp_ratings.rank_adj_em
+        except Exception as e:
+            # Log exception for debugging
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Failed to get opponent NET rank: {e}")
+            return None
+    
+    def get_quadrant(self, obj):
+        """Calculate NCAA quadrant for this game"""
+        from api.resume_utils import get_quadrant
+        opponent_rank = self.get_opponent_net_rank(obj)
+        if opponent_rank is None:
+            return None
+        return get_quadrant(opponent_rank, obj.home_away)
 
 
 class TeamSeasonMetricsSerializer(serializers.ModelSerializer):
@@ -733,6 +772,8 @@ class TeamSeasonRatingsSerializer(serializers.ModelSerializer):
             'adj_efg_margin', 'adj_tov_edge', 'adj_reb_edge', 'adj_ftr_margin',
             # Four Factor Index
             'ffi_raw', 'ffi_adj',
+            # Resume
+            'wab', 'sor_rank', 'net_rank', 'sos_rank', 'sos_win_pct',
             # Metadata
             'games_played', 'wins', 'losses', 'd1_games_played', 
             'total_possessions', 'hca_estimate',

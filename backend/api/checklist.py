@@ -481,7 +481,20 @@ def _check_four_factor_index(team_stats: TeamSeasonStats) -> Dict[str, Any]:
 
 def _check_wab(team_stats: TeamSeasonStats) -> Dict[str, Any]:
     """Check WAB > 5"""
+    # Try to get WAB from TeamSeasonStats first, then from TeamSeasonRatings
     wab = team_stats.wab
+    
+    if wab is None:
+        # Fallback to TeamSeasonRatings
+        try:
+            from core.models import TeamSeasonRatings
+            ratings = TeamSeasonRatings.objects.get(
+                team=team_stats.team,
+                season=team_stats.season
+            )
+            wab = ratings.wab
+        except (TeamSeasonRatings.DoesNotExist, AttributeError):
+            pass
     
     if wab is None:
         return {

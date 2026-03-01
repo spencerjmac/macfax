@@ -118,7 +118,7 @@ def main():
         print("\n✅ Game log pipeline is fully operational!")
         print("\nFinal Step:")
         print("  → Integrate GameLog component into team profile page")
-        print("  → File: frontend/src/app/teams/[slug]/page.tsx")
+        print("  → File: web/src/app/teams/[slug]/page.tsx")
         print(f"\nRun status check: python check_status.py\n")
     else:
         print(f"\n⚠️  {len(results) - passed} step(s) failed")

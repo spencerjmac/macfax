@@ -337,6 +337,23 @@ class Command(BaseCommand):
             rating.rank_adj_d = rank
             rating.save(update_fields=['rank_adj_d'])
         
+        # Update nat_avg.avg_ortg to match actual average of adjusted ratings
+        self.stdout.write(f"Updating national average offensive rating...")
+        from django.db.models import Avg
+        
+        old_avg_ortg = nat_avg.avg_ortg
+        actual_avg_adj_o = TeamSeasonRatings.objects.filter(season=season).aggregate(
+            Avg('adj_o')
+        )['adj_o__avg']
+        
+        if actual_avg_adj_o:
+            nat_avg.avg_ortg = round(actual_avg_adj_o, 4)
+            nat_avg.save(update_fields=['avg_ortg'])
+            self.stdout.write(
+                f"  Updated avg_ortg: {old_avg_ortg:.4f} → {nat_avg.avg_ortg:.4f} "
+                f"(Δ {abs(nat_avg.avg_ortg - old_avg_ortg):.4f})"
+            )
+        
         self.stdout.write("\n" + "=" * 60)
         self.stdout.write("SUMMARY")
         self.stdout.write("=" * 60)

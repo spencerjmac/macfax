@@ -82,6 +82,10 @@ export interface TeamSeason {
   
   // Resume Metrics
   wab: number | null;
+  sor_rank: number | null;
+  net_rank: number | null;
+  sos_rank: number | null;
+  sos_win_pct: number | null;
   sor: number | null;
   luck: number | null;
   sos_adjEM: number | null;
