@@ -278,8 +278,11 @@ class Command(BaseCommand):
         existing_game = Game.objects.filter(source_game_id=game_id).first()
         
         if existing_game and not refresh:
-            # Skip unless refresh is requested
-            return {'created': False, 'updated': False, 'team_stats': 0, 'scoring_events': 0}
+            # Smart skip: only skip if game is already final
+            # This allows in-progress and scheduled games to be updated on subsequent runs
+            if existing_game.status == 'final':
+                return {'created': False, 'updated': False, 'team_stats': 0, 'scoring_events': 0}
+            # Game exists but isn't final - re-process it to get updated data
         
         if dry_run:
             self.stdout.write(f"    [DRY RUN] Would process: {away_name} @ {home_name}")
