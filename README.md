@@ -78,7 +78,7 @@ python -m venv .venv
 ```powershell
 cd backend
 pip install -r requirements.txt
-copy .env.example .env
+copy .env.example .envpy
 python manage.py migrate
 ```
 

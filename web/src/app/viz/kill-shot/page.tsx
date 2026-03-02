@@ -2,7 +2,7 @@ import { Metadata } from 'next';
 import Link from 'next/link';
 
 export const metadata: Metadata = {
-  title: 'Kill Shot Analysis | CBB Analytics',
+  title: 'Kill Shot Analysis | macfax',
 };
 
 export default function KillShotPage() {

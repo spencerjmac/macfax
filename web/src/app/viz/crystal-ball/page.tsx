@@ -2,7 +2,7 @@ import { Metadata } from 'next';
 import Link from 'next/link';
 
 export const metadata: Metadata = {
-  title: 'Crystal Ball | CBB Analytics',
+  title: 'Crystal Ball | macfax',
 };
 
 export default function CrystalBallPage() {

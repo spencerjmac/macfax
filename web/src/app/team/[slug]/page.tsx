@@ -22,14 +22,14 @@ export async function generateMetadata({ params }: TeamPageProps): Promise<Metad
   
   if (!teamData) {
     return {
-      title: 'Team Not Found | CBB Analytics',
+      title: 'Team Not Found | macfax',
     };
   }
   
   const { team } = teamData;
   
   return {
-    title: `${team.teamName} - ${team.season} | CBB Analytics`,
+    title: `${team.teamName} - ${team.season} | macfax`,
     description: `Advanced analytics and statistics for ${team.teamName} ${team.season} season. Efficiency metrics, four factors, and predictive analysis.`,
   };
 }

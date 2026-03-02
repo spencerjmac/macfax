@@ -483,7 +483,7 @@ function FourFactorSection({ result }: { result: MatchupResult }) {
 
 function FactorBar({ value }: { value: number }) {
   const percentage = Math.min(Math.abs(value) / 10 * 100, 100); // Scale: 10% edge = 100% bar
-  const color = value > 0 ? 'bg-blue-500' : 'bg-orange-500';
+  const color = value > 0 ? 'bg-blue-500' : 'bg-negative';
   
   return (
     <div className="w-full h-6 bg-gray-200 rounded overflow-hidden">
@@ -517,7 +517,7 @@ function TopDriversSection({ drivers, teamA, teamB }: { drivers: TopDriver[]; te
       
       <div className="space-y-4">
         {drivers.map((driver, index) => (
-          <div key={index} className="border-l-4 border-orange-500 pl-4 py-2">
+          <div key={index} className="border-l-4 border-brand pl-4 py-2">
             <div className="flex justify-between items-start">
               <div>
                 <p className="font-bold text-lg">
@@ -561,7 +561,7 @@ function ShotProfileSection({ profile, teamA, teamB }: { profile: any; teamA: st
             <span className="text-sm font-bold">{profile.fg3_rate_b.toFixed(1)}%</span>
           </div>
           <p className="text-xs text-gray-600 mt-2">
-            Edge: <span className={profile.fg3_rate_edge > 0 ? 'text-blue-600 font-bold' : 'text-orange-600 font-bold'}>
+            Edge: <span className={profile.fg3_rate_edge > 0 ? 'text-blue-600 font-bold' : 'text-negative font-bold'}>
               {profile.fg3_rate_edge > 0 ? '+' : ''}{profile.fg3_rate_edge.toFixed(1)}%
             </span>
           </p>
@@ -579,7 +579,7 @@ function ShotProfileSection({ profile, teamA, teamB }: { profile: any; teamA: st
             <span className="text-sm font-bold">{profile.fg3_pct_b.toFixed(1)}%</span>
           </div>
           <p className="text-xs text-gray-600 mt-2">
-            Edge: <span className={profile.fg3_pct_edge > 0 ? 'text-blue-600 font-bold' : 'text-orange-600 font-bold'}>
+            Edge: <span className={profile.fg3_pct_edge > 0 ? 'text-blue-600 font-bold' : 'text-negative font-bold'}>
               {profile.fg3_pct_edge > 0 ? '+' : ''}{profile.fg3_pct_edge.toFixed(1)}%
             </span>
           </p>
@@ -597,7 +597,7 @@ function ShotProfileSection({ profile, teamA, teamB }: { profile: any; teamA: st
             <span className="text-sm font-bold">{profile.fg2_pct_b.toFixed(1)}%</span>
           </div>
           <p className="text-xs text-gray-600 mt-2">
-            Edge: <span className={profile.fg2_pct_edge > 0 ? 'text-blue-600 font-bold' : 'text-orange-600 font-bold'}>
+            Edge: <span className={profile.fg2_pct_edge > 0 ? 'text-blue-600 font-bold' : 'text-negative font-bold'}>
               {profile.fg2_pct_edge > 0 ? '+' : ''}{profile.fg2_pct_edge.toFixed(1)}%
             </span>
           </p>
@@ -613,7 +613,7 @@ function VolatilitySection({ volatility }: { volatility: any }) {
   const getVolatilityColor = (score: number) => {
     if (score < 30) return 'text-green-600';
     if (score < 60) return 'text-yellow-600';
-    if (score < 80) return 'text-orange-600';
+    if (score < 80) return 'text-warning';
     return 'text-red-600';
   };
   
@@ -743,8 +743,8 @@ function RecentFormSection({ teamA, teamB, formA, formB }: any) {
           <h3 className="text-lg font-bold mb-4">{teamB.name}</h3>
           
           <div className="grid grid-cols-3 gap-3 mb-4">
-            <div className="text-center p-3 bg-orange-50 rounded">
-              <p className="text-xl font-bold text-orange-600">{formB.record}</p>
+            <div className="text-center p-3 bg-brand/10 rounded">
+              <p className="text-xl font-bold text-brand">{formB.record}</p>
               <p className="text-xs text-gray-600">Record</p>
             </div>
             <div className="text-center p-3 bg-gray-50 rounded">

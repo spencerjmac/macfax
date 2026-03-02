@@ -38,13 +38,13 @@ export default function GlossaryTable({ metrics }: GlossaryTableProps) {
           placeholder="Search metrics..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="flex-1 max-w-md px-4 py-2 border border-ui-border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-orange"
+          className="flex-1 max-w-md px-4 py-2 border border-ui-border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand"
         />
         
         <select
           value={categoryFilter}
           onChange={(e) => setCategoryFilter(e.target.value)}
-          className="px-3 py-2 border border-ui-border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-orange"
+          className="px-3 py-2 border border-ui-border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand"
         >
           <option value="all">All Categories</option>
           {categories.map(cat => (

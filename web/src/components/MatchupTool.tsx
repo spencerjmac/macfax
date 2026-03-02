@@ -84,7 +84,7 @@ export default function MatchupTool({ teams }: MatchupToolProps) {
                 setTeamA(null);
               }}
               placeholder="Search for a team..."
-              className="w-full px-4 py-3 border border-ui-border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-orange"
+              className="w-full px-4 py-3 border border-ui-border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand"
             />
             
             {/* Dropdown */}

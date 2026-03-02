@@ -107,8 +107,8 @@ export default function TrapezoidChart({ teams }: TrapezoidChartProps) {
                 points,
               },
               style: {
-                fill: 'rgba(237, 113, 58, 0.1)',
-                stroke: '#ED713A',
+                fill: 'rgba(64, 144, 128, 0.1)',
+                stroke: '#409080',
                 lineWidth: 2,
               },
             };
@@ -124,16 +124,16 @@ export default function TrapezoidChart({ teams }: TrapezoidChartProps) {
           data: insideData,
           symbolSize: 8,
           itemStyle: {
-            color: '#ED713A',
+            color: '#409080',
             borderColor: '#fff',
             borderWidth: 1,
           },
           emphasis: {
             itemStyle: {
-              color: '#D85F2E',
+              color: '#357d70',
               borderWidth: 2,
               shadowBlur: 10,
-              shadowColor: '#ED713A',
+              shadowColor: '#409080',
             },
           },
           z: 2,
@@ -195,7 +195,7 @@ export default function TrapezoidChart({ teams }: TrapezoidChartProps) {
         </p>
         <div className="grid md:grid-cols-2 gap-4 text-sm">
           <div>
-            <strong className="text-brand-orange">Inside Trapezoid:</strong> Elite teams with 
+            <strong className="text-brand">Inside Trapezoid:</strong> Elite teams with 
             high efficiency margins across all tempo styles (slow, medium, fast).
           </div>
           <div>

@@ -16,7 +16,7 @@ export default function TeamHeader({ team, ranks }: TeamHeaderProps) {
       {/* Back Link */}
       <Link 
         href="/rankings" 
-        className="inline-flex items-center text-brand-orange hover:text-brand-orange-hover mb-6"
+        className="inline-flex items-center text-brand hover:text-brand-hover mb-6"
       >
         <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -53,11 +53,11 @@ export default function TeamHeader({ team, ranks }: TeamHeaderProps) {
               )}
               <div className="flex items-center gap-2">
                 <span className="text-text-muted">Rank:</span>
-                <span className="font-mono font-bold text-brand-orange">#{team.rank}</span>
+                <span className="font-mono font-bold text-brand">#{team.rank}</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-text-muted">AdjEM:</span>
-                <span className="font-mono font-bold text-brand-orange">
+                <span className="font-mono font-bold text-brand">
                   {team.adjEM.toFixed(2)}
                 </span>
                 {ranks && <RankPill rank={ranks.adjEM} />}

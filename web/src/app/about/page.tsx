@@ -3,7 +3,7 @@ import { getMetadata } from '@/lib/data';
 import Link from 'next/link';
 
 export const metadata: Metadata = {
-  title: 'About | CBB Analytics',
+  title: 'About | macfax',
   description: 'Learn about our data sources, methodology, and how we calculate advanced college basketball metrics.',
 };
 
@@ -12,13 +12,13 @@ export default async function AboutPage() {
   
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <h1 className="text-4xl font-bold mb-8">About CBB Analytics</h1>
+      <h1 className="text-4xl font-bold mb-8">About macfax</h1>
       
       {/* Overview */}
       <section className="mb-12">
         <h2 className="text-2xl font-bold mb-4">Project Overview</h2>
         <p className="text-text-primary mb-4">
-          CBB Analytics is a comprehensive college basketball analytics platform that aggregates and analyzes 
+          macfax is a comprehensive college basketball analytics platform that aggregates and analyzes 
           data from multiple sources to provide advanced metrics, efficiency ratings, and predictive models 
           for all 365 NCAA Division I men's basketball teams.
         </p>

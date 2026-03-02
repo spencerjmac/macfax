@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import clsx from 'clsx';
 
@@ -16,13 +17,35 @@ export default function Navigation() {
   const pathname = usePathname();
   
   return (
-    <nav className="bg-brand-black text-white sticky top-0 z-50 border-b-4 border-brand-orange">
+    <nav className="bg-bg text-textOnDark sticky top-0 z-50 border-b-4 border-brand">
       <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex items-center justify-between">
           {/* Logo */}
           <Link href="/" className="flex items-center space-x-2">
-            <span className="text-2xl font-bold">🏀</span>
-            <span className="text-xl font-bold">CBB Analytics</span>
+            {/* Desktop logo - using mark until wide wordmark is added */}
+            <div className="hidden md:flex items-center space-x-4">
+              <Image
+                src="/brand/macfax-mark-512-v3.png"
+                alt="macfax"
+                width={160}
+                height={160}
+                priority
+                className="h-40 w-40"
+              />
+              <span className="text-4xl font-bold">macfax</span>
+            </div>
+            {/* Mobile logo */}
+            <div className="md:hidden flex items-center space-x-3">
+              <Image
+                src="/brand/macfax-mark-512-v3.png"
+                alt="macfax"
+                width={112}
+                height={112}
+                priority
+                className="h-28 w-28"
+              />
+              <span className="text-2xl font-bold">macfax</span>
+            </div>
           </Link>
           
           {/* Nav Links */}
@@ -36,9 +59,9 @@ export default function Navigation() {
                   key={item.href}
                   href={item.href}
                   className={clsx(
-                    'px-4 py-2 rounded transition-colors font-medium',
+                    'px-4 py-2 rounded transition-colors font-medium text-lg',
                     isActive
-                      ? 'bg-brand-orange text-white'
+                      ? 'bg-brand text-white'
                       : 'text-gray-300 hover:bg-gray-800 hover:text-white'
                   )}
                 >

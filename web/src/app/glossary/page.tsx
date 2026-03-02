@@ -3,7 +3,7 @@ import { metricDefinitions } from '@/lib/metrics';
 import GlossaryTable from '@/components/GlossaryTable';
 
 export const metadata: Metadata = {
-  title: 'Glossary | CBB Analytics',
+  title: 'Glossary | macfax',
   description: 'Complete definitions and formulas for all college basketball analytics metrics including efficiency ratings, four factors, and advanced statistics.',
 };
 

@@ -8,6 +8,22 @@
 :root {
   --font-inter: 'Inter', system-ui, sans-serif;
   --font-ibm-plex-mono: 'IBM Plex Mono', monospace;
+
+  /* MacFax Brand Tokens */
+  --bg: #0b1220;
+  --surface: #ffffff;
+  --text: #0b1220;
+  --textOnDark: #f8fafc;
+  --muted: #64748b;
+  --border: #e2e8f0;
+
+  --brand: #409080;        /* PRIMARY accent: links, active tabs, nav highlight, primary buttons */
+  --brand2: #70c070;       /* SECONDARY/positive: "good" metrics only */
+  --brandBlue: #3080b0;    /* OPTIONAL info accent for charts/secondary highlights */
+
+  --positive: #22c55e;     /* semantic green */
+  --negative: #ef4444;     /* semantic red */
+  --warning: #94a3b8;      /* NEUTRALIZED slate - NO orange */
 }
 
 body {

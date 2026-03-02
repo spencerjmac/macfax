@@ -23,7 +23,7 @@ export function RankPill({ rank, className }: RankPillProps) {
   const colorClass = rank <= 10 
     ? 'bg-success/20 text-success' 
     : rank <= 25 
-    ? 'bg-brand-orange/20 text-brand-orange'
+    ? 'bg-brand/20 text-brand'
     : rank <= 50
     ? 'bg-blue-500/20 text-blue-600'
     : 'bg-ui-surface text-text-muted';

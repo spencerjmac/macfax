@@ -3,7 +3,7 @@ import { getAllTeams, getMetadata } from '@/lib/data';
 import RankingsTable from '@/components/RankingsTable';
 
 export const metadata: Metadata = {
-  title: 'Rankings | CBB Analytics',
+  title: 'Rankings | macfax',
   description: 'Complete NCAA Division I men\'s basketball rankings with adjusted efficiency metrics, four factors, and advanced statistics.',
 };
 

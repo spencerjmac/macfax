@@ -54,7 +54,7 @@ export default function TeamPageTabs({ team, ranks, checklist }: TeamPageTabsPro
               className={clsx(
                 'px-6 py-3 font-medium transition-colors border-b-2',
                 activeTab === tab.id
-                  ? 'border-brand-orange text-brand-orange'
+                  ? 'border-brand text-brand'
                   : 'border-transparent text-text-muted hover:text-text-primary'
               )}
             >
@@ -101,7 +101,7 @@ function OverviewTab({
             label="Adjusted Efficiency Margin"
             value={team.adjEM.toFixed(2)}
             rank={ranks.adjEM}
-            color="text-brand-orange"
+            color="text-brand"
           />
           <MetricCard
             label="Adjusted Offensive Efficiency"
@@ -133,16 +133,16 @@ function OverviewTab({
             
             {/* Four Factor Index */}
             {team.four_factor_index_100 != null && (
-              <div className="p-6 bg-gradient-to-br from-brand-orange/10 to-brand-orange/5 border border-brand-orange/20 rounded-lg mb-4">
+              <div className="p-6 bg-gradient-to-br from-brand/10 to-brand/5 border border-brand/20 rounded-lg mb-4">
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <div className="text-text-muted text-sm">Four Factor Index (WZ100)</div>
                   {ranks.fourFactorIndex && (
-                    <div className="text-xs font-mono px-2 py-0.5 rounded bg-brand-orange/20 text-brand-orange font-semibold">
+                    <div className="text-xs font-mono px-2 py-0.5 rounded bg-brand/20 text-brand font-semibold">
                       #{ranks.fourFactorIndex}
                     </div>
                   )}
                 </div>
-                <div className="text-5xl font-bold font-mono text-brand-orange mb-2">
+                <div className="text-5xl font-bold font-mono text-brand mb-2">
                   {team.four_factor_index_100.toFixed(1)}
                 </div>
                 <p className="text-xs text-text-muted">
@@ -194,16 +194,16 @@ function FourFactorsTab({ team, ranks }: { team: TeamSeason; ranks: TeamRanks })
     <div className="space-y-8">
       {/* Four Factor Index Summary */}
       {team.four_factor_index_100 != null && (
-        <div className="p-6 bg-gradient-to-br from-brand-orange/10 to-brand-orange/5 border border-brand-orange/20 rounded-lg">
+        <div className="p-6 bg-gradient-to-br from-brand/10 to-brand/5 border border-brand/20 rounded-lg">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-xl font-bold">Four Factor Index (WZ100)</h2>
             {ranks.fourFactorIndex && (
-              <div className="text-sm font-mono px-3 py-1 rounded bg-brand-orange/20 text-brand-orange font-semibold">
+              <div className="text-sm font-mono px-3 py-1 rounded bg-brand/20 text-brand font-semibold">
                 #{ranks.fourFactorIndex}
               </div>
             )}
           </div>
-          <div className="text-4xl font-bold font-mono text-brand-orange mb-2">
+          <div className="text-4xl font-bold font-mono text-brand mb-2">
             {team.four_factor_index_100.toFixed(1)}
           </div>
           <p className="text-sm text-text-muted">
@@ -498,12 +498,12 @@ function ResumeTab({ team, ranks }: { team: TeamSeason; ranks: TeamRanks }) {
           <div className="flex items-start justify-between gap-2 mb-2">
             <div className="text-text-muted text-sm">Wins Above Bubble</div>
             {team.wab !== null && ranks.wab && (
-              <div className="text-xs font-mono px-2 py-0.5 rounded bg-brand-orange/20 text-brand-orange font-semibold">
+              <div className="text-xs font-mono px-2 py-0.5 rounded bg-brand/20 text-brand font-semibold">
                 #{ranks.wab}
               </div>
             )}
           </div>
-          <div className="text-4xl font-bold font-mono text-brand-orange">
+          <div className="text-4xl font-bold font-mono text-brand">
             {team.wab !== null ? (
               <>{team.wab > 0 ? '+' : ''}{team.wab.toFixed(2)}</>
             ) : (
@@ -520,12 +520,12 @@ function ResumeTab({ team, ranks }: { team: TeamSeason; ranks: TeamRanks }) {
           <div className="flex items-start justify-between gap-2 mb-2">
             <div className="text-text-muted text-sm">NET Ranking</div>
             {team.net_rank && (
-              <div className="text-xs font-mono px-2 py-0.5 rounded bg-brand-orange/20 text-brand-orange font-semibold">
+              <div className="text-xs font-mono px-2 py-0.5 rounded bg-brand/20 text-brand font-semibold">
                 #{team.net_rank}
               </div>
             )}
           </div>
-          <div className="text-4xl font-bold font-mono text-brand-orange">
+          <div className="text-4xl font-bold font-mono text-brand">
             {team.net_rank ? (
               `#${team.net_rank}`
             ) : (
@@ -542,12 +542,12 @@ function ResumeTab({ team, ranks }: { team: TeamSeason; ranks: TeamRanks }) {
           <div className="flex items-start justify-between gap-2 mb-2">
             <div className="text-text-muted text-sm">Strength of Record</div>
             {team.sor_rank && (
-              <div className="text-xs font-mono px-2 py-0.5 rounded bg-brand-orange/20 text-brand-orange font-semibold">
+              <div className="text-xs font-mono px-2 py-0.5 rounded bg-brand/20 text-brand font-semibold">
                 #{team.sor_rank}
               </div>
             )}
           </div>
-          <div className="text-4xl font-bold font-mono text-brand-orange">
+          <div className="text-4xl font-bold font-mono text-brand">
             {team.sor_rank ? (
               `#${team.sor_rank}`
             ) : (
@@ -564,12 +564,12 @@ function ResumeTab({ team, ranks }: { team: TeamSeason; ranks: TeamRanks }) {
           <div className="flex items-start justify-between gap-2 mb-2">
             <div className="text-text-muted text-sm">Strength of Schedule</div>
             {team.sos_rank && (
-              <div className="text-xs font-mono px-2 py-0.5 rounded bg-brand-orange/20 text-brand-orange font-semibold">
+              <div className="text-xs font-mono px-2 py-0.5 rounded bg-brand/20 text-brand font-semibold">
                 #{team.sos_rank}
               </div>
             )}
           </div>
-          <div className="text-4xl font-bold font-mono text-brand-orange">
+          <div className="text-4xl font-bold font-mono text-brand">
             {team.sos_win_pct !== null ? (
               `${(team.sos_win_pct * 100).toFixed(1)}%`
             ) : (
@@ -594,7 +594,7 @@ function ResumeTab({ team, ranks }: { team: TeamSeason; ranks: TeamRanks }) {
             return (
               <div key={quad} className="p-4 bg-ui-surface border border-ui-border rounded-lg text-center">
                 <div className="text-text-muted text-sm mb-1">{quad}</div>
-                <div className={`text-2xl font-bold font-mono ${hasGames ? 'text-brand-orange' : 'text-text-muted'}`}>
+                <div className={`text-2xl font-bold font-mono ${hasGames ? 'text-brand' : 'text-text-muted'}`}>
                   {hasGames ? `${record.w}-${record.l}` : '-'}
                 </div>
               </div>

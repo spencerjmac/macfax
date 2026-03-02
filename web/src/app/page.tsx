@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { BarChart3, Swords, ScatterChart, BookOpen, Info, Github } from 'lucide-react';
 
 export default function HomePage() {
   return (
@@ -18,9 +19,9 @@ export default function HomePage() {
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
         <Link 
           href="/rankings" 
-          className="block p-6 bg-ui-card border border-ui-border rounded-lg hover:border-brand-orange transition-colors"
+          className="block p-6 bg-ui-card border border-ui-border rounded-lg hover:border-brand transition-colors"
         >
-          <div className="text-4xl mb-3">📊</div>
+          <BarChart3 className="w-10 h-10 mb-3 text-brand" strokeWidth={1.5} />
           <h2 className="text-2xl font-bold mb-2">Team Rankings</h2>
           <p className="text-text-muted">
             Sortable, filterable rankings table with adjusted efficiency metrics 
@@ -30,9 +31,9 @@ export default function HomePage() {
         
         <Link 
           href="/matchup" 
-          className="block p-6 bg-ui-card border border-ui-border rounded-lg hover:border-brand-orange transition-colors"
+          className="block p-6 bg-ui-card border border-ui-border rounded-lg hover:border-brand transition-colors"
         >
-          <div className="text-4xl mb-3">⚔️</div>
+          <Swords className="w-10 h-10 mb-3 text-brand" strokeWidth={1.5} />
           <h2 className="text-2xl font-bold mb-2">Matchup Tool</h2>
           <p className="text-text-muted">
             Compare any two teams head-to-head with efficiency projections 
@@ -42,9 +43,9 @@ export default function HomePage() {
         
         <Link 
           href="/viz" 
-          className="block p-6 bg-ui-card border border-ui-border rounded-lg hover:border-brand-orange transition-colors"
+          className="block p-6 bg-ui-card border border-ui-border rounded-lg hover:border-brand transition-colors"
         >
-          <div className="text-4xl mb-3">📈</div>
+          <ScatterChart className="w-10 h-10 mb-3 text-brand" strokeWidth={1.5} />
           <h2 className="text-2xl font-bold mb-2">Visualizations</h2>
           <p className="text-text-muted">
             Interactive charts including the Trapezoid of Excellence, 
@@ -54,9 +55,9 @@ export default function HomePage() {
         
         <Link 
           href="/glossary" 
-          className="block p-6 bg-ui-card border border-ui-border rounded-lg hover:border-brand-orange transition-colors"
+          className="block p-6 bg-ui-card border border-ui-border rounded-lg hover:border-brand transition-colors"
         >
-          <div className="text-4xl mb-3">📖</div>
+          <BookOpen className="w-10 h-10 mb-3 text-brand" strokeWidth={1.5} />
           <h2 className="text-2xl font-bold mb-2">Glossary</h2>
           <p className="text-text-muted">
             Comprehensive definitions and formulas for all metrics, 
@@ -66,9 +67,9 @@ export default function HomePage() {
         
         <Link 
           href="/about" 
-          className="block p-6 bg-ui-card border border-ui-border rounded-lg hover:border-brand-orange transition-colors"
+          className="block p-6 bg-ui-card border border-ui-border rounded-lg hover:border-brand transition-colors"
         >
-          <div className="text-4xl mb-3">ℹ️</div>
+          <Info className="w-10 h-10 mb-3 text-brand" strokeWidth={1.5} />
           <h2 className="text-2xl font-bold mb-2">About</h2>
           <p className="text-text-muted">
             Learn about our data sources, methodology, and how we calculate 
@@ -77,7 +78,7 @@ export default function HomePage() {
         </Link>
         
         <div className="p-6 bg-ui-surface border border-ui-border rounded-lg">
-          <div className="text-4xl mb-3">🎓</div>
+          <Github className="w-10 h-10 mb-3 text-brand" strokeWidth={1.5} />
           <h2 className="text-2xl font-bold mb-2">Open Source</h2>
           <p className="text-text-muted">
             Built with Next.js, TypeScript, and Tailwind CSS. 
@@ -90,15 +91,15 @@ export default function HomePage() {
       <div className="bg-ui-surface border border-ui-border rounded-lg p-8 text-center">
         <div className="grid md:grid-cols-3 gap-8">
           <div>
-            <div className="text-4xl font-bold text-brand-orange font-mono">365</div>
+            <div className="text-4xl font-bold text-brand font-mono">365</div>
             <div className="text-text-muted mt-1">NCAA D1 Teams</div>
           </div>
           <div>
-            <div className="text-4xl font-bold text-brand-orange font-mono">40+</div>
+            <div className="text-4xl font-bold text-brand font-mono">40+</div>
             <div className="text-text-muted mt-1">Advanced Metrics</div>
           </div>
           <div>
-            <div className="text-4xl font-bold text-brand-orange font-mono">Daily</div>
+            <div className="text-4xl font-bold text-brand font-mono">Daily</div>
             <div className="text-text-muted mt-1">Data Updates</div>
           </div>
         </div>

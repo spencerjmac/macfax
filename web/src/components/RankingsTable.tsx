@@ -14,6 +14,9 @@ import {
 import { TeamSeason } from '@/types';
 import Link from 'next/link';
 import clsx from 'clsx';
+import HeaderWithTooltip from './HeaderWithTooltip';
+import { METRIC_DEFINITIONS, MetricMeta } from '@/lib/metricMetadata';
+import { computeRanks, getPercentileColor, RankData } from '@/lib/rankingUtils';
 
 interface RankingsTableProps {
   data: TeamSeason[];
@@ -48,570 +51,205 @@ export default function RankingsTable({ data }: RankingsTableProps) {
     return data.filter(t => t.conference === conferenceFilter);
   }, [data, conferenceFilter]);
   
-  // Color coding helper - returns CSS class based on percentile rank
-  const getColorClass = (value: number, key: string, higherIsBetter: boolean = true) => {
-    const values = filteredData.map(t => (t as any)[key]).filter((v: any) => v != null);
-    if (values.length === 0) return '';
+  // Precompute ranks for all metrics based on FILTERED data
+  const metricRanks = useMemo(() => {
+    const ranks = new Map<string, Map<number, RankData>>();
     
-    const sorted = [...values].sort((a, b) => higherIsBetter ? b - a : a - b);
-    const percentile = sorted.indexOf(value) / sorted.length;
+    // Compute ranks for each metric
+    Object.values(METRIC_DEFINITIONS).forEach((meta) => {
+      const values = filteredData.map(t => (t as any)[meta.key] as number | null);
+      ranks.set(meta.key, computeRanks(values, meta.better));
+    });
     
-    if (percentile <= 0.10) return 'bg-green-500/25 font-semibold'; // Top 10%
-    if (percentile <= 0.25) return 'bg-green-500/15'; // Top 25%
-    if (percentile <= 0.50) return 'bg-yellow-500/20'; // Top 50%
-    if (percentile <= 0.75) return 'bg-orange-500/20'; // Top 75%
-    return 'bg-red-500/20'; // Bottom 25%
+    return ranks;
+  }, [filteredData]);
+  
+  // Helper to format metric values
+  const formatValue = (value: number | null, format: MetricMeta['format']): string => {
+    if (value == null) return '-';
+    
+    switch (format) {
+      case 'number1':
+        return value.toFixed(1);
+      case 'number2':
+        return value.toFixed(2);
+      case 'percent1':
+        return `${value.toFixed(1)}%`;
+      case 'int':
+        return Math.round(value).toString();
+      default:
+        return value.toString();
+    }
   };
   
-  // Base columns (always visible)
-  const baseColumns: ColumnDef<TeamSeason>[] = [
-    {
-      accessorKey: 'rank',
-      header: 'Rk',
-      cell: (info) => (
-        <span className="font-mono font-semibold">
-          {info.getValue<number>()}
-        </span>
-      ),
-      size: 50,
-    },
-    {
-      accessorKey: 'teamName',
-      header: 'Team',
-      cell: (info) => {
-        const team = info.row.original;
-        return (
-          <Link 
-            href={`/team/${team.teamId}`}
-            className="flex items-center space-x-2 hover:text-brand-orange transition-colors"
-          >
-            {team.logoUrl ? (
-              <img 
-                src={team.logoUrl} 
-                alt={team.teamName}
-                className="w-6 h-6 object-contain"
-                onError={(e) => {
-                  const img = e.target as HTMLImageElement;
-                  img.style.display = 'none';
-                }}
-              />
-            ) : (
-              <div className="w-6 h-6 bg-ui-surface rounded-full flex items-center justify-center text-xs font-bold text-text-muted">
-                {team.teamName.charAt(0)}
-              </div>
-            )}
-            <span className="font-medium">{team.teamName}</span>
-          </Link>
-        );
-      },
-      size: 200,
-    },
-    {
-      accessorKey: 'conference',
-      header: 'Conf',
-      cell: (info) => (
-        <span className="text-text-muted text-xs uppercase">
-          {info.getValue<string>()}
-        </span>
-      ),
-      size: 60,
-    },
-    {
-      accessorKey: 'record',
-      header: 'Record',
-      cell: (info) => (
-        <span className="font-mono text-sm">
-          {info.getValue<string>() || '-'}
-        </span>
-      ),
-      size: 70,
-    },
-  ];
-  
-  // Overview tab columns
-  const overviewColumns: ColumnDef<TeamSeason>[] = [
-    ...baseColumns,
-    {
-      accessorKey: 'adjEM',
-      header: 'AdjEM',
-      cell: (info) => {
-        const value = info.getValue<number>();
-        return (
-          <span className={clsx('stat-number font-semibold px-2 py-1 rounded', getColorClass(value, 'adjEM', true))}>
-            {value.toFixed(2)}
-          </span>
-        );
-      },
-      size: 90,
-      sortDescFirst: true,
-    },
-    {
-      accessorKey: 'adjO',
-      header: 'AdjO',
-      cell: (info) => {
-        const value = info.getValue<number>();
-        return (
-          <span className={clsx('stat-number px-2 py-1 rounded', getColorClass(value, 'adjO', true))}>
-            {value.toFixed(1)}
-          </span>
-        );
-      },
-      size: 80,
-      sortDescFirst: true,
-    },
-    {
-      accessorKey: 'adjD',
-      header: 'AdjD',
-      cell: (info) => {
-        const value = info.getValue<number>();
-        return (
-          <span className={clsx('stat-number px-2 py-1 rounded', getColorClass(value, 'adjD', false))}>
-            {value.toFixed(1)}
-          </span>
-        );
-      },
-      size: 80,
-      sortDescFirst: false,
-    },
-    {
-      accessorKey: 'adjTempo',
-      header: 'Tempo',
-      cell: (info) => {
-        const value = info.getValue<number>();
-        return (
-          <span className={clsx('stat-number px-2 py-1 rounded', getColorClass(value, 'adjTempo', true))}>
-            {value.toFixed(1)}
-          </span>
-        );
-      },
-      size: 80,
-    },
-    {
-      accessorKey: 'four_factor_index_100',
-      header: 'FFI',
-      cell: (info) => {
-        const value = info.getValue<number>();
-        if (value == null) return '-';
-        return (
-          <span className={clsx('stat-number font-semibold px-2 py-1 rounded', getColorClass(value, 'four_factor_index_100', true))}>
-            {value.toFixed(1)}
-          </span>
-        );
-      },
-      size: 80,
-      sortDescFirst: true,
-    },
-  ];
-  
-  // Raw Four Factors tab columns
-  const rawFourFactorsColumns: ColumnDef<TeamSeason>[] = [
-    ...baseColumns,
-    // eFG% group
-    {  accessorKey: 'raw_eFG',
-      header: 'eFG%',
-      cell: (info) => {
-        const value = info.getValue<number>();
-        if (value == null) return '-';
-        return (
-          <span className={clsx('stat-number px-2 py-1 rounded', getColorClass(value, 'raw_eFG', true))}>
-            {value.toFixed(1)}%
-          </span>
-        );
-      },
-      size: 80,
-      sortDescFirst: true,
-    },
-    {
-      accessorKey: 'raw_eFG_d',
-      header: 'eFG%D',
-      cell: (info) => {
-        const value = info.getValue<number>();
-        if (value == null) return '-';
-        return (
-          <span className={clsx('stat-number px-2 py-1 rounded', getColorClass(value, 'raw_eFG_d', false))}>
-            {value.toFixed(1)}%
-          </span>
-        );
-      },
-      size: 80,
-      sortDescFirst: false,
-    },
-    {
-      accessorKey: 'raw_eFG_margin',
-      header: 'eFG±',
-      cell: (info) => {
-        const value = info.getValue<number>();
-        if (value == null) return '-';
-        return (
-          <span className={clsx('stat-number px-2 py-1 rounded', getColorClass(value, 'raw_eFG_margin', true))}>
-            {value >= 0 ? '+' : ''}{value.toFixed(1)}
-          </span>
-        );
-      },
-      size: 80,
-      sortDescFirst: true,
-    },
-    // TOV% group
-    {
-      accessorKey: 'raw_tov',
-      header: 'TOV%',
-      cell: (info) => {
-        const value = info.getValue<number>();
-        if (value == null) return '-';
-        return (
-          <span className={clsx('stat-number px-2 py-1 rounded', getColorClass(value, 'raw_tov', false))}>
-            {value.toFixed(1)}%
-          </span>
-        );
-      },
-      size: 80,
-      sortDescFirst: false,
-    },
-    {
-      accessorKey: 'raw_tov_d',
-      header: 'TOV%D',
-      cell: (info) => {
-        const value = info.getValue<number>();
-        if (value == null) return '-';
-        return (
-          <span className={clsx('stat-number px-2 py-1 rounded', getColorClass(value, 'raw_tov_d', true))}>
-            {value.toFixed(1)}%
-          </span>
-        );
-      },
-      size: 80,
-      sortDescFirst: true,
-    },
-    {
-      accessorKey: 'raw_tov_edge',
-      header: 'TOV±',
-      cell: (info) => {
-        const value = info.getValue<number>();
-        if (value == null) return '-';
-        return (
-          <span className={clsx('stat-number px-2 py-1 rounded', getColorClass(value, 'raw_tov_edge', true))}>
-            {value >= 0 ? '+' : ''}{value.toFixed(1)}
-          </span>
-        );
-      },
-      size: 80,
-      sortDescFirst: true,
-    },
-    // ORB% group
-    {
-      accessorKey: 'raw_orb',
-      header: 'ORB%',
-      cell: (info) => {
-        const value = info.getValue<number>();
-        if (value == null) return '-';
-        return (
-          <span className={clsx('stat-number px-2 py-1 rounded', getColorClass(value, 'raw_orb', true))}>
-            {value.toFixed(1)}%
-          </span>
-        );
-      },
-      size: 80,
-      sortDescFirst: true,
-    },
-    {
-      accessorKey: 'raw_drb',
-      header: 'ORB%D',
-      cell: (info) => {
-        const value = info.getValue<number>();
-        if (value == null) return '-';
-        const oppORB = 100 - value;
-        return (
-          <span className={clsx('stat-number px-2 py-1 rounded', getColorClass(value, 'raw_drb', true))}>
-            {oppORB.toFixed(1)}%
-          </span>
-        );
-      },
-      size: 80,
-      sortDescFirst: true,
-    },
-    {
-      accessorKey: 'raw_reb_edge',
-      header: 'REB±',
-      cell: (info) => {
-        const value = info.getValue<number>();
-        if (value == null) return '-';
-        return (
-          <span className={clsx('stat-number px-2 py-1 rounded', getColorClass(value, 'raw_reb_edge', true))}>
-            {value >= 0 ? '+' : ''}{value.toFixed(1)}
-          </span>
-        );
-      },
-      size: 80,
-      sortDescFirst: true,
-    },
-    // FTR group
-    {
-      accessorKey: 'raw_ftr',
-      header: 'FTR',
-      cell: (info) => {
-        const value = info.getValue<number>();
-        if (value == null) return '-';
-        return (
-          <span className={clsx('stat-number px-2 py-1 rounded', getColorClass(value, 'raw_ftr', true))}>
-            {value.toFixed(1)}%
-          </span>
-        );
-      },
-      size: 80,
-      sortDescFirst: true,
-    },
-    {
-      accessorKey: 'raw_ftr_d',
-      header: 'FTRD',
-      cell: (info) => {
-        const value = info.getValue<number>();
-        if (value == null) return '-';
-        return (
-          <span className={clsx('stat-number px-2 py-1 rounded', getColorClass(value, 'raw_ftr_d', false))}>
-            {value.toFixed(1)}%
-          </span>
-        );
-      },
-      size: 80,
-      sortDescFirst: false,
-    },
-    {
-      accessorKey: 'raw_ftr_margin',
-      header: 'FTR±',
-      cell: (info) => {
-        const value = info.getValue<number>();
-        if (value == null) return '-';
-        return (
-          <span className={clsx('stat-number px-2 py-1 rounded', getColorClass(value, 'raw_ftr_margin', true))}>
-            {value >= 0 ? '+' : ''}{value.toFixed(1)}
-          </span>
-        );
-      },
-      size: 80,
-      sortDescFirst: true,
-    },
-    // Four Factor Index
-    {
-      accessorKey: 'raw_four_factor_index_100',
-      header: 'FFI',
-      cell: (info) => {
-        const value = info.getValue<number>();
-        if (value == null) return '-';
-        return (
-          <span className={clsx('stat-number font-semibold px-2 py-1 rounded', getColorClass(value, 'raw_four_factor_index_100', true))}>
-            {value.toFixed(1)}
-          </span>
-        );
-      },
-      size: 80,
-      sortDescFirst: true,
-    },
-  ];
-  
-  // Adjusted Four Factors tab columns
-  const adjustedFourFactorsColumns: ColumnDef<TeamSeason>[] = [
-    ...baseColumns,
-    // eFG% group
-    {  accessorKey: 'eFG',
-      header: 'eFG%',
-      cell: (info) => {
-        const value = info.getValue<number>();
-        return (
-          <span className={clsx('stat-number px-2 py-1 rounded', getColorClass(value, 'eFG', true))}>
-            {value.toFixed(1)}%
-          </span>
-        );
-      },
-      size: 80,
-      sortDescFirst: true,
-    },
-    {
-      accessorKey: 'eFG_d',
-      header: 'eFG%D',
-      cell: (info) => {
-        const value = info.getValue<number>();
-        return (
-          <span className={clsx('stat-number px-2 py-1 rounded', getColorClass(value, 'eFG_d', false))}>
-            {value.toFixed(1)}%
-          </span>
-        );
-      },
-      size: 80,
-      sortDescFirst: false,
-    },
-    {
-      accessorKey: 'eFG_margin',
-      header: 'eFG±',
-      cell: (info) => {
-        const value = info.getValue<number>();
-        return (
-          <span className={clsx('stat-number px-2 py-1 rounded', getColorClass(value, 'eFG_margin', true))}>
-            {value >= 0 ? '+' : ''}{value.toFixed(1)}
-          </span>
-        );
-      },
-      size: 80,
-      sortDescFirst: true,
-    },
-    // TOV% group
-    {
-      accessorKey: 'tov',
-      header: 'TOV%',
-      cell: (info) => {
-        const value = info.getValue<number>();
-        return (
-          <span className={clsx('stat-number px-2 py-1 rounded', getColorClass(value, 'tov', false))}>
-            {value.toFixed(1)}%
-          </span>
-        );
-      },
-      size: 80,
-      sortDescFirst: false,
-    },
-    {
-      accessorKey: 'tov_d',
-      header: 'TOV%D',
-      cell: (info) => {
-        const value = info.getValue<number>();
-        return (
-          <span className={clsx('stat-number px-2 py-1 rounded', getColorClass(value, 'tov_d', true))}>
-            {value.toFixed(1)}%
-          </span>
-        );
-      },
-      size: 80,
-      sortDescFirst: true,
-    },
-    {
-      accessorKey: 'tov_edge',
-      header: 'TOV±',
-      cell: (info) => {
-        const value = info.getValue<number>();
-        return (
-          <span className={clsx('stat-number px-2 py-1 rounded', getColorClass(value, 'tov_edge', true))}>
-            {value >= 0 ? '+' : ''}{value.toFixed(1)}
-          </span>
-        );
-      },
-      size: 80,
-      sortDescFirst: true,
-    },
-    // ORB% group
-    {
-      accessorKey: 'orb',
-      header: 'ORB%',
-      cell: (info) => {
-        const value = info.getValue<number>();
-        return (
-          <span className={clsx('stat-number px-2 py-1 rounded', getColorClass(value, 'orb', true))}>
-            {value.toFixed(1)}%
-          </span>
-        );
-      },
-      size: 80,
-      sortDescFirst: true,
-    },
-    {
-      accessorKey: 'drb',
-      header: 'ORB%D',
-      cell: (info) => {
-        const value = info.getValue<number>();
-        const oppORB = 100 - value;
-        return (
-          <span className={clsx('stat-number px-2 py-1 rounded', getColorClass(value, 'drb', true))}>
-            {oppORB.toFixed(1)}%
-          </span>
-        );
-      },
-      size: 80,
-      sortDescFirst: false,
-    },
-    {
-      accessorKey: 'reb_edge',
-      header: 'REB±',
-      cell: (info) => {
-        const value = info.getValue<number>();
-        return (
-          <span className={clsx('stat-number px-2 py-1 rounded', getColorClass(value, 'reb_edge', true))}>
-            {value >= 0 ? '+' : ''}{value.toFixed(1)}
-          </span>
-        );
-      },
-      size: 80,
-      sortDescFirst: true,
-    },
-    // FTR group
-    {
-      accessorKey: 'ftr',
-      header: 'FTR',
-      cell: (info) => {
-        const value = info.getValue<number>();
-        return (
-          <span className={clsx('stat-number px-2 py-1 rounded', getColorClass(value, 'ftr', true))}>
-            {value.toFixed(1)}%
-          </span>
-        );
-      },
-      size: 80,
-      sortDescFirst: true,
-    },
-    {
-      accessorKey: 'ftr_d',
-      header: 'FTRD',
-      cell: (info) => {
-        const value = info.getValue<number>();
-        return (
-          <span className={clsx('stat-number px-2 py-1 rounded', getColorClass(value, 'ftr_d', false))}>
-            {value.toFixed(1)}%
-          </span>
-        );
-      },
-      size: 80,
-      sortDescFirst: false,
-    },
-    {
-      accessorKey: 'ftr_margin',
-      header: 'FTR±',
-      cell: (info) => {
-        const value = info.getValue<number>();
-        return (
-          <span className={clsx('stat-number px-2 py-1 rounded', getColorClass(value, 'ftr_margin', true))}>
-            {value >= 0 ? '+' : ''}{value.toFixed(1)}
-          </span>
-        );
-      },
-      size: 80,
-      sortDescFirst: true,
-    },
-    // Four Factor Index
-    {
-      accessorKey: 'four_factor_index_100',
-      header: 'FFI',
-      cell: (info) => {
-        const value = info.getValue<number>();
-        if (value == null) return '-';
-        return (
-          <span className={clsx('stat-number font-semibold px-2 py-1 rounded', getColorClass(value, 'four_factor_index_100', true))}>
-            {value.toFixed(1)}
-          </span>
-        );
-      },
-      size: 80,
-      sortDescFirst: true,
-    },
-  ];
-  
-  // Get columns based on active tab
+  // Select columns based on active tab
   const columns = useMemo(() => {
+    // Helper to create a metric column (inside useMemo to capture current metricRanks)
+    const createMetricColumn = (metricKey: string): ColumnDef<TeamSeason> => {
+      const meta = METRIC_DEFINITIONS[metricKey];
+      if (!meta) {
+        console.warn(`Metric ${metricKey} not found in METRIC_DEFINITIONS`);
+        return {} as ColumnDef<TeamSeason>;
+      }
+      
+      return {
+        accessorKey: meta.key,
+        header: () => (
+          <HeaderWithTooltip
+            label={meta.label}
+            better={meta.better}
+            tooltip={meta.tooltip}
+          />
+        ),
+        cell: (info) => {
+          const value = info.getValue<number | null>();
+          const rowIdx = info.row.index;
+          const rankData = metricRanks.get(meta.key)?.get(rowIdx);
+          
+          if (value == null) {
+            return <span className="text-text-muted">-</span>;
+          }
+          
+          const colorClass = meta.heatmap 
+            ? getPercentileColor(rankData?.percentile ?? null, meta.better, true)
+            : '';
+          
+          return (
+            <div className={clsx('flex items-center justify-between gap-2 px-2 py-1 rounded', colorClass)}>
+              <span className="font-mono">{formatValue(value, meta.format)}</span>
+              {meta.showRank && rankData?.rank && (
+                <span className="text-[11px] text-slate-900 font-bold">
+                  #{rankData.rank}
+                </span>
+              )}
+            </div>
+          );
+        },
+        size: 100,
+        sortDescFirst: meta.better === 'higher',
+      };
+    };
+    
+    // Base columns (always visible)
+    const baseColumns: ColumnDef<TeamSeason>[] = [
+      {
+        accessorKey: 'rank',
+        header: 'Rk',
+        cell: (info) => (
+          <span className="font-mono font-semibold">
+            {info.getValue<number>()}
+          </span>
+        ),
+        size: 50,
+      },
+      {
+        accessorKey: 'teamName',
+        header: 'Team',
+        cell: (info) => {
+          const team = info.row.original;
+          return (
+            <Link 
+              href={`/team/${team.teamId}`}
+              className="flex items-center space-x-2 hover:text-brand transition-colors"
+            >
+              {team.logoUrl ? (
+                <img 
+                  src={team.logoUrl} 
+                  alt={team.teamName}
+                  className="w-6 h-6 object-contain"
+                  onError={(e) => {
+                    const img = e.target as HTMLImageElement;
+                    img.style.display = 'none';
+                  }}
+                />
+              ) : (
+                <div className="w-6 h-6 bg-ui-surface rounded-full flex items-center justify-center text-xs font-bold text-text-muted">
+                  {team.teamName.charAt(0)}
+                </div>
+              )}
+              <span className="font-medium">{team.teamName}</span>
+            </Link>
+          );
+        },
+        size: 200,
+      },
+      {
+        accessorKey: 'conference',
+        header: 'Conf',
+        cell: (info) => (
+          <span className="text-text-muted text-xs uppercase">
+            {info.getValue<string>()}
+          </span>
+        ),
+        size: 60,
+      },
+      {
+        accessorKey: 'record',
+        header: 'Record',
+        cell: (info) => (
+          <span className="font-mono text-sm">
+            {info.getValue<string>() || '-'}
+          </span>
+        ),
+        size: 70,
+      },
+    ];
+    
     switch (activeTab) {
+      case 'overview':
+        return [
+          ...baseColumns,
+          createMetricColumn('adjEM'),
+          createMetricColumn('adjO'),
+          createMetricColumn('adjD'),
+          createMetricColumn('adjTempo'),
+          createMetricColumn('four_factor_index_100'),
+        ];
       case 'four-factors':
-        return rawFourFactorsColumns;
+        return [
+          ...baseColumns,
+          createMetricColumn('raw_eFG'),
+          createMetricColumn('raw_eFG_d'),
+          createMetricColumn('raw_eFG_margin'),
+          createMetricColumn('raw_tov'),
+          createMetricColumn('raw_tov_d'),
+          createMetricColumn('raw_tov_edge'),
+          createMetricColumn('raw_orb'),
+          createMetricColumn('raw_drb'),
+          createMetricColumn('raw_reb_edge'),
+          createMetricColumn('raw_ftr'),
+          createMetricColumn('raw_ftr_d'),
+          createMetricColumn('raw_ftr_margin'),
+          createMetricColumn('raw_four_factor_index_100'),
+        ];
       case 'adjusted-four-factors':
-        return adjustedFourFactorsColumns;
+        return [
+          ...baseColumns,
+          createMetricColumn('eFG'),
+          createMetricColumn('eFG_d'),
+          createMetricColumn('eFG_margin'),
+          createMetricColumn('tov'),
+          createMetricColumn('tov_d'),
+          createMetricColumn('tov_edge'),
+          createMetricColumn('orb'),
+          createMetricColumn('drb'),
+          createMetricColumn('reb_edge'),
+          createMetricColumn('ftr'),
+          createMetricColumn('ftr_d'),
+          createMetricColumn('ftr_margin'),
+          createMetricColumn('four_factor_index_100'),
+        ];
       default:
-        return overviewColumns;
+        return [
+          ...baseColumns,
+          createMetricColumn('adjEM'),
+          createMetricColumn('adjO'),
+          createMetricColumn('adjD'),
+          createMetricColumn('adjTempo'),
+          createMetricColumn('four_factor_index_100'),
+        ];
     }
-  }, [activeTab, filteredData]);
+  }, [activeTab, filteredData, metricRanks]);
   
   const table = useReactTable({
     data: filteredData,
@@ -628,9 +266,44 @@ export default function RankingsTable({ data }: RankingsTableProps) {
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
   });
-  
+
   return (
     <div className="space-y-4">
+      {/* Filters */}
+      <div className="flex flex-wrap gap-4 items-center">
+        {/* Search */}
+        <div className="flex-1 min-w-[200px]">
+          <input
+            type="text"
+            value={globalFilter ?? ''}
+            onChange={(e) => setGlobalFilter(e.target.value)}
+            placeholder="Search teams..."
+            className="w-full px-3 py-2 bg-ui-surface border border-ui-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand/50"
+          />
+        </div>
+        
+        {/* Conference Filter */}
+        <div>
+          <select
+            value={conferenceFilter}
+            onChange={(e) => setConferenceFilter(e.target.value)}
+            className="px-3 py-2 bg-ui-surface border border-ui-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand/50"
+          >
+            <option value="all">All Conferences</option>
+            {conferences.map((conf) => (
+              <option key={conf} value={conf}>
+                {conf}
+              </option>
+            ))}
+          </select>
+        </div>
+        
+        {/* Results count */}
+        <div className="text-sm text-text-muted">
+          Showing {table.getFilteredRowModel().rows.length} teams
+        </div>
+      </div>
+      
       {/* Tabs */}
       <div className="border-b border-ui-border">
         <div className="flex space-x-1">
@@ -639,10 +312,10 @@ export default function RankingsTable({ data }: RankingsTableProps) {
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={clsx(
-                'px-6 py-3 font-medium text-sm transition-colors border-b-2',
+                'px-4 py-2 text-sm font-medium transition-colors relative',
                 activeTab === tab.id
-                  ? 'border-brand-orange text-brand-orange'
-                  : 'border-transparent text-text-muted hover:text-text-primary hover:border-text-muted'
+                  ? 'text-brand border-b-2 border-brand'
+                  : 'text-text-muted hover:text-text-primary'
               )}
             >
               {tab.label}
@@ -651,92 +324,63 @@ export default function RankingsTable({ data }: RankingsTableProps) {
         </div>
       </div>
       
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-        {/* Search */}
-        <div className="flex-1 max-w-md">
-          <input
-            type="text"
-            placeholder="Search teams..."
-            value={globalFilter ?? ''}
-            onChange={(e) => setGlobalFilter(e.target.value)}
-            className="w-full px-4 py-2 border border-ui-border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-orange bg-ui-surface text-text-primary"
-          />
-        </div>
-        
-        {/* Conference Filter */}
-        <div className="flex items-center gap-2">
-          <label className="text-sm text-text-muted font-medium">Conference:</label>
-          <select
-            value={conferenceFilter}
-            onChange={(e) => setConferenceFilter(e.target.value)}
-            className="px-3 py-2 border border-ui-border rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-orange bg-ui-surface text-text-primary"
-          >
-            <option value="all">All Conferences</option>
-            {conferences.map(conf => (
-              <option key={conf} value={conf}>{conf}</option>
+      {/* Table */}
+      <div className="overflow-x-auto border border-ui-border rounded-lg">
+        <table className="w-full">
+          <thead>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <tr key={headerGroup.id} className="border-b border-ui-border bg-ui-surface">
+                {headerGroup.headers.map((header) => (
+                  <th
+                    key={header.id}
+                    className={clsx(
+                      'px-3 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider',
+                      header.column.getCanSort() && 'cursor-pointer select-none hover:bg-ui-hover'
+                    )}
+                    onClick={header.column.getToggleSortingHandler()}
+                    style={{ width: header.column.getSize() }}
+                  >
+                    <div className="flex items-center space-x-1">
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(header.column.columnDef.header, header.getContext())}
+                      {header.column.getIsSorted() && (
+                        <span className="ml-1">
+                          {header.column.getIsSorted() === 'desc' ? '↓' : '↑'}
+                        </span>
+                      )}
+                    </div>
+                  </th>
+                ))}
+              </tr>
             ))}
-          </select>
-        </div>
-        
-        {/* Results count */}
-        <div className="text-sm text-text-muted">
-          <span className="font-mono font-semibold">
-            {table.getFilteredRowModel().rows.length}
-          </span>{' '}
-          teams
-        </div>
+          </thead>
+          <tbody>
+            {table.getRowModel().rows.map((row) => (
+              <tr
+                key={row.id}
+                className="border-b border-ui-border hover:bg-ui-hover transition-colors"
+              >
+                {row.getVisibleCells().map((cell) => (
+                  <td
+                    key={cell.id}
+                    className="px-3 py-2 text-sm"
+                    style={{ width: cell.column.getSize() }}
+                  >
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
       
-      {/* Table */}
-      <div className="border border-ui-border rounded-lg overflow-hidden bg-ui-card">
-        <div className="overflow-x-auto">
-          <table className="rankings-table">
-            <thead>
-              {table.getHeaderGroups().map((headerGroup) => (
-                <tr key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => (
-                    <th
-                      key={header.id}
-                      style={{ width: header.getSize() }}
-                      className={clsx(
-                        header.column.getCanSort() && 'cursor-pointer select-none'
-                      )}
-                      onClick={header.column.getToggleSortingHandler()}
-                    >
-                      <div className="flex items-center gap-2">
-                        {flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
-                        {header.column.getIsSorted() && (
-                          <span className="text-brand-orange">
-                            {header.column.getIsSorted() === 'desc' ? '↓' : '↑'}
-                          </span>
-                        )}
-                      </div>
-                    </th>
-                  ))}
-                </tr>
-              ))}
-            </thead>
-            <tbody>
-              {table.getRowModel().rows.map((row) => (
-                <tr key={row.id}>
-                  {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {table.getFilteredRowModel().rows.length === 0 && (
+        <div className="text-center py-8 text-text-muted">
+          No teams found matching your search.
         </div>
-      </div>
+      )}
     </div>
   );
 }
