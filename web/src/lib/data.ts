@@ -1,30 +1,8 @@
-import fs from 'fs';
-import path from 'path';
 import type { TeamsData, TeamSeason, DatasetMetadata } from '@/types';
 import { buildTeamRanks, buildChampionChecklist } from './rankings';
 
 const DEFAULT_SEASON = 2026;
 const API_RANKINGS_PATH = '/api/rankings/';
-
-function getDataPath() {
-  return path.join(process.cwd(), 'public', 'data', 'teams.json');
-}
-
-function readTeamsData(): TeamsData {
-  const dataPath = getDataPath();
-  if (!fs.existsSync(dataPath)) {
-    const fallbackMeta: DatasetMetadata = {
-      lastUpdated: new Date().toISOString(),
-      season: 'N/A',
-      teamCount: 0,
-      sources: { kenpom: 0, torvik: 0, cbbAnalytics: 0 },
-    };
-    return { metadata: fallbackMeta, teams: [] };
-  }
-
-  const raw = fs.readFileSync(dataPath, 'utf-8');
-  return JSON.parse(raw) as TeamsData;
-}
 
 /** Map API ranking row (snake_case) to frontend TeamSeason */
 function mapApiRowToTeamSeason(team: Record<string, unknown>): TeamSeason {
@@ -100,7 +78,7 @@ function mapApiRowToTeamSeason(team: Record<string, unknown>): TeamSeason {
   };
 }
 
-/** Fetch rankings from backend API (used when static teams.json is missing or empty) */
+/** Fetch rankings from backend API */
 async function fetchRankingsFromApi(season: number): Promise<TeamsData> {
   const base = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
   const url = `${base}${API_RANKINGS_PATH}?season=${season}`;
@@ -130,20 +108,24 @@ async function fetchRankingsFromApi(season: number): Promise<TeamsData> {
   };
 }
 
+const emptyMetadata: DatasetMetadata = {
+  lastUpdated: new Date().toISOString(),
+  season: 'N/A',
+  teamCount: 0,
+  sources: { kenpom: 0, torvik: 0, cbbAnalytics: 0 },
+};
+
+/** During Next.js production build (e.g. Docker) no backend is running; avoid fetch. */
+const isBuildPhase = () => process.env.NEXT_PHASE === 'phase-production-build';
+
 export async function getAllTeams(): Promise<TeamSeason[]> {
-  const data = readTeamsData();
-  if (data.teams && data.teams.length > 0) {
-    return data.teams;
-  }
+  if (isBuildPhase()) return [];
   const apiData = await fetchRankingsFromApi(DEFAULT_SEASON);
   return apiData.teams;
 }
 
 export async function getMetadata(): Promise<DatasetMetadata> {
-  const data = readTeamsData();
-  if (data.teams && data.teams.length > 0) {
-    return data.metadata;
-  }
+  if (isBuildPhase()) return emptyMetadata;
   const apiData = await fetchRankingsFromApi(DEFAULT_SEASON);
   return apiData.metadata;
 }
@@ -156,13 +138,10 @@ export async function getTeamWithContext(slug: string): Promise<
     }
   | null
 > {
-  let teams = (readTeamsData().teams || []) as TeamSeason[];
-  if (teams.length === 0) {
-    const apiData = await fetchRankingsFromApi(DEFAULT_SEASON);
-    teams = apiData.teams;
-  }
+  if (isBuildPhase()) return null;
+  const apiData = await fetchRankingsFromApi(DEFAULT_SEASON);
+  const teams = apiData.teams;
   const team = teams.find((t) => t.teamId === slug || t.teamName?.toLowerCase() === slug.toLowerCase());
-
   if (!team) return null;
 
   const ranks = buildTeamRanks(teams, team);

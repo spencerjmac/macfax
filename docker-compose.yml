@@ -35,7 +35,6 @@ services:
     environment:
       NODE_ENV: production
       PORT: 7000
-      SKIP_DATA_BUILD: "1"
       NEXT_PUBLIC_API_BASE_URL: "http://backend:8000"
     depends_on:
       - backend

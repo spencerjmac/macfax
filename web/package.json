@@ -4,11 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
-    "dev:frontend": "SKIP_DATA_BUILD=1 npm run build:data && next dev",
+    "dev:frontend": "next dev",
     "dev:backend": "cd ../backend && uv run python manage.py runserver",
-    "build": "npm run build:data && next build",
-    "build:data": "tsx ../scripts/build-data.ts",
-    "start": "npm run build:data && next start",
+    "build": "next build",
+    "start": "next start",
     "lint": "next lint"
   },
   "dependencies": {
