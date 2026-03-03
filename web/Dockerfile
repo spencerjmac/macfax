@@ -17,7 +17,8 @@ COPY ["Bart Torvik", "./Bart Torvik"]
 COPY ["CBB Analytics", "./CBB Analytics"]
 
 ENV SKIP_DATA_BUILD=1
-RUN cd web && npm run build
+WORKDIR /app/web
+RUN npm run build
 
 FROM node:20-alpine AS runner
 WORKDIR /app
