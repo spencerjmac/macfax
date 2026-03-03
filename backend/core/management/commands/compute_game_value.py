@@ -51,10 +51,10 @@ class Command(BaseCommand):
             self.stderr.write(f"❌ National averages not found for {season_year}")
             return
         
-        nat_avg_ortg = nat_avg.avg_ortg
-        hca_points = nat_avg.hca_points
-        sigma = nat_avg.prediction_sigma
-        
+        nat_avg_ortg = nat_avg.avg_ortg if nat_avg.avg_ortg is not None else 108.0
+        hca_points = nat_avg.hca_points if nat_avg.hca_points is not None else 1.85
+        sigma = nat_avg.prediction_sigma if nat_avg.prediction_sigma is not None else 11.08
+
         self.stdout.write(f"📊 National Context:")
         self.stdout.write(f"  • Avg ORtg: {nat_avg_ortg:.2f}")
         self.stdout.write(f"  • HCA: {hca_points:.2f} pts")

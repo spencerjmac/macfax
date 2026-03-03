@@ -74,15 +74,6 @@ wheels = [
 ]
 
 [[package]]
-name = "async-timeout"
-version = "5.0.1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/a5/ae/136395dfbfe00dfc94da3f3e136d0b13f394cba8f4841120e34226265780/async_timeout-5.0.1.tar.gz", hash = "sha256:d9321a7a3d5a6a5e187e824d2fa0793ce379a202935782d555d6e9d2735677d3", size = 9274, upload-time = "2024-11-06T16:41:39.6Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/fe/ba/e2081de779ca30d473f21f5b30e0e737c438205440784c7dfc81efc2b029/async_timeout-5.0.1-py3-none-any.whl", hash = "sha256:39e3809566ff85354557ec2398b55e096c8364bacac9405a7a1fa429e77fe76c", size = 6233, upload-time = "2024-11-06T16:41:37.9Z" },
-]
-
-[[package]]
 name = "attrs"
 version = "25.4.0"
 source = { registry = "https://pypi.org/simple" }
@@ -124,7 +115,6 @@ dependencies = [
     { name = "dj-database-url" },
     { name = "django" },
     { name = "django-cors-headers" },
-    { name = "django-rq" },
     { name = "djangorestframework" },
     { name = "gunicorn" },
     { name = "pandas" },
@@ -132,9 +122,7 @@ dependencies = [
     { name = "python-dotenv" },
     { name = "pyyaml" },
     { name = "rapidfuzz" },
-    { name = "redis" },
     { name = "requests" },
-    { name = "rq" },
     { name = "scipy" },
     { name = "tenacity" },
     { name = "whitenoise" },
@@ -158,7 +146,6 @@ requires-dist = [
     { name = "django", specifier = "==5.0.1" },
     { name = "django-cors-headers", specifier = "==4.3.1" },
     { name = "django-extensions", marker = "extra == 'dev'", specifier = "==3.2.3" },
-    { name = "django-rq", specifier = "==2.10.2" },
     { name = "djangorestframework", specifier = "==3.14.0" },
     { name = "flake8", marker = "extra == 'dev'", specifier = "==7.0.0" },
     { name = "gunicorn", specifier = "==21.2.0" },
@@ -170,9 +157,7 @@ requires-dist = [
     { name = "python-dotenv", specifier = "==1.0.0" },
     { name = "pyyaml", specifier = "==6.0.1" },
     { name = "rapidfuzz", specifier = "==3.6.1" },
-    { name = "redis", specifier = "==5.0.1" },
     { name = "requests", specifier = "==2.31.0" },
-    { name = "rq", specifier = "==1.16.2" },
     { name = "scipy", specifier = ">=1.11.0" },
     { name = "tenacity", specifier = "==8.2.3" },
     { name = "whitenoise", specifier = "==6.6.0" },
@@ -332,20 +317,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/8a/f1/318684c9466968bf9a9c221663128206e460c1a67f595055be4b284cde8a/django-extensions-3.2.3.tar.gz", hash = "sha256:44d27919d04e23b3f40231c4ab7af4e61ce832ef46d610cc650d53e68328410a", size = 277216, upload-time = "2023-06-05T17:09:01.447Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a7/7e/ba12b9660642663f5273141018d2bec0a1cae1711f4f6d1093920e157946/django_extensions-3.2.3-py3-none-any.whl", hash = "sha256:9600b7562f79a92cbf1fde6403c04fee314608fefbb595502e34383ae8203401", size = 229868, upload-time = "2023-06-05T17:08:58.197Z" },
-]
-
-[[package]]
-name = "django-rq"
-version = "2.10.2"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "django" },
-    { name = "redis" },
-    { name = "rq" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/bd/3d/852dda92fb5a60a462a1d805b4198957e7e1ed5344783dc6b21da89fd156/django-rq-2.10.2.tar.gz", hash = "sha256:d1690b6a409934a0ea23c208ccb00d69477899f8edc61106ce5395c19dcdfb1e", size = 49744, upload-time = "2024-03-23T10:04:24.924Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/e7/49/b6a3b20cdf3238e02b56fece067ab7388c57e4d17bd3a21ed3cb069b872b/django_rq-2.10.2-py2.py3-none-any.whl", hash = "sha256:5fe340e071c141a23ea0859df73c48b0a3df33a851835b2a8f8c4fca7a8b1849", size = 56504, upload-time = "2024-03-23T10:04:21.645Z" },
 ]
 
 [[package]]
@@ -1012,18 +983,6 @@ wheels = [
 ]
 
 [[package]]
-name = "redis"
-version = "5.0.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "async-timeout", marker = "python_full_version <= '3.11.2'" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/4a/4c/3c3b766f4ecbb3f0bec91ef342ee98d179e040c25b6ecc99e510c2570f2a/redis-5.0.1.tar.gz", hash = "sha256:0dab495cd5753069d3bc650a0dde8a8f9edde16fc5691b689a566eda58100d0f", size = 4578353, upload-time = "2023-09-26T06:51:17.945Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/0b/34/a01250ac1fc9bf9161e07956d2d580413106ce02d5591470130a25c599e3/redis-5.0.1-py3-none-any.whl", hash = "sha256:ed4802971884ae19d640775ba3b03aa2e7bd5e8fb8dfaed2decce4d0fc48391f", size = 250272, upload-time = "2023-09-26T06:51:15.745Z" },
-]
-
-[[package]]
 name = "requests"
 version = "2.31.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1036,19 +995,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/9d/be/10918a2eac4ae9f02f6cfe6414b7a155ccd8f7f9d4380d62fd5b955065c3/requests-2.31.0.tar.gz", hash = "sha256:942c5a758f98d790eaed1a29cb6eefc7ffb0d1cf7af05c3d2791656dbd6ad1e1", size = 110794, upload-time = "2023-05-22T15:12:44.175Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/70/8e/0e2d847013cb52cd35b38c009bb167a1a26b2ce6cd6965bf26b47bc0bf44/requests-2.31.0-py3-none-any.whl", hash = "sha256:58cd2187c01e70e6e26505bca751777aa9f2ee0b7f4300988b709f44e013003f", size = 62574, upload-time = "2023-05-22T15:12:42.313Z" },
-]
-
-[[package]]
-name = "rq"
-version = "1.16.2"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "click" },
-    { name = "redis" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/c5/1d/a020e8f3559293635dd6283d037bfc15f866136498da3db1e5416c65773d/rq-1.16.2.tar.gz", hash = "sha256:5c5b9ad5fbaf792b8fada25cc7627f4d206a9a4455aced371d4f501cc3f13b34", size = 629881, upload-time = "2024-05-01T07:13:14.136Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/46/35/db396caf7cfe71a9e661cea520b276f1472df25015e7cb9143c65a1dca6d/rq-1.16.2-py3-none-any.whl", hash = "sha256:52e619f6cb469b00e04da74305045d244b75fecb2ecaa4f26422add57d3c5f09", size = 90911, upload-time = "2024-05-01T07:13:11.158Z" },
 ]
 
 [[package]]

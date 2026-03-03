@@ -13,16 +13,6 @@ services:
       timeout: 5s
       retries: 5
 
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-
   backend:
     build:
       context: .
@@ -31,16 +21,12 @@ services:
       - backend/.env.docker
     environment:
       DATABASE_URL: postgres://cbb_user:cbb_password@db:5432/cbb_analytics
-      REDIS_URL: redis://redis:6379/0
     depends_on:
       db:
         condition: service_healthy
-      redis:
-        condition: service_healthy
     ports:
       - "8000:8000"
-    command: ["sh", "-c", "python manage.py migrate && python manage.py rqworker default high low &
- gunicorn config.wsgi:application --bind 0.0.0.0:8000"]
+    command: ["sh", "-c", "python manage.py migrate && gunicorn config.wsgi:application --bind 0.0.0.0:8000"]
 
   web:
     build:

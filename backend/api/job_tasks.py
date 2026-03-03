@@ -1,6 +1,6 @@
 """
-Background job task functions for update_all and data ingestion
-These functions are called by django-rq workers
+Task functions for update_all and data ingestion.
+Called synchronously from api.job_views when starting jobs via the API.
 """
 
 from django.core.management import call_command
@@ -51,10 +51,7 @@ def _run_command_job(job_id, command_name, cmd_args):
 def run_update_all(
     job_id, season_year, skip_ingest=False, iterations=25, sor_trials=10000
 ):
-    """
-    Run the complete update_all pipeline
-    Called by django-rq worker
-    """
+    """Run the complete update_all pipeline."""
     try:
         return _run_command_job(
             job_id,
@@ -83,10 +80,7 @@ def run_update_all(
 def run_ingest_gamelogs(
     job_id, season_year, source="ncaa", refresh=False, start_date=None, end_date=None
 ):
-    """
-    Run the ingest_gamelogs management command
-    Called by django-rq worker
-    """
+    """Run the ingest_gamelogs management command."""
     try:
         cmd_args = {
             "season": season_year,

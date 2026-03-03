@@ -7,6 +7,7 @@ Usage:
 """
 
 import requests
+from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
@@ -57,11 +58,12 @@ class Command(BaseCommand):
         
         self.stdout.write(f"\n{'='*80}")
         self.stdout.write(f"Fetching NCAA NET Rankings for {season.display_name}")
-        self.stdout.write(f"Source: ncaa-api.henrygd.me")
+        base_url = getattr(settings, "NCAA_API_BASE_URL", "https://ncaa-api.henrygd.me").rstrip("/")
+        self.stdout.write(f"Source: {base_url}")
         self.stdout.write(f"{'='*80}\n")
         
         # Fetch NET rankings from API
-        api_url = "https://ncaa-api.henrygd.me/rankings/basketball-men/d1/ncaa-mens-basketball-net-rankings"
+        api_url = f"{base_url}/rankings/basketball-men/d1/ncaa-mens-basketball-net-rankings"
         
         try:
             self.stdout.write(f"🌐 Fetching from {api_url}...")

@@ -51,7 +51,17 @@ docker run -p 3000:3000 henrygd/ncaa-api
 NCAA_API_BASE_URL = 'http://localhost:3000'  # or your NCAA API URL
 ```
 
-### 4. Review Team Alias Overrides
+### 4. Ensure Teams Exist for NCAA Mappings
+
+The NCAA API uses short names (e.g. "Central Mich.", "Ole Miss"); `ncaa_team_name_mappings.yml` maps those to canonical names (e.g. "Central Michigan", "Mississippi"). The **Team** table must have a row for each canonical name. Create any missing teams:
+
+```bash
+python manage.py ensure_ncaa_teams
+```
+
+Run this once before your first game ingest (or after adding mappings). Use `--dry-run` to see what would be created.
+
+### 5. Review Team Alias Overrides
 
 Check `backend/team_alias_overrides.yml` and add any known problematic mappings:
 

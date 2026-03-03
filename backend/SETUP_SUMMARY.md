@@ -43,7 +43,6 @@ uv pip install -e ".[dev]"
 DATABASE_URL=sqlite:///db.sqlite3  # No external DB needed
 DEBUG=True
 SECRET_KEY=dev-key-only
-REDIS_URL=redis://localhost:6379/0  # Optional
 ```
 
 #### 4. **.env.example** - Template for Environment
@@ -150,8 +149,6 @@ uv pip install -e ".[dev]"
 |---------|---------|---------|
 | Django | 5.0.1 | Web framework |
 | djangorestframework | 3.14.0 | REST API |
-| django-rq | 2.8.1 | Background job queue |
-| redis | 5.0.1 | Job queue backend |
 | psycopg2-binary | 2.9.9 | PostgreSQL driver |
 | pandas | 2.2.0 | Data processing |
 | gunicorn | 21.2.0 | WSGI server |
@@ -326,7 +323,6 @@ docker compose exec backend python manage.py createsuperuser
 ### Services
 
 - **db** - PostgreSQL 16 (port 5432)
-- **redis** - Redis 7 (port 6379)
 - **backend** - Django + Gunicorn (port 8000)
 - **web** - Next.js frontend (port 3000)
 
@@ -448,7 +444,7 @@ Your backend is ready for:
 - ✅ Python package management with uv
 - ✅ Testing with pytest
 - ✅ Code quality with black/flake8
-- ✅ Background job execution with django-rq
+- ✅ Admin-triggered data jobs (synchronous)
 - ✅ Docker deployment with PostgreSQL
 - ✅ Real-time admin dashboard for job monitoring
 

@@ -33,15 +33,29 @@ class TeamMapper:
         self.source = source
         self.teams = {t.id: t for t in Team.objects.all()}
         self.overrides = {}
-        
+        self.unmatched = []
+
+        # NCAA source: load comprehensive D1 name mappings (ncaa_name -> canonical name)
+        self.ncaa_mappings = {}
+        if source == 'ncaa':
+            ncaa_path = Path(settings.BASE_DIR) / 'ncaa_team_name_mappings.yml'
+            if ncaa_path.exists():
+                try:
+                    with open(ncaa_path, 'r') as f:
+                        data = yaml.safe_load(f) or {}
+                        self.ncaa_mappings = data.get('ncaa', {})
+                    logger.info(f"Loaded {len(self.ncaa_mappings)} NCAA name mappings")
+                except Exception as e:
+                    logger.warning(f"Could not load NCAA mappings from {ncaa_path}: {e}")
+
         # Load overrides (fallback for other sources or special cases)
         if override_file is None:
             override_file = Path(settings.BASE_DIR) / 'team_alias_overrides.yml'
-        
+
         self.override_file = Path(override_file)
         if self.override_file.exists():
             self._load_overrides()
-        
+
         # Build search index from team names and aliases (now includes NCAA names from migration)
         self._build_search_index()
     

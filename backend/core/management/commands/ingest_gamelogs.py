@@ -14,17 +14,26 @@ import os
 from datetime import datetime, date, timedelta
 from typing import List, Dict, Optional
 from pathlib import Path
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
 from django.core.management.base import BaseCommand, CommandError
-from django.db import transaction
+from django.db import transaction, connection
 from django.utils import timezone
-import django_rq
 
 from core.models import Season, Team, Game, TeamGameStats, ScoringEvent, TeamExternalId
 from core.utils.team_mapping import TeamMapper
 from core.utils.ncaa_api import NCAAAPIClient, ESPNAPIClient, NCAAAPIError
 
 logger = logging.getLogger(__name__)
+
+
+def _init_worker():
+    """Run once per worker process: ensure Django is set up (spawn) and do not reuse parent DB connection."""
+    import os
+    if os.environ.get("DJANGO_SETTINGS_MODULE"):
+        import django
+        django.setup()
+    connection.close()
 
 
 def process_game_job(
@@ -91,7 +100,7 @@ class Command(BaseCommand):
             "--start", type=str, help="Start date (YYYY-MM-DD). Default: season start"
         )
         parser.add_argument(
-            "--end", type=str, help="End date (YYYY-MM-DD). Default: today"
+            "--end", type=str, help="End date (YYYY-MM-DD). Default: yesterday (skip today; games may be unplayed)"
         )
         parser.add_argument(
             "--refresh", action="store_true", help="Force refresh existing games"
@@ -112,9 +121,11 @@ class Command(BaseCommand):
             help="Data source (default: ncaa)",
         )
         parser.add_argument(
-            "--parallel",
-            action="store_true",
-            help="Queue games to job queue for parallel processing (requires workers)",
+            "--workers",
+            type=int,
+            default=1,
+            metavar="N",
+            help="In-process parallel workers for game ingestion (default: 1). Use 2+ for multiprocessing.",
         )
 
     def handle(self, *args, **options):
@@ -123,7 +134,7 @@ class Command(BaseCommand):
         dry_run = options["dry_run"]
         rebuild_mappings = options["rebuild_mappings"]
         source = options.get("source", "ncaa")
-        parallel = options.get("parallel", False)
+        workers = max(1, int(options.get("workers", 1)))
 
         # Get or create season
         try:
@@ -140,7 +151,8 @@ class Command(BaseCommand):
             start_date = date(season_year - 1, 11, 1)
 
         if not end_date:
-            end_date = date.today()
+            # Default to yesterday so we don't request today's games (often not played yet; boxscores 502/428)
+            end_date = date.today() - timedelta(days=1)
 
         if start_date > end_date:
             raise CommandError("Start date must be before end date")
@@ -175,8 +187,8 @@ class Command(BaseCommand):
             mapper=mapper,
             refresh=refresh,
             dry_run=dry_run,
-            parallel=parallel,
             source=source,
+            workers=workers,
         )
 
         # Step 3: Summary
@@ -222,8 +234,8 @@ class Command(BaseCommand):
         mapper: TeamMapper,
         refresh: bool,
         dry_run: bool,
-        parallel: bool = False,
         source: str = "ncaa",
+        workers: int = 1,
     ) -> Dict[str, int]:
         """Main ingestion loop"""
         self.stdout.write("\n[2/3] Fetching games...")
@@ -240,10 +252,10 @@ class Command(BaseCommand):
             "jobs_queued": 0,
         }
 
-        if parallel:
+        if workers > 1:
             self.stdout.write(
                 self.style.SUCCESS(
-                    "PARALLEL MODE - Games will be queued to job queue\n"
+                    f"MULTIPROCESSING MODE - {workers} workers (no Redis required)\n"
                 )
             )
 
@@ -260,41 +272,75 @@ class Command(BaseCommand):
 
                 self.stdout.write(f"    Found {len(games)} games")
 
-                # Process each game
-                for i, game_data in enumerate(games, 1):
-                    game_id = str(
-                        game_data.get("id") or game_data.get("gameID", "unknown")
-                    )
-
-                    if parallel:
-                        # Queue the game for parallel processing
-                        try:
-                            queue = django_rq.get_queue("default")
-                            queue.enqueue(
+                # Process each game (multiprocessing or serial)
+                if workers > 1:
+                    # In-process multiprocessing (no Redis)
+                    with ProcessPoolExecutor(
+                        max_workers=workers,
+                        initializer=_init_worker,
+                    ) as executor:
+                        future_to_info = {
+                            executor.submit(
                                 process_game_job,
-                                game_data=game_data,
+                                game_data=g,
                                 season_year=season.year,
                                 source=source,
                                 refresh=refresh,
                                 dry_run=dry_run,
-                                job_timeout=600,
+                            ): (i, g)
+                            for i, g in enumerate(games, 1)
+                        }
+                        for future in as_completed(future_to_info):
+                            i, game_data = future_to_info[future]
+                            game_id = str(
+                                game_data.get("id")
+                                or game_data.get("gameID", "unknown")
                             )
-                            stats["jobs_queued"] += 1
-                            self.stdout.write(
-                                f"    ⤴ [{i}/{len(games)}] Queued game {game_id}"
-                            )
-                        except Exception as e:
-                            stats["errors"] += 1
-                            logger.error(
-                                f"Error queueing game {game_id}: {e}", exc_info=True
-                            )
-                            self.stdout.write(
-                                self.style.ERROR(
-                                    f"    ✗ [{i}/{len(games)}] Error queueing game {game_id}: {e}"
+                            try:
+                                result = future.result()
+                                if result.get("error"):
+                                    stats["errors"] += 1
+                                    self.stdout.write(
+                                        self.style.ERROR(
+                                            f"    ✗ [{i}/{len(games)}] {game_id}: {result['error']}"
+                                        )
+                                    )
+                                elif result["created"]:
+                                    stats["games_created"] += 1
+                                    stats["team_stats_created"] += result[
+                                        "team_stats"
+                                    ]
+                                    stats["scoring_events_created"] += result[
+                                        "scoring_events"
+                                    ]
+                                    self.stdout.write(
+                                        f"    ✓ [{i}/{len(games)}] Created game {game_id}"
+                                    )
+                                elif result["updated"]:
+                                    stats["games_updated"] += 1
+                                    self.stdout.write(
+                                        f"    ↻ [{i}/{len(games)}] Updated game {game_id}"
+                                    )
+                                else:
+                                    stats["games_skipped"] += 1
+                            except Exception as e:
+                                stats["errors"] += 1
+                                logger.error(
+                                    f"Error processing game {game_id}: {e}",
+                                    exc_info=True,
                                 )
-                            )
-                    else:
-                        # Synchronous processing (original behavior)
+                                self.stdout.write(
+                                    self.style.ERROR(
+                                        f"    ✗ [{i}/{len(games)}] {game_id}: {e}"
+                                    )
+                                )
+                else:
+                    # Synchronous processing (original behavior)
+                    for i, game_data in enumerate(games, 1):
+                        game_id = str(
+                            game_data.get("id")
+                            or game_data.get("gameID", "unknown")
+                        )
                         try:
                             result = self._process_game(
                                 game_data=game_data,
@@ -304,7 +350,6 @@ class Command(BaseCommand):
                                 refresh=refresh,
                                 dry_run=dry_run,
                             )
-
                             if result["created"]:
                                 stats["games_created"] += 1
                                 stats["team_stats_created"] += result["team_stats"]
@@ -321,12 +366,11 @@ class Command(BaseCommand):
                                 )
                             else:
                                 stats["games_skipped"] += 1
-                                # Don't spam for skipped games unless verbose
-
                         except Exception as e:
                             stats["errors"] += 1
                             logger.error(
-                                f"Error processing game {game_id}: {e}", exc_info=True
+                                f"Error processing game {game_id}: {e}",
+                                exc_info=True,
                             )
                             self.stdout.write(
                                 self.style.ERROR(

@@ -7,10 +7,12 @@ from pathlib import Path
 from dotenv import load_dotenv
 import dj_database_url
 
-load_dotenv()
-
 # Build paths inside the project
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Load .env then .env.local (local overrides for dev); both relative to backend dir
+load_dotenv(BASE_DIR / ".env")
+load_dotenv(BASE_DIR / ".env.local", override=True)
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-dev-key-change-this")
@@ -31,7 +33,6 @@ INSTALLED_APPS = [
     # Third party
     "rest_framework",
     "corsheaders",
-    "django_rq",
     # Local apps
     "core",
     "api",
@@ -119,6 +120,12 @@ REST_FRAMEWORK = {
     ],
 }
 
+# NCAA API (henrygd/ncaa-api). Use self-hosted in Docker or public demo.
+NCAA_API_BASE_URL = os.getenv(
+    "NCAA_API_BASE_URL",
+    "https://ncaa-api.henrygd.me",
+).rstrip("/")
+
 # CORS
 CORS_ALLOWED_ORIGINS = os.getenv(
     "CORS_ALLOWED_ORIGINS",
@@ -130,24 +137,3 @@ CSRF_TRUSTED_ORIGINS = os.getenv(
     "CSRF_TRUSTED_ORIGINS",
     "http://localhost:3000,http://127.0.0.1:3000",
 ).split(",")
-# Django-RQ Configuration
-import os
-
-RQ_QUEUES = {
-    "default": {
-        "URL": os.getenv("REDIS_URL", "redis://localhost:6379/0"),
-        "DEFAULT_TIMEOUT": 3600,  # 1 hour
-    },
-    "high": {
-        "URL": os.getenv("REDIS_URL", "redis://localhost:6379/0"),
-        "DEFAULT_TIMEOUT": 3600,
-    },
-    "medium": {
-        "URL": os.getenv("REDIS_URL", "redis://localhost:6379/0"),
-        "DEFAULT_TIMEOUT": 3600,
-    },
-    "low": {
-        "URL": os.getenv("REDIS_URL", "redis://localhost:6379/0"),
-        "DEFAULT_TIMEOUT": 3600,
-    },
-}

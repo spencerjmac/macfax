@@ -32,8 +32,8 @@ urlpatterns = [
     path("auth/login/", login_view, name="auth-login"),
     path("auth/logout/", logout_view, name="auth-logout"),
     path("auth/me/", me, name="auth-me"),
-    path("trapezoid/", TrapezoidView.as_view(), name="trapezoid"),
-    path("landscape/", EfficiencyLandscapeView.as_view(), name="landscape"),
+    path("viz/landscape/", EfficiencyLandscapeView.as_view(), name="viz-landscape"),
+    path("viz/trapezoid/", TrapezoidView.as_view(), name="viz-trapezoid"),
     path("viz/stats/", VizStatsView.as_view(), name="viz-stats"),
     path("viz/scatter/", VizScatterView.as_view(), name="viz-scatter"),
 ]

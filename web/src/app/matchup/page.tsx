@@ -275,7 +275,7 @@ function MatchupPageInner() {
           <FourFactorSection result={result} />
           
           {/* Top Drivers */}
-          <TopDriversSection drivers={result.top_drivers} teamA={result.teamA.name} teamB={result.teamB.name} />
+          <TopDriversSection drivers={result.top_drivers ?? []} teamA={result.teamA.name} teamB={result.teamB.name} />
           
           {/* Shot Profile */}
           {result.shot_profile && (
@@ -417,39 +417,40 @@ function ForecastSection({ result }: { result: MatchupResult }) {
 
 function FourFactorSection({ result }: { result: MatchupResult }) {
   const { four_factor_edges, points_breakdown, teamA, teamB } = result;
-  
+  const pb = points_breakdown ?? undefined;
+
   const factors = [
-    { 
-      name: 'Effective FG%', 
+    {
+      name: 'Effective FG%',
       key: 'efg',
       edge: four_factor_edges.efg_edge,
       valueA: four_factor_edges.exp_efg_a,
       valueB: four_factor_edges.exp_efg_b,
-      pointsImpact: points_breakdown.pts_from_efg
+      pointsImpact: pb?.pts_from_efg,
     },
-    { 
-      name: 'Turnover Rate', 
+    {
+      name: 'Turnover Rate',
       key: 'tov',
       edge: four_factor_edges.tov_edge,
       valueA: four_factor_edges.exp_tov_a,
       valueB: four_factor_edges.exp_tov_b,
-      pointsImpact: points_breakdown.pts_from_tov
+      pointsImpact: pb?.pts_from_tov,
     },
-    { 
-      name: 'Offensive Reb%', 
+    {
+      name: 'Offensive Reb%',
       key: 'orb',
       edge: four_factor_edges.orb_edge,
       valueA: four_factor_edges.exp_orb_a,
       valueB: four_factor_edges.exp_orb_b,
-      pointsImpact: points_breakdown.pts_from_orb
+      pointsImpact: pb?.pts_from_orb,
     },
-    { 
-      name: 'Free Throw Rate', 
+    {
+      name: 'Free Throw Rate',
       key: 'ftr',
       edge: four_factor_edges.ftr_edge,
       valueA: four_factor_edges.exp_ftr_a,
       valueB: four_factor_edges.exp_ftr_b,
-      pointsImpact: points_breakdown.pts_from_ftr
+      pointsImpact: pb?.pts_from_ftr,
     },
   ];
   
@@ -478,10 +479,13 @@ function FourFactorSection({ result }: { result: MatchupResult }) {
               <FactorBar value={factor.edge} />
             </div>
             
-            {/* Points Impact */}
+            {/* Points Impact (when regression coefficients available) */}
             <div className="flex justify-between text-xs text-gray-500 mt-2">
               <span className="font-bold">
-                Impact: {factor.pointsImpact > 0 ? '+' : ''}{factor.pointsImpact.toFixed(1)} pts
+                Impact:{' '}
+                {factor.pointsImpact != null
+                  ? `${factor.pointsImpact > 0 ? '+' : ''}${factor.pointsImpact.toFixed(1)} pts`
+                  : '—'}
               </span>
             </div>
           </div>

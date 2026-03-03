@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Suspense } from 'react';
 import dynamicImport from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -12,19 +12,51 @@ export const dynamic = 'force-dynamic';
 // Dynamically import ECharts to avoid SSR issues
 const ReactECharts = dynamicImport(() => import('echarts-for-react'), { ssr: false });
 
-// FiveThirtyEight-ish color palette
+// Distinct colors per conference (FiveThirtyEight-ish + extended palette)
 const CONFERENCE_COLORS: Record<string, string> = {
-  'B10': '#ED713A',   // Big Ten - Primary Orange
-  'B12': '#30A2DA',   // Big 12 - Secondary Blue  
-  'ACC': '#FC4F30',   // ACC - Red
-  'SEC': '#E5AE38',   // SEC - Gold
-  'BE': '#6D904F',    // Big East - Green
-  'P12': '#8B8B8B',   // Pac-12 - Gray
-  'A10': '#810F7C',   // A10 - Purple
-  'MWC': '#17BECF',   // MW - Cyan
-  'WCC': '#BCBD22',   // WCC - Yellow-Green
-  'AAC': '#FF7F0E',   // AAC - Orange
+  'B10': '#ED713A',   // Big Ten
+  'B12': '#30A2DA',   // Big 12
+  'ACC': '#FC4F30',   // ACC
+  'SEC': '#E5AE38',   // SEC
+  'BE': '#6D904F',    // Big East
+  'P12': '#9467BD',   // Pac-12
+  'A10': '#810F7C',   // A10
+  'MWC': '#17BECF',   // Mountain West
+  'WCC': '#BCBD22',   // WCC
+  'AAC': '#FF7F0E',   // American
+  'CUSA': '#2CA02C',  // Conference USA
+  'MAC': '#D62728',   // Mid-American
+  'MVC': '#1F77B4',   // Missouri Valley
+  'WAC': '#8C564B',   // WAC
+  'SB': '#E377C2',    // Sun Belt
+  'CAA': '#7F7F7F',   // CAA
+  'SoCon': '#AEC7E8', // Southern
+  'Big West': '#FFBB78',
+  'Big Sky': '#98DF8A',
+  'Horizon': '#C5B0D5',
+  'OVC': '#C49C94',   // Ohio Valley
+  'AEC': '#F7B6D2',   // America East
+  'Patriot': '#DBDB8D',
+  'Ivy': '#9EDAE5',
+  'MAAC': '#AD494A',
+  'NEC': '#D6616B',
+  'ASun': '#E7969C',  // ASUN
+  'Big South': '#843C39',
+  'Southland': '#DE9ED6',
+  'MEAC': '#8CA252',
+  'SWAC': '#CEDB9C',
+  'Summit': '#393B79',
+  'IND': '#6B6B6B',  // Independent
 };
+
+// Fallback: deterministic color from conference code so unknown conferences aren't grey
+function getConferenceColor(conf: string): string {
+  if (CONFERENCE_COLORS[conf]) return CONFERENCE_COLORS[conf];
+  const palette = ['#E6550D', '#756BB1', '#31A354', '#DD1C77', '#0868AC', '#CC4C02', '#238B45', '#88419D', '#F16913', '#41B6C4', '#AE017E', '#225EA8', '#C51B8A', '#41AE76', '#762A83', '#006D2C', '#9970AB', '#3690C0'];
+  let h = 0;
+  for (let i = 0; i < conf.length; i++) h = (h << 5) - h + conf.charCodeAt(i);
+  return palette[Math.abs(h) % palette.length];
+}
 
 function VizBuilderPageInner() {
   const router = useRouter();
@@ -44,7 +76,15 @@ function VizBuilderPageInner() {
   const [colorByConference, setColorByConference] = useState(searchParams.get('color') !== '0');
   const [invertX, setInvertX] = useState(searchParams.get('invX') === '1');
   const [invertY, setInvertY] = useState(searchParams.get('invY') === '1');
-  
+  // Legend selection when color-by-conference: null = all shown, or { [conf]: boolean }
+  const [legendSelected, setLegendSelected] = useState<Record<string, boolean> | null>(null);
+  // Zoom range (0-100) for y-axis slider
+  const [dataZoomRange, setDataZoomRange] = useState({ xStart: 0, xEnd: 100, yStart: 0, yEnd: 100 });
+  // One-shot: when true, next option forces dataZoom to 0–100 so Reset zoom applies; then cleared
+  const [forceZoomReset, setForceZoomReset] = useState(false);
+
+  const chartRef = useRef<any>(null);
+
   // Load stat catalog on mount
   useEffect(() => {
     loadStats();
@@ -57,6 +97,23 @@ function VizBuilderPageInner() {
       updateURL();
     }
   }, [xStat, yStat]);
+
+  // Reset legend selection when data or color-by-conference changes
+  useEffect(() => {
+    setLegendSelected(null);
+  }, [data, colorByConference]);
+
+  // Reset zoom range when data changes
+  useEffect(() => {
+    setDataZoomRange({ xStart: 0, xEnd: 100, yStart: 0, yEnd: 100 });
+  }, [data]);
+
+  // Clear forceZoomReset after chart has applied it so wheel zoom isn’t stuck
+  useEffect(() => {
+    if (!forceZoomReset) return;
+    const id = setTimeout(() => setForceZoomReset(false), 50);
+    return () => clearTimeout(id);
+  }, [forceZoomReset]);
   
   async function loadStats() {
     try {
@@ -153,7 +210,7 @@ function VizBuilderPageInner() {
             symbolSize: p.logo_url ? 30 : 10,
           })),
           itemStyle: {
-            color: CONFERENCE_COLORS[conf] || '#8B8B8B',
+            color: getConferenceColor(conf),
             opacity: 0.9,
           },
           emphasis: {
@@ -191,21 +248,23 @@ function VizBuilderPageInner() {
       });
     }
     
-    // Add regression line if enabled
+    // Add regression line if enabled; use dataZoomRange so line and zoom stay in sync in one update
     if (showRegression && scatterStats.slope !== null && scatterStats.intercept !== null) {
       const xValues = points.map(p => p.x);
       const minX = Math.min(...xValues);
       const maxX = Math.max(...xValues);
-      
-      const y1 = scatterStats.slope * minX + scatterStats.intercept;
-      const y2 = scatterStats.slope * maxX + scatterStats.intercept;
-      
+      const span = maxX - minX || 1;
+      const visibleMinX = minX + span * (dataZoomRange.xStart / 100);
+      const visibleMaxX = minX + span * (dataZoomRange.xEnd / 100);
+      const y1 = scatterStats.slope * visibleMinX + scatterStats.intercept;
+      const y2 = scatterStats.slope * visibleMaxX + scatterStats.intercept;
+
       series.push({
         type: 'line',
         name: 'Regression',
         data: [
-          [minX, y1],
-          [maxX, y2],
+          [visibleMinX, y1],
+          [visibleMaxX, y2],
         ],
         lineStyle: {
           color: '#ED713A',
@@ -261,6 +320,28 @@ function VizBuilderPageInner() {
         top: 100,
         bottom: 100,
       },
+      dataZoom: [
+        {
+          type: 'inside',
+          xAxisIndex: 0,
+          yAxisIndex: 0,
+          ...(forceZoomReset ? { start: 0, end: 100 } : {}),
+          zoomOnMouseWheel: true,
+          moveOnMouseMove: true,
+          preventDefaultMouseMove: true,
+          filterMode: 'none', // keep regression line visible when zoomed (don't filter series data)
+        },
+        {
+          type: 'slider',
+          yAxisIndex: 0,
+          show: true,
+          right: colorByConference ? 160 : 60,
+          width: 20,
+          start: forceZoomReset ? 0 : dataZoomRange.yStart,
+          end: forceZoomReset ? 100 : dataZoomRange.yEnd,
+          filterMode: 'none',
+        },
+      ],
       xAxis: {
         type: 'value',
         name: x.label,
@@ -307,6 +388,7 @@ function VizBuilderPageInner() {
         right: 10,
         top: 100,
         data: Array.from(new Set(points.map(p => p.conference))).sort(),
+        ...(legendSelected != null && typeof legendSelected === 'object' ? { selected: legendSelected } : {}),
       } : undefined,
       series,
     };
@@ -317,6 +399,34 @@ function VizBuilderPageInner() {
       const point = params.data.point;
       router.push(`/team/${point.slug}`);
     }
+  }
+
+  function handleDataZoom(params: any) {
+    const batch = params?.batch || [];
+    setDataZoomRange(prev => {
+      const next = { ...prev };
+      batch.forEach((b: { dataZoomIndex?: number; start?: number; end?: number }) => {
+        if (b.start == null || b.end == null) return;
+        if (b.dataZoomIndex === 0) {
+          next.xStart = b.start;
+          next.xEnd = b.end;
+          next.yStart = b.start;
+          next.yEnd = b.end;
+        } else if (b.dataZoomIndex === 1) {
+          next.yStart = b.start;
+          next.yEnd = b.end;
+        }
+      });
+      return next;
+    });
+  }
+
+  function handleLegendSelectChanged(params: any) {
+    const ec = chartRef.current?.getEchartsInstance?.();
+    if (!ec) return;
+    const opt = ec.getOption() as { legend?: Array<{ selected?: Record<string, boolean> }> };
+    const selected = opt?.legend?.[0]?.selected;
+    if (selected && typeof selected === 'object') setLegendSelected({ ...selected });
   }
   
   if (loading) {
@@ -498,16 +608,57 @@ function VizBuilderPageInner() {
         
         {/* Chart */}
         <div className="bg-white rounded-lg shadow-sm p-6">
+          <div className="flex items-center justify-between gap-4 mb-3 flex-wrap">
+            <span className="text-sm text-gray-500">
+              Scroll or pinch to zoom • Drag chart to pan • Use vertical slider to zoom Y-axis
+            </span>
+            <div className="flex items-center gap-2">
+              {colorByConference && data && (() => {
+                const conferences = Array.from(new Set(data.points.map((p: { conference?: string }) => p.conference))).filter(Boolean).sort() as string[];
+                return (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setLegendSelected(Object.fromEntries(conferences.map(c => [c, true])))}
+                      className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+                    >
+                      Show all conferences
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setLegendSelected(Object.fromEntries(conferences.map(c => [c, false])))}
+                      className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+                    >
+                      Hide all conferences
+                    </button>
+                  </>
+                );
+              })()}
+              <button
+                type="button"
+                onClick={() => {
+                  setDataZoomRange({ xStart: 0, xEnd: 100, yStart: 0, yEnd: 100 });
+                  setForceZoomReset(true);
+                }}
+                className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+              >
+                Reset zoom
+              </button>
+            </div>
+          </div>
           {dataLoading ? (
             <div className="flex items-center justify-center h-96">
               <div className="text-xl text-gray-600">Loading chart...</div>
             </div>
           ) : data ? (
             <ReactECharts
+              ref={chartRef}
               option={getChartOption()}
               style={{ height: '700px' }}
               onEvents={{
                 click: handleChartClick,
+                dataZoom: handleDataZoom,
+                legendselectchanged: handleLegendSelectChanged,
               }}
             />
           ) : (

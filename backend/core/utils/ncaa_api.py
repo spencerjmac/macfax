@@ -56,19 +56,19 @@ class NCAAAPIClient:
         self.rate_limit_delay = rate_limit_delay
         self.last_request_time = 0
 
-        # Setup session with retry logic
-        # Note: Removed 502 from retry list - better to fail fast and continue with next game
+        # Setup session with retry logic (502 = Bad Gateway, common when public API is flaky)
         self.session = requests.Session()
         retry_strategy = Retry(
-            total=2,  # Reduced from 3 to fail faster
-            backoff_factor=0.5,  # Reduced from 1 for faster retries
+            total=2,
+            backoff_factor=1.0,
             status_forcelist=[
                 428,
                 429,
                 500,
+                502,
                 503,
                 504,
-            ],  # Include 428 Precondition Required
+            ],
             allowed_methods=["GET"],
         )
         adapter = HTTPAdapter(max_retries=retry_strategy)

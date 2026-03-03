@@ -1,21 +1,20 @@
 """
 Data Processing Job Management Views
-API endpoints for triggering, monitoring, and managing update_all and other data processing jobs
+API endpoints for triggering and monitoring update_all and other data processing jobs.
+Jobs run synchronously in the request (no background queue).
 """
 
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAdminUser
-from django.core.management import call_command
 from django.utils import timezone
-from io import StringIO
-import django_rq
 import uuid
 import logging
 
 from core.models import DataProcessingJob, Season
 from .serializers import DataProcessingJobSerializer
+from . import job_tasks
 
 logger = logging.getLogger(__name__)
 
@@ -89,37 +88,25 @@ class DataProcessingJobViewSet(viewsets.ReadOnlyModelViewSet):
                 created_by=request.user.username or "api",
             )
 
-            # Queue the job
+            job.status = "running"
+            job.save(update_fields=["status"])
+
             try:
-                queue = django_rq.get_queue("default")
-                rq_job = queue.enqueue(
-                    "api.job_tasks.run_update_all",
-                    kwargs={
-                        "job_id": job.id,
-                        "season_year": season_year,
-                        "skip_ingest": skip_ingest,
-                        "iterations": iterations,
-                        "sor_trials": sor_trials,
-                    },
-                    result_ttl=14400,  # 4 hours
-                )
-
-                job.status = "running"
-                job.save(update_fields=["status"])
-
-                return Response(
-                    DataProcessingJobSerializer(job).data,
-                    status=status.HTTP_201_CREATED,
+                job_tasks.run_update_all(
+                    job.id,
+                    season_year,
+                    skip_ingest=skip_ingest,
+                    iterations=iterations,
+                    sor_trials=sor_trials,
                 )
             except Exception as e:
-                job.status = "failed"
-                job.error_message = f"Failed to queue job: {str(e)}"
-                job.save(update_fields=["status", "error_message"])
-                logger.exception(f"Failed to queue update_all job {job_id}")
+                job.refresh_from_db()
+                logger.exception(f"update_all job {job_id} failed")
 
-                return Response(
-                    {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
-                )
+            return Response(
+                DataProcessingJobSerializer(DataProcessingJob.objects.get(pk=job.pk)).data,
+                status=status.HTTP_201_CREATED,
+            )
 
         except Exception as e:
             logger.exception("Error starting update_all job")
@@ -179,38 +166,26 @@ class DataProcessingJobViewSet(viewsets.ReadOnlyModelViewSet):
                 created_by=request.user.username or "api",
             )
 
-            # Queue the job
+            job.status = "running"
+            job.save(update_fields=["status"])
+
             try:
-                queue = django_rq.get_queue("default")
-                rq_job = queue.enqueue(
-                    "api.job_tasks.run_ingest_gamelogs",
-                    kwargs={
-                        "job_id": job.id,
-                        "season_year": season_year,
-                        "source": source,
-                        "refresh": refresh,
-                        "start_date": start_date,
-                        "end_date": end_date,
-                    },
-                    result_ttl=7200,  # 2 hours
-                )
-
-                job.status = "running"
-                job.save(update_fields=["status"])
-
-                return Response(
-                    DataProcessingJobSerializer(job).data,
-                    status=status.HTTP_201_CREATED,
+                job_tasks.run_ingest_gamelogs(
+                    job.id,
+                    season_year,
+                    source=source,
+                    refresh=refresh,
+                    start_date=start_date,
+                    end_date=end_date,
                 )
             except Exception as e:
-                job.status = "failed"
-                job.error_message = f"Failed to queue job: {str(e)}"
-                job.save(update_fields=["status", "error_message"])
-                logger.exception(f"Failed to queue ingest job {job_id}")
+                job.refresh_from_db()
+                logger.exception(f"ingest_gamelogs job {job_id} failed")
 
-                return Response(
-                    {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
-                )
+            return Response(
+                DataProcessingJobSerializer(DataProcessingJob.objects.get(pk=job.pk)).data,
+                status=status.HTTP_201_CREATED,
+            )
 
         except Exception as e:
             logger.exception("Error starting ingest job")
@@ -241,23 +216,26 @@ class DataProcessingJobViewSet(viewsets.ReadOnlyModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            allowed_job_types = {
-                "compute_team_metrics": "api.job_tasks.run_compute_team_metrics",
-                "compute_adjusted_ratings": "api.job_tasks.run_compute_adjusted_ratings",
-                "compute_four_factor_index": "api.job_tasks.run_compute_four_factor_index",
-                "fetch_net_rankings": "api.job_tasks.run_fetch_net_rankings",
-                "compute_sor": "api.job_tasks.run_compute_sor",
-                "compute_game_value": "api.job_tasks.run_compute_game_value",
-                "compute_sos": "api.job_tasks.run_compute_sos",
+            task_fns = {
+                "compute_team_metrics": job_tasks.run_compute_team_metrics,
+                "compute_adjusted_ratings": lambda jid, sy: job_tasks.run_compute_adjusted_ratings(
+                    jid, sy, iterations=parameters.get("iterations", 25)
+                ),
+                "compute_four_factor_index": job_tasks.run_compute_four_factor_index,
+                "fetch_net_rankings": job_tasks.run_fetch_net_rankings,
+                "compute_sor": lambda jid, sy: job_tasks.run_compute_sor(
+                    jid, sy, trials=parameters.get("sor_trials", 10000)
+                ),
+                "compute_game_value": job_tasks.run_compute_game_value,
+                "compute_sos": job_tasks.run_compute_sos,
             }
 
-            if job_type not in allowed_job_types:
+            if job_type not in task_fns:
                 return Response(
                     {"error": f"Unsupported job_type: {job_type}"},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            # Get season
             try:
                 season = Season.objects.get(year=season_year)
             except Season.DoesNotExist:
@@ -276,37 +254,19 @@ class DataProcessingJobViewSet(viewsets.ReadOnlyModelViewSet):
                 created_by=request.user.username or "api",
             )
 
+            job.status = "running"
+            job.save(update_fields=["status"])
+
             try:
-                queue = django_rq.get_queue("default")
-                task_path = allowed_job_types[job_type]
-
-                enqueue_kwargs = {
-                    "job_id": job.id,
-                    "season_year": season_year,
-                }
-
-                if job_type == "compute_adjusted_ratings":
-                    enqueue_kwargs["iterations"] = parameters.get("iterations", 25)
-                if job_type == "compute_sor":
-                    enqueue_kwargs["trials"] = parameters.get("sor_trials", 10000)
-
-                queue.enqueue(task_path, kwargs=enqueue_kwargs, result_ttl=14400)
-
-                job.status = "running"
-                job.save(update_fields=["status"])
-
-                return Response(
-                    DataProcessingJobSerializer(job).data,
-                    status=status.HTTP_201_CREATED,
-                )
+                task_fns[job_type](job.id, season_year)
             except Exception as e:
-                job.status = "failed"
-                job.error_message = f"Failed to queue job: {str(e)}"
-                job.save(update_fields=["status", "error_message"])
-                logger.exception(f"Failed to queue subjob {job_id}")
-                return Response(
-                    {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
-                )
+                job.refresh_from_db()
+                logger.exception(f"Subjob {job_id} failed")
+
+            return Response(
+                DataProcessingJobSerializer(DataProcessingJob.objects.get(pk=job.pk)).data,
+                status=status.HTTP_201_CREATED,
+            )
 
         except Exception as e:
             logger.exception("Error starting subjob")
@@ -331,26 +291,4 @@ class DataProcessingJobViewSet(viewsets.ReadOnlyModelViewSet):
     def status(self, request, pk=None):
         """Get current job status"""
         job = self.get_object()
-
-        # Try to refresh from RQ if still running
-        if job.status == "running":
-            try:
-                rq_job = django_rq.get_queue("default").fetch_job(
-                    f"dj_job_{job.job_id}"
-                )
-                if rq_job:
-                    if rq_job.is_finished:
-                        job.status = "success"
-                        job.completed_at = timezone.now()
-                        job.save(update_fields=["status", "completed_at"])
-                    elif rq_job.is_failed:
-                        job.status = "failed"
-                        job.error_message = str(rq_job.exc_info)
-                        job.completed_at = timezone.now()
-                        job.save(
-                            update_fields=["status", "error_message", "completed_at"]
-                        )
-            except Exception as e:
-                logger.warning(f"Could not fetch RQ job status: {e}")
-
         return Response(DataProcessingJobSerializer(job).data)

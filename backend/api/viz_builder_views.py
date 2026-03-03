@@ -14,7 +14,6 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import get_object_or_404
-from django.db.models import Q
 from django.core.cache import cache
 
 from core.models import Season, TeamSeasonRatings
@@ -156,13 +155,11 @@ class VizScatterView(APIView):
         if cached_data:
             return Response(cached_data)
         
-        # Query database - use TeamSeasonRatings (our computed data)
-        queryset = TeamSeasonRatings.objects.filter(season=season).select_related(
-            'team'
-        ).only(
-            'team__name', 'team__slug', 'team__logo_url',
-            x_key, y_key, 'computed_at'
-        )
+        # Query database - use TeamSeasonRatings (our computed data), D1 only
+        queryset = TeamSeasonRatings.objects.filter(
+            season=season,
+            team__is_d1=True,
+        ).select_related('team')
         
         # Use RankingsSerializer for conference lookup (same as trapezoid/landscape)
         from .serializers import RankingsSerializer
@@ -203,35 +200,32 @@ class VizScatterView(APIView):
                 computed_at = rating.computed_at
         
         # Compute statistics
-        stats_data = {}
+        stats_data = {
+            'n': len(x_values),
+            'pearson_r': None,
+            'r2': None,
+            'slope': None,
+            'intercept': None,
+            'p_value': None,
+        }
         if len(x_values) >= 2:
-            # Convert to numpy arrays
             x_array = np.array(x_values)
             y_array = np.array(y_values)
-            
-            # Pearson correlation
-            pearson_r, p_value = scipy_stats.pearsonr(x_array, y_array)
-            
-            # Linear regression
-            slope, intercept, r_value, p_val_reg, std_err = scipy_stats.linregress(x_array, y_array)
-            
-            stats_data = {
-                'n': len(x_values),
-                'pearson_r': float(pearson_r),
-                'r2': float(r_value ** 2),
-                'slope': float(slope),
-                'intercept': float(intercept),
-                'p_value': float(p_value),
-            }
-        else:
-            stats_data = {
-                'n': len(x_values),
-                'pearson_r': None,
-                'r2': None,
-                'slope': None,
-                'intercept': None,
-                'p_value': None,
-            }
+            try:
+                pearson_r, p_value = scipy_stats.pearsonr(x_array, y_array)
+                slope, intercept, r_value, p_val_reg, std_err = scipy_stats.linregress(
+                    x_array, y_array
+                )
+                stats_data.update({
+                    'pearson_r': float(pearson_r),
+                    'r2': float(r_value ** 2),
+                    'slope': float(slope),
+                    'intercept': float(intercept),
+                    'p_value': float(p_value),
+                })
+            except (ValueError, FloatingPointError):
+                # e.g. all x identical or all y identical -> no regression
+                pass
         
         # Get metadata
         x_meta = get_stat_metadata(x_key)

@@ -113,14 +113,14 @@ backend/
 - **Framework:** Django 5.0.1
 - **API:** Django REST Framework 3.14
 - **Database:** SQLite (dev) / PostgreSQL (prod)
-- **Job Queue:** Redis 7 + django-rq 2.8.1
+- **Jobs:** Synchronous execution via API (no queue)
 - **Server:** Gunicorn 21.2
 - **Package Manager:** uv (Python)
 
 ### Key Features
 - Real-time job monitoring dashboard
-- Background job queue for long operations
-- Parallel task execution
+- Admin-triggered data jobs (run synchronously)
+- Multiprocessing for game ingestion only
 - Game log ingestion pipeline
 - Team metrics computation
 - Admin interface for data management
@@ -151,15 +151,13 @@ A: See **DEVELOPMENT.md** troubleshooting section
 - **Django Docs:** https://docs.djangoproject.com/
 - **DRF Docs:** https://www.django-rest-framework.org/
 - **uv Docs:** https://docs.astral.sh/uv/
-- **redis-py Docs:** https://github.com/redis/redis-py
-
 ---
 
 ## 📊 What You Have
 
 ✅ Local development environment ready (SQLite, uv, pyproject.toml)  
-✅ Docker deployment configured (PostgreSQL, Redis, Gunicorn)  
-✅ Background job queue system (django-rq)  
+✅ Docker deployment configured (PostgreSQL, Gunicorn)  
+✅ Admin job triggers (run synchronously via API)  
 ✅ Real-time admin dashboard for job monitoring  
 ✅ Complete API with 10+ endpoints  
 ✅ Comprehensive documentation  

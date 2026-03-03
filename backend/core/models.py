@@ -1190,6 +1190,14 @@ class TeamSeasonMetrics(models.Model):
     season = models.ForeignKey(
         Season, on_delete=models.CASCADE, related_name="team_metrics"
     )
+    conference = models.ForeignKey(
+        Conference,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="team_metrics",
+        help_text="Conference for this team-season (for filtering/display)",
+    )
 
     # Games played
     games = models.IntegerField(default=0)
@@ -1385,7 +1393,7 @@ class DataProcessingJob(models.Model):
 
     # Job identification
     job_id = models.CharField(
-        max_length=50, unique=True, help_text="Unique job identifier (from RQ)"
+        max_length=50, unique=True, help_text="Unique job identifier"
     )
     job_type = models.CharField(
         max_length=30, choices=JOB_TYPE_CHOICES, help_text="Type of data processing job"

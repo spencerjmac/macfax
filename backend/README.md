@@ -96,16 +96,6 @@ python manage.py runserver 8001
 
 ### Run Background Job Worker (Optional)
 
-To test the background job queue system locally, you'll need Redis:
-
-```bash
-# Start Redis (if installed locally)
-redis-server
-
-# In another terminal, start the job worker
-python manage.py rqworker default high low
-```
-
 ## 📡 API Endpoints
 
 ### Seasons
@@ -278,8 +268,7 @@ docker compose down
 ### Services
 
 - **db** - PostgreSQL 16 database
-- **redis** - Redis 7 job queue and cache
-- **backend** - Django + Gunicorn + RQ worker
+- **backend** - Django + Gunicorn
 - **web** - Next.js frontend
 
 Access:
@@ -295,7 +284,6 @@ Access:
 DEBUG=True
 SECRET_KEY=django-insecure-dev-key-change-in-production
 DATABASE_URL=sqlite:///db.sqlite3
-REDIS_URL=redis://localhost:6379/0
 ALLOWED_HOSTS=localhost,127.0.0.1
 CORS_ALLOWED_ORIGINS=http://localhost:3000
 API_BASE_URL=http://localhost:8000
@@ -307,7 +295,6 @@ API_BASE_URL=http://localhost:8000
 DEBUG=False
 SECRET_KEY=your-long-random-production-secret-key
 DATABASE_URL=postgres://cbb:password@db:5432/cbb_analytics
-REDIS_URL=redis://redis:6379/0
 ALLOWED_HOSTS=localhost,yourdomain.com
 CORS_ALLOWED_ORIGINS=https://yourdomain.com
 API_BASE_URL=https://yourdomain.com/api

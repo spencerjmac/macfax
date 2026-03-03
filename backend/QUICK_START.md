@@ -149,7 +149,7 @@ python manage.py update_all --season 2026 --serial
 
 Defines:
 - Project metadata (name, version, description)
-- Dependencies (Django, DRF, pandas, redis, etc.)
+- Dependencies (Django, DRF, pandas, etc.)
 - Dev dependencies (pytest, black, flake8, isort)
 - Tool configurations (black, isort, pytest)
 
@@ -175,7 +175,6 @@ uv pip compile pyproject.toml -o requirements.txt
 DATABASE_URL=sqlite:///db.sqlite3  # No external DB needed
 DEBUG=True
 SECRET_KEY=dev-key
-REDIS_URL=redis://localhost:6379/0  # Optional
 ```
 
 **Copy to .env to use:**
@@ -288,7 +287,6 @@ python manage.py migrate
 ### Official Documentation
 - [Django Docs](https://docs.djangoproject.com/)
 - [Django REST Framework](https://www.django-rest-framework.org/)
-- [django-rq Documentation](https://github.com/rq/django-rq)
 - [uv Documentation](https://docs.astral.sh/uv/)
 
 ### Project Files
@@ -307,7 +305,7 @@ Everything is set up for:
 - ✅ Fast package management with uv
 - ✅ Testing with pytest
 - ✅ Code quality with black/flake8
-- ✅ Background jobs with django-rq
+- ✅ Admin-triggered data jobs (synchronous)
 - ✅ Docker deployment with PostgreSQL
 - ✅ Real-time admin job monitoring
 

@@ -336,8 +336,8 @@ export interface MatchupResult {
   forecast: MatchupForecast;
   four_factor_edges: FourFactorEdges;
   ffi_edge: number;
-  points_breakdown: PointsBreakdown;
-  top_drivers: TopDriver[];
+  points_breakdown: PointsBreakdown | null;
+  top_drivers: TopDriver[] | null;
   shot_profile: ShotProfile | null;
   volatility: Volatility;
   recent_form_a: RecentForm;

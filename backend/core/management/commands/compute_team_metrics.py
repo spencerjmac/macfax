@@ -17,7 +17,6 @@ from collections import defaultdict
 from typing import Dict, List, Tuple
 
 from django.core.management.base import BaseCommand, CommandError
-import django_rq
 from django.db.models import Q, Count, Sum, Avg
 from django.db import transaction
 
@@ -33,19 +32,6 @@ from core.models import (
 logger = logging.getLogger(__name__)
 
 
-def compute_team_metrics_job(team_id: int, season_year: int) -> Dict[str, str]:
-    """Job function to compute metrics for a single team-season."""
-    try:
-        season = Season.objects.get(year=season_year)
-        team = Team.objects.get(id=team_id)
-        cmd = Command()
-        cmd._compute_team_season_metrics(team, season)
-        return {"team_id": str(team_id), "status": "ok"}
-    except Exception as e:
-        logger.error(f"Job error for team_id={team_id}: {e}", exc_info=True)
-        return {"team_id": str(team_id), "status": "error", "error": str(e)}
-
-
 class Command(BaseCommand):
     help = "Compute team season metrics from game logs"
 
@@ -59,16 +45,10 @@ class Command(BaseCommand):
         parser.add_argument(
             "--teams", nargs="+", help="Specific team slugs to process (default: all)"
         )
-        parser.add_argument(
-            "--parallel",
-            action="store_true",
-            help="Queue each team for parallel processing (requires workers)",
-        )
 
     def handle(self, *args, **options):
         season_year = options["season"]
         team_slugs = options.get("teams")
-        parallel = options.get("parallel", False)
 
         # Get season
         try:
@@ -98,34 +78,16 @@ class Command(BaseCommand):
         # Process each team
         processed = 0
         errors = 0
-        queued = 0
 
-        if parallel:
-            queue = django_rq.get_queue("default")
-            for team in teams:
-                try:
-                    queue.enqueue(
-                        compute_team_metrics_job,
-                        team_id=team.id,
-                        season_year=season_year,
-                        job_timeout=3600,
-                    )
-                    queued += 1
-                    self.stdout.write(f"  ⤴ Queued - {team.name}")
-                except Exception as e:
-                    errors += 1
-                    logger.error(f"Error queueing {team.name}: {e}", exc_info=True)
-                    self.stdout.write(self.style.ERROR(f"  ERROR - {team.name}: {e}"))
-        else:
-            for team in teams:
-                try:
-                    self._compute_team_season_metrics(team, season)
-                    processed += 1
-                    self.stdout.write(f"  OK - {team.name}")
-                except Exception as e:
-                    errors += 1
-                    logger.error(f"Error processing {team.name}: {e}", exc_info=True)
-                    self.stdout.write(self.style.ERROR(f"  ERROR - {team.name}: {e}"))
+        for team in teams:
+            try:
+                self._compute_team_season_metrics(team, season)
+                processed += 1
+                self.stdout.write(f"  OK - {team.name}")
+            except Exception as e:
+                errors += 1
+                logger.error(f"Error processing {team.name}: {e}", exc_info=True)
+                self.stdout.write(self.style.ERROR(f"  ERROR - {team.name}: {e}"))
 
         # Summary
         self.stdout.write(
@@ -133,7 +95,6 @@ class Command(BaseCommand):
                 f"\n{'='*60}\n"
                 f"COMPLETE\n"
                 f"Processed: {processed}\n"
-                f"Queued: {queued}\n"
                 f"Errors: {errors}\n"
                 f"{'='*60}\n"
             )

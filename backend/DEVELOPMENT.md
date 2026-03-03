@@ -71,7 +71,7 @@ uv pip install -e ".[dev]"
 ```
 
 This installs:
-- Core dependencies: Django, DRF, pandas, redis, django-rq, etc.
+- Core dependencies: Django, DRF, pandas, etc.
 - Dev tools: pytest, pytest-django, black, flake8, isort
 
 ### Option B: Production-like Setup
@@ -96,7 +96,6 @@ Edit `.env` if needed (defaults work for local dev):
 DEBUG=True
 SECRET_KEY=django-insecure-local-dev-key
 DATABASE_URL=sqlite:///db.sqlite3
-REDIS_URL=redis://localhost:6379/0  # Optional
 ALLOWED_HOSTS=localhost,127.0.0.1
 CORS_ALLOWED_ORIGINS=http://localhost:3000
 ```
@@ -124,37 +123,6 @@ python manage.py runserver
 # - Development: http://localhost:8000/
 # - Admin panel: http://localhost:8000/admin/
 # - API: http://localhost:8000/api/
-```
-
-## Optional: Set Up Background Job Queue
-
-For testing background jobs locally, install and run Redis:
-
-### Install Redis
-
-**macOS (Homebrew):**
-```bash
-brew install redis
-brew services start redis
-```
-
-**Linux (Ubuntu/Debian):**
-```bash
-sudo apt-get install redis-server
-sudo systemctl start redis-server
-```
-
-**Windows:**
-Download from [Redis Windows](https://github.com/microsoftarchive/redis/releases)
-
-### Run Job Worker
-
-In a separate terminal:
-
-```bash
-cd backend
-source .venv/bin/activate
-python manage.py rqworker default high low
 ```
 
 ## Development Workflow
@@ -383,7 +351,6 @@ uv pip install -e ".[dev]"
 ## Getting Help
 
 - Check [Django Documentation](https://docs.djangoproject.com/)
-- Check [django-rq Documentation](https://github.com/rq/django-rq)
 - Check project README.md
 - Open an issue on GitHub
 - Ask in project discussions
