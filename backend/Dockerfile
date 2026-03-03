@@ -9,10 +9,9 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-COPY backend/requirements.txt /app/requirements.txt
-RUN pip install --no-cache-dir -r /app/requirements.txt
-
+# Copy full backend first so "pip install -e ." in requirements.txt finds pyproject.toml
 COPY backend /app
+RUN pip install --no-cache-dir -r /app/requirements.txt
 
 RUN python manage.py collectstatic --noinput
 
