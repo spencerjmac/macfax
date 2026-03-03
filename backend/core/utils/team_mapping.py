@@ -33,13 +33,6 @@ class TeamMapper:
         self.source = source
         self.teams = {t.id: t for t in Team.objects.all()}
         self.overrides = {}
-        self.ncaa_mappings = {}
-        self.unmatched = []
-        
-        # Load NCAA comprehensive mappings (NEW - highest priority)
-        ncaa_mappings_file = Path(settings.BASE_DIR) / 'ncaa_team_name_mappings.yml'
-        if ncaa_mappings_file.exists() and source == 'ncaa':
-            self._load_ncaa_mappings(ncaa_mappings_file)
         
         # Load overrides (fallback for other sources or special cases)
         if override_file is None:
@@ -49,7 +42,7 @@ class TeamMapper:
         if self.override_file.exists():
             self._load_overrides()
         
-        # Build search index from team names and aliases
+        # Build search index from team names and aliases (now includes NCAA names from migration)
         self._build_search_index()
     
     def _load_overrides(self):
@@ -61,16 +54,6 @@ class TeamMapper:
             logger.info(f"Loaded {len(self.overrides)} team overrides for {self.source}")
         except Exception as e:
             logger.warning(f"Could not load overrides from {self.override_file}: {e}")
-    
-    def _load_ncaa_mappings(self, mappings_file: Path):
-        """Load comprehensive NCAA team name mappings from YAML file"""
-        try:
-            with open(mappings_file, 'r') as f:
-                data = yaml.safe_load(f) or {}
-                self.ncaa_mappings = data.get('ncaa', {})
-            logger.info(f"Loaded {len(self.ncaa_mappings)} NCAA team name mappings")
-        except Exception as e:
-            logger.warning(f"Could not load NCAA mappings from {mappings_file}: {e}")
     
     def _build_search_index(self):
         """Build searchable index of team names and aliases"""

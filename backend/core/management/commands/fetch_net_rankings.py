@@ -7,8 +7,6 @@ Usage:
 """
 
 import requests
-import yaml
-from pathlib import Path
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
@@ -26,37 +24,25 @@ class Command(BaseCommand):
             help='Season year (e.g., 2026)'
         )
     
-    def load_name_mappings(self):
-        """Load NCAA team name mappings from YAML file"""
-        mappings_file = Path(__file__).resolve().parent.parent.parent.parent / 'ncaa_team_name_mappings.yml'
-        
-        if mappings_file.exists():
-            with open(mappings_file, 'r', encoding='utf-8') as f:
-                data = yaml.safe_load(f)
-                return data.get('ncaa', {})
-        return {}
-    
-    def find_team(self, ncaa_school_name, name_mappings):
-        """Find team in database by NCAA school name"""
-        # First try direct mapping
-        if ncaa_school_name in name_mappings:
-            mapped_name = name_mappings[ncaa_school_name]
-            try:
-                return Team.objects.get(name=mapped_name)
-            except Team.DoesNotExist:
-                pass
-        
-        # Try exact match
+    def find_team(self, ncaa_school_name):
+        """Find team in database by NCAA school name (searches aliases and name)"""
+        # Try exact match on name
         try:
             return Team.objects.get(name=ncaa_school_name)
         except Team.DoesNotExist:
             pass
         
-        # Try case-insensitive match
+        # Try case-insensitive match on name
         try:
             return Team.objects.get(name__iexact=ncaa_school_name)
         except Team.DoesNotExist:
             pass
+        
+        # Try matching NCAA name in aliases (loaded from ncaa_team_name_mappings.yml during migration)
+        teams = Team.objects.all()
+        for team in teams:
+            if team.aliases and ncaa_school_name in team.aliases:
+                return team
         
         return None
     
@@ -73,10 +59,6 @@ class Command(BaseCommand):
         self.stdout.write(f"Fetching NCAA NET Rankings for {season.display_name}")
         self.stdout.write(f"Source: ncaa-api.henrygd.me")
         self.stdout.write(f"{'='*80}\n")
-        
-        # Load name mappings
-        name_mappings = self.load_name_mappings()
-        self.stdout.write(f"📋 Loaded {len(name_mappings)} team name mappings")
         
         # Fetch NET rankings from API
         api_url = "https://ncaa-api.henrygd.me/rankings/basketball-men/d1/ncaa-mens-basketball-net-rankings"
@@ -108,8 +90,8 @@ class Command(BaseCommand):
                 rank = int(entry['Rank'])
                 school_name = entry['School']
                 
-                # Find team in database
-                team = self.find_team(school_name, name_mappings)
+                # Find team in database (uses aliases loaded from migration)
+                team = self.find_team(school_name)
                 
                 if team is None:
                     not_found.append((rank, school_name))
