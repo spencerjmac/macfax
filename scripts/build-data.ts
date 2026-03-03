@@ -12,7 +12,12 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { parse } from 'csv-parse/sync';
+import { parse } from 'csv-parse';
+
+if (process.env.SKIP_DATA_BUILD === '1' || process.env.SKIP_DATA_BUILD === 'true') {
+  console.log('SKIP_DATA_BUILD is set. Skipping data pipeline.');
+  process.exit(0);
+}
 
 // Types
 interface TeamSeason {

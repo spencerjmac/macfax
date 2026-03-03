@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "npm run build:data && next dev",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:frontend": "SKIP_DATA_BUILD=1 npm run build:data && next dev",
+    "dev:backend": "cd ../backend && uv run python manage.py runserver",
     "build": "npm run build:data && next build",
     "build:data": "tsx ../scripts/build-data.ts",
     "start": "npm run build:data && next start",
@@ -27,6 +29,7 @@
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "autoprefixer": "^10.0.1",
+    "concurrently": "^8.2.2",
     "csv-parse": "^5.5.0",
     "eslint": "^8",
     "eslint-config-next": "^14.2.0",

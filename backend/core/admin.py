@@ -2,7 +2,7 @@ from django.contrib import admin
 from .models import (
     Season, Conference, Team, TeamSeasonStats, DataIngestionRun,
     TeamExternalId, Game, TeamGameStats, ScoringEvent,
-    TeamSeasonMetrics, TeamSeasonRatings
+    TeamSeasonMetrics, TeamSeasonRatings, DataProcessingJob
 )
 
 
@@ -90,3 +90,42 @@ class TeamSeasonRatingsAdmin(admin.ModelAdmin):
     list_filter = ['season']
     search_fields = ['team__name']
     readonly_fields = ['computed_at']
+
+
+@admin.register(DataProcessingJob)
+class DataProcessingJobAdmin(admin.ModelAdmin):
+    list_display = ['job_id', 'job_type', 'status', 'progress_percent', 'season', 'started_at', 'duration_seconds']
+    list_filter = ['job_type', 'status', 'season']
+    search_fields = ['job_id', 'error_message']
+    readonly_fields = ['job_id', 'started_at', 'updated_at', 'logs']
+    
+    fieldsets = (
+        ('Job Info', {
+            'fields': ('job_id', 'job_type', 'status', 'season')
+        }),
+        ('Progress', {
+            'fields': ('progress_percent', 'started_at', 'completed_at', 'duration_seconds')
+        }),
+        ('Parameters', {
+            'fields': ('parameters', 'created_by'),
+            'classes': ('collapse',)
+        }),
+        ('Logs & Errors', {
+            'fields': ('logs', 'error_message'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def has_add_permission(self, request):
+        return False
+    
+    def has_delete_permission(self, request, obj=None):
+        if obj and not obj.is_running:
+            return True
+        return False
+
+
+# Customize admin site branding
+admin.site.site_header = "CBB Analytics Admin"
+admin.site.site_title = "CBB Analytics"
+admin.site.index_title = "Data Management & Analytics"

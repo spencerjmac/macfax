@@ -32,52 +32,78 @@ Django + Django REST Framework backend for College Basketball Analytics applicat
 
 **DataIngestionRun** - Audit log for data imports
 
-## 🚀 Quick Start
+## 🚀 Quick Start (Local Development)
 
 ### Prerequisites
 
-- Python 3.10+
-- pip
+- Python 3.11+
+- [uv](https://docs.astral.sh/uv/) (fast Python package installer)
+- SQLite (default, no setup needed)
+- Redis (optional, for background job queue)
 
 ### Installation
 
 ```bash
+# 1. Install uv (macOS/Linux)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Or with Homebrew:
+brew install uv
+
+# 2. Clone and navigate to backend
 cd backend
 
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+# 3. Create virtual environment and install dependencies
+uv venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
-# Install dependencies
-pip install -r requirements.txt
+# 4. Install project dependencies
+uv pip install -e .  # Install from pyproject.toml
 
-# Copy environment file
-cp .env.example .env
+# Or for development with testing tools:
+uv pip install -e ".[dev]"
 
-# Edit .env with your settings
+# 5. Set up environment
+cp .env.local .env  # Or create .env with your settings
 ```
 
 ### Database Setup
 
 ```bash
-# Run migrations
+# Run migrations (creates SQLite database)
 python manage.py migrate
 
 # Create superuser (for Django admin)
 python manage.py createsuperuser
 
-# Ingest data from CSVs
-python manage.py ingest_data --season 2026
+# Load initial data (optional)
+python manage.py ingest_gamelogs --season 2026 --source ncaa
 ```
 
 ### Run Development Server
 
 ```bash
+# Start the development server
 python manage.py runserver
 
 # Server runs on http://localhost:8000
 # API available at http://localhost:8000/api/
 # Admin at http://localhost:8000/admin/
+
+# Or specify a different port:
+python manage.py runserver 8001
+```
+
+### Run Background Job Worker (Optional)
+
+To test the background job queue system locally, you'll need Redis:
+
+```bash
+# Start Redis (if installed locally)
+redis-server
+
+# In another terminal, start the job worker
+python manage.py rqworker default high low
 ```
 
 ## 📡 API Endpoints
@@ -122,84 +148,179 @@ Query params:
 
 Returns win probability, predicted margin, and key edges.
 
-## 🔧 Management Commands
+## 🧪 Testing
 
-### ingest_data
-
-Loads data from CSV files into database.
+### Run Tests
 
 ```bash
-python manage.py ingest_data --season 2026 [--force]
+# Run all tests
+pytest
 
-# Custom paths
-python manage.py ingest_data --season 2026 \
-  --kenpom /path/to/kenpom.csv \
-  --torvik /path/to/torvik.csv
+# Run specific test file
+pytest core/tests/test_models.py
+
+# Run with verbose output
+pytest -v
+
+# Run with coverage report
+pytest --cov=core --cov=api
 ```
 
-Options:
-- `--season` - Season year (required)
-- `--kenpom` - Custom KenPom CSV path
-- `--torvik` - Custom Torvik CSV path
-- `--force` - Force re-import even if data exists
+### Test Configuration
+
+Tests are configured in `pyproject.toml`:
+- Settings: `DJANGO_SETTINGS_MODULE = 'config.settings'`
+- Database: SQLite test database
+- Coverage: Generates HTML report in `htmlcov/`
+
+## 🎨 Code Quality
+
+Format and lint code before committing:
+
+```bash
+# Format code with Black (100 char line length)
+black .
+
+# Sort imports with isort (Django profile)
+isort .
+
+# Lint with Flake8 (ignore E501 line length, checked by Black)
+flake8 . --max-line-length=100
+
+# Run all checks
+black . && isort . && flake8 . --max-line-length=100
+```
+
+## 🔧 Management Commands
+
+### update_all
+
+Runs complete data pipeline: ingest gamelogs → compute all metrics in parallel.
+
+```bash
+# Run with default settings (current season)
+python manage.py update_all
+
+# Specify season and parameters
+python manage.py update_all --season 2026 --iterations 10 --sor-trials 5
+
+# Run in serial mode (no Redis needed)
+python manage.py update_all --serial
+```
+
+Jobs are tracked in `DataProcessingJob` model. Check admin panel or API for status.
+
+### ingest_gamelogs
+
+Ingests game logs for a season from CSV sources.
+
+```bash
+# Ingest NCAA games for season
+python manage.py ingest_gamelogs --season 2026 --source ncaa
+
+# Refresh existing data
+python manage.py ingest_gamelogs --season 2026 --refresh
+```
+
+### Database Migrations
+
+```bash
+# Create migrations for model changes
+python manage.py makemigrations
+
+# Apply migrations
+python manage.py migrate
+
+# Check migration status
+python manage.py showmigrations
+
+# Rollback to specific migration
+python manage.py migrate core 0001
+```
 
 ## 🗄️ Django Admin
 
 Access Django admin panel at `http://localhost:8000/admin/`
 
 Features:
-- View/edit seasons, conferences, teams
-- Browse team stats
-- Monitor data ingestion runs
-- Filter and search
+- **Seasons** - Create/edit basketball seasons
+- **Teams** - View teams and their metadata
+- **DataProcessingJob** - Monitor job execution (read-only)
+- **TeamSeasonStats** - View computed team statistics
 
-## 🚢 Production Deployment
+The job monitoring feature allows you to:
+- Track long-running background jobs
+- View progress percentage
+- Read execution logs in real-time
+- See error messages if jobs fail
 
-### Environment Variables
+## � Docker Deployment
+
+### Build and Run with Docker Compose
+
+```bash
+# From root directory
+docker compose up --build
+
+# Run migrations in Docker
+docker compose exec backend python manage.py migrate
+
+# Create superuser in Docker
+docker compose exec backend python manage.py createsuperuser
+
+# View logs
+docker compose logs -f backend
+
+# Stop containers
+docker compose down
+```
+
+### Services
+
+- **db** - PostgreSQL 16 database
+- **redis** - Redis 7 job queue and cache
+- **backend** - Django + Gunicorn + RQ worker
+- **web** - Next.js frontend
+
+Access:
+- Admin: http://localhost:8000/admin/
+- API: http://localhost:8000/api/
+- Frontend: http://localhost:3000/
+
+## ⚙️ Environment Configuration
+
+### Local Development (.env.local)
+
+```env
+DEBUG=True
+SECRET_KEY=django-insecure-dev-key-change-in-production
+DATABASE_URL=sqlite:///db.sqlite3
+REDIS_URL=redis://localhost:6379/0
+ALLOWED_HOSTS=localhost,127.0.0.1
+CORS_ALLOWED_ORIGINS=http://localhost:3000
+API_BASE_URL=http://localhost:8000
+```
+
+### Docker (.env.docker)
 
 ```env
 DEBUG=False
-SECRET_KEY=your-long-random-secret-key
-DATABASE_URL=postgres://user:pass@host:5432/dbname
-ALLOWED_HOSTS=yourdomain.com,www.yourdomain.com
+SECRET_KEY=your-long-random-production-secret-key
+DATABASE_URL=postgres://cbb:password@db:5432/cbb_analytics
+REDIS_URL=redis://redis:6379/0
+ALLOWED_HOSTS=localhost,yourdomain.com
 CORS_ALLOWED_ORIGINS=https://yourdomain.com
+API_BASE_URL=https://yourdomain.com/api
 ```
 
-### PostgreSQL Setup
+### Key Settings
 
-Update `config/settings.py`:
-
-```python
-import dj_database_url
-
-DATABASES = {
-    'default': dj_database_url.config(
-        default='sqlite:///db.sqlite3',
-        conn_max_age=600
-    )
-}
-```
-
-### Deployment Options
-
-**Render** (Recommended)
-1. Create new Web Service
-2. Connect GitHub repo
-3. Build command: `pip install -r requirements.txt`
-4. Start command: `gunicorn config.wsgi:application`
-5. Add environment variables
-6. Add PostgreSQL database
-
-**Fly.io**
-```bash
-flyctl launch
-flyctl deploy
-```
-
-**DigitalOcean App Platform**
-1. Create new app from GitHub
-2. Set build/run commands
-3. Add PostgreSQL database
+- **DEBUG** - Set to `False` in production
+- **SECRET_KEY** - Use `django-insecure-*` prefix only in development
+- **DATABASE_URL** - SQLite for local, PostgreSQL for production
+- **REDIS_URL** - Optional; jobs run serially if unavailable
+- **ALLOWED_HOSTS** - Comma-separated list of allowed domains
+- **CORS_ALLOWED_ORIGINS** - Frontend URL for API requests
 
 ## 📁 Project Structure
 

@@ -1,11 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import type { MatchupResult, TopDriver, Team } from '@/types';
 
-export default function MatchupPage() {
+export const dynamic = 'force-dynamic';
+
+function MatchupPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
@@ -296,6 +298,14 @@ export default function MatchupPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function MatchupPage() {
+  return (
+    <Suspense fallback={<div className="container mx-auto px-4 py-8">Loading...</div>}>
+      <MatchupPageInner />
+    </Suspense>
   );
 }
 

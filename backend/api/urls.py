@@ -12,22 +12,28 @@ from .views import (
     MatchupViewSet,
     GameViewSet,
 )
+from .job_views import DataProcessingJobViewSet
 from .trapezoid_views import TrapezoidView
 from .landscape_views import EfficiencyLandscapeView
 from .viz_builder_views import VizStatsView, VizScatterView
+from .auth_views import csrf, login_view, logout_view, me
 
 router = DefaultRouter()
-router.register(r'seasons', SeasonViewSet, basename='season')
-router.register(r'conferences', ConferenceViewSet, basename='conference')
-router.register(r'rankings', RankingsViewSet, basename='rankings')
-router.register(r'teams', TeamViewSet, basename='team')
-router.register(r'matchup', MatchupViewSet, basename='matchup')
-router.register(r'games', GameViewSet, basename='game')
-
+router.register(r"seasons", SeasonViewSet, basename="season")
+router.register(r"conferences", ConferenceViewSet, basename="conference")
+router.register(r"rankings", RankingsViewSet, basename="rankings")
+router.register(r"teams", TeamViewSet, basename="team")
+router.register(r"matchup", MatchupViewSet, basename="matchup")
+router.register(r"games", GameViewSet, basename="game")
+router.register(r"jobs", DataProcessingJobViewSet, basename="job")
 urlpatterns = [
-    path('', include(router.urls)),
-    path('viz/trapezoid', TrapezoidView.as_view(), name='trapezoid'),
-    path('viz/landscape', EfficiencyLandscapeView.as_view(), name='landscape'),
-    path('viz/stats', VizStatsView.as_view(), name='viz-stats'),
-    path('viz/scatter', VizScatterView.as_view(), name='viz-scatter'),
+    path("", include(router.urls)),
+    path("auth/csrf/", csrf, name="auth-csrf"),
+    path("auth/login/", login_view, name="auth-login"),
+    path("auth/logout/", logout_view, name="auth-logout"),
+    path("auth/me/", me, name="auth-me"),
+    path("trapezoid/", TrapezoidView.as_view(), name="trapezoid"),
+    path("landscape/", EfficiencyLandscapeView.as_view(), name="landscape"),
+    path("viz/stats/", VizStatsView.as_view(), name="viz-stats"),
+    path("viz/scatter/", VizScatterView.as_view(), name="viz-scatter"),
 ]

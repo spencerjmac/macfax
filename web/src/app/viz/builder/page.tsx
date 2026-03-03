@@ -1,13 +1,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import dynamic from 'next/dynamic';
+import { Suspense } from 'react';
+import dynamicImport from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import type { VizStats, VizScatterData, StatMetadata } from '@/types';
 
+export const dynamic = 'force-dynamic';
+
 // Dynamically import ECharts to avoid SSR issues
-const ReactECharts = dynamic(() => import('echarts-for-react'), { ssr: false });
+const ReactECharts = dynamicImport(() => import('echarts-for-react'), { ssr: false });
 
 // FiveThirtyEight-ish color palette
 const CONFERENCE_COLORS: Record<string, string> = {
@@ -23,11 +26,11 @@ const CONFERENCE_COLORS: Record<string, string> = {
   'AAC': '#FF7F0E',   // AAC - Orange
 };
 
-export default function VizBuilderPage() {
+function VizBuilderPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
-  // Data state
+  // Data state  
   const [stats, setStats] = useState<VizStats | null>(null);
   const [data, setData] = useState<VizScatterData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -515,5 +518,13 @@ export default function VizBuilderPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function VizBuilderPage() {
+  return (
+    <Suspense fallback={<div className="container mx-auto px-4 py-8">Loading...</div>}>
+      <VizBuilderPageInner />
+    </Suspense>
   );
 }

@@ -1,0 +1,101 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cbb-analytics-backend"
+version = "0.1.0"
+description = "CBB Analytics Dashboard - Django Backend with Game Log ETL Pipeline"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+    {name = "CBB Analytics Team"}
+]
+license = {text = "MIT"}
+
+dependencies = [
+    "Django==5.0.1",
+    "djangorestframework==3.14.0",
+    "django-cors-headers==4.3.1",
+    "whitenoise==6.6.0",
+    "python-dotenv==1.0.0",
+    "dj-database-url==2.2.0",
+    "django-rq==2.10.2",
+    "rq==1.16.2",
+    "redis==5.0.1",
+    "pandas==2.2.0",
+    "scipy>=1.11.0",
+    "psycopg2-binary==2.9.9",
+    "gunicorn==21.2.0",
+    "requests==2.31.0",
+    "pyyaml==6.0.1",
+    "rapidfuzz==3.6.1",
+    "aiohttp==3.9.1",
+    "tenacity==8.2.3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "black==24.1.1",
+    "flake8==7.0.0",
+    "isort==5.13.2",
+    "pytest==7.4.3",
+    "pytest-django==4.7.0",
+    "django-extensions==3.2.3",
+]
+
+[project.urls]
+Homepage = "https://github.com/spenc-cbb/cbb-analytics"
+Repository = "https://github.com/spenc-cbb/cbb-analytics"
+
+[tool.black]
+line-length = 100
+target-version = ['py311']
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 100
+skip_glob = ["*/migrations/*"]
+known_django = ["django"]
+sections = ["FUTURE", "STDLIB", "DJANGO", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings"
+python_files = ["tests.py", "test_*.py", "*_tests.py"]
+addopts = "--cov=core --cov=api --cov-report=html --cov-report=term-missing"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["config*", "core*", "api*"]
+
+[tool.coverage.run]
+source = ["core", "api"]
+omit = [
+    "*/migrations/*",
+    "*/tests/*",
+    "manage.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
