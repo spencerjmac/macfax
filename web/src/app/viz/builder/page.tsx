@@ -652,7 +652,7 @@ function VizBuilderPageInner() {
             </div>
           ) : data ? (
             <ReactECharts
-              ref={chartRef}
+              {...({ ref: chartRef } as object)}
               option={getChartOption()}
               style={{ height: '700px' }}
               onEvents={{
