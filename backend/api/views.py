@@ -2,6 +2,8 @@
 DRF Views for CBB Analytics API
 """
 
+from django.views.decorators.cache import cache_page
+from django.utils.decorators import method_decorator
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -59,6 +61,7 @@ class ConferenceViewSet(viewsets.ReadOnlyModelViewSet):
     pagination_class = None  # Disable pagination for conferences
 
 
+@method_decorator(cache_page(60 * 5), name='list')  # Cache for 5 minutes
 class RankingsViewSet(viewsets.ReadOnlyModelViewSet):
     """
     GET /api/rankings?season=2026&sort=adj_em&dir=desc&conference=B10&search=mich
