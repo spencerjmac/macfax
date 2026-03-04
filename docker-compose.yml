@@ -5,6 +5,10 @@ services:
       POSTGRES_DB: cbb_analytics
       POSTGRES_USER: cbb_user
       POSTGRES_PASSWORD: cbb_password
+    networks:
+      web:
+        aliases:
+          - macfax_db 
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -14,32 +18,48 @@ services:
       retries: 5
 
   backend:
+    hostname: macfax_api
     build:
       context: .
       dockerfile: backend/Dockerfile
-    env_file:
-      - backend/.env.docker
     environment:
       DATABASE_URL: postgres://cbb_user:cbb_password@db:5432/cbb_analytics
+      DEBUG: "False"
+      SECRET_KEY: change-me
+      ALLOWED_HOSTS: "localhost,127.0.0.1,macfax.usu.edu"
+      CORS_ALLOWED_ORIGINS: "http://localhost:7001,http://macfax.usu.edu,https://macfax.usu.edu"
     depends_on:
       db:
         condition: service_healthy
+    networks:
+      web:
+        aliases:
+          - macfax_api
     ports:
-      - "7001:8000"
-    command: ["sh", "-c", "python manage.py migrate && gunicorn config.wsgi:application --bind 0.0.0.0:8000"]
+      - "7001:7001"
+    command: ["sh", "-c", "python manage.py migrate && gunicorn config.wsgi:application --bind 0.0.0.0:7001"]
 
   web:
+    hostname: macfax_web
     build:
       context: .
       dockerfile: web/Dockerfile
     environment:
       NODE_ENV: production
-      PORT: 3000
-      NEXT_PUBLIC_API_BASE_URL: "http://backend:8000"
+      PORT: 7000
+      NEXT_PUBLIC_API_BASE_URL: "http://macfax_api:7000"
     depends_on:
       - backend
     ports:
-      - "7000:3000"
+      - "7000:7000"
+    networks:
+      web:
+        aliases:
+          - macfax_web
+
+networks:
+  web:
+    external: true
 
 volumes:
   postgres_data:
