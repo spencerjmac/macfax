@@ -26,7 +26,7 @@ services:
       DATABASE_URL: postgres://cbb_user:cbb_password@db:5432/cbb_analytics
       DEBUG: "False"
       SECRET_KEY: change-me
-      ALLOWED_HOSTS: "localhost,127.0.0.1,macfax.usu.edu"
+      ALLOWED_HOSTS: "localhost,127.0.0.1,macfax.usu.edu,macfax_api"
       CORS_ALLOWED_ORIGINS: "http://localhost:7001,http://macfax.usu.edu,https://macfax.usu.edu"
       CSRF_TRUSTED_ORIGINS: "http://localhost:7000,http://localhost:7001,http://macfax.usu.edu,https://macfax.usu.edu"
     depends_on:
