@@ -31,7 +31,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         dry_run = options["dry_run"]
         base_dir = Path(settings.BASE_DIR)
-        yaml_path = base_dir / "ncaa_team_name_mappings.yml"
+        yaml_path = base_dir / "mappings" / "ncaa_team_name_mappings.yml"
 
         if not yaml_path.exists():
             self.stderr.write(self.style.ERROR(f"Not found: {yaml_path}"))

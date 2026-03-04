@@ -10,7 +10,7 @@ def load_ncaa_mappings(apps, schema_editor):
     Team = apps.get_model('core', 'Team')
     
     # Read the YAML file
-    yaml_path = Path(__file__).resolve().parent.parent.parent / 'ncaa_team_name_mappings.yml'
+    yaml_path = Path(__file__).resolve().parent.parent.parent / 'mappings' / 'ncaa_team_name_mappings.yml'
     
     if not yaml_path.exists():
         print(f"Warning: {yaml_path} not found, skipping NCAA mapping load")
@@ -42,7 +42,7 @@ def reverse_ncaa_mappings(apps, schema_editor):
     Team = apps.get_model('core', 'Team')
     
     # Read the YAML file
-    yaml_path = Path(__file__).resolve().parent.parent.parent / 'ncaa_team_name_mappings.yml'
+    yaml_path = Path(__file__).resolve().parent.parent.parent / 'mappings' / 'ncaa_team_name_mappings.yml'
     
     if not yaml_path.exists():
         return

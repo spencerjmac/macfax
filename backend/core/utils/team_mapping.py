@@ -28,7 +28,7 @@ class TeamMapper:
         """
         Args:
             source: Data source name ('ncaa', 'espn', etc.)
-            override_file: Path to YAML override file (default: backend/team_alias_overrides.yml)
+            override_file: Path to YAML override file (default: backend/mappings/team_alias_overrides.yml)
         """
         self.source = source
         self.teams = {t.id: t for t in Team.objects.all()}
@@ -38,7 +38,7 @@ class TeamMapper:
         # NCAA source: load comprehensive D1 name mappings (ncaa_name -> canonical name)
         self.ncaa_mappings = {}
         if source == 'ncaa':
-            ncaa_path = Path(settings.BASE_DIR) / 'ncaa_team_name_mappings.yml'
+            ncaa_path = Path(settings.BASE_DIR) / 'mappings' / 'ncaa_team_name_mappings.yml'
             if ncaa_path.exists():
                 try:
                     with open(ncaa_path, 'r') as f:
@@ -50,7 +50,7 @@ class TeamMapper:
 
         # Load overrides (fallback for other sources or special cases)
         if override_file is None:
-            override_file = Path(settings.BASE_DIR) / 'team_alias_overrides.yml'
+            override_file = Path(settings.BASE_DIR) / 'mappings' / 'team_alias_overrides.yml'
 
         self.override_file = Path(override_file)
         if self.override_file.exists():

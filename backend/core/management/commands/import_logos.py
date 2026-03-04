@@ -1,13 +1,13 @@
 """
 Management command: import_logos
-Scans web/public/logos for team logo files and sets Team.logo_url in the database.
+Scans backend/static/logos for team logo files and sets Team.logo_url in the database.
 Uses a name->filename mapping so ESPN-style filenames (e.g. alabama_crimson_tide.png)
-match Team names. Logos must already be in web/public/logos.
+match Team names. Logos must already be in backend/static/logos.
 
 Usage:
     python manage.py import_logos
     python manage.py import_logos --dry-run
-    python manage.py import_logos --logos-dir /path/to/web/public/logos
+    python manage.py import_logos --logos-dir /path/to/logos
     python manage.py import_logos --clear-missing
 """
 
@@ -19,21 +19,21 @@ from django.conf import settings
 from django.core.management.base import BaseCommand
 
 from core.models import Team
-from core.team_logo_mapping import TEAM_NAME_TO_LOGO_STEM
+from core.utils.team_logo_mapping import TEAM_NAME_TO_LOGO_STEM
 
 # Extensions we consider as logo images (order = preference when multiple exist)
 LOGO_EXTENSIONS = (".png", ".svg", ".webp", ".jpg", ".jpeg", ".gif")
 
 
 class Command(BaseCommand):
-    help = "Set Team.logo_url from logo files in web/public/logos using name→filename mapping"
+    help = "Set Team.logo_url from logo files in backend/static/logos using name→filename mapping"
 
     def add_arguments(self, parser):
         parser.add_argument(
             "--logos-dir",
             type=str,
             default=None,
-            help="Directory containing logo files (default: <project_root>/web/public/logos)",
+            help="Directory containing logo files (default: backend/static/logos)",
         )
         parser.add_argument(
             "--dry-run",

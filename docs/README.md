@@ -1,37 +1,18 @@
-# CBB Analytics Dashboard - Documentation
+# Documentation
 
-This folder contains all project documentation.
+## Getting Started
 
-## Quick Start Guides
-
-- **[QUICK_START.md](QUICK_START.md)** - Complete setup guide (backend + frontend)
-- **[quick-start.ps1](quick-start.ps1)** - Automated setup script (PowerShell)
-- **[GAME_LOG_QUICK_START.md](GAME_LOG_QUICK_START.md)** - Game log data pipeline guide
-
-## Reference Guides
-
-- **[FOUR_FACTOR_INDEX_GUIDE.md](FOUR_FACTOR_INDEX_GUIDE.md)** - Four Factor Index calculation methodology
-- **[PROJECT_README.md](PROJECT_README.md)** - Detailed project overview and architecture
+- **[QUICK_START.md](QUICK_START.md)** — Set up the full stack locally or with Docker
 
 ## Deployment
 
-- **[DEPLOYMENT.md](DEPLOYMENT.md)** - Production deployment guide
-- **[DEPLOY_CHECKLIST.md](DEPLOY_CHECKLIST.md)** - Pre-deployment checklist
+- **[DEPLOYMENT.md](DEPLOYMENT.md)** — Production Docker deployment at macfax.usu.edu
 
-## Main Documentation
+## Data Pipeline
 
-See [../README.md](../README.md) in root directory for project overview.
+- **[DATA_PIPELINE.md](DATA_PIPELINE.md)** — Every management command, flag, and setup order
 
-## Directory Structure
+## Methodology
 
-```
-docs/
-├── README.md                      # This file
-├── QUICK_START.md                 # Setup guide
-├── quick-start.ps1                # Automated setup
-├── GAME_LOG_QUICK_START.md        # Game log guide
-├── FOUR_FACTOR_INDEX_GUIDE.md     # FFI reference
-├── PROJECT_README.md              # Project details
-├── DEPLOYMENT.md                  # Deployment guide
-└── DEPLOY_CHECKLIST.md            # Deployment checklist
-```
+- **[FOUR_FACTOR_INDEX_GUIDE.md](FOUR_FACTOR_INDEX_GUIDE.md)** — Four Factor Index composite score calculation
+- **[ADJUSTED_RATINGS.md](ADJUSTED_RATINGS.md)** — Adjusted offensive/defensive ratings methodology

@@ -1,237 +1,201 @@
-# CBB Analytics - Quick Start Guide
+# Quick Start Guide
 
-Follow these steps to get the full stack running locally.
+## Option A: Docker (Recommended)
 
-## ⚡ Quick Start (5 minutes)
+The fastest way to get the full stack running. Requires Docker and Docker Compose.
 
-### Step 1: Backend Setup
+### Prerequisites
 
-```powershell
-# Navigate to backend
-cd backend
+- Docker 24+
+- Docker Compose v2
+- An existing external Docker network named `macfax_web`:
+  ```bash
+  docker network create macfax_web
+  ```
 
-# Create virtual environment
-python -m venv venv
+### 1. Configure environment
 
-# Activate virtual environment
-.\venv\Scripts\Activate.ps1
+All backend environment variables are set directly in `docker-compose.yml`. Review and update:
 
-# Install dependencies
-pip install -r requirements.txt
-
-# Copy environment file
-copy .env.example .env
-
-# Run migrations
-python manage.py migrate
-
-# Create superuser (optional)
-python manage.py createsuperuser
-
-# Ingest data from CSVs
-python manage.py ingest_data --season 2026
-
-# Start Django server (keep this running)
-python manage.py runserver
+```yaml
+environment:
+  SECRET_KEY: change-me          # ← change this before first run
+  ALLOWED_HOSTS: "localhost,127.0.0.1,macfax.usu.edu"
+  CORS_ALLOWED_ORIGINS: "http://localhost:7001,http://macfax.usu.edu,https://macfax.usu.edu"
 ```
 
-✅ Backend should now be running on **http://localhost:8000**
+Generate a strong secret key:
+```bash
+python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
+```
 
-### Step 2: Frontend Setup (New Terminal)
+### 2. Build and start
 
-```powershell
-# Navigate to frontend
-cd frontend
+```bash
+docker compose up -d --build
+```
+
+On first start, the backend automatically:
+- Runs `migrate`
+- Runs `collectstatic`
+- Runs `ensure_ncaa_teams` (creates all 365 D1 team rows)
+- Starts gunicorn on port 7001
+
+### 3. Create a superuser
+
+```bash
+docker compose exec backend python manage.py createsuperuser
+```
+
+### 4. Seed conferences
+
+```bash
+docker compose exec backend python manage.py seed_conferences
+```
+
+### 5. Run the data pipeline
+
+```bash
+docker compose exec backend python manage.py update_all --season 2026
+```
+
+This fetches all games from the NCAA API and computes all metrics. First run takes ~5–15 minutes depending on how many games exist.
+
+### 6. Import team logos
+
+```bash
+docker compose exec backend python manage.py import_logos
+```
+
+### Access
+
+| Service | URL |
+|---|---|
+| Web app | http://localhost:7000 |
+| Django API | http://localhost:7001/api/ |
+| Django admin | http://localhost:7001/admin/ |
+
+---
+
+## Option B: Local Development
+
+Run backend and frontend separately without Docker.
+
+### Prerequisites
+
+- Python 3.11+
+- [uv](https://docs.astral.sh/uv/getting-started/installation/) (Python package manager)
+- Node.js 20+ and npm
+- PostgreSQL (or adjust `.env.local` to use SQLite)
+
+### Backend setup
+
+```bash
+cd backend
+
+# Install dependencies
+uv sync
+
+# Create local environment file
+cp .env.example .env.local
+# Edit .env.local: set DATABASE_URL, SECRET_KEY, etc.
+
+# Run migrations
+uv run python manage.py migrate
+
+# Seed required data
+uv run python manage.py seed_conferences
+uv run python manage.py ensure_ncaa_teams
+
+# Start dev server
+uv run python manage.py runserver
+```
+
+Backend runs on **http://localhost:8000**.
+
+### Frontend setup
+
+```bash
+cd web
 
 # Install dependencies
 npm install
 
-# Copy environment file
-copy .env.local.example .env.local
-
-# Start Next.js dev server
+# Start dev server
 npm run dev
 ```
 
-✅ Frontend should now be running on **http://localhost:3000**
+Frontend runs on **http://localhost:3000**.
 
-### Step 3: Verify
+The frontend reads `NEXT_PUBLIC_API_BASE_URL` from environment. For local dev, the default fallback `http://localhost:8000` is used automatically.
 
-1. Open http://localhost:3000 in your browser
-2. Click "View Rankings"
-3. You should see 365 teams loaded from your CSVs!
+### Ingest data
 
----
-
-## 🎯 Common Commands
-
-### Backend
-
-```powershell
-# Activate virtual environment
+```bash
 cd backend
-.\venv\Scripts\Activate.ps1
-
-# Re-ingest data (if CSVs updated)
-python manage.py ingest_data --season 2026 --force
-
-# Access Django admin
-# Navigate to http://localhost:8000/admin
-# Login with superuser credentials
-
-# Run migrations (after model changes)
-python manage.py makemigrations
-python manage.py migrate
-```
-
-### Frontend
-
-```powershell
-cd frontend
-
-# Development
-npm run dev
-
-# Build for production
-npm run build
-npm start
-
-# Type checking
-npx tsc --noEmit
+uv run python manage.py update_all --season 2026
 ```
 
 ---
 
-## 🗂️ Data Files
+## Verify the stack
 
-The ingestion command looks for CSVs in these locations:
-
-```
-CBB Analytical Dashboard/
-├── KenPom Data/
-│   └── kenpom_tableau.csv       # Required
-├── Bart Torvik/
-│   └── torvik_tableau.csv       # Required
-└── CBB Analytics/
-    └── cbb_analytics_tableau.csv  # Optional
-```
-
-**Update data:**
-1. Run your scraper scripts to refresh CSVs
-2. Re-run: `python manage.py ingest_data --season 2026 --force`
-3. Refresh your browser
-
----
-
-## 🧪 Testing the Stack
-
-### Test Backend API
-
-```powershell
-# Test seasons endpoint
-curl http://localhost:8000/api/seasons/
-
-# Test rankings
+**API:**
+```bash
 curl http://localhost:8000/api/rankings/?season=2026
-
-# Test team profile
-curl http://localhost:8000/api/teams/michigan/profile/?season=2026
 ```
 
-Or visit in browser:
-- http://localhost:8000/api/seasons/
-- http://localhost:8000/api/rankings/
-- http://localhost:8000/admin/
+**Admin:**
+Visit http://localhost:8000/admin/ and log in with your superuser credentials.
 
-### Test Frontend Pages
-
-- Home: http://localhost:3000
-- Rankings: http://localhost:3000/rankings
-- Team (example): http://localhost:3000/team/michigan
-- Matchup: http://localhost:3000/matchup
-- Glossary: http://localhost:3000/glossary
-- About: http://localhost:3000/about
+**Frontend:**
+Visit http://localhost:3000 — the rankings table should show all 365 D1 teams.
 
 ---
 
-## 🐛 Troubleshooting
+## Daily update workflow
 
-### Backend won't start
+After the initial setup, keeping data current is one command:
 
-**Error: "No module named django"**
-```powershell
-# Make sure virtual environment is activated
-.\venv\Scripts\Activate.ps1
+```bash
+# Docker
+docker compose exec backend python manage.py update_all --season 2026
 
-# Reinstall dependencies
-pip install -r requirements.txt
+# Local
+cd backend && uv run python manage.py update_all --season 2026
 ```
 
-**Error: "Table doesn't exist"**
-```powershell
-# Run migrations
-python manage.py migrate
+`update_all` is idempotent — it only ingests games not yet in the database and recomputes all metrics.
+
+To skip ingestion and only recompute metrics (faster):
+```bash
+python manage.py update_all --season 2026 --skip-ingest
 ```
-
-**Error: "CSV file not found"**
-- Verify CSV files exist in correct folders
-- Check file names match exactly: `kenpom_tableau.csv`, `torvik_tableau.csv`
-- Use `--kenpom` and `--torvik` flags to specify custom paths
-
-### Frontend errors
-
-**Error: "Network Error" / API not responding**
-- Ensure Django backend is running on http://localhost:8000
-- Check `.env.local` has `NEXT_PUBLIC_API_URL=http://localhost:8000/api`
-- Verify CORS settings in Django `config/settings.py`
-
-**Error: "Cannot find module"**
-```powershell
-# Delete node_modules and reinstall
-rm -r node_modules
-npm install
-```
-
-**Error: "Port 3000 already in use"**
-```powershell
-# Use a different port
-npm run dev -- -p 3001
-```
-
-### CORS Issues
-
-If you see CORS errors in browser console:
-
-1. Check `backend/config/settings.py`:
-```python
-CORS_ALLOWED_ORIGINS = [
-    'http://localhost:3000',
-    'http://localhost:3001',
-]
-```
-
-2. Restart Django server
 
 ---
 
-## 📋 Next Steps
+## Troubleshooting
 
-1. ✅ Verify both servers are running
-2. ✅ Browse to http://localhost:3000/rankings
-3. ✅ Click on a team to view profile
-4. ✅ Try the matchup tool
-5. 🚧 Implement visualizations (see IMPLEMENTATION_CHECKLIST.md)
-6. 🚧 Deploy to production
+**Team mapping warnings during ingest**
+> `NCAA mapping 'X' not found in Team table`
 
----
+Run `ensure_ncaa_teams` to create any missing team rows:
+```bash
+python manage.py ensure_ncaa_teams
+```
 
-## 🚀 Ready for Production?
+**Missing box scores after ingest**
+Some games may be recorded without box score stats if the NCAA API returned 428/502 errors. Re-fetch only the missing ones:
+```bash
+python manage.py backfill_missing_game_stats --season 2026
+```
 
-See deployment guides:
-- Backend: [`backend/README.md`](backend/README.md#production-deployment)
-- Frontend: [`web/README.md`](web/README.md#deployment)
-- Or check [`DEPLOYMENT.md`](DEPLOYMENT.md)
+**Logos not showing**
+Logos are served from the Django backend at `/static/logos/`. Run:
+```bash
+python manage.py import_logos
+python manage.py collectstatic --noinput
+```
 
----
-
-Need help? Check the full documentation in `PROJECT_README.md` or each component's README.
+**CORS errors in browser**
+Verify `CORS_ALLOWED_ORIGINS` in `docker-compose.yml` (or `.env.local`) includes your frontend origin.
