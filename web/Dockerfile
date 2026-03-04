@@ -10,6 +10,11 @@ WORKDIR /app
 COPY --from=deps /app/web/node_modules ./web/node_modules
 COPY web ./web
 
+# Bake the public API URL into the client bundle at build time.
+# This must be an ARG (not ENV) so Next.js webpack can inline it.
+ARG NEXT_PUBLIC_API_BASE_URL
+ENV NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL}
+
 WORKDIR /app/web
 RUN npm run build
 

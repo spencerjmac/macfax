@@ -44,10 +44,16 @@ services:
     build:
       context: .
       dockerfile: web/Dockerfile
+      args:
+        # Baked into the client bundle at build time — must be the external URL
+        NEXT_PUBLIC_API_BASE_URL: "https://macfax.usu.edu"
     environment:
       NODE_ENV: production
       PORT: 7000
-      NEXT_PUBLIC_API_BASE_URL: "http://macfax_api:7000"
+      # Server-side only (not exposed to browser) — internal Docker hostname
+      API_INTERNAL_URL: "http://macfax_api:7001"
+      # Fallback public URL for server-side if internal isn't set
+      NEXT_PUBLIC_API_BASE_URL: "https://macfax.usu.edu"
     depends_on:
       - backend
     ports:

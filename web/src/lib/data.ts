@@ -80,7 +80,9 @@ function mapApiRowToTeamSeason(team: Record<string, unknown>): TeamSeason {
 
 /** Fetch rankings from backend API */
 async function fetchRankingsFromApi(season: number): Promise<TeamsData> {
-  const base = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
+  // Server-side: prefer the internal Docker URL (never exposed to browsers).
+  // Client-side: falls back to the public URL baked in at build time.
+  const base = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
   const url = `${base}${API_RANKINGS_PATH}?season=${season}`;
   const res = await fetch(url, { next: { revalidate: 60 } });
   if (!res.ok) {

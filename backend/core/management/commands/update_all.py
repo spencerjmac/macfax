@@ -79,6 +79,14 @@ class Command(BaseCommand):
         self.stdout.write(f"Started: {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
         self.stdout.write("=" * 80 + "\n")
 
+        # Ensure all D1 teams exist in DB (idempotent)
+        try:
+            self.stdout.write("[0/9] Ensuring all D1 teams exist in Team table...")
+            call_command("ensure_ncaa_teams")
+            self.stdout.write(self.style.SUCCESS("[OK] Team table up to date\n"))
+        except Exception as e:
+            self.stderr.write(self.style.WARNING(f"[WARN] ensure_ncaa_teams failed: {e}\n"))
+
         # Ensure season exists
         try:
             self.stdout.write(f"[0/9] Ensuring Season {season_year} exists...")
