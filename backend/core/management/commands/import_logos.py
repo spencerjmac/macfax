@@ -11,6 +11,7 @@ Usage:
     python manage.py import_logos --clear-missing
 """
 
+import os
 import unicodedata
 from pathlib import Path
 
@@ -53,9 +54,10 @@ class Command(BaseCommand):
         base = Path(settings.BASE_DIR)
         if logos_dir_arg:
             logos_dir = Path(logos_dir_arg).resolve()
+        elif os.getenv("LOGOS_DIR"):
+            logos_dir = Path(os.environ["LOGOS_DIR"]).resolve()
         else:
-            project_root = base.parent
-            logos_dir = project_root / "web" / "public" / "logos"
+            logos_dir = base / "static" / "logos"
 
         if not logos_dir.exists():
             self.stderr.write(
@@ -115,7 +117,7 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.WARNING(f"  {team.name}: expected {logo_stem}.png (not found)"))
                 continue
 
-            new_url = f"/logos/{filename}"
+            new_url = f"/static/logos/{filename}"
             if team.logo_url != new_url:
                 if not dry_run:
                     team.logo_url = new_url
