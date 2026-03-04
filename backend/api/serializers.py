@@ -152,7 +152,7 @@ class RankingsSerializer(serializers.Serializer):
     Combines data from TeamSeasonRatings and TeamSeasonMetrics
     """
 
-    rank = serializers.IntegerField(source="rank_adj_em")
+    rank = serializers.IntegerField(source="d1_rank")
     team_name = serializers.CharField(source="team.name")
     team_slug = serializers.CharField(source="team.slug")
     team_logo = serializers.CharField(source="team.logo_url")

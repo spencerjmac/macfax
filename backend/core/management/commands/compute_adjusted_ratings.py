@@ -319,30 +319,31 @@ class Command(BaseCommand):
                 else:
                     updated += 1
         
-        # Compute rankings
+        # Compute rankings — only among D1 teams so non-D1 stale records don't skew numbers
         self.stdout.write(f"Computing rankings...")
-        
-        all_ratings = TeamSeasonRatings.objects.filter(season=season).order_by('-adj_em')
+        d1_ratings_qs = TeamSeasonRatings.objects.filter(season=season, team__is_d1=True)
+
+        all_ratings = d1_ratings_qs.order_by('-adj_em')
         for rank, rating in enumerate(all_ratings, start=1):
             rating.rank_adj_em = rank
             rating.save(update_fields=['rank_adj_em'])
         
-        all_ratings = TeamSeasonRatings.objects.filter(season=season).order_by('-adj_o')
+        all_ratings = d1_ratings_qs.order_by('-adj_o')
         for rank, rating in enumerate(all_ratings, start=1):
             rating.rank_adj_o = rank
             rating.save(update_fields=['rank_adj_o'])
         
-        all_ratings = TeamSeasonRatings.objects.filter(season=season).order_by('adj_d')
+        all_ratings = d1_ratings_qs.order_by('adj_d')
         for rank, rating in enumerate(all_ratings, start=1):
             rating.rank_adj_d = rank
             rating.save(update_fields=['rank_adj_d'])
         
-        # Update nat_avg.avg_ortg to match actual average of adjusted ratings
+        # Update nat_avg.avg_ortg to match actual average of D1 adjusted ratings
         self.stdout.write(f"Updating national average offensive rating...")
         from django.db.models import Avg
         
         old_avg_ortg = nat_avg.avg_ortg
-        actual_avg_adj_o = TeamSeasonRatings.objects.filter(season=season).aggregate(
+        actual_avg_adj_o = d1_ratings_qs.aggregate(
             Avg('adj_o')
         )['adj_o__avg']
         
@@ -364,7 +365,7 @@ class Command(BaseCommand):
         # Show top 10
         self.stdout.write("\nTop 10 Teams by Adjusted Net Rating:")
         self.stdout.write("=" * 60)
-        top_10 = TeamSeasonRatings.objects.filter(season=season).order_by('-adj_em')[:10]
+        top_10 = d1_ratings_qs.order_by('-adj_em')[:10]
         for i, rating in enumerate(top_10, start=1):
             self.stdout.write(
                 f"{i:2}. {rating.team.name:30} AOR={rating.adj_o:6.2f} ADR={rating.adj_d:6.2f} "
