@@ -22,6 +22,9 @@ DEBUG = os.getenv("DEBUG", "True") == "True"
 
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 
+# Trust X-Forwarded-Host header from reverse proxy
+USE_X_FORWARDED_HOST = os.getenv("USE_X_FORWARDED_HOST", "False") == "True"
+
 # Application definition
 INSTALLED_APPS = [
     "django.contrib.admin",
