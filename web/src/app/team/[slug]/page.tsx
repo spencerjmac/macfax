@@ -4,17 +4,14 @@ import { getTeamWithContext, getAllTeams } from '@/lib/data';
 import TeamPageTabs from '@/components/TeamPageTabs';
 import TeamHeader from '@/components/TeamHeader';
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 interface TeamPageProps {
   params: {
     slug: string;
   };
-}
-
-export async function generateStaticParams() {
-  const teams = await getAllTeams();
-  return teams.map((team) => ({
-    slug: team.teamId,
-  }));
 }
 
 export async function generateMetadata({ params }: TeamPageProps): Promise<Metadata> {
