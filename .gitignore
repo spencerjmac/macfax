@@ -64,6 +64,7 @@ kenpom_debug.html
 .env
 .env.local
 .env.*.local
+.env.docker
 
 # Personal paths (these should be parameterized)
 # Any files with hardcoded C:\Users\spenc paths
