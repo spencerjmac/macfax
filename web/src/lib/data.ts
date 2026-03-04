@@ -84,8 +84,18 @@ async function fetchRankingsFromApi(season: number): Promise<TeamsData> {
   // Client-side: falls back to the public URL baked in at build time.
   const base = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
   const url = `${base}${API_RANKINGS_PATH}?season=${season}`;
+  
+  // Log for debugging
+  console.log('[fetchRankingsFromApi] Fetching from:', url);
+  console.log('[fetchRankingsFromApi] API_INTERNAL_URL:', process.env.API_INTERNAL_URL);
+  console.log('[fetchRankingsFromApi] NEXT_PUBLIC_API_BASE_URL:', process.env.NEXT_PUBLIC_API_BASE_URL);
+  
   const res = await fetch(url, { cache: 'no-store' });
+  
+  console.log('[fetchRankingsFromApi] Response status:', res.status);
+  
   if (!res.ok) {
+    console.error('[fetchRankingsFromApi] Fetch failed:', res.status, res.statusText);
     return {
       metadata: {
         lastUpdated: new Date().toISOString(),
@@ -99,6 +109,9 @@ async function fetchRankingsFromApi(season: number): Promise<TeamsData> {
   const json = (await res.json()) as { results?: Record<string, unknown>[]; count?: number };
   const results = json.results ?? [];
   const teams = results.map(mapApiRowToTeamSeason);
+  
+  console.log('[fetchRankingsFromApi] Success! Teams count:', teams.length);
+  
   return {
     metadata: {
       lastUpdated: new Date().toISOString(),
