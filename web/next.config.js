@@ -20,8 +20,13 @@ const nextConfig = {
   },
   // Proxy /static/* to the Django backend so logo URLs (/static/logos/foo.png)
   // resolve correctly whether the request comes from browser or SSR.
+  // Also proxy /api/* for client-side API calls
   async rewrites() {
     return [
+      {
+        source: '/api/:path*',
+        destination: `${backendOrigin()}/api/:path*`,
+      },
       {
         source: '/static/:path*',
         destination: `${backendOrigin()}/static/:path*`,

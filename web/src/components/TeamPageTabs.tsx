@@ -757,9 +757,9 @@ function GameLogTab({ team }: { team: TeamSeason }) {
         setLoading(true);
         setError(null);
         
-        // Fetch from Django API
+        // Use relative URL - Next.js will proxy to backend via /api/
         const response = await fetch(
-          `http://localhost:8000/api/teams/${team.teamId}/gamelog?season=2026`
+          `/api/teams/${team.teamId}/gamelog?season=2026`
         );
         
         if (!response.ok) {
