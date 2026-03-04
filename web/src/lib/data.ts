@@ -84,7 +84,7 @@ async function fetchRankingsFromApi(season: number): Promise<TeamsData> {
   // Client-side: falls back to the public URL baked in at build time.
   const base = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
   const url = `${base}${API_RANKINGS_PATH}?season=${season}`;
-  const res = await fetch(url, { next: { revalidate: 60 } });
+  const res = await fetch(url, { cache: 'no-store' });
   if (!res.ok) {
     return {
       metadata: {
