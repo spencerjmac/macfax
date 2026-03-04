@@ -37,6 +37,11 @@ class Command(BaseCommand):
             help="Skip game ingestion (only recompute metrics)",
         )
         parser.add_argument(
+            "--days",
+            type=int,
+            help="Ingest only games from last N days (e.g., --days 7 for last week)",
+        )
+        parser.add_argument(
             "--iterations",
             type=int,
             default=25,
@@ -57,8 +62,11 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
+        from datetime import datetime, timedelta
+        
         season_year = options["season"]
         skip_ingest = options["skip_ingest"]
+        days = options.get("days")
         iterations = options["iterations"]
         sor_trials = options["sor_trials"]
         ingest_workers = max(1, int(options.get("ingest_workers", 1)))
@@ -119,6 +127,16 @@ class Command(BaseCommand):
                 self.stdout.write("[1/9] Ingesting game logs from NCAA API...")
                 # In-process parallel ingest via --workers (no RQ); avoids racing step 2
                 ingest_options = {"season": season_year, "workers": ingest_workers}
+                
+                # If --days specified, calculate date range
+                if days:
+                    from datetime import datetime, timedelta
+                    end_date = datetime.now().date()
+                    start_date = end_date - timedelta(days=days)
+                    ingest_options["start"] = start_date.strftime("%Y-%m-%d")
+                    ingest_options["end"] = end_date.strftime("%Y-%m-%d")
+                    self.stdout.write(f"  Ingesting last {days} days: {start_date} to {end_date}")
+                
                 call_command("ingest_gamelogs", **ingest_options)
                 steps.append(("Ingest game logs", True, None))
                 self.stdout.write(self.style.SUCCESS("[OK] Game logs ingested\n"))
