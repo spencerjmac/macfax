@@ -1,57 +1,282 @@
 """
 Data Processing Job Management Views
 API endpoints for triggering and monitoring update_all and other data processing jobs.
-Jobs run synchronously in the request (no background queue).
+
+New streaming endpoints:
+  POST /api/jobs/run/          — start update_all in background, returns job_id immediately
+  GET  /api/jobs/{id}/stream/  — SSE stream of live output (polls DB every 500ms)
+  POST /api/jobs/{id}/cancel/  — send SIGTERM to the subprocess and mark cancelled
+
+Legacy synchronous endpoints (kept for backward compat):
+  POST /api/jobs/start_update_all/
+  POST /api/jobs/start_ingest/
+  POST /api/jobs/start_subjob/
 """
 
-from rest_framework import viewsets, status
-from rest_framework.decorators import action
-from rest_framework.response import Response
-from rest_framework.permissions import IsAdminUser
-from django.utils import timezone
-import uuid
+import json
 import logging
+import os
+import signal
+import threading
+import time
+import uuid
+
+from django.http import StreamingHttpResponse
+from django.utils import timezone
+from rest_framework import status, viewsets
+from rest_framework.decorators import action
+from rest_framework.permissions import IsAdminUser
+from rest_framework.renderers import BaseRenderer
+from rest_framework.response import Response
+
+
+class ServerSentEventRenderer(BaseRenderer):
+    """
+    Passthrough renderer for text/event-stream responses.
+    Required so DRF's content negotiation accepts EventSource requests
+    (which send Accept: text/event-stream) before the action runs.
+    The actual response is a StreamingHttpResponse, not rendered here.
+    """
+    media_type = "text/event-stream"
+    format = "event-stream"
+    charset = "utf-8"
+
+    def render(self, data, accepted_media_type=None, renderer_context=None):
+        return data
 
 from core.models import DataProcessingJob, Season
-from .serializers import DataProcessingJobSerializer
+
 from . import job_tasks
+from .serializers import DataProcessingJobSerializer
 
 logger = logging.getLogger(__name__)
 
 
-class DataProcessingJobViewSet(viewsets.ReadOnlyModelViewSet):
-    """
-    ViewSet for monitoring data processing jobs
-
-    Endpoints:
-    - GET /api/jobs/ - List all jobs
-    - GET /api/jobs/{id}/ - Get job details
-    - GET /api/jobs/{id}/logs/ - Get job logs
-    - POST /api/jobs/start-update-all/ - Start update_all job
-    - POST /api/jobs/start-ingest/ - Start ingest_gamelogs job
-    """
+class DataProcessingJobViewSet(viewsets.ModelViewSet):
+    """ViewSet for data processing jobs."""
 
     queryset = DataProcessingJob.objects.all().order_by("-started_at")
     serializer_class = DataProcessingJobSerializer
     permission_classes = [IsAdminUser]
-    pagination_class = None  # No pagination for job history
+    pagination_class = None
     filterset_fields = ["job_type", "status", "season"]
     search_fields = ["job_id", "error_message"]
     ordering_fields = ["started_at", "completed_at", "status"]
+    http_method_names = ["get", "delete", "post", "head", "options"]
+
+    # ------------------------------------------------------------------
+    # Streaming endpoints (new)
+    # ------------------------------------------------------------------
+
+    @action(detail=False, methods=["post"], permission_classes=[IsAdminUser])
+    def run(self, request):
+        """
+        Start update_all in a background thread and return the job_id immediately.
+        Blocks a second run if one is already in progress (HTTP 409).
+
+        Request body:
+            season      int   required
+            skip_ingest bool  default false
+            days        int   optional — ingest only last N days
+            iterations  int   default 25
+            sor_trials  int   default 10000
+        """
+        # Block concurrent runs
+        running = DataProcessingJob.objects.filter(status="running").first()
+        if running:
+            return Response(
+                {
+                    "error": "A job is already running",
+                    "job_id": running.job_id,
+                    "id": running.id,
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        season_year = request.data.get("season")
+        if not season_year:
+            return Response(
+                {"error": "season is required"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            season = Season.objects.get(year=int(season_year))
+        except Season.DoesNotExist:
+            return Response(
+                {"error": f"Season {season_year} not found"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        skip_ingest = bool(request.data.get("skip_ingest", False))
+        days = request.data.get("days")
+        iterations = int(request.data.get("iterations", 25))
+        sor_trials = int(request.data.get("sor_trials", 10000))
+
+        job_id = f"update_all_{season_year}_{uuid.uuid4().hex[:8]}"
+        job = DataProcessingJob.objects.create(
+            job_id=job_id,
+            job_type="update_all",
+            status="pending",
+            season=season,
+            parameters={
+                "skip_ingest": skip_ingest,
+                "days": days,
+                "iterations": iterations,
+                "sor_trials": sor_trials,
+            },
+            created_by=request.user.username,
+        )
+
+        t = threading.Thread(
+            target=job_tasks.run_update_all_subprocess,
+            args=(job.id,),
+            daemon=True,
+            name=f"job-{job_id}",
+        )
+        t.start()
+
+        return Response({"job_id": job_id, "id": job.id}, status=status.HTTP_201_CREATED)
+
+    @action(
+        detail=True,
+        methods=["get"],
+        permission_classes=[IsAdminUser],
+        renderer_classes=[ServerSentEventRenderer],
+    )
+    def stream(self, request, pk=None):
+        """
+        SSE endpoint that streams job output in real-time.
+        Polls the DataProcessingJob.logs field every 500ms and yields new lines.
+        Sends a final {"type": "done", "status": "..."} event when the job finishes.
+        """
+        job = self.get_object()
+        job_db_id = job.id
+
+        def event_stream():
+            last_len = 0
+            while True:
+                try:
+                    from django.db import close_old_connections
+                    close_old_connections()
+                    current = DataProcessingJob.objects.get(id=job_db_id)
+                except DataProcessingJob.DoesNotExist:
+                    break
+                except Exception:
+                    time.sleep(1)
+                    continue
+
+                logs = current.logs or ""
+                if len(logs) > last_len:
+                    new_text = logs[last_len:]
+                    last_len = len(logs)
+                    for line in new_text.splitlines():
+                        yield f"data: {json.dumps({'type': 'log', 'line': line})}\n\n"
+
+                if current.status in ("success", "failed", "cancelled"):
+                    yield f"data: {json.dumps({'type': 'done', 'status': current.status})}\n\n"
+                    break
+
+                time.sleep(0.5)
+
+        response = StreamingHttpResponse(event_stream(), content_type="text/event-stream")
+        response["Cache-Control"] = "no-cache"
+        response["X-Accel-Buffering"] = "no"  # disable nginx buffering
+        return response
+
+    @action(detail=True, methods=["post"], permission_classes=[IsAdminUser])
+    def cancel(self, request, pk=None):
+        """
+        Cancel a running job. Sends SIGTERM to the subprocess and marks it cancelled.
+        """
+        job = self.get_object()
+        if job.status != "running":
+            return Response(
+                {"error": f"Job is not running (status: {job.status})"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        pid = (job.parameters or {}).get("_pid")
+        if pid:
+            try:
+                os.kill(int(pid), signal.SIGTERM)
+            except (ProcessLookupError, PermissionError) as e:
+                logger.warning(f"Failed to send SIGTERM to pid {pid}: {e}")
+
+        job.status = "cancelled"
+        job.completed_at = timezone.now()
+        if job.started_at:
+            job.duration_seconds = int(
+                (job.completed_at - job.started_at).total_seconds()
+            )
+        job.save(update_fields=["status", "completed_at", "duration_seconds"])
+
+        return Response(DataProcessingJobSerializer(job).data)
+
+    # ------------------------------------------------------------------
+    # Bulk management endpoints
+    # ------------------------------------------------------------------
+
+    @action(detail=False, methods=["post"], permission_classes=[IsAdminUser])
+    def fix_stuck(self, request):
+        """
+        Mark all jobs currently stuck as 'running' to 'failed'.
+        Use this after a server restart or crash where processes were killed
+        but the DB still shows them as running.
+        """
+        stuck = DataProcessingJob.objects.filter(status__in=["running", "pending"])
+        count = stuck.count()
+        stuck.update(
+            status="failed",
+            completed_at=timezone.now(),
+            error_message="Marked failed by admin (process was no longer running).",
+        )
+        logger.info(f"fix_stuck: marked {count} jobs as failed by {request.user.username}")
+        return Response({"fixed": count})
+
+    @action(detail=False, methods=["post"], permission_classes=[IsAdminUser])
+    def clear_history(self, request):
+        """
+        Delete all completed jobs (success, failed, cancelled).
+        Running/pending jobs are not touched.
+        """
+        deleted_qs = DataProcessingJob.objects.filter(
+            status__in=["success", "failed", "cancelled"]
+        )
+        count = deleted_qs.count()
+        deleted_qs.delete()
+        logger.info(f"clear_history: deleted {count} jobs by {request.user.username}")
+        return Response({"deleted": count})
+
+    # ------------------------------------------------------------------
+    # Read endpoints
+    # ------------------------------------------------------------------
+
+    @action(detail=True, methods=["get"], permission_classes=[IsAdminUser])
+    def logs(self, request, pk=None):
+        """Get full job logs (snapshot)."""
+        job = self.get_object()
+        return Response(
+            {
+                "job_id": job.job_id,
+                "logs": job.logs,
+                "error_message": job.error_message,
+                "updated_at": job.updated_at,
+            }
+        )
+
+    @action(detail=True, methods=["get"], permission_classes=[IsAdminUser])
+    def job_status(self, request, pk=None):
+        """Get current job status."""
+        job = self.get_object()
+        return Response(DataProcessingJobSerializer(job).data)
+
+    # ------------------------------------------------------------------
+    # Legacy synchronous endpoints (kept for backward compat)
+    # ------------------------------------------------------------------
 
     @action(detail=False, methods=["post"], permission_classes=[IsAdminUser])
     def start_update_all(self, request):
-        """
-        Start a full update_all job
-
-        Request body:
-        {
-            "season": 2026,
-            "skip_ingest": false,
-            "iterations": 25,
-            "sor_trials": 10000
-        }
-        """
+        """Legacy: run update_all synchronously in the request. Use /run/ instead."""
         try:
             season_year = request.data.get("season")
             skip_ingest = request.data.get("skip_ingest", False)
@@ -64,7 +289,6 @@ class DataProcessingJobViewSet(viewsets.ReadOnlyModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            # Get or create season
             try:
                 season = Season.objects.get(year=season_year)
             except Season.DoesNotExist:
@@ -73,7 +297,6 @@ class DataProcessingJobViewSet(viewsets.ReadOnlyModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            # Create job record
             job_id = f"update_all_{season_year}_{uuid.uuid4().hex[:8]}"
             job = DataProcessingJob.objects.create(
                 job_id=job_id,
@@ -99,7 +322,7 @@ class DataProcessingJobViewSet(viewsets.ReadOnlyModelViewSet):
                     iterations=iterations,
                     sor_trials=sor_trials,
                 )
-            except Exception as e:
+            except Exception:
                 job.refresh_from_db()
                 logger.exception(f"update_all job {job_id} failed")
 
@@ -108,7 +331,7 @@ class DataProcessingJobViewSet(viewsets.ReadOnlyModelViewSet):
                 status=status.HTTP_201_CREATED,
             )
 
-        except Exception as e:
+        except Exception:
             logger.exception("Error starting update_all job")
             return Response(
                 {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -116,18 +339,7 @@ class DataProcessingJobViewSet(viewsets.ReadOnlyModelViewSet):
 
     @action(detail=False, methods=["post"], permission_classes=[IsAdminUser])
     def start_ingest(self, request):
-        """
-        Start a game log ingestion job
-
-        Request body:
-        {
-            "season": 2026,
-            "source": "ncaa",
-            "refresh": false,
-            "start_date": "2025-11-01",
-            "end_date": "2026-03-02"
-        }
-        """
+        """Legacy: run ingest_gamelogs synchronously."""
         try:
             season_year = request.data.get("season")
             source = request.data.get("source", "ncaa")
@@ -141,7 +353,6 @@ class DataProcessingJobViewSet(viewsets.ReadOnlyModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            # Get or create season
             try:
                 season = Season.objects.get(year=season_year)
             except Season.DoesNotExist:
@@ -150,7 +361,6 @@ class DataProcessingJobViewSet(viewsets.ReadOnlyModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            # Create job record
             job_id = f"ingest_gamelogs_{season_year}_{uuid.uuid4().hex[:8]}"
             job = DataProcessingJob.objects.create(
                 job_id=job_id,
@@ -178,7 +388,7 @@ class DataProcessingJobViewSet(viewsets.ReadOnlyModelViewSet):
                     start_date=start_date,
                     end_date=end_date,
                 )
-            except Exception as e:
+            except Exception:
                 job.refresh_from_db()
                 logger.exception(f"ingest_gamelogs job {job_id} failed")
 
@@ -187,7 +397,7 @@ class DataProcessingJobViewSet(viewsets.ReadOnlyModelViewSet):
                 status=status.HTTP_201_CREATED,
             )
 
-        except Exception as e:
+        except Exception:
             logger.exception("Error starting ingest job")
             return Response(
                 {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -195,16 +405,7 @@ class DataProcessingJobViewSet(viewsets.ReadOnlyModelViewSet):
 
     @action(detail=False, methods=["post"], permission_classes=[IsAdminUser])
     def start_subjob(self, request):
-        """
-        Start a specific update_all sub-job
-
-        Request body:
-        {
-            "job_type": "compute_team_metrics",
-            "season": 2026,
-            "parameters": {"iterations": 25, "sor_trials": 10000}
-        }
-        """
+        """Legacy: run a single pipeline step synchronously."""
         try:
             job_type = request.data.get("job_type")
             season_year = request.data.get("season")
@@ -259,7 +460,7 @@ class DataProcessingJobViewSet(viewsets.ReadOnlyModelViewSet):
 
             try:
                 task_fns[job_type](job.id, season_year)
-            except Exception as e:
+            except Exception:
                 job.refresh_from_db()
                 logger.exception(f"Subjob {job_id} failed")
 
@@ -268,27 +469,8 @@ class DataProcessingJobViewSet(viewsets.ReadOnlyModelViewSet):
                 status=status.HTTP_201_CREATED,
             )
 
-        except Exception as e:
+        except Exception:
             logger.exception("Error starting subjob")
             return Response(
                 {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-
-    @action(detail=True, methods=["get"], permission_classes=[IsAdminUser])
-    def logs(self, request, pk=None):
-        """Get job logs"""
-        job = self.get_object()
-        return Response(
-            {
-                "job_id": job.job_id,
-                "logs": job.logs,
-                "error_message": job.error_message,
-                "updated_at": job.updated_at,
-            }
-        )
-
-    @action(detail=True, methods=["get"], permission_classes=[IsAdminUser])
-    def status(self, request, pk=None):
-        """Get current job status"""
-        job = self.get_object()
-        return Response(DataProcessingJobSerializer(job).data)

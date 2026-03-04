@@ -1,6 +1,7 @@
 from django.contrib import admin
+from django.utils import timezone
 from .models import (
-    Season, Conference, Team, TeamSeasonStats, DataIngestionRun,
+    Season, Conference, Team, TeamSeasonStats,
     TeamExternalId, Game, TeamGameStats, ScoringEvent,
     TeamSeasonMetrics, TeamSeasonRatings, DataProcessingJob
 )
@@ -33,12 +34,6 @@ class TeamSeasonStatsAdmin(admin.ModelAdmin):
     search_fields = ['team__name']
     readonly_fields = ['efg_margin', 'tov_edge', 'reb_edge', 'ftr_margin', 'last_updated', 'created_at']
 
-
-@admin.register(DataIngestionRun)
-class DataIngestionRunAdmin(admin.ModelAdmin):
-    list_display = ['season', 'status', 'teams_ingested', 'started_at', 'completed_at']
-    list_filter = ['status', 'season']
-    readonly_fields = ['started_at']
 
 
 # ==================== GAME LOG PIPELINE ADMINS ====================
@@ -92,22 +87,52 @@ class TeamSeasonRatingsAdmin(admin.ModelAdmin):
     readonly_fields = ['computed_at']
 
 
+# ── DataProcessingJob admin actions ───────────────────────────────────────────
+
+def mark_success(modeladmin, request, queryset):
+    queryset.update(status="success", completed_at=timezone.now())
+mark_success.short_description = "Mark selected jobs as success"
+
+def mark_failed(modeladmin, request, queryset):
+    queryset.update(status="failed", completed_at=timezone.now())
+mark_failed.short_description = "Mark selected jobs as failed"
+
+def mark_cancelled(modeladmin, request, queryset):
+    queryset.update(status="cancelled", completed_at=timezone.now())
+mark_cancelled.short_description = "Mark selected jobs as cancelled"
+
+def fix_stuck_running(modeladmin, request, queryset):
+    """Force-fail any jobs stuck in running/pending state."""
+    count = queryset.filter(status__in=["running", "pending"]).update(
+        status="failed",
+        completed_at=timezone.now(),
+        error_message="Marked failed by admin (process was no longer running).",
+    )
+    modeladmin.message_user(request, f"Fixed {count} stuck job(s).")
+fix_stuck_running.short_description = "Fix stuck running/pending jobs → failed"
+
+def clear_logs(modeladmin, request, queryset):
+    queryset.update(logs="", error_message="")
+clear_logs.short_description = "Clear logs for selected jobs"
+
+
 @admin.register(DataProcessingJob)
 class DataProcessingJobAdmin(admin.ModelAdmin):
-    list_display = ['job_id', 'job_type', 'status', 'progress_percent', 'season', 'started_at', 'duration_seconds']
+    list_display = ['job_id', 'job_type', 'status', 'progress_percent', 'season', 'started_at', 'duration_seconds', 'created_by']
     list_filter = ['job_type', 'status', 'season']
     search_fields = ['job_id', 'error_message']
     readonly_fields = ['job_id', 'started_at', 'updated_at', 'logs']
-    
+    actions = [mark_success, mark_failed, mark_cancelled, fix_stuck_running, clear_logs]
+
     fieldsets = (
         ('Job Info', {
-            'fields': ('job_id', 'job_type', 'status', 'season')
+            'fields': ('job_id', 'job_type', 'status', 'season', 'created_by')
         }),
         ('Progress', {
             'fields': ('progress_percent', 'started_at', 'completed_at', 'duration_seconds')
         }),
         ('Parameters', {
-            'fields': ('parameters', 'created_by'),
+            'fields': ('parameters',),
             'classes': ('collapse',)
         }),
         ('Logs & Errors', {
@@ -115,14 +140,15 @@ class DataProcessingJobAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
-    
+
     def has_add_permission(self, request):
         return False
-    
+
     def has_delete_permission(self, request, obj=None):
-        if obj and not obj.is_running:
+        # Allow deleting any job that isn't actively running
+        if obj is None:
             return True
-        return False
+        return not obj.is_running
 
 
 # Customize admin site branding

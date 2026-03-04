@@ -103,8 +103,8 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
-    # Django backend API + admin + static
-    location ~ ^/(api|admin|static)/ {
+    # Django backend API (includes /api/admin/) + static
+    location ~ ^/(api|static)/ {
         proxy_pass http://localhost:7001;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;

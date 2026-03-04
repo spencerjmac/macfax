@@ -18,9 +18,11 @@ const nextConfig = {
     config.resolve.alias['@/'] = srcDir + path.sep
     return config
   },
-  // Proxy /static/* to the Django backend so logo URLs (/static/logos/foo.png)
-  // resolve correctly whether the request comes from browser or SSR.
-  // Also proxy /api/* for client-side API calls
+  // Proxy backend paths to Django.
+  // /api/*    — REST API + admin
+  // /static/* — WhiteNoise static files (logos, admin CSS/JS)
+  // /logos/*  — legacy logo URLs still in DB before import_logos migration;
+  //             rewrite to /static/logos/* on the backend
   async rewrites() {
     return [
       {
@@ -30,6 +32,10 @@ const nextConfig = {
       {
         source: '/static/:path*',
         destination: `${backendOrigin()}/static/:path*`,
+      },
+      {
+        source: '/logos/:path*',
+        destination: `${backendOrigin()}/static/logos/:path*`,
       },
     ]
   },

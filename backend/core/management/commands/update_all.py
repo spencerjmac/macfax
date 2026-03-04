@@ -128,14 +128,19 @@ class Command(BaseCommand):
                 # In-process parallel ingest via --workers (no RQ); avoids racing step 2
                 ingest_options = {"season": season_year, "workers": ingest_workers}
                 
-                # If --days specified, calculate date range
+                # If --days specified, calculate date range ending yesterday.
+                # Games are never available for the current day, so end_date
+                # is always yesterday regardless of how many days are requested.
+                #   --days 1  →  yesterday only
+                #   --days 3  →  3 days ending yesterday
                 if days:
                     from datetime import datetime, timedelta
-                    end_date = datetime.now().date()
-                    start_date = end_date - timedelta(days=days)
+                    yesterday = datetime.now().date() - timedelta(days=1)
+                    start_date = yesterday - timedelta(days=days - 1)
+                    end_date = yesterday
                     ingest_options["start"] = start_date.strftime("%Y-%m-%d")
                     ingest_options["end"] = end_date.strftime("%Y-%m-%d")
-                    self.stdout.write(f"  Ingesting last {days} days: {start_date} to {end_date}")
+                    self.stdout.write(f"  Ingesting last {days} day(s): {start_date} to {end_date}")
                 
                 call_command("ingest_gamelogs", **ingest_options)
                 steps.append(("Ingest game logs", True, None))

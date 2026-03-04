@@ -1,30 +1,16 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { format } from 'date-fns';
 
-interface DataProcessingJob {
-  id: number;
-  job_id: string;
-  job_type: string;
-  job_type_display?: string;
-  get_job_type_display?: string;
-  status: string;
-  status_display?: string;
-  get_status_display?: string;
-  progress_percent: number;
-  season: number | null;
-  season_display: string | null;
-  parameters: Record<string, any>;
-  started_at: string;
-  completed_at: string | null;
-  duration_seconds: number | null;
-  error_message: string;
-  created_by: string;
-  is_running: boolean;
-  is_complete: boolean;
-  logs: string;
-  updated_at: string;
+const API = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
+
+// ── Types ──────────────────────────────────────────────────────────────────────
+
+interface UserInfo {
+  username: string;
+  is_staff: boolean;
+  is_superuser: boolean;
 }
 
 interface Season {
@@ -34,307 +20,342 @@ interface Season {
   is_current: boolean;
 }
 
-interface UserInfo {
-  username: string;
-  is_staff: boolean;
-  is_superuser: boolean;
+interface Job {
+  id: number;
+  job_id: string;
+  job_type: string;
+  status: string;
+  progress_percent: number;
+  season_display: string | null;
+  parameters: Record<string, unknown>;
+  started_at: string;
+  completed_at: string | null;
+  duration_seconds: number | null;
+  error_message: string | null;
+  created_by: string;
 }
 
-const AdminDashboard = () => {
-  const [jobs, setJobs] = useState<DataProcessingJob[]>([]);
-  const [seasons, setSeasons] = useState<Season[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [selectedJob, setSelectedJob] = useState<DataProcessingJob | null>(null);
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function lineClass(line: string): string {
+  if (/\[OK\]|✓|SUCCESS|successfully|All data updated/i.test(line))
+    return 'text-green-400';
+  if (/\[FAIL\]|ERROR|Failed|Traceback/i.test(line)) return 'text-red-400';
+  if (/\[WARN\]|WARNING|warning/i.test(line)) return 'text-yellow-400';
+  if (/\[SKIP\]/.test(line)) return 'text-gray-500';
+  if (/^={3,}|CBB ANALYTICS|UPDATE COMPLETE/.test(line))
+    return 'text-blue-300 font-semibold';
+  if (/^\[/.test(line)) return 'text-cyan-300';
+  return 'text-gray-300';
+}
+
+function statusBadge(s: string) {
+  const cls: Record<string, string> = {
+    running: 'bg-blue-500 text-white animate-pulse',
+    success: 'bg-green-600 text-white',
+    failed: 'bg-red-600 text-white',
+    cancelled: 'bg-yellow-500 text-white',
+    pending: 'bg-gray-400 text-white',
+  };
+  return (
+    <span
+      className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${cls[s] ?? 'bg-gray-300 text-gray-900'}`}
+    >
+      {s}
+    </span>
+  );
+}
+
+function apiFetch(path: string, opts: RequestInit = {}) {
+  return fetch(`${API}${path}`, { credentials: 'include', ...opts });
+}
+
+// ── Component ─────────────────────────────────────────────────────────────────
+
+export default function AdminPage() {
+  // auth
   const [user, setUser] = useState<UserInfo | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [authError, setAuthError] = useState<string | null>(null);
-  const [csrfToken, setCsrfToken] = useState<string>('');
+  const [csrfToken, setCsrfToken] = useState('');
   const [loginForm, setLoginForm] = useState({ username: '', password: '' });
-  const [formData, setFormData] = useState({
-    season: '',
-    skipIngest: false,
-    iterations: 25,
-    sorTrials: 10000,
-  });
+  const [authError, setAuthError] = useState('');
 
-  // Load data on mount
+  // form
+  const [season, setSeason] = useState('');
+  const [days, setDays] = useState('');
+  const [skipIngest, setSkipIngest] = useState(false);
+  const [iterations, setIterations] = useState(25);
+  const [sorTrials, setSorTrials] = useState(10000);
+  const [seasons, setSeasons] = useState<Season[]>([]);
+
+  // job execution state
+  const [runningJobDbId, setRunningJobDbId] = useState<number | null>(null);
+  const [jobStatus, setJobStatus] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [startError, setStartError] = useState('');
+
+  // live terminal
+  const [logLines, setLogLines] = useState<string[]>([]);
+  const termRef = useRef<HTMLDivElement>(null);
+  const esRef = useRef<EventSource | null>(null);
+
+  // history
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [historyBusy, setHistoryBusy] = useState(false);
+
+  // ── Auto-scroll terminal ────────────────────────────────────────────────────
   useEffect(() => {
-    const init = async () => {
-      await fetchCsrf();
-      await loadUser();
-    };
-    init();
+    if (termRef.current) {
+      termRef.current.scrollTop = termRef.current.scrollHeight;
+    }
+  }, [logLines]);
+
+  // ── Init ───────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    apiFetch('/api/auth/csrf/')
+      .then((r) => r.json())
+      .then((d) => setCsrfToken(d.csrfToken || ''))
+      .catch(() => {});
+    checkAuth();
   }, []);
 
   useEffect(() => {
     if (!user) return;
-    loadJobs();
     loadSeasons();
-
-    const interval = setInterval(loadJobs, 2000);
-    return () => clearInterval(interval);
+    loadJobs();
+    const iv = setInterval(loadJobs, 5000);
+    return () => clearInterval(iv);
   }, [user]);
 
-  const fetchCsrf = async () => {
-    try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/auth/csrf/`, {
-        credentials: 'include',
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setCsrfToken(data.csrfToken || '');
-      }
-    } catch (error) {
-      console.error('Failed to fetch CSRF token:', error);
-    }
-  };
-
-  const loadUser = async () => {
+  // ── Auth ───────────────────────────────────────────────────────────────────
+  const checkAuth = async () => {
     setAuthLoading(true);
-    setAuthError(null);
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/auth/me/`, {
-        credentials: 'include',
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setUser(data);
-      } else {
-        setUser(null);
-      }
-    } catch (error) {
+      const r = await apiFetch('/api/auth/me/');
+      setUser(r.ok ? await r.json() : null);
+    } catch {
       setUser(null);
-      setAuthError('Failed to check login status');
     } finally {
       setAuthLoading(false);
     }
   };
 
-  const loadJobs = async () => {
-    try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/jobs/`, {
-        credentials: 'include',
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setJobs(data.results || data);
-      }
-    } catch (error) {
-      console.error('Failed to load jobs:', error);
+  const login = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError('');
+    const r = await apiFetch('/api/auth/login/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+      body: JSON.stringify(loginForm),
+    });
+    if (r.ok) {
+      await checkAuth();
+    } else {
+      const d = await r.json();
+      setAuthError(d.error || 'Login failed');
     }
   };
 
+  const logout = async () => {
+    await apiFetch('/api/auth/logout/', {
+      method: 'POST',
+      headers: { 'X-CSRFToken': csrfToken },
+    });
+    setUser(null);
+  };
+
+  // ── Data loaders ───────────────────────────────────────────────────────────
   const loadSeasons = async () => {
-    try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/seasons/`, {
-        credentials: 'include',
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setSeasons(data.results || data);
+    const r = await apiFetch('/api/seasons/');
+    if (r.ok) {
+      const d = await r.json();
+      const list: Season[] = d.results ?? d;
+      setSeasons(list);
+      const current = list.find((s) => s.is_current);
+      if (current) setSeason(String(current.year));
+    }
+  };
+
+  const loadJobs = async () => {
+    const r = await apiFetch('/api/jobs/');
+    if (r.ok) {
+      const d = await r.json();
+      setJobs(d.results ?? d);
+    }
+  };
+
+  // ── SSE stream ─────────────────────────────────────────────────────────────
+  const openStream = useCallback((jobDbId: number) => {
+    if (esRef.current) {
+      esRef.current.close();
+      esRef.current = null;
+    }
+    setJobStatus('running');
+    const es = new EventSource(`${API}/api/jobs/${jobDbId}/stream/`, {
+      withCredentials: true,
+    });
+    esRef.current = es;
+
+    es.onmessage = (evt) => {
+      const data = JSON.parse(evt.data);
+      if (data.type === 'log') {
+        setLogLines((prev) => [...prev, data.line as string]);
+      } else if (data.type === 'done') {
+        setJobStatus(data.status as string);
+        setRunningJobDbId(null);
+        es.close();
+        esRef.current = null;
+        loadJobs();
       }
-    } catch (error) {
-      console.error('Failed to load seasons:', error);
+    };
+
+    es.onerror = () => {
+      setJobStatus((prev) => (prev === 'running' ? 'failed' : prev));
+      es.close();
+      esRef.current = null;
+    };
+  }, []);
+
+  // ── Job control ────────────────────────────────────────────────────────────
+  const startJob = async () => {
+    setStartError('');
+    setSubmitting(true);
+    setLogLines([]);
+    setJobStatus('pending');
+
+    const body: Record<string, unknown> = {
+      season: parseInt(season),
+      skip_ingest: skipIngest,
+      iterations,
+      sor_trials: sorTrials,
+    };
+    if (days) body.days = parseInt(days);
+
+    const r = await apiFetch('/api/jobs/run/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+      body: JSON.stringify(body),
+    });
+
+    setSubmitting(false);
+
+    if (r.status === 409) {
+      // Another job is running — offer to stream its output
+      const d = await r.json();
+      setStartError(`Already running: ${d.job_id}. Connecting to its stream…`);
+      setRunningJobDbId(d.id);
+      openStream(d.id);
+      return;
+    }
+
+    if (!r.ok) {
+      const d = await r.json();
+      setStartError(d.error || 'Failed to start job');
+      setJobStatus(null);
+      return;
+    }
+
+    const d = await r.json();
+    setRunningJobDbId(d.id);
+    openStream(d.id);
+  };
+
+  const fixStuck = async () => {
+    if (!confirm('Mark all stuck running/pending jobs as failed?')) return;
+    setHistoryBusy(true);
+    const r = await apiFetch('/api/jobs/fix_stuck/', {
+      method: 'POST',
+      headers: { 'X-CSRFToken': csrfToken },
+    });
+    setHistoryBusy(false);
+    if (r.ok) {
+      const d = await r.json();
+      alert(`Fixed ${d.fixed} stuck job(s).`);
+      loadJobs();
     }
   };
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setAuthError(null);
-    try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/auth/login/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': csrfToken,
-        },
-        credentials: 'include',
-        body: JSON.stringify(loginForm),
-      });
+  const clearHistory = async () => {
+    if (!confirm('Delete all completed jobs (success / failed / cancelled)?')) return;
+    setHistoryBusy(true);
+    const r = await apiFetch('/api/jobs/clear_history/', {
+      method: 'POST',
+      headers: { 'X-CSRFToken': csrfToken },
+    });
+    setHistoryBusy(false);
+    if (r.ok) {
+      const d = await r.json();
+      alert(`Deleted ${d.deleted} job(s).`);
+      loadJobs();
+    }
+  };
 
-      if (response.ok) {
-        await loadUser();
-      } else {
-        const data = await response.json();
-        setAuthError(data.error || 'Login failed');
+  const deleteJob = async (jobId: number) => {
+    const r = await apiFetch(`/api/jobs/${jobId}/`, {
+      method: 'DELETE',
+      headers: { 'X-CSRFToken': csrfToken },
+    });
+    if (r.ok || r.status === 204) loadJobs();
+  };
+
+  const cancelJob = async () => {
+    if (!runningJobDbId) return;
+    const r = await apiFetch(`/api/jobs/${runningJobDbId}/cancel/`, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': csrfToken },
+    });
+    if (r.ok) {
+      setJobStatus('cancelled');
+      if (esRef.current) {
+        esRef.current.close();
+        esRef.current = null;
       }
-    } catch (error) {
-      setAuthError('Login failed');
+      setRunningJobDbId(null);
+      loadJobs();
     }
   };
 
-  const handleLogout = async () => {
-    try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/auth/logout/`, {
-        method: 'POST',
-        headers: {
-          'X-CSRFToken': csrfToken,
-        },
-        credentials: 'include',
-      });
-    } finally {
-      setUser(null);
-    }
-  };
-
-  const handleStartJob = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.season) return;
-
-    setLoading(true);
-    try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/jobs/start_update_all/`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': csrfToken,
-          },
-          credentials: 'include',
-          body: JSON.stringify({
-            season: parseInt(formData.season),
-            skip_ingest: formData.skipIngest,
-            iterations: formData.iterations,
-            sor_trials: formData.sorTrials,
-          }),
-        }
-      );
-
-      if (response.ok) {
-        const job = await response.json();
-        setJobs([job, ...jobs]);
-        setFormData({ season: '', skipIngest: false, iterations: 25, sorTrials: 10000 });
-        alert('Job started successfully!');
-      } else {
-        alert('Failed to start job');
-      }
-    } catch (error) {
-      alert(`Error: ${error}`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleStartSubjob = async (jobType: string) => {
-    if (!formData.season) return;
-    setLoading(true);
-    try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/jobs/start_subjob/`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': csrfToken,
-          },
-          credentials: 'include',
-          body: JSON.stringify({
-            job_type: jobType,
-            season: parseInt(formData.season),
-            parameters: {
-              iterations: formData.iterations,
-              sor_trials: formData.sorTrials,
-            },
-          }),
-        }
-      );
-
-      if (response.ok) {
-        const job = await response.json();
-        setJobs([job, ...jobs]);
-      } else {
-        const data = await response.json();
-        alert(data.error || 'Failed to start sub-job');
-      }
-    } catch (error) {
-      alert(`Error: ${error}`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'success':
-        return 'text-green-600 bg-green-50';
-      case 'failed':
-        return 'text-red-600 bg-red-50';
-      case 'running':
-        return 'text-blue-600 bg-blue-50';
-      case 'pending':
-        return 'text-yellow-600 bg-yellow-50';
-      default:
-        return 'text-gray-600 bg-gray-50';
-    }
-  };
-
-  const getProgressBar = (job: DataProcessingJob) => {
-    return (
-      <div className="w-full bg-gray-200 rounded-full h-2">
-        <div
-          className="bg-blue-600 h-2 rounded-full transition-all duration-500"
-          style={{ width: `${job.progress_percent}%` }}
-        />
-      </div>
-    );
-  };
-
-  const getJobTypeLabel = (job: DataProcessingJob) =>
-    job.job_type_display || job.get_job_type_display || job.job_type;
-
-  const getStatusLabel = (job: DataProcessingJob) =>
-    job.status_display || job.get_status_display || job.status;
-
-  const statusCounts = jobs.reduce(
-    (acc, job) => {
-      acc[job.status] = (acc[job.status] || 0) + 1;
-      return acc;
-    },
-    {} as Record<string, number>
-  );
-
+  // ── Views ──────────────────────────────────────────────────────────────────
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-600">Loading admin...</div>
+      <div className="min-h-screen bg-gray-950 flex items-center justify-center text-gray-400">
+        Loading…
       </div>
     );
   }
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-        <div className="w-full max-w-md bg-white rounded-lg shadow p-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Admin Login</h1>
-          <p className="text-gray-600 mb-6">Sign in with your backend admin credentials.</p>
-          <form onSubmit={handleLogin} className="space-y-4">
+      <div className="min-h-screen bg-gray-950 flex items-center justify-center px-4">
+        <div className="w-full max-w-sm bg-gray-900 border border-gray-800 rounded-lg p-8">
+          <h1 className="text-xl font-bold text-white mb-1">Pipeline Admin</h1>
+          <p className="text-gray-400 text-sm mb-6">Sign in with your Django admin credentials.</p>
+          <form onSubmit={login} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
+              <label className="block text-xs font-medium text-gray-400 mb-1">Username</label>
               <input
                 type="text"
                 value={loginForm.username}
                 onChange={(e) => setLoginForm({ ...loginForm, username: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white text-sm focus:outline-none focus:border-blue-500"
                 required
+                autoFocus
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+              <label className="block text-xs font-medium text-gray-400 mb-1">Password</label>
               <input
                 type="password"
                 value={loginForm.password}
                 onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white text-sm focus:outline-none focus:border-blue-500"
                 required
               />
             </div>
-            {authError && (
-              <div className="text-sm text-red-600">{authError}</div>
-            )}
+            {authError && <p className="text-red-400 text-sm">{authError}</p>}
             <button
               type="submit"
-              className="w-full bg-blue-600 text-white py-2 rounded-md font-medium hover:bg-blue-700 transition"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded text-sm font-medium transition"
             >
               Sign In
             </button>
@@ -344,295 +365,317 @@ const AdminDashboard = () => {
     );
   }
 
+  const isRunning = jobStatus === 'running' || jobStatus === 'pending';
+
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">📊 Data Pipeline Admin</h1>
-              <p className="text-gray-600 mt-2">Monitor and manage data processing jobs</p>
-            </div>
-            <div className="text-sm text-gray-600">
-              <span className="mr-3">Signed in as <strong>{user.username}</strong></span>
-              <button onClick={handleLogout} className="text-blue-600 hover:text-blue-700">Sign out</button>
-            </div>
-          </div>
+    <div className="min-h-screen bg-gray-950 text-gray-100">
+      {/* Header */}
+      <header className="border-b border-gray-800 px-6 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <span className="font-bold text-white">Pipeline Admin</span>
+          <a
+            href={`${API}/api/admin/`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-gray-400 hover:text-gray-200 transition"
+          >
+            Django Admin ↗
+          </a>
         </div>
+        <div className="flex items-center gap-4 text-sm">
+          <span className="text-gray-400">
+            {user.username}
+            {user.is_superuser && (
+              <span className="ml-1 text-xs text-yellow-400">superuser</span>
+            )}
+          </span>
+          <button
+            onClick={logout}
+            className="text-gray-400 hover:text-white transition text-xs"
+          >
+            Sign out
+          </button>
+        </div>
+      </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Start Job Form */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">▶️ Start Update All</h2>
-              
-              <form onSubmit={handleStartJob} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Season
-                  </label>
-                  <select
-                    value={formData.season}
-                    onChange={(e) => setFormData({ ...formData, season: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  >
-                    <option value="">Select a season</option>
-                    {seasons.map((season) => (
-                      <option key={season.id} value={season.year}>
-                        {season.display_name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+      <div className="flex h-[calc(60vh-49px)]">
+        {/* ── Left panel: controls ─────────────────────────────────────── */}
+        <aside className="w-72 flex-shrink-0 border-r border-gray-800 p-5 overflow-y-auto">
+          <h2 className="text-sm font-semibold text-gray-300 mb-4 uppercase tracking-wide">
+            Run Update All
+          </h2>
 
+          <div className="space-y-4">
+            {/* Season */}
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">Season</label>
+              <select
+                value={season}
+                onChange={(e) => setSeason(e.target.value)}
+                disabled={isRunning}
+                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-sm text-white focus:outline-none focus:border-blue-500 disabled:opacity-50"
+              >
+                <option value="">Select season</option>
+                {seasons.map((s) => (
+                  <option key={s.id} value={s.year}>
+                    {s.display_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Last N days */}
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">
+                Last N days{' '}
+                <span className="text-gray-600">(blank = full season)</span>
+              </label>
+              <input
+                type="number"
+                value={days}
+                onChange={(e) => setDays(e.target.value)}
+                disabled={isRunning || skipIngest}
+                placeholder="e.g. 3"
+                min="1"
+                max="30"
+                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500 disabled:opacity-50"
+              />
+            </div>
+
+            {/* Skip ingest */}
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={skipIngest}
+                onChange={(e) => {
+                  setSkipIngest(e.target.checked);
+                  if (e.target.checked) setDays('');
+                }}
+                disabled={isRunning}
+                className="h-4 w-4 rounded border-gray-600 bg-gray-800 text-blue-500"
+              />
+              <span className="text-sm text-gray-300">Skip game ingestion</span>
+            </label>
+
+            {/* Advanced */}
+            <details className="group">
+              <summary className="text-xs text-gray-500 cursor-pointer hover:text-gray-300 select-none">
+                Advanced options
+              </summary>
+              <div className="mt-3 space-y-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-xs text-gray-400 mb-1">
                     Iterations
                   </label>
                   <input
                     type="number"
-                    value={formData.iterations}
-                    onChange={(e) => setFormData({ ...formData, iterations: parseInt(e.target.value) })}
+                    value={iterations}
+                    onChange={(e) => setIterations(parseInt(e.target.value))}
+                    disabled={isRunning}
                     min="1"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-sm text-white focus:outline-none focus:border-blue-500 disabled:opacity-50"
                   />
                 </div>
-
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-xs text-gray-400 mb-1">
                     SOR Trials
                   </label>
                   <input
                     type="number"
-                    value={formData.sorTrials}
-                    onChange={(e) => setFormData({ ...formData, sorTrials: parseInt(e.target.value) })}
+                    value={sorTrials}
+                    onChange={(e) => setSorTrials(parseInt(e.target.value))}
+                    disabled={isRunning}
                     min="100"
-                    step="100"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    step="1000"
+                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-sm text-white focus:outline-none focus:border-blue-500 disabled:opacity-50"
                   />
                 </div>
-
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={formData.skipIngest}
-                    onChange={(e) => setFormData({ ...formData, skipIngest: e.target.checked })}
-                    className="h-4 w-4 text-blue-600 border-gray-300 rounded"
-                  />
-                  <span className="ml-2 text-sm text-gray-700">Skip Game Ingestion</span>
-                </label>
-
-                <button
-                  type="submit"
-                  disabled={loading || !formData.season}
-                  className="w-full bg-blue-600 text-white py-2 rounded-md font-medium hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition"
-                >
-                  {loading ? 'Starting...' : 'Start Job'}
-                </button>
-              </form>
-
-              <div className="mt-6">
-                <h3 className="text-sm font-semibold text-gray-900 mb-2">🔁 Reschedule Sub-Jobs</h3>
-                <div className="grid grid-cols-2 gap-2">
-                  {[
-                    { key: 'compute_team_metrics', label: 'Team Metrics' },
-                    { key: 'compute_adjusted_ratings', label: 'Adjusted Ratings' },
-                    { key: 'compute_four_factor_index', label: 'Four Factor Index' },
-                    { key: 'fetch_net_rankings', label: 'NET Rankings' },
-                    { key: 'compute_sor', label: 'SOR' },
-                    { key: 'compute_game_value', label: 'Game Value' },
-                    { key: 'compute_sos', label: 'SOS' },
-                  ].map((job) => (
-                    <button
-                      key={job.key}
-                      onClick={() => handleStartSubjob(job.key)}
-                      disabled={loading || !formData.season}
-                      className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-800 py-2 rounded-md border border-gray-200 disabled:bg-gray-50 disabled:text-gray-400"
-                    >
-                      {job.label}
-                    </button>
-                  ))}
-                </div>
-                <p className="text-xs text-gray-500 mt-2">Reschedule a specific step without running the full pipeline.</p>
               </div>
+            </details>
 
-              <div className="mt-6 p-4 bg-blue-50 rounded-md border border-blue-200">
-                <p className="text-sm text-blue-800">
-                  <strong>ℹ️ Tip:</strong> Jobs run in the background. You can close this page and come back later to check progress.
-                </p>
+            {startError && (
+              <p className="text-xs text-yellow-400">{startError}</p>
+            )}
+
+            {/* Run / Abort */}
+            {isRunning ? (
+              <button
+                onClick={cancelJob}
+                className="w-full bg-red-700 hover:bg-red-600 text-white py-2 rounded text-sm font-medium transition"
+              >
+                Abort Job
+              </button>
+            ) : (
+              <button
+                onClick={startJob}
+                disabled={submitting || !season}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded text-sm font-medium transition disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {submitting ? 'Starting…' : 'Run Pipeline'}
+              </button>
+            )}
+
+            {/* Status pill */}
+            {jobStatus && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500">Status:</span>
+                {statusBadge(jobStatus)}
               </div>
+            )}
+          </div>
+        </aside>
+
+        {/* ── Right panel: terminal ────────────────────────────────────── */}
+        <main className="flex-1 flex flex-col min-w-0">
+          {/* Terminal header */}
+          <div className="flex items-center gap-3 px-4 py-2 border-b border-gray-800 bg-gray-900">
+            <div className="flex gap-1.5">
+              <span className="w-3 h-3 rounded-full bg-red-500 opacity-70" />
+              <span className="w-3 h-3 rounded-full bg-yellow-500 opacity-70" />
+              <span className="w-3 h-3 rounded-full bg-green-500 opacity-70" />
             </div>
+            <span className="text-xs text-gray-500 font-mono">
+              manage.py update_all
+              {season ? ` --season ${season}` : ''}
+              {days && !skipIngest ? ` --days ${days}` : ''}
+              {skipIngest ? ' --skip-ingest' : ''}
+            </span>
+            {logLines.length > 0 && (
+              <button
+                onClick={() => setLogLines([])}
+                className="ml-auto text-xs text-gray-600 hover:text-gray-400 transition"
+              >
+                Clear
+              </button>
+            )}
           </div>
 
-          {/* Job Details / Logs */}
-          <div className="lg:col-span-2">
-            <div className="bg-white rounded-lg shadow p-6">
-              {selectedJob ? (
-                <>
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xl font-bold text-gray-900">📋 Job Details</h2>
-                    <button
-                      onClick={() => setSelectedJob(null)}
-                      className="text-gray-500 hover:text-gray-700"
-                    >
-                      ✕
-                    </button>
-                  </div>
-
-                  <div className="space-y-4 mb-6">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-sm text-gray-600">Job ID</p>
-                        <p className="font-mono text-sm text-gray-900">{selectedJob.job_id}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Status</p>
-                        <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(selectedJob.status)}`}>
-                          {getStatusLabel(selectedJob)}
-                        </span>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Started</p>
-                        <p className="text-sm text-gray-900">{format(new Date(selectedJob.started_at), 'MMM dd, yyyy HH:mm:ss')}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-gray-600">Duration</p>
-                        <p className="text-sm text-gray-900">
-                          {selectedJob.duration_seconds 
-                            ? `${(selectedJob.duration_seconds / 60).toFixed(1)} min`
-                            : 'Running...'}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-                      <div>
-                        <p className="text-sm text-gray-600 mb-2">Progress: {selectedJob.progress_percent}%</p>
-                        {getProgressBar(selectedJob)}
-                      </div>
-                      <div className="flex items-center justify-center">
-                        <div
-                          className="w-24 h-24 rounded-full flex items-center justify-center text-sm font-semibold text-gray-900"
-                          style={{
-                            background: `conic-gradient(#2563eb ${selectedJob.progress_percent * 3.6}deg, #e5e7eb 0deg)`,
-                          }}
-                        >
-                          <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center">
-                            {selectedJob.progress_percent}%
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Logs */}
-                  {selectedJob.logs && (
-                    <div>
-                      <h3 className="font-bold text-gray-900 mb-2">📝 Execution Logs</h3>
-                      <div className="bg-gray-900 text-gray-100 p-4 rounded-md font-mono text-xs max-h-96 overflow-y-auto">
-                        {selectedJob.logs.split('\n').map((line, i) => (
-                          <div key={i} className="text-gray-400">
-                            {line || ' '}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {selectedJob.error_message && (
-                    <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-md">
-                      <p className="text-sm font-bold text-red-800 mb-2">❌ Error</p>
-                      <p className="text-sm text-red-700 font-mono">{selectedJob.error_message}</p>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div className="text-center py-12">
-                  <p className="text-gray-500">Select a job to view details and logs</p>
+          {/* Terminal body */}
+          <div
+            ref={termRef}
+            className="flex-1 overflow-y-auto p-4 font-mono text-xs leading-5 bg-gray-950"
+          >
+            {logLines.length === 0 ? (
+              <p className="text-gray-700">
+                {isRunning
+                  ? 'Waiting for output…'
+                  : 'Output will appear here when you run the pipeline.'}
+              </p>
+            ) : (
+              logLines.map((line, i) => (
+                <div key={i} className={lineClass(line)}>
+                  {line || '\u00a0'}
                 </div>
-              )}
-            </div>
+              ))
+            )}
+            {isRunning && (
+              <div className="mt-1 text-gray-600 animate-pulse">▌</div>
+            )}
+          </div>
+        </main>
+      </div>
+
+      {/* ── Job history ─────────────────────────────────────────────────── */}
+      <section className="border-t border-gray-800">
+        <div className="px-6 py-3 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">
+            Job History
+            <span className="ml-2 text-gray-600 font-normal normal-case">
+              {jobs.length} jobs
+            </span>
+          </h2>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={fixStuck}
+              disabled={historyBusy}
+              className="text-xs px-3 py-1.5 rounded bg-yellow-900 hover:bg-yellow-800 text-yellow-200 disabled:opacity-40 transition"
+              title="Mark all running/pending jobs as failed (use after a crash)"
+            >
+              Fix Stuck
+            </button>
+            <button
+              onClick={clearHistory}
+              disabled={historyBusy}
+              className="text-xs px-3 py-1.5 rounded bg-gray-800 hover:bg-gray-700 text-gray-300 disabled:opacity-40 transition"
+            >
+              Clear History
+            </button>
           </div>
         </div>
-
-        {/* Job History Table */}
-        <div className="mt-8 bg-white rounded-lg shadow overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-            <h2 className="text-xl font-bold text-gray-900">📜 Job History</h2>
-            <div className="flex items-center gap-3 text-xs text-gray-600">
-              <span>Running: {statusCounts.running || 0}</span>
-              <span>Pending: {statusCounts.pending || 0}</span>
-              <span>Success: {statusCounts.success || 0}</span>
-              <span>Failed: {statusCounts.failed || 0}</span>
-            </div>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b border-gray-200">
+        <div className="overflow-x-auto max-h-60 overflow-y-auto">
+          <table className="w-full text-xs">
+            <thead className="sticky top-0 bg-gray-900">
+              <tr className="text-gray-500 text-left">
+                <th className="px-6 py-2 font-medium">Job ID</th>
+                <th className="px-4 py-2 font-medium">Type</th>
+                <th className="px-4 py-2 font-medium">Season</th>
+                <th className="px-4 py-2 font-medium">Status</th>
+                <th className="px-4 py-2 font-medium">Started</th>
+                <th className="px-4 py-2 font-medium">Duration</th>
+                <th className="px-4 py-2 font-medium">By</th>
+                <th className="px-4 py-2 font-medium">Stream</th>
+                <th className="px-4 py-2 font-medium"></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-800">
+              {jobs.length === 0 ? (
                 <tr>
-                  <th className="px-6 py-3 text-left font-medium text-gray-700">Job ID</th>
-                  <th className="px-6 py-3 text-left font-medium text-gray-700">Type</th>
-                  <th className="px-6 py-3 text-left font-medium text-gray-700">Season</th>
-                  <th className="px-6 py-3 text-left font-medium text-gray-700">Status</th>
-                  <th className="px-6 py-3 text-left font-medium text-gray-700">Progress</th>
-                  <th className="px-6 py-3 text-left font-medium text-gray-700">Started</th>
-                  <th className="px-6 py-3 text-left font-medium text-gray-700">Duration</th>
-                  <th className="px-6 py-3 text-left font-medium text-gray-700">Action</th>
+                  <td colSpan={8} className="px-6 py-6 text-center text-gray-600">
+                    No jobs yet.
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {jobs.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
-                      No jobs yet. Start one above to see it appear here.
+              ) : (
+                jobs.map((job) => (
+                  <tr key={job.id} className="hover:bg-gray-900 transition">
+                    <td className="px-6 py-2 font-mono text-gray-500">
+                      {job.job_id.slice(0, 16)}…
+                    </td>
+                    <td className="px-4 py-2 text-gray-300">{job.job_type}</td>
+                    <td className="px-4 py-2 text-gray-400">
+                      {job.season_display ?? '—'}
+                    </td>
+                    <td className="px-4 py-2">{statusBadge(job.status)}</td>
+                    <td className="px-4 py-2 text-gray-500">
+                      {format(new Date(job.started_at), 'MMM d HH:mm')}
+                    </td>
+                    <td className="px-4 py-2 text-gray-500">
+                      {job.duration_seconds != null
+                        ? `${(job.duration_seconds / 60).toFixed(1)}m`
+                        : '—'}
+                    </td>
+                    <td className="px-4 py-2 text-gray-600">{job.created_by}</td>
+                    <td className="px-4 py-2">
+                      {job.status === 'running' && (
+                        <button
+                          onClick={() => {
+                            setLogLines([]);
+                            setRunningJobDbId(job.id);
+                            openStream(job.id);
+                          }}
+                          className="text-blue-400 hover:text-blue-300 transition"
+                        >
+                          Attach
+                        </button>
+                      )}
+                    </td>
+                    <td className="px-4 py-2">
+                      {job.status !== 'running' && job.status !== 'pending' && (
+                        <button
+                          onClick={() => deleteJob(job.id)}
+                          className="text-gray-600 hover:text-red-400 transition"
+                          title="Delete this job"
+                        >
+                          ✕
+                        </button>
+                      )}
                     </td>
                   </tr>
-                ) : (
-                  jobs.map((job) => (
-                    <tr key={job.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-3 font-mono text-xs text-gray-600">{job.job_id.slice(0, 12)}...</td>
-                      <td className="px-6 py-3 text-gray-900">{getJobTypeLabel(job)}</td>
-                      <td className="px-6 py-3 text-gray-900">{job.season_display || '-'}</td>
-                      <td className="px-6 py-3">
-                        <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(job.status)}`}>
-                          {getStatusLabel(job)}
-                        </span>
-                      </td>
-                      <td className="px-6 py-3">
-                        <div className="w-24">
-                          <div className="flex items-center gap-2">
-                            <div className="flex-1">{getProgressBar(job)}</div>
-                            <span className="text-xs text-gray-600 w-8">{job.progress_percent}%</span>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-3 text-gray-600">
-                        {format(new Date(job.started_at), 'MMM dd HH:mm')}
-                      </td>
-                      <td className="px-6 py-3 text-gray-600">
-                        {job.duration_seconds ? `${(job.duration_seconds / 60).toFixed(1)}m` : '-'}
-                      </td>
-                      <td className="px-6 py-3">
-                        <button
-                          onClick={() => setSelectedJob(job)}
-                          className="text-blue-600 hover:text-blue-700 font-medium text-xs"
-                        >
-                          View
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
-      </div>
+      </section>
     </div>
   );
-};
-
-export default AdminDashboard;
+}
