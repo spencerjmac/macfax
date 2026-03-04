@@ -24,14 +24,6 @@ services:
       dockerfile: backend/Dockerfile
     env_file:
       - .env.docker
-    environment:
-      DATABASE_URL: ${DATABASE_URL}
-      DEBUG: ${DEBUG}
-      SECRET_KEY: ${SECRET_KEY}
-      ALLOWED_HOSTS: ${ALLOWED_HOSTS}
-      USE_X_FORWARDED_HOST: ${USE_X_FORWARDED_HOST}
-      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
-      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS}
     depends_on:
       db:
         condition: service_healthy
@@ -52,17 +44,9 @@ services:
       dockerfile: web/Dockerfile
       args:
         # Baked into the client bundle at build time — must be the external URL
-        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
+        NEXT_PUBLIC_API_BASE_URL: "https://macfax.usu.edu"
     env_file:
       - .env.docker
-    environment:
-      NODE_ENV: production
-      PORT: 7000
-      # Server-side only (not exposed to browser) — internal Docker hostname
-      # Using IP directly as hostname resolution has issues
-      API_INTERNAL_URL: ${API_INTERNAL_URL}
-      # Fallback public URL for server-side if internal isn't set
-      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
     depends_on:
       - backend
     ports:
