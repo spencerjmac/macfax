@@ -407,10 +407,10 @@ function ResumeTab({ team, ranks }: { team: TeamSeason; ranks: TeamRanks }) {
   useEffect(() => {
     async function fetchGameLog() {
       try {
-        const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+        const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
         // Parse season year: "2025-26" -> 2026 (use ending year)
         const seasonYear = parseInt(team.season.split('-')[0]) + 1;
-        const url = `${apiBase}/teams/${team.teamId}/gamelog?season=${seasonYear}`;
+        const url = `${apiBase}/api/teams/${team.teamId}/gamelog/?season=${seasonYear}`;
         const response = await fetch(url);
         if (response.ok) {
           const data = await response.json();
@@ -756,10 +756,12 @@ function GameLogTab({ team }: { team: TeamSeason }) {
       try {
         setLoading(true);
         setError(null);
-        
-        // Use relative URL - Next.js will proxy to backend via /api/
+
+        const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
+        // Parse season year: "2025-26" -> 2026 (use ending year)
+        const seasonYear = parseInt(team.season.split('-')[0]) + 1;
         const response = await fetch(
-          `/api/teams/${team.teamId}/gamelog?season=2026`
+          `${apiBase}/api/teams/${team.teamId}/gamelog/?season=${seasonYear}`
         );
         
         if (!response.ok) {
@@ -777,7 +779,7 @@ function GameLogTab({ team }: { team: TeamSeason }) {
     };
 
     fetchGameLog();
-  }, [team.teamId]);
+  }, [team.teamId, team.season]);
 
   if (loading) {
     return (
@@ -806,7 +808,7 @@ function GameLogTab({ team }: { team: TeamSeason }) {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-2xl font-bold mb-4">2025-26 Game Log</h2>
+      <h2 className="text-2xl font-bold mb-4">{team.season} Game Log</h2>
       
       <div className="overflow-x-auto">
         <table className="w-full border border-ui-border rounded-lg">

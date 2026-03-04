@@ -44,11 +44,19 @@ class Command(BaseCommand):
             self.stderr.write(self.style.ERROR("No 'ncaa' key in YAML"))
             return
 
-        canonical_names = sorted(set(mappings.values()))
+        # Build a reverse map: canonical_name -> [list of NCAA API names that map to it]
+        reverse_map: dict[str, list[str]] = {}
+        for ncaa_name, canonical_name in mappings.items():
+            reverse_map.setdefault(canonical_name, [])
+            if ncaa_name != canonical_name:
+                reverse_map[canonical_name].append(ncaa_name)
+
+        canonical_names = sorted(reverse_map.keys())
         self.stdout.write(f"Found {len(canonical_names)} unique canonical names in {yaml_path.name}\n")
 
         created = 0
         existing = 0
+        aliases_updated = 0
         errors = 0
 
         for name in canonical_names:
@@ -56,13 +64,17 @@ class Command(BaseCommand):
                 continue
             try:
                 name_clean = name.strip()
+                # All NCAA API names that map to this canonical name become aliases
+                desired_aliases = reverse_map.get(name_clean, [])
+
                 if dry_run:
                     if Team.objects.filter(name=name_clean).exists():
                         existing += 1
                     else:
-                        self.stdout.write(f"  Would create: {name_clean}")
+                        self.stdout.write(f"  Would create: {name_clean} (aliases: {desired_aliases})")
                         created += 1
                     continue
+
                 slug = slugify(name_clean) or "team"
                 suffix = 0
                 while True:
@@ -78,11 +90,23 @@ class Command(BaseCommand):
                             slug = f"{slugify(name_clean) or 'team'}-{suffix}"
                         else:
                             raise
+
                 if was_created:
                     self.stdout.write(self.style.SUCCESS(f"  Created: {team.name}"))
                     created += 1
-                else:
+
+                # Ensure all NCAA API names appear as aliases on the canonical team
+                current_aliases = list(team.aliases or [])
+                new_aliases = sorted(set(current_aliases) | set(desired_aliases))
+                if new_aliases != sorted(current_aliases):
+                    team.aliases = new_aliases
+                    team.is_d1 = True
+                    team.save(update_fields=["aliases", "is_d1"])
+                    if not was_created:
+                        aliases_updated += 1
+                elif not was_created:
                     existing += 1
+
             except Exception as e:
                 self.stderr.write(self.style.ERROR(f"  Error for '{name}': {e}"))
                 errors += 1
@@ -90,7 +114,8 @@ class Command(BaseCommand):
         self.stdout.write("")
         self.stdout.write(
             self.style.SUCCESS(
-                f"Done. Existing: {existing} | Created: {created} | Errors: {errors}"
+                f"Done. Existing: {existing} | Created: {created} | "
+                f"Aliases updated: {aliases_updated} | Errors: {errors}"
             )
         )
         if dry_run and created:
