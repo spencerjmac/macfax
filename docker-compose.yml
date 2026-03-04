@@ -47,6 +47,9 @@ services:
         NEXT_PUBLIC_API_BASE_URL: "https://macfax.usu.edu"
     env_file:
       - .env.docker
+    environment:
+      NODE_ENV: production
+      PORT: 7000
     depends_on:
       - backend
     ports:
