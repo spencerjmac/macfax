@@ -2,6 +2,10 @@ import { Metadata } from 'next';
 import { getAllTeams, getMetadata } from '@/lib/data';
 import RankingsTable from '@/components/RankingsTable';
 
+// Force dynamic rendering - never cache this page
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export const metadata: Metadata = {
   title: 'Rankings | macfax',
   description: 'Complete NCAA Division I men\'s basketball rankings with adjusted efficiency metrics, four factors, and advanced statistics.',
