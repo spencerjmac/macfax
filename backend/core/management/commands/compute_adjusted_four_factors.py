@@ -36,13 +36,16 @@ class Command(BaseCommand):
         parser.add_argument(
             '--iterations',
             type=int,
-            default=3,
-            help='Number of iterations for convergence (default: 3)'
+            default=None,
+            help='Number of iterations for convergence (default: from PipelineConfig)'
         )
 
     def handle(self, *args, **options):
+        from core.models import PipelineConfig
+        cfg = PipelineConfig.get_config()
+
         season_year = options['season']
-        iterations = options['iterations']
+        iterations = options['iterations'] or cfg.adj_ff_iterations
 
         # Get season
         try:

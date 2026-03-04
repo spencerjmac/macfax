@@ -69,14 +69,14 @@ class Command(BaseCommand):
         parser.add_argument(
             "--iterations",
             type=int,
-            default=25,
-            help="Iterations for adjusted-ratings solver (default: 25)",
+            default=None,
+            help="Iterations for adjusted-ratings solver (default: from PipelineConfig)",
         )
         parser.add_argument(
             "--sor-trials",
             type=int,
-            default=10000,
-            help="Monte-Carlo trials for SOR (default: 10000)",
+            default=None,
+            help="Monte-Carlo trials for SOR (default: from PipelineConfig)",
         )
         parser.add_argument(
             "--ingest-workers",
@@ -92,12 +92,15 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         from datetime import datetime, timedelta
+        from core.models import PipelineConfig
+        cfg = PipelineConfig.get_config()
 
         season_year = options["season"]
         skip_ingest = options["skip_ingest"]
         days = options.get("days")
-        iterations = options["iterations"]
-        sor_trials = options["sor_trials"]
+        # CLI args override config; config values are the stored defaults
+        iterations = options["iterations"] or cfg.adj_ratings_iterations
+        sor_trials = options["sor_trials"] or cfg.sor_trials
         ingest_workers = max(1, int(options.get("ingest_workers", 1)))
 
         start_time = timezone.now()

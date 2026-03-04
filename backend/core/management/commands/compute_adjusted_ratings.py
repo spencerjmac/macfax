@@ -33,27 +33,30 @@ class Command(BaseCommand):
         parser.add_argument(
             '--iterations',
             type=int,
-            default=25,
-            help='Maximum number of iterations (default: 25)'
+            default=None,
+            help='Maximum number of iterations (default: from PipelineConfig)'
         )
         parser.add_argument(
             '--convergence',
             type=float,
-            default=0.001,
-            help='Convergence threshold for max AdjEM change (default: 0.001)'
+            default=None,
+            help='Convergence threshold for max AdjEM change (default: from PipelineConfig)'
         )
         parser.add_argument(
             '--shrinkage',
             type=int,
-            default=300,
-            help='Shrinkage constant in possessions (default: 300, auto-adjusts based on games played; set to override)'
+            default=None,
+            help='Shrinkage constant in possessions (default: from PipelineConfig ceiling; auto-adjusts)'
         )
     
     def handle(self, *args, **options):
+        from core.models import PipelineConfig
+        cfg = PipelineConfig.get_config()
+
         season_year = options['season']
-        max_iterations = options['iterations']
-        convergence_threshold = options['convergence']
-        shrinkage_k = options['shrinkage']
+        max_iterations = options['iterations'] or cfg.adj_ratings_iterations
+        convergence_threshold = options['convergence'] or cfg.adj_ratings_convergence
+        shrinkage_k = options['shrinkage'] or cfg.adj_ratings_shrinkage_ceiling
         
         # Get season
         try:
@@ -99,8 +102,12 @@ class Command(BaseCommand):
         # At 16 games (midseason): k ≈ 200
         # At 21+ games: k = 170 (floor)
         # Clamped between 170 and 300 for safety
-        if shrinkage_k == 300:  # Only use dynamic if user didn't override
-            shrinkage_k = min(300, max(170, 300 - (avg_games_played * 6.25)))
+        if options['shrinkage'] is None:  # Only use dynamic if user didn't override via CLI
+            shrinkage_k = min(
+                cfg.adj_ratings_shrinkage_ceiling,
+                max(cfg.adj_ratings_shrinkage_floor,
+                    cfg.adj_ratings_shrinkage_ceiling - (avg_games_played * cfg.adj_ratings_shrinkage_decay))
+            )
             self.stdout.write(f"Dynamic Shrinkage: k={shrinkage_k:.1f} (avg {avg_games_played:.1f} games/team)")
         else:
             self.stdout.write(f"Fixed Shrinkage: k={shrinkage_k} possessions (user override)")

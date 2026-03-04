@@ -33,40 +33,44 @@ class Command(BaseCommand):
         )
     
     def handle(self, *args, **options):
+        from core.models import PipelineConfig
+        cfg = PipelineConfig.get_config()
+
         season_year = options['season']
-        
+
         try:
             season = Season.objects.get(year=season_year)
         except Season.DoesNotExist:
             self.stderr.write(f"❌ Season {season_year} not found")
             return
-        
+
         self.stdout.write(f"\n{'='*80}")
         self.stdout.write(f"Computing Game Value for {season.display_name}")
         self.stdout.write(f"{'='*80}\n")
-        
+
         # Get national averages
         nat_avg = NationalAverages.objects.filter(season=season).first()
         if not nat_avg:
             self.stderr.write(f"❌ National averages not found for {season_year}")
             return
-        
-        nat_avg_ortg = nat_avg.avg_ortg if nat_avg.avg_ortg is not None else 108.0
-        hca_points = nat_avg.hca_points if nat_avg.hca_points is not None else 1.85
-        sigma = nat_avg.prediction_sigma if nat_avg.prediction_sigma is not None else 11.08
+
+        nat_avg_ortg = nat_avg.avg_ortg if nat_avg.avg_ortg is not None else cfg.fallback_avg_ortg
+        hca_points = nat_avg.hca_points if nat_avg.hca_points is not None else cfg.fallback_hca
+        sigma = nat_avg.prediction_sigma if nat_avg.prediction_sigma is not None else cfg.fallback_sigma
 
         self.stdout.write(f"📊 National Context:")
         self.stdout.write(f"  • Avg ORtg: {nat_avg_ortg:.2f}")
         self.stdout.write(f"  • HCA: {hca_points:.2f} pts")
         self.stdout.write(f"  • Sigma: {sigma:.2f}\n")
-        
-        # Get bubble team (#45 by AdjEM)
+
+        # Get bubble team (configured rank by AdjEM)
+        bubble_rank = cfg.wab_bubble_rank
         try:
-            bubble_team = TeamSeasonRatings.objects.get(season=season, rank_adj_em=45)
+            bubble_team = TeamSeasonRatings.objects.get(season=season, rank_adj_em=bubble_rank)
         except TeamSeasonRatings.DoesNotExist:
-            self.stderr.write(f"❌ Bubble team (rank #45) not found")
+            self.stderr.write(f"❌ Bubble team (rank #{bubble_rank}) not found")
             return
-        
+
         self.stdout.write(f"🎯 Bubble Team: {bubble_team.team.name} (Rank #{bubble_team.rank_adj_em})")
         self.stdout.write(f"  • AdjEM: {bubble_team.adj_em:.2f}")
         self.stdout.write(f"  • AdjO: {bubble_team.adj_o:.2f}")

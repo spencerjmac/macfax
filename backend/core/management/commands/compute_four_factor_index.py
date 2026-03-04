@@ -57,6 +57,9 @@ class Command(BaseCommand):
         return mean, std_dev
 
     def handle(self, *args, **options):
+        from core.models import PipelineConfig
+        cfg = PipelineConfig.get_config()
+
         season_year = options['season']
 
         # Get season
@@ -127,14 +130,14 @@ class Command(BaseCommand):
 
             # Weighted FFI z-score
             ffi_z = (
-                0.4069 * z_efg +
-                0.4069 * z_tov +
-                0.1432 * z_reb +
-                0.0428 * z_ftr
+                cfg.ffi_weight_efg * z_efg +
+                cfg.ffi_weight_tov * z_tov +
+                cfg.ffi_weight_reb * z_reb +
+                cfg.ffi_weight_ftr * z_ftr
             )
 
             # Scale to 0-100
-            ffi_100 = max(0, min(100, 50 + 20 * ffi_z))
+            ffi_100 = max(0, min(100, cfg.ffi_scale_midpoint + cfg.ffi_scale_multiplier * ffi_z))
 
             raw_ffi_values[metrics.team_id] = ffi_100
 
@@ -185,14 +188,14 @@ class Command(BaseCommand):
 
                 # Weighted FFI z-score
                 ffi_z = (
-                    0.4069 * z_efg +
-                    0.4069 * z_tov +
-                    0.1432 * z_reb +
-                    0.0428 * z_ftr
+                    cfg.ffi_weight_efg * z_efg +
+                    cfg.ffi_weight_tov * z_tov +
+                    cfg.ffi_weight_reb * z_reb +
+                    cfg.ffi_weight_ftr * z_ftr
                 )
 
                 # Scale to 0-100
-                ffi_100 = max(0, min(100, 50 + 20 * ffi_z))
+                ffi_100 = max(0, min(100, cfg.ffi_scale_midpoint + cfg.ffi_scale_multiplier * ffi_z))
 
                 # Update rating with both raw and adjusted FFI
                 rating.ffi_raw = round(raw_ffi_values.get(rating.team_id, 50.0), 1)
