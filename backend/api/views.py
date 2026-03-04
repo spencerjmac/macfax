@@ -85,10 +85,18 @@ class RankingsViewSet(viewsets.ReadOnlyModelViewSet):
         
         # Use TeamSeasonRatings (our computed data) instead of TeamSeasonStats
         # ONLY show Division I teams
+        # Use prefetch_related to avoid N+1 queries for TeamSeasonMetrics
+        from django.db.models import Prefetch
         queryset = TeamSeasonRatings.objects.filter(
             season=season,
             team__is_d1=True
-        ).select_related('team')
+        ).select_related('team', 'season').prefetch_related(
+            Prefetch(
+                'team__season_metrics',
+                queryset=TeamSeasonMetrics.objects.filter(season=season),
+                to_attr='_metrics_for_season'
+            )
+        )
         
         # Search by team name
         search = self.request.query_params.get('search')

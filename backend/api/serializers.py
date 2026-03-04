@@ -223,10 +223,14 @@ class RankingsSerializer(serializers.Serializer):
     def get_conference(self, obj):
         """Get conference - try multiple sources"""
         # Try TeamSeasonMetrics first (might have been set from past scrapers)
+        # Use cached metrics if available (set in view with prefetch_related)
         try:
-            metrics = TeamSeasonMetrics.objects.filter(
-                team=obj.team, season=obj.season
-            ).first()
+            if hasattr(obj, '_metrics_cache'):
+                metrics = obj._metrics_cache
+            else:
+                metrics = TeamSeasonMetrics.objects.filter(
+                    team=obj.team, season=obj.season
+                ).first()
             if metrics and hasattr(metrics, "conference") and metrics.conference:
                 return metrics.conference.code
         except:
@@ -764,6 +768,10 @@ class RankingsSerializer(serializers.Serializer):
 
     def get_rank_four_factor_index_100(self, obj):
         """Compute FFI rank on the fly"""
+        # Use cached rank if available (can be set in view)
+        if hasattr(obj, '_ffi_rank_cache'):
+            return obj._ffi_rank_cache
+        
         try:
             better_count = TeamSeasonRatings.objects.filter(
                 season=obj.season, ffi_adj__gt=obj.ffi_adj
@@ -773,13 +781,21 @@ class RankingsSerializer(serializers.Serializer):
             return None
 
     def _get_metrics(self, obj):
-        """Helper to get TeamSeasonMetrics for this rating"""
+        """Helper to get TeamSeasonMetrics for this rating (with caching)"""
         from core.models import TeamSeasonMetrics
-
-        try:
-            return TeamSeasonMetrics.objects.get(team=obj.team, season=obj.season)
-        except TeamSeasonMetrics.DoesNotExist:
-            return None
+        
+        # Cache metrics on the object to avoid multiple queries
+        if not hasattr(obj, '_cached_metrics'):
+            # Check if we have prefetched metrics
+            if hasattr(obj.team, '_metrics_for_season') and obj.team._metrics_for_season:
+                obj._cached_metrics = obj.team._metrics_for_season[0] if obj.team._metrics_for_season else None
+            else:
+                try:
+                    obj._cached_metrics = TeamSeasonMetrics.objects.get(team=obj.team, season=obj.season)
+                except TeamSeasonMetrics.DoesNotExist:
+                    obj._cached_metrics = None
+        
+        return obj._cached_metrics
 
     def get_raw_efg_pct(self, obj):
         metrics = self._get_metrics(obj)
