@@ -51,18 +51,19 @@ export default function RankingsTable({ data }: RankingsTableProps) {
     return data.filter(t => t.conference === conferenceFilter);
   }, [data, conferenceFilter]);
   
-  // Precompute ranks for all metrics based on FILTERED data
+  // Precompute ranks for all metrics based on ALL D1 data (never filtered)
+  // so ranks and color coding remain consistent regardless of conference filter
   const metricRanks = useMemo(() => {
-    const ranks = new Map<string, Map<number, RankData>>();
+    const ranks = new Map<string, Map<string, RankData>>();
     
-    // Compute ranks for each metric
+    // Compute ranks for each metric keyed by teamId
     Object.values(METRIC_DEFINITIONS).forEach((meta) => {
-      const values = filteredData.map(t => (t as any)[meta.key] as number | null);
-      ranks.set(meta.key, computeRanks(values, meta.better));
+      const entries = data.map(t => ({ id: t.teamId, value: (t as any)[meta.key] as number | null }));
+      ranks.set(meta.key, computeRanks(entries, meta.better));
     });
     
     return ranks;
-  }, [filteredData]);
+  }, [data]);
   
   // Helper to format metric values
   const formatValue = (value: number | null, format: MetricMeta['format']): string => {
@@ -74,7 +75,7 @@ export default function RankingsTable({ data }: RankingsTableProps) {
       case 'number2':
         return value.toFixed(2);
       case 'percent1':
-        return `${value.toFixed(1)}%`;
+        return `${(value * 100).toFixed(1)}%`;
       case 'int':
         return Math.round(value).toString();
       default:
@@ -103,8 +104,8 @@ export default function RankingsTable({ data }: RankingsTableProps) {
         ),
         cell: (info) => {
           const value = info.getValue<number | null>();
-          const rowIdx = info.row.index;
-          const rankData = metricRanks.get(meta.key)?.get(rowIdx);
+          const teamId = info.row.original.teamId;
+          const rankData = metricRanks.get(meta.key)?.get(teamId);
           
           if (value == null) {
             return <span className="text-text-muted">-</span>;
