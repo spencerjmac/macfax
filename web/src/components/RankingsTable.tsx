@@ -72,10 +72,11 @@ export default function RankingsTable({ data }: RankingsTableProps) {
   const formatValue = (value: number | null, format: MetricMeta['format']): string => {
     if (value == null) return '-';
     switch (format) {
-      case 'number1':   return value.toFixed(1);
-      case 'number2':   return value.toFixed(2);
-      case 'percent1':  return `${(value * 100).toFixed(1)}%`;
-      case 'int':       return Math.round(value).toString();
+      case 'number1':    return value.toFixed(1);
+      case 'number2':    return value.toFixed(2);
+      case 'percent1':   return `${(value * 100).toFixed(1)}%`;
+      case 'number1pct': return `${value.toFixed(1)}%`;
+      case 'int':        return Math.round(value).toString();
       default:          return value.toString();
     }
   };
@@ -291,22 +292,22 @@ export default function RankingsTable({ data }: RankingsTableProps) {
       case 'four-factors':
         return [
           invisible('ff-base', compactBaseColumns),
-          createGroup('ff-efg', 'FG Rate',
+          createGroup('ff-efg', 'Raw EFG %',
             { key: 'raw_eFG',         label: 'Off'    },
             { key: 'raw_eFG_d',       label: 'Def'    },
             { key: 'raw_eFG_margin',  label: 'Margin' },
           ),
-          createGroup('ff-tov', 'Turnovers',
+          createGroup('ff-tov', 'Raw Turnover Rate',
             { key: 'raw_tov',         label: 'Off'  },
             { key: 'raw_tov_d',       label: 'Def'  },
             { key: 'raw_tov_edge',    label: 'Edge' },
           ),
-          createGroup('ff-reb', 'Rebounds',
+          createGroup('ff-reb', 'Raw Rebound %',
             { key: 'raw_orb',         label: 'ORB'  },
             { key: 'raw_drb',         label: 'DRB'  },
             { key: 'raw_reb_edge',    label: 'Edge' },
           ),
-          createGroup('ff-ftr', 'FT Rate',
+          createGroup('ff-ftr', 'Raw FT %',
             { key: 'raw_ftr',         label: 'Off'    },
             { key: 'raw_ftr_d',       label: 'Def'    },
             { key: 'raw_ftr_margin',  label: 'Margin' },
@@ -317,22 +318,22 @@ export default function RankingsTable({ data }: RankingsTableProps) {
       case 'adjusted-four-factors':
         return [
           invisible('aff-base', compactBaseColumns),
-          createGroup('aff-efg', 'FG Rate',
+          createGroup('aff-efg', 'Adjusted EFG %',
             { key: 'eFG',         label: 'Off'    },
             { key: 'eFG_d',       label: 'Def'    },
             { key: 'eFG_margin',  label: 'Margin' },
           ),
-          createGroup('aff-tov', 'Turnovers',
+          createGroup('aff-tov', 'Adjusted Turnover Rate',
             { key: 'tov',         label: 'Off'  },
             { key: 'tov_d',       label: 'Def'  },
             { key: 'tov_edge',    label: 'Edge' },
           ),
-          createGroup('aff-reb', 'Rebounds',
+          createGroup('aff-reb', 'Adjusted Rebound %',
             { key: 'orb',         label: 'ORB'  },
             { key: 'drb',         label: 'DRB'  },
             { key: 'reb_edge',    label: 'Edge' },
           ),
-          createGroup('aff-ftr', 'FT Rate',
+          createGroup('aff-ftr', 'Adjusted FT %',
             { key: 'ftr',         label: 'Off'    },
             { key: 'ftr_d',       label: 'Def'    },
             { key: 'ftr_margin',  label: 'Margin' },
