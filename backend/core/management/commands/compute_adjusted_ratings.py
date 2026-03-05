@@ -8,12 +8,16 @@ Usage:
 """
 
 import logging
+import math
+from collections import defaultdict
+from datetime import date
+
 from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.db.models import Q, Count, Case, When, IntegerField, F
 
 from core.models import (
-    Season, Team, TeamGameStats, TeamSeasonMetrics,
+    Season, Team, Game, TeamGameStats, TeamSeasonMetrics,
     TeamSeasonRatings, NationalAverages
 )
 
@@ -33,8 +37,8 @@ class Command(BaseCommand):
         parser.add_argument(
             '--iterations',
             type=int,
-            default=25,
-            help='Maximum number of iterations (default: 25)'
+            default=75,
+            help='Maximum number of iterations (default: 75)'
         )
         parser.add_argument(
             '--convergence',
@@ -48,12 +52,33 @@ class Command(BaseCommand):
             default=300,
             help='Shrinkage constant in possessions (default: 300, auto-adjusts based on games played; set to override)'
         )
+        parser.add_argument(
+            '--recency-lambda',
+            type=float,
+            default=0.0040,
+            help='Exponential decay rate for recency weighting (default: 0.0040; set to 0 to disable)'
+        )
+        parser.add_argument(
+            '--no-importance',
+            action='store_true',
+            default=False,
+            help='Disable importance weighting (default: enabled)'
+        )
     
     def handle(self, *args, **options):
         season_year = options['season']
         max_iterations = options['iterations']
         convergence_threshold = options['convergence']
         shrinkage_k = options['shrinkage']
+        recency_lambda = options['recency_lambda']
+        importance_enabled = not options['no_importance']
+
+        # --- Importance weight constants ---
+        IMP_C = 40.0          # gap (AdjEM pts) where base weight drops to 0.5
+        IMP_FLOOR = 0.35      # minimum importance weight
+        FREEZE_ITERATION = 6  # freeze weights after this iteration
+        CLOSE_M = 12.0        # closeness scale (margin per 100 poss)
+        BOOST_MAX = 1.25      # max boost for unexpectedly close mismatches
         
         # Get season
         try:
@@ -74,6 +99,12 @@ class Command(BaseCommand):
         self.stdout.write(f"National Average Pace: {nat_avg.avg_pace:.2f}")
         self.stdout.write(f"Max Iterations: {max_iterations}")
         self.stdout.write(f"Convergence Threshold: {convergence_threshold}")
+        if recency_lambda > 0:
+            self.stdout.write(f"Recency Lambda: {recency_lambda} (half-life ≈ {math.log(2)/recency_lambda:.0f} days)")
+        else:
+            self.stdout.write("Recency Weighting: disabled (λ=0)")
+        self.stdout.write(f"Importance Weighting: {'enabled' if importance_enabled else 'disabled'} "
+                          f"(IMP_C={IMP_C}, IMP_FLOOR={IMP_FLOOR}, freeze@iter {FREEZE_ITERATION})")
         
         # Get all D1 teams with season metrics
         teams = Team.objects.filter(season_metrics__season=season, is_d1=True)
@@ -107,7 +138,46 @@ class Command(BaseCommand):
         
         self.stdout.write("=" * 60)
         self.stdout.write(f"Processing {num_d1_teams} teams...")
-        
+
+        # --- Recency weighting precomputation (done once, outside iterations) ---
+        game_time_weights = {}
+        team_time_scale = {}
+
+        if recency_lambda > 0:
+            today = date.today()
+
+            # Exponential decay weight per game
+            for g in Game.objects.filter(
+                season_year=season_year, status='final'
+            ).values('id', 'game_date'):
+                days_ago = max(0, (today - g['game_date']).days)
+                game_time_weights[g['id']] = math.exp(-recency_lambda * days_ago)
+            self.stdout.write(f"\nPre-computed recency weights for {len(game_time_weights)} games")
+
+            # Per-team rescale factor: keeps sum(poss * w_time * scale) == sum(poss)
+            # so shrinkage denominator stays calibrated to real possessions.
+            sum_poss: defaultdict = defaultdict(float)
+            sum_poss_w: defaultdict = defaultdict(float)
+            for row in TeamGameStats.objects.filter(
+                game__season_year=season_year,
+                game__status='final',
+                team__is_d1=True,
+                opponent__is_d1=True,
+            ).values('team_id', 'game_id', 'fga', 'oreb', 'tov', 'fta'):
+                poss = row['fga'] - row['oreb'] + row['tov'] + 0.475 * (row['fta'] or 0)
+                w = game_time_weights.get(row['game_id'], 1.0)
+                sum_poss[row['team_id']] += poss
+                sum_poss_w[row['team_id']] += poss * w
+
+            for tid, total_poss in sum_poss.items():
+                denom = sum_poss_w[tid]
+                scale = (total_poss / denom) if denom > 0 else 1.0
+                team_time_scale[tid] = max(0.80, min(1.25, scale))
+            self.stdout.write(f"Computed recency rescale factors for {len(team_time_scale)} teams")
+        else:
+            self.stdout.write("\nRecency weighting disabled — using uniform game weights")
+        # -----------------------------------------------------------------------
+
         # Initialize ratings dictionary {team_id: {'aor': float, 'adr': float, 'pace': float}}
         ratings = {}
         
@@ -121,6 +191,10 @@ class Command(BaseCommand):
                 'pace': metrics.pace,
             }
         
+        # Importance weight storage
+        frozen_importance_weights: dict = {}   # locked after FREEZE_ITERATION
+        current_importance_weights: dict = {}  # accumulated during early iterations
+
         # Step 2: Iterate until convergence
         converged = False
         iteration = 0
@@ -203,8 +277,41 @@ class Command(BaseCommand):
                     # Note: Site factor is typically not applied to pace
                     pace_g = raw_pace_g * (nat_avg.avg_pace / opp_pace) if opp_pace > 0 else raw_pace_g
                     
-                    # Weight by possessions (recency multiplier = 1.0 for now)
-                    weight = poss_g
+                    # Weight by possessions * recency (w_time=1.0 when recency disabled)
+                    w_time = (
+                        game_time_weights.get(game_stat.game_id, 1.0)
+                        * team_time_scale.get(game_stat.team_id, 1.0)
+                    ) if recency_lambda > 0 else 1.0
+
+                    # --- Importance weight ---
+                    imp_key = (team.id, game_stat.game_id)
+                    if not importance_enabled:
+                        w_imp = 1.0
+                    elif iteration <= FREEZE_ITERATION:
+                        # Compute from current ratings
+                        team_aem = (ratings[team.id]['aor'] - ratings[team.id]['adr']) if team.id in ratings else 0.0
+                        opp_aem = opp_aor - opp_adr
+                        gap = abs(team_aem - opp_aem)
+
+                        # Lorentzian base: smooth downweight for mismatches
+                        base = 1.0 / (1.0 + (gap / IMP_C) ** 2)
+                        base = max(IMP_FLOOR, base)
+
+                        # Closeness boost: reward mismatches that ended up tighter than expected
+                        obs_margin_100 = (game_stat.pts - opp_stats.pts) / max(poss_g, 1e-9) * 100.0
+                        exp_margin_100 = team_aem - opp_aem
+                        closeness_factor = math.exp(
+                            -max(0.0, abs(obs_margin_100) - abs(exp_margin_100)) / CLOSE_M
+                        )
+                        boost = 1.0 + (BOOST_MAX - 1.0) * closeness_factor
+                        w_imp = min(1.0, base * boost)
+
+                        current_importance_weights[imp_key] = w_imp
+                    else:
+                        # After freeze: reuse locked weights
+                        w_imp = frozen_importance_weights.get(imp_key, 1.0)
+
+                    weight = poss_g * w_time * w_imp
                     
                     sum_weighted_aor += weight * aor_g
                     sum_weighted_adr += weight * adr_g
@@ -235,6 +342,13 @@ class Command(BaseCommand):
                     aem_change = abs(new_aem - old_aem)
                     max_aem_change = max(max_aem_change, aem_change)
             
+            # Freeze importance weights after FREEZE_ITERATION
+            if importance_enabled and iteration == FREEZE_ITERATION:
+                frozen_importance_weights = dict(current_importance_weights)
+                self.stdout.write(
+                    f"  ✓ Importance weights frozen ({len(frozen_importance_weights)} team-game entries)"
+                )
+
             # Check for convergence
             self.stdout.write(f"  Max AdjEM change: {max_aem_change:.4f}")
             
@@ -254,6 +368,14 @@ class Command(BaseCommand):
         else:
             self.stdout.write(f"\n⚠ Did not converge after {max_iterations} iterations (max change: {max_aem_change:.4f})")
         
+        # Capture current DB ratings for comparison before overwriting
+        old_ratings_db = {
+            r.team_id: {'adj_em': r.adj_em, 'adj_o': r.adj_o, 'adj_d': r.adj_d, 'name': r.team.name}
+            for r in TeamSeasonRatings.objects.filter(
+                season=season, team__is_d1=True
+            ).select_related('team')
+        }
+
         # Step 3: Save to database
         self.stdout.write(f"\n[3/3] Saving to database...")
         
@@ -361,7 +483,7 @@ class Command(BaseCommand):
         self.stdout.write(f"Created:  {created}")
         self.stdout.write(f"Updated:  {updated}")
         self.stdout.write("=" * 60)
-        
+
         # Show top 10
         self.stdout.write("\nTop 10 Teams by Adjusted Net Rating:")
         self.stdout.write("=" * 60)
@@ -372,3 +494,22 @@ class Command(BaseCommand):
                 f"Net={rating.adj_em:+6.2f} Pace={rating.adj_tempo:5.1f}"
             )
         self.stdout.write("=" * 60)
+
+        # Comparison vs previous DB ratings
+        if old_ratings_db:
+            self.stdout.write("\nBiggest Movers vs Previous Ratings (AdjEM):")
+            self.stdout.write("=" * 60)
+            movers = []
+            for r in d1_ratings_qs.select_related('team'):
+                if r.team_id not in old_ratings_db:
+                    continue
+                old_em = old_ratings_db[r.team_id]['adj_em']
+                delta = r.adj_em - old_em
+                movers.append((r.team.name, old_em, r.adj_em, delta))
+            movers.sort(key=lambda x: abs(x[3]), reverse=True)
+            self.stdout.write(f"{'Team':30} {'Old':>8} {'New':>8} {'Δ':>7}")
+            self.stdout.write("-" * 60)
+            for name, old_em, new_em, delta in movers[:20]:
+                sign = '+' if delta >= 0 else ''
+                self.stdout.write(f"{name:30} {old_em:>8.2f} {new_em:>8.2f} {sign}{delta:>6.2f}")
+            self.stdout.write("=" * 60)
