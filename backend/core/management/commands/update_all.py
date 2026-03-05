@@ -69,8 +69,8 @@ class Command(BaseCommand):
         parser.add_argument(
             "--iterations",
             type=int,
-            default=25,
-            help="Iterations for adjusted-ratings solver (default: 25)",
+            default=75,
+            help="Iterations for adjusted-ratings solver (default: 75)",
         )
         parser.add_argument(
             "--sor-trials",

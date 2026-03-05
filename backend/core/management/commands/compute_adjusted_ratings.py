@@ -48,9 +48,9 @@ class Command(BaseCommand):
         )
         parser.add_argument(
             '--shrinkage',
-            type=int,
-            default=300,
-            help='Shrinkage constant in possessions (default: 300, auto-adjusts based on games played; set to override)'
+            type=float,
+            default=None,
+            help='Shrinkage constant in possessions (omit for dynamic schedule 300→170; supply a value to fix it)'
         )
         parser.add_argument(
             '--recency-lambda',
@@ -64,14 +64,21 @@ class Command(BaseCommand):
             default=False,
             help='Disable importance weighting (default: enabled)'
         )
+        parser.add_argument(
+            '--update-natavg',
+            action='store_true',
+            default=False,
+            help='Overwrite NationalAverages.avg_ortg with mean of computed AdjO (default: off)'
+        )
     
     def handle(self, *args, **options):
         season_year = options['season']
         max_iterations = options['iterations']
         convergence_threshold = options['convergence']
-        shrinkage_k = options['shrinkage']
+        shrinkage_k = options['shrinkage']  # None = dynamic, float = fixed override
         recency_lambda = options['recency_lambda']
         importance_enabled = not options['no_importance']
+        update_natavg = options['update_natavg']
 
         # --- Importance weight constants ---
         IMP_C = 40.0          # gap (AdjEM pts) where base weight drops to 0.5
@@ -130,11 +137,11 @@ class Command(BaseCommand):
         # At 16 games (midseason): k ≈ 200
         # At 21+ games: k = 170 (floor)
         # Clamped between 170 and 300 for safety
-        if shrinkage_k == 300:  # Only use dynamic if user didn't override
+        if shrinkage_k is None:  # dynamic schedule (default)
             shrinkage_k = min(300, max(170, 300 - (avg_games_played * 6.25)))
             self.stdout.write(f"Dynamic Shrinkage: k={shrinkage_k:.1f} (avg {avg_games_played:.1f} games/team)")
         else:
-            self.stdout.write(f"Fixed Shrinkage: k={shrinkage_k} possessions (user override)")
+            self.stdout.write(f"Fixed Shrinkage: k={shrinkage_k:.1f} possessions (user override)")
         
         self.stdout.write("=" * 60)
         self.stdout.write(f"Processing {num_d1_teams} teams...")
@@ -194,6 +201,7 @@ class Command(BaseCommand):
         # Importance weight storage
         frozen_importance_weights: dict = {}   # locked after FREEZE_ITERATION
         current_importance_weights: dict = {}  # accumulated during early iterations
+        team_imp_scale: dict = {}              # per-team rescale so Σ(poss*w_time*w_imp) ≈ Σ(poss*w_time)
 
         # Step 2: Iterate until convergence
         converged = False
@@ -297,8 +305,9 @@ class Command(BaseCommand):
                         base = 1.0 / (1.0 + (gap / IMP_C) ** 2)
                         base = max(IMP_FLOOR, base)
 
-                        # Closeness boost: reward mismatches that ended up tighter than expected
-                        obs_margin_100 = (game_stat.pts - opp_stats.pts) / max(poss_g, 1e-9) * 100.0
+                        # Closeness boost: use site-adjusted margin (aor_g - adr_g) so the
+                        # observed performance is in the same neutral world as the expected margin.
+                        obs_margin_100 = aor_g - adr_g
                         exp_margin_100 = team_aem - opp_aem
                         closeness_factor = math.exp(
                             -max(0.0, abs(obs_margin_100) - abs(exp_margin_100)) / CLOSE_M
@@ -311,7 +320,7 @@ class Command(BaseCommand):
                         # After freeze: reuse locked weights
                         w_imp = frozen_importance_weights.get(imp_key, 1.0)
 
-                    weight = poss_g * w_time * w_imp
+                    weight = poss_g * w_time * w_imp * team_imp_scale.get(team.id, 1.0)
                     
                     sum_weighted_aor += weight * aor_g
                     sum_weighted_adr += weight * adr_g
@@ -347,6 +356,46 @@ class Command(BaseCommand):
                 frozen_importance_weights = dict(current_importance_weights)
                 self.stdout.write(
                     f"  ✓ Importance weights frozen ({len(frozen_importance_weights)} team-game entries)"
+                )
+
+                # Compute per-team importance rescale so Σ(poss*w_time*w_imp*scale) == Σ(poss*w_time)
+                # This prevents w_imp < 1 from silently tightening the Bayesian prior.
+                # Note: poss_team is a @property, so we recompute from box score fields.
+                sum_base: defaultdict = defaultdict(float)
+                sum_weighted_imp: defaultdict = defaultdict(float)
+                for row in TeamGameStats.objects.filter(
+                    game__season_year=season_year,
+                    game__status='final',
+                    team__is_d1=True,
+                    opponent__is_d1=True,
+                ).values('team_id', 'game_id', 'fga', 'oreb', 'tov', 'fta'):
+                    tid = row['team_id']
+                    gid = row['game_id']
+                    poss = row['fga'] - row['oreb'] + row['tov'] + 0.475 * (row['fta'] or 0)
+                    if poss <= 0:
+                        continue
+                    w_t = (
+                        game_time_weights.get(gid, 1.0) * team_time_scale.get(tid, 1.0)
+                    ) if recency_lambda > 0 else 1.0
+                    w_i = frozen_importance_weights.get((tid, gid), 1.0)
+                    base = poss * w_t
+                    sum_base[tid] += base
+                    sum_weighted_imp[tid] += base * w_i
+
+                for tid, base_total in sum_base.items():
+                    denom = sum_weighted_imp[tid]
+                    scale = (base_total / denom) if denom > 0 else 1.0
+                    team_imp_scale[tid] = max(0.85, min(1.30, scale))
+                self.stdout.write(f"  ✓ Importance rescale computed for {len(team_imp_scale)} teams")
+
+                # Diagnostics
+                import statistics as _stats
+                wvals = list(frozen_importance_weights.values())
+                floor_hits = sum(1 for w in wvals if w <= IMP_FLOOR + 1e-9)
+                self.stdout.write(
+                    f"  Importance stats: mean={_stats.fmean(wvals):.4f}, "
+                    f"median={_stats.median(wvals):.4f}, "
+                    f"floor_hit_rate={floor_hits/len(wvals):.4f}"
                 )
 
             # Check for convergence
@@ -461,21 +510,25 @@ class Command(BaseCommand):
             rating.save(update_fields=['rank_adj_d'])
         
         # Update nat_avg.avg_ortg to match actual average of D1 adjusted ratings
-        self.stdout.write(f"Updating national average offensive rating...")
-        from django.db.models import Avg
-        
-        old_avg_ortg = nat_avg.avg_ortg
-        actual_avg_adj_o = d1_ratings_qs.aggregate(
-            Avg('adj_o')
-        )['adj_o__avg']
-        
-        if actual_avg_adj_o:
-            nat_avg.avg_ortg = round(actual_avg_adj_o, 4)
-            nat_avg.save(update_fields=['avg_ortg'])
-            self.stdout.write(
-                f"  Updated avg_ortg: {old_avg_ortg:.4f} → {nat_avg.avg_ortg:.4f} "
-                f"(Δ {abs(nat_avg.avg_ortg - old_avg_ortg):.4f})"
-            )
+        # Only runs when --update-natavg is passed to prevent run-to-run drift.
+        if update_natavg:
+            self.stdout.write(f"Updating national average offensive rating...")
+            from django.db.models import Avg
+
+            old_avg_ortg = nat_avg.avg_ortg
+            actual_avg_adj_o = d1_ratings_qs.aggregate(
+                Avg('adj_o')
+            )['adj_o__avg']
+
+            if actual_avg_adj_o:
+                nat_avg.avg_ortg = round(actual_avg_adj_o, 4)
+                nat_avg.save(update_fields=['avg_ortg'])
+                self.stdout.write(
+                    f"  Updated avg_ortg: {old_avg_ortg:.4f} → {nat_avg.avg_ortg:.4f} "
+                    f"(Δ {abs(nat_avg.avg_ortg - old_avg_ortg):.4f})"
+                )
+        else:
+            self.stdout.write("National average ortg unchanged (pass --update-natavg to update)")
         
         self.stdout.write("\n" + "=" * 60)
         self.stdout.write("SUMMARY")
