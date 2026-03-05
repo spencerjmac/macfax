@@ -113,112 +113,237 @@ function formatRank(rank: number | null): string {
   return rank == null ? 'N/A' : `#${rank}`;
 }
 
-export function buildChampionChecklist(team: TeamSeason, ranks: TeamRanks) {
+// ---- Trapezoid of Excellence (ported from trapezoid_views.py) ----
+const Q_BOT_EM = 0.965;
+const Y_PAD_MIN = 0.50;
+const Y_PAD_RATE = 0.02;
+const Q_X_LEFT_BOT = 0.25;
+const Q_X_RIGHT_BOT = 0.75;
+const PACE_PAD = 1.0;
+
+function quantile(sorted: number[], q: number): number {
+  const idx = q * (sorted.length - 1);
+  const lo = Math.floor(idx);
+  const hi = Math.ceil(idx);
+  return sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo);
+}
+
+function computeTrapezoidBoundaries(tempos: number[], ems: number[]) {
+  const emSorted = [...ems].sort((a, b) => a - b);
+  const yBot = quantile(emSorted, Q_BOT_EM);
+  const yMax = Math.max(...ems);
+  const yRange = yMax - yBot;
+  const yPad = Math.max(Y_PAD_MIN, Y_PAD_RATE * yRange);
+  const yTop = yMax + yPad;
+
+  let eliteTempos = tempos.filter((_, i) => ems[i] >= yBot);
+  if (eliteTempos.length < 10) eliteTempos = tempos;
+
+  const eliteSorted = [...eliteTempos].sort((a, b) => a - b);
+  let xLeftTop = Math.min(...eliteTempos) - PACE_PAD;
+  let xRightTop = Math.max(...eliteTempos) + PACE_PAD;
+  let xLeftBot = quantile(eliteSorted, Q_X_LEFT_BOT);
+  let xRightBot = quantile(eliteSorted, Q_X_RIGHT_BOT);
+
+  if (!(xLeftTop < xLeftBot && xLeftBot < xRightBot && xRightBot < xRightTop)) {
+    const allSorted = [...tempos].sort((a, b) => a - b);
+    xLeftTop = Math.min(...tempos) - PACE_PAD;
+    xRightTop = Math.max(...tempos) + PACE_PAD;
+    xLeftBot = quantile(allSorted, Q_X_LEFT_BOT);
+    xRightBot = quantile(allSorted, Q_X_RIGHT_BOT);
+  }
+
+  return { xLeftTop, xRightTop, xLeftBot, xRightBot, yTop, yBot };
+}
+
+function isInsideTrapezoid(
+  x: number, y: number,
+  t: ReturnType<typeof computeTrapezoidBoundaries>
+): boolean {
+  if (x < t.xLeftTop || x > t.xRightTop) return false;
+  if (y > t.yTop) return false;
+
+  let yMin: number;
+  if (x <= t.xLeftBot) {
+    if (t.xLeftBot === t.xLeftTop) { yMin = t.yBot; }
+    else {
+      const slope = (t.yBot - t.yTop) / (t.xLeftBot - t.xLeftTop);
+      yMin = t.yTop + slope * (x - t.xLeftTop);
+    }
+  } else if (x < t.xRightBot) {
+    yMin = t.yBot;
+  } else {
+    if (t.xRightTop === t.xRightBot) { yMin = t.yBot; }
+    else {
+      const slope = (t.yTop - t.yBot) / (t.xRightTop - t.xRightBot);
+      yMin = t.yBot + slope * (x - t.xRightBot);
+    }
+  }
+  return y >= yMin;
+}
+// ---- End Trapezoid helpers ----
+
+export function buildChampionChecklist(team: TeamSeason, ranks: TeamRanks, allTeams?: TeamSeason[]) {
+  // Season context from all teams (for Title Favorite and Trapezoid)
+  const allEMs = allTeams ? allTeams.map((t) => t.adjEM) : [team.adjEM];
+  const allTempos = allTeams ? allTeams.map((t) => t.adjTempo) : [team.adjTempo];
+  const maxAdjEM = Math.max(...allEMs);
+
+  // 1) Trapezoid of Excellence — real geometry from compute_trapezoid_boundaries
+  const trapezoid = computeTrapezoidBoundaries(allTempos, allEMs);
+  const inTrapezoid = isInsideTrapezoid(team.adjTempo, team.adjEM, trapezoid);
+
+  // 2) KenPom Contender: (AdjO > 113.8 AND AdjD < 95.0) OR AdjEM > 30.0
+  const kenpomContender = (team.adjO > 113.8 && team.adjD < 95.0) || team.adjEM > 30.0;
+
+  // 3) Title Favorite: within 6.0 points of max AdjEM
+  const titleFavoriteThreshold = maxAdjEM - 6.0;
+  const titleFavorite = team.adjEM >= titleFavoriteThreshold;
+
+  // 4) Win% > 74%
+  const [winsStr, lossesStr] = team.record.split('-');
+  const wins = parseInt(winsStr, 10) || 0;
+  const losses = parseInt(lossesStr, 10) || 0;
+  const totalGames = wins + losses || 1;
+  const winPct = wins / totalGames;
+  const goodWinPct = winPct > 0.74;
+
+  // 5) Elite Off/Def Ranks: AdjO rank ≤ 21 AND AdjD rank ≤ 37
+  const eliteRanks = (ranks.adjO != null ? ranks.adjO <= 21 : false) &&
+                     (ranks.adjD != null ? ranks.adjD <= 37 : false);
+
+  // 6) 3P% > 32% (stored as decimal, e.g. 0.348)
+  const goodThreePct = team.fg3_pct != null ? team.fg3_pct > 0.32 : false;
+
+  // 7) T-Rank ≤ 17 — not in rankings data
+  // 8) AP Poll Week 6 ≤ 12 — not in rankings data
+
+  // 9) eFG Margin ≥ 6% (stored as decimal after /100, e.g. 0.1751 = 17.51%)
+  const goodEFGMargin = (team.eFG_margin ?? 0) >= 0.06;
+
+  // 10) FTR Margin ≥ -5.5 (stored as raw ratio, e.g. 17.54)
+  const goodFTRMargin = (team.ftr_margin ?? 0) >= -5.5;
+
+  // 11) Rebounding Edge ≥ 0 (stored as decimal)
+  const goodRebEdge = (team.reb_edge ?? 0) >= 0;
+
+  // 12) Turnover Edge ≥ 1.5% (stored as decimal, e.g. 0.0371 = 3.71%)
+  const goodTOVEdge = (team.tov_edge ?? 0) >= 0.015;
+
+  // 13) Four Factor Index > 80
+  const goodFFI = team.four_factor_index_100 != null ? team.four_factor_index_100 > 80 : false;
+
+  // 14) WAB > 5
+  const goodWAB = team.wab != null ? team.wab > 5 : false;
+
+  // 15) FT% > 70% (stored as decimal)
+  const goodFTPct = team.ft_pct != null ? team.ft_pct > 0.70 : false;
+
   const items: ChecklistItem[] = [
     {
-      key: 'adj_em_top_25',
-      label: 'Top 25 Adj EM',
-      passed: ranks.adjEM != null ? ranks.adjEM <= 25 : false,
+      key: 'trapezoid',
+      label: 'Trapezoid of Excellence',
+      passed: inTrapezoid,
+      valueDisplay: inTrapezoid ? 'Inside' : 'Outside',
+      thresholdDisplay: 'Inside trapezoid',
+    },
+    {
+      key: 'kenpom_contender',
+      label: 'KenPom Contender',
+      passed: kenpomContender,
+      valueDisplay: `O: ${team.adjO.toFixed(1)}, D: ${team.adjD.toFixed(1)}`,
+      thresholdDisplay: '(O > 113.8 & D < 95) or EM > 30',
+    },
+    {
+      key: 'title_favorite',
+      label: 'Title Favorite (AdjEM)',
+      passed: titleFavorite,
+      valueDisplay: team.adjEM.toFixed(1),
+      thresholdDisplay: `≥ ${titleFavoriteThreshold.toFixed(1)}`,
+    },
+    {
+      key: 'win_pct',
+      label: 'Win Percentage',
+      passed: goodWinPct,
+      valueDisplay: `${(winPct * 100).toFixed(1)}%`,
+      thresholdDisplay: '> 74%',
+    },
+    {
+      key: 'elite_ranks',
+      label: 'Elite Off/Def Ranks',
+      passed: eliteRanks,
+      valueDisplay: `Off: ${formatRank(ranks.adjO)}, Def: ${formatRank(ranks.adjD)}`,
+      thresholdDisplay: 'Off ≤ 21, Def ≤ 37',
+    },
+    {
+      key: 'three_point_pct',
+      label: '3-Point %',
+      passed: goodThreePct,
+      valueDisplay: team.fg3_pct != null ? `${(team.fg3_pct * 100).toFixed(1)}%` : 'N/A',
+      thresholdDisplay: '> 32%',
+    },
+    {
+      key: 'adj_em_rank_17',
+      label: 'AdjEM Rank',
+      passed: ranks.adjEM != null ? ranks.adjEM <= 17 : false,
       valueDisplay: formatRank(ranks.adjEM),
-      thresholdDisplay: '#25',
+      thresholdDisplay: '≤ #17',
     },
     {
-      key: 'adj_o_top_40',
-      label: 'Top 40 Adj O',
-      passed: ranks.adjO != null ? ranks.adjO <= 40 : false,
-      valueDisplay: formatRank(ranks.adjO),
-      thresholdDisplay: '#40',
+      key: 'ap_poll_week6',
+      label: 'AP Poll Week 6',
+      passed: false,
+      valueDisplay: 'N/A',
+      thresholdDisplay: '≤ 12',
     },
     {
-      key: 'adj_d_top_40',
-      label: 'Top 40 Adj D',
-      passed: ranks.adjD != null ? ranks.adjD <= 40 : false,
-      valueDisplay: formatRank(ranks.adjD),
-      thresholdDisplay: '#40',
+      key: 'efg_margin',
+      label: 'eFG Margin',
+      passed: goodEFGMargin,
+      valueDisplay: `${((team.eFG_margin ?? 0) * 100).toFixed(1)}%`,
+      thresholdDisplay: '≥ 6%',
     },
     {
-      key: 'ffi_top_30',
-      label: 'Top 30 FFI',
-      passed: ranks.fourFactorIndex != null ? ranks.fourFactorIndex <= 30 : false,
-      valueDisplay: formatRank(ranks.fourFactorIndex),
-      thresholdDisplay: '#30',
+      key: 'ftr_margin',
+      label: 'FTR Margin',
+      passed: goodFTRMargin,
+      valueDisplay: (team.ftr_margin ?? 0).toFixed(2),
+      thresholdDisplay: '≥ -5.50',
     },
     {
-      key: 'efg_margin_positive',
-      label: 'Positive eFG Margin',
-      passed: (team.eFG_margin ?? 0) > 0,
-      valueDisplay: team.eFG_margin == null ? 'N/A' : `${(team.eFG_margin * 100).toFixed(1)}%`,
-      thresholdDisplay: '> 0%',
+      key: 'rebounding_edge',
+      label: 'Rebounding Edge',
+      passed: goodRebEdge,
+      valueDisplay: `${((team.reb_edge ?? 0) * 100).toFixed(1)}%`,
+      thresholdDisplay: '≥ 0%',
     },
     {
-      key: 'tov_edge_positive',
-      label: 'Positive TOV Edge',
-      passed: (team.tov_edge ?? 0) > 0,
-      valueDisplay: team.tov_edge == null ? 'N/A' : `${(team.tov_edge * 100).toFixed(1)}%`,
-      thresholdDisplay: '> 0%',
+      key: 'turnover_edge',
+      label: 'Turnover Edge',
+      passed: goodTOVEdge,
+      valueDisplay: `${((team.tov_edge ?? 0) * 100).toFixed(1)}%`,
+      thresholdDisplay: '≥ 1.5%',
     },
     {
-      key: 'reb_edge_positive',
-      label: 'Positive REB Edge',
-      passed: (team.reb_edge ?? 0) > 0,
-      valueDisplay: team.reb_edge == null ? 'N/A' : `${(team.reb_edge * 100).toFixed(1)}%`,
-      thresholdDisplay: '> 0%',
+      key: 'four_factor_index',
+      label: 'Four Factor Index',
+      passed: goodFFI,
+      valueDisplay: team.four_factor_index_100 != null ? team.four_factor_index_100.toFixed(1) : 'N/A',
+      thresholdDisplay: '> 80',
     },
     {
-      key: 'ftr_margin_positive',
-      label: 'Positive FTR Margin',
-      passed: (team.ftr_margin ?? 0) > 0,
-      valueDisplay: team.ftr_margin == null ? 'N/A' : `${team.ftr_margin.toFixed(2)}`,
-      thresholdDisplay: '> 0.00',
+      key: 'wab',
+      label: 'WAB (Wins Above Bubble)',
+      passed: goodWAB,
+      valueDisplay: team.wab != null ? team.wab.toFixed(1) : 'N/A',
+      thresholdDisplay: '> 5',
     },
     {
-      key: 'top_100_tempo',
-      label: 'Top 100 Tempo',
-      passed: ranks.adjT != null ? ranks.adjT <= 100 : false,
-      valueDisplay: formatRank(ranks.adjT),
-      thresholdDisplay: '#100',
-    },
-    {
-      key: 'top_50_efg',
-      label: 'Top 50 eFG%',
-      passed: ranks.eFG != null ? ranks.eFG <= 50 : false,
-      valueDisplay: formatRank(ranks.eFG),
-      thresholdDisplay: '#50',
-    },
-    {
-      key: 'top_50_tov',
-      label: 'Top 50 TOV%',
-      passed: ranks.tov != null ? ranks.tov <= 50 : false,
-      valueDisplay: formatRank(ranks.tov),
-      thresholdDisplay: '#50',
-    },
-    {
-      key: 'top_50_orb',
-      label: 'Top 50 ORB%',
-      passed: ranks.orb != null ? ranks.orb <= 50 : false,
-      valueDisplay: formatRank(ranks.orb),
-      thresholdDisplay: '#50',
-    },
-    {
-      key: 'top_50_drb',
-      label: 'Top 50 DRB%',
-      passed: ranks.drb != null ? ranks.drb <= 50 : false,
-      valueDisplay: formatRank(ranks.drb),
-      thresholdDisplay: '#50',
-    },
-    {
-      key: 'top_50_ftr',
-      label: 'Top 50 FTR',
-      passed: ranks.ftr != null ? ranks.ftr <= 50 : false,
-      valueDisplay: formatRank(ranks.ftr),
-      thresholdDisplay: '#50',
-    },
-    {
-      key: 'top_50_efg_d',
-      label: 'Top 50 Opp eFG%',
-      passed: ranks.eFG_d != null ? ranks.eFG_d <= 50 : false,
-      valueDisplay: formatRank(ranks.eFG_d),
-      thresholdDisplay: '#50',
+      key: 'ft_pct',
+      label: 'Free Throw %',
+      passed: goodFTPct,
+      valueDisplay: team.ft_pct != null ? `${(team.ft_pct * 100).toFixed(1)}%` : 'N/A',
+      thresholdDisplay: '> 70%',
     },
   ];
 

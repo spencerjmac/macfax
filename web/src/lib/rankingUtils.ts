@@ -5,32 +5,33 @@ export interface RankData {
   percentile: number | null;
 }
 
-export function computeRanks(values: Array<number | null>, better: Better): Map<number, RankData> {
-  const entries = values
-    .map((value, index) => ({ value, index }))
-    .filter((entry) => typeof entry.value === 'number' && !Number.isNaN(entry.value)) as Array<{ value: number; index: number }>;
+export function computeRanks(entries: Array<{ id: string; value: number | null }>, better: Better): Map<string, RankData> {
+  const valid = entries
+    .filter((e) => typeof e.value === 'number' && !Number.isNaN(e.value)) as Array<{ id: string; value: number }>;
 
-  if (entries.length === 0) {
-    return new Map();
+  const ranks = new Map<string, RankData>();
+
+  if (valid.length === 0) {
+    entries.forEach((e) => ranks.set(e.id, { rank: null, percentile: null }));
+    return ranks;
   }
 
-  const sorted = [...entries].sort((a, b) => {
+  const sorted = [...valid].sort((a, b) => {
     if (better === 'lower') return a.value - b.value;
     return b.value - a.value;
   });
 
-  const ranks = new Map<number, RankData>();
   const n = sorted.length;
 
   sorted.forEach((entry, idx) => {
     const rank = idx + 1;
     const percentile = n === 1 ? 1 : (n - rank) / (n - 1);
-    ranks.set(entry.index, { rank, percentile });
+    ranks.set(entry.id, { rank, percentile });
   });
 
-  values.forEach((value, index) => {
-    if (value === null || value === undefined) {
-      ranks.set(index, { rank: null, percentile: null });
+  entries.forEach((e) => {
+    if (e.value === null || e.value === undefined) {
+      ranks.set(e.id, { rank: null, percentile: null });
     }
   });
 
@@ -40,7 +41,9 @@ export function computeRanks(values: Array<number | null>, better: Better): Map<
 export function getPercentileColor(percentile: number | null, better: Better, heatmap: boolean): string {
   if (!heatmap || percentile === null || percentile === undefined) return '';
 
-  const adjusted = better === 'lower' ? 1 - percentile : percentile;
+  // computeRanks already accounts for direction (rank 1 = best regardless of better),
+  // so percentile is always a "goodness" score (1.0 = best). No flip needed here.
+  const adjusted = percentile;
 
   if (adjusted >= 0.9) return 'bg-emerald-100 text-emerald-900';
   if (adjusted >= 0.75) return 'bg-emerald-50 text-emerald-900';

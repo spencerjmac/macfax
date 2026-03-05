@@ -160,7 +160,7 @@ export async function getTeamWithContext(slug: string): Promise<
   if (!team) return null;
 
   const ranks = buildTeamRanks(teams, team);
-  const checklist = buildChampionChecklist(team, ranks);
+  const checklist = buildChampionChecklist(team, ranks, teams);
 
   return { team, ranks, checklist };
 }
