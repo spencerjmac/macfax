@@ -86,6 +86,7 @@ export interface TeamSeason {
   net_rank: number | null;
   sos_rank: number | null;
   sos_win_pct: number | null;
+  ap_poll_week6: number | null;
   sor: number | null;
   luck: number | null;
   sos_adjEM: number | null;

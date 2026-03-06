@@ -119,7 +119,7 @@ const Y_PAD_MIN = 0.50;
 const Y_PAD_RATE = 0.02;
 const Q_X_LEFT_BOT = 0.25;
 const Q_X_RIGHT_BOT = 0.75;
-const PACE_PAD = 1.0;
+const PACE_PAD = 0.25;
 
 function quantile(sorted: number[], q: number): number {
   const idx = q * (sorted.length - 1);
@@ -216,7 +216,9 @@ export function buildChampionChecklist(team: TeamSeason, ranks: TeamRanks, allTe
   const goodThreePct = team.fg3_pct != null ? team.fg3_pct > 0.32 : false;
 
   // 7) T-Rank ≤ 17 — not in rankings data
-  // 8) AP Poll Week 6 ≤ 12 — not in rankings data
+  // 8) AP Poll Week 6 ≤ 12
+  const apPollWeek6 = team.ap_poll_week6 ?? null;
+  const goodAPPoll = apPollWeek6 != null ? apPollWeek6 <= 12 : false;
 
   // 9) eFG Margin ≥ 6% (stored as decimal after /100, e.g. 0.1751 = 17.51%)
   const goodEFGMargin = (team.eFG_margin ?? 0) >= 0.06;
@@ -292,8 +294,8 @@ export function buildChampionChecklist(team: TeamSeason, ranks: TeamRanks, allTe
     {
       key: 'ap_poll_week6',
       label: 'AP Poll Week 6',
-      passed: false,
-      valueDisplay: 'N/A',
+      passed: goodAPPoll,
+      valueDisplay: apPollWeek6 != null ? `#${apPollWeek6}` : 'N/A',
       thresholdDisplay: '≤ 12',
     },
     {

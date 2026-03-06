@@ -1118,6 +1118,9 @@ class TeamSeasonRatings(models.Model):
     rank_adj_o = models.IntegerField(null=True, blank=True)
     rank_adj_d = models.IntegerField(null=True, blank=True)
     rank_adj_em = models.IntegerField(null=True, blank=True)
+    ap_poll_week6 = models.IntegerField(
+        null=True, blank=True, help_text="AP Poll Week 6 ranking (1-25, null if unranked)"
+    )
 
     # Model parameters
     games_played = models.IntegerField(

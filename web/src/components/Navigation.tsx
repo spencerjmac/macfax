@@ -25,24 +25,24 @@ export default function Navigation() {
             {/* Desktop logo - using mark until wide wordmark is added */}
             <div className="hidden md:flex items-center space-x-4">
               <Image
-                src="/brand/macfax-mark-512-v3.png"
+                src="/brand/macfax-logo-v4.png"
                 alt="macfax"
-                width={160}
-                height={160}
+                width={220}
+                height={220}
                 priority
-                className="h-40 w-40"
+                className="h-20 w-auto object-contain"
               />
               <span className="text-4xl font-bold">macfax</span>
             </div>
             {/* Mobile logo */}
             <div className="md:hidden flex items-center space-x-3">
               <Image
-                src="/brand/macfax-mark-512-v3.png"
+                src="/brand/macfax-logo-v4.png"
                 alt="macfax"
-                width={112}
-                height={112}
+                width={160}
+                height={160}
                 priority
-                className="h-28 w-28"
+                className="h-14 w-auto object-contain"
               />
               <span className="text-2xl font-bold">macfax</span>
             </div>
