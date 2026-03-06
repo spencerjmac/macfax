@@ -33,6 +33,7 @@ logger = logging.getLogger(__name__)
 # Subprocess-based runner (used by the streaming /run/ endpoint)
 # ------------------------------------------------------------------
 
+
 def run_update_all_subprocess(job_db_id: int) -> None:
     """
     Run `manage.py update_all` as a child process and stream stdout/stderr
@@ -60,13 +61,19 @@ def run_update_all_subprocess(job_db_id: int) -> None:
     iterations = params.get("iterations", 25)
     sor_trials = params.get("sor_trials", 10000)
 
+    # Use -u so the child Python runs unbuffered; otherwise stdout is fully buffered
+    # when piped (no TTY) and output appears in big chunks instead of in real time.
     cmd = [
         sys.executable,
+        "-u",
         str(settings.BASE_DIR / "manage.py"),
         "update_all",
-        "--season", str(season_year),
-        "--iterations", str(iterations),
-        "--sor-trials", str(sor_trials),
+        "--season",
+        str(season_year),
+        "--iterations",
+        str(iterations),
+        "--sor-trials",
+        str(sor_trials),
     ]
     if skip_ingest:
         cmd.append("--skip-ingest")
@@ -81,14 +88,16 @@ def run_update_all_subprocess(job_db_id: int) -> None:
 
     proc = None
     try:
+        # PYTHONUNBUFFERED=1 so child's stdout is unbuffered (real-time when piped).
+        proc_env = {**os.environ, "PYTHONUNBUFFERED": "1"}
         proc = subprocess.Popen(
             cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
-            bufsize=1,  # line-buffered
+            bufsize=1,  # line-buffered on our side when reading from the pipe
             cwd=str(settings.BASE_DIR),
-            env={**os.environ},
+            env=proc_env,
         )
 
         # Store PID for cancellation via the cancel endpoint
@@ -145,10 +154,19 @@ def run_update_all_subprocess(job_db_id: int) -> None:
                 (job.completed_at - job.started_at).total_seconds()
             )
         job.progress_percent = 100
-        job.save(update_fields=["status", "completed_at", "duration_seconds", "progress_percent"])
+        job.save(
+            update_fields=[
+                "status",
+                "completed_at",
+                "duration_seconds",
+                "progress_percent",
+            ]
+        )
 
     except Exception as exc:
-        logger.exception(f"run_update_all_subprocess: unhandled error for job {job_db_id}")
+        logger.exception(
+            f"run_update_all_subprocess: unhandled error for job {job_db_id}"
+        )
         try:
             close_old_connections()
             job.refresh_from_db(fields=["status"])
