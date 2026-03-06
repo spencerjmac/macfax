@@ -150,10 +150,15 @@ export default function AdminPage() {
   const [submitting, setSubmitting] = useState(false);
   const [startError, setStartError] = useState('');
 
-  // live terminal
+  // live terminal (capped to avoid freeze with huge output)
+  const MAX_LOG_LINES = 2500;
   const [logLines, setLogLines] = useState<string[]>([]);
+  const [streamDisconnected, setStreamDisconnected] = useState(false);
   const termRef = useRef<HTMLDivElement>(null);
   const esRef = useRef<EventSource | null>(null);
+  const reconnectAttemptsRef = useRef(0);
+  const RECONNECT_MAX = 3;
+  const RECONNECT_DELAY_MS = 2000;
 
   // history
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -166,6 +171,7 @@ export default function AdminPage() {
   const [configError, setConfigError] = useState('');
   const [configSaved, setConfigSaved] = useState(false);
   const [configOpen, setConfigOpen] = useState<Record<string, boolean>>({});
+  const [adminTab, setAdminTab] = useState<'jobs' | 'config'>('jobs');
 
   // ── Auto-scroll terminal ────────────────────────────────────────────────────
   useEffect(() => {
@@ -250,34 +256,55 @@ export default function AdminPage() {
   };
 
   // ── SSE stream ─────────────────────────────────────────────────────────────
-  const openStream = useCallback((jobDbId: number) => {
+  // since = line index to resume from (server sends only lines from there; browser sends Last-Event-ID automatically)
+  const openStream = useCallback((jobDbId: number, isReattach = false, since?: number) => {
     if (esRef.current) {
       esRef.current.close();
       esRef.current = null;
     }
+    if (isReattach) {
+      reconnectAttemptsRef.current = 0;
+      if (since == null || since === 0) setLogLines([]);
+    }
+    setStreamDisconnected(false);
     setJobStatus('running');
-    const es = new EventSource(`${API}/api/jobs/${jobDbId}/stream/`, {
-      withCredentials: true,
-    });
+    const url =
+      since != null && since > 0
+        ? `${API}/api/jobs/${jobDbId}/stream/?since=${since}`
+        : `${API}/api/jobs/${jobDbId}/stream/`;
+    const es = new EventSource(url, { withCredentials: true });
     esRef.current = es;
 
     es.onmessage = (evt) => {
       const data = JSON.parse(evt.data);
       if (data.type === 'log') {
-        setLogLines((prev) => [...prev, data.line as string]);
+        setLogLines((prev) => {
+          const next = [...prev, data.line as string];
+          return next.length > MAX_LOG_LINES ? next.slice(-MAX_LOG_LINES) : next;
+        });
       } else if (data.type === 'done') {
         setJobStatus(data.status as string);
         setRunningJobDbId(null);
+        setStreamDisconnected(false);
+        reconnectAttemptsRef.current = 0;
         es.close();
         esRef.current = null;
         loadJobs();
+      } else if (data.type === 'error') {
+        setStreamDisconnected(true);
       }
     };
 
     es.onerror = () => {
-      setJobStatus((prev) => (prev === 'running' ? 'failed' : prev));
       es.close();
       esRef.current = null;
+      const attempts = reconnectAttemptsRef.current;
+      if (attempts < RECONNECT_MAX) {
+        reconnectAttemptsRef.current = attempts + 1;
+        setTimeout(() => openStream(jobDbId), RECONNECT_DELAY_MS);
+      } else {
+        setStreamDisconnected(true);
+      }
     };
   }, []);
 
@@ -563,6 +590,36 @@ export default function AdminPage() {
         </div>
       </header>
 
+      {/* Tab bar */}
+      <div className="border-b border-gray-800">
+        <nav className="flex gap-0 px-6">
+          <button
+            type="button"
+            onClick={() => setAdminTab('jobs')}
+            className={`px-4 py-3 text-sm font-medium border-b-2 transition ${
+              adminTab === 'jobs'
+                ? 'border-blue-500 text-white'
+                : 'border-transparent text-gray-400 hover:text-gray-200'
+            }`}
+          >
+            Jobs
+          </button>
+          <button
+            type="button"
+            onClick={() => setAdminTab('config')}
+            className={`px-4 py-3 text-sm font-medium border-b-2 transition ${
+              adminTab === 'config'
+                ? 'border-blue-500 text-white'
+                : 'border-transparent text-gray-400 hover:text-gray-200'
+            }`}
+          >
+            Pipeline Config
+          </button>
+        </nav>
+      </div>
+
+      {adminTab === 'jobs' && (
+        <>
       <div className="flex h-[calc(60vh-49px)]">
         {/* ── Left panel: controls ─────────────────────────────────────── */}
         <aside className="w-72 flex-shrink-0 border-r border-gray-800 p-5 overflow-y-auto">
@@ -715,6 +772,21 @@ export default function AdminPage() {
             )}
           </div>
 
+          {streamDisconnected && runningJobDbId !== null && (
+            <div className="flex items-center justify-between gap-4 px-4 py-2 bg-amber-900/50 border-b border-amber-700/50">
+              <span className="text-sm text-amber-200">
+                Stream disconnected. Job may still be running.
+              </span>
+              <button
+                type="button"
+                onClick={() => openStream(runningJobDbId!, true, logLines.length)}
+                className="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded text-sm font-medium transition"
+              >
+                Reattach
+              </button>
+            </div>
+          )}
+
           {/* Terminal body */}
           <div
             ref={termRef}
@@ -727,11 +799,18 @@ export default function AdminPage() {
                   : 'Output will appear here when you run the pipeline.'}
               </p>
             ) : (
-              logLines.map((line, i) => (
-                <div key={i} className={lineClass(line)}>
-                  {line || '\u00a0'}
-                </div>
-              ))
+              <>
+                {logLines.length >= MAX_LOG_LINES && (
+                  <p className="text-gray-500 mb-1 sticky top-0 bg-gray-950/90 py-1">
+                    … showing last {MAX_LOG_LINES} lines
+                  </p>
+                )}
+                {logLines.map((line, i) => (
+                  <div key={i} className={lineClass(line)}>
+                    {line || '\u00a0'}
+                  </div>
+                ))}
+              </>
             )}
             {isRunning && (
               <div className="mt-1 text-gray-600 animate-pulse">▌</div>
@@ -739,10 +818,12 @@ export default function AdminPage() {
           </div>
         </main>
       </div>
+      </>
+      )}
 
-      {/* ── Pipeline Configuration ──────────────────────────────────────── */}
-      <section className="border-t border-gray-800">
-        <div className="px-6 py-3 flex items-center justify-between">
+      {adminTab === 'config' && (
+      <section className="border-t border-gray-800 px-6 pb-6">
+        <div className="py-3 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">
             Pipeline Configuration
           </h2>
@@ -862,8 +943,9 @@ export default function AdminPage() {
           </div>
         </form>
       </section>
+      )}
 
-      {/* ── Job history ─────────────────────────────────────────────────── */}
+      {adminTab === 'jobs' && (
       <section className="border-t border-gray-800">
         <div className="px-6 py-3 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">
@@ -964,6 +1046,7 @@ export default function AdminPage() {
           </table>
         </div>
       </section>
+      )}
     </div>
   );
 }

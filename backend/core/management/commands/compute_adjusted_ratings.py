@@ -526,7 +526,7 @@ class Command(BaseCommand):
 
                 metrics = TeamSeasonMetrics.objects.get(team=team, season=season)
 
-                # Count ALL games (including non-D1) for complete record
+                # Record = ALL games (D1 + non-D1). Computations use D1-only; display record uses all.
                 all_games = TeamGameStats.objects.filter(
                     team=team, game__season_year=season_year, game__status="final"
                 ).select_related("game", "opponent")
