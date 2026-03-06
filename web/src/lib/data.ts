@@ -69,6 +69,7 @@ function mapApiRowToTeamSeason(team: Record<string, unknown>): TeamSeason {
     net_rank: num(team.net_rank),
     sos_rank: num(team.sos_rank),
     sos_win_pct: num(team.sos_win_pct),
+    ap_poll_week6: (team.ap_poll_week6 as number) ?? null,
     sor: null,
     luck: null,
     sos_adjEM: null,
