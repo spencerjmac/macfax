@@ -22,11 +22,12 @@ COMPUTE (always)
   6.  compute_sigma               — prediction error std-dev → NationalAverages.prediction_sigma
   7.  compute_adjusted_four_factors
   8.  compute_four_factor_index
-  9.  fetch_net_rankings          — pull NET rankings from NCAA (external API)
-  10. compute_sor                 — Strength of Record (Monte Carlo, uses hca + sigma)
-  11. compute_game_value          — per-game resume value (uses hca + sigma)
-  12. compute_sos                 — Strength of Schedule (uses AdjEM)
-  13. compute_wab                 — Wins Above Bubble (uses hca + sigma + AdjEM)
+  9.  train_four_factor_regression — OLS coefficients for pts_from_efg/tov/orb/ftr → matchup impact
+  10. fetch_net_rankings          — pull NET rankings from NCAA (external API)
+  11. compute_sor                 — Strength of Record (Monte Carlo, uses hca + sigma)
+  12. compute_game_value          — per-game resume value (uses hca + sigma)
+  13. compute_sos                 — Strength of Schedule (uses AdjEM)
+  14. compute_wab                 — Wins Above Bubble (uses hca + sigma + AdjEM)
 
 Usage
 ─────
@@ -46,7 +47,7 @@ from django.db import connection
 
 from core.models import Season
 
-TOTAL_STEPS = 13
+TOTAL_STEPS = 14
 
 
 class Command(BaseCommand):
@@ -196,29 +197,34 @@ class Command(BaseCommand):
             label=f"[8/{TOTAL_STEPS}]",
         )
         self._run_step(
-            "Fetch NET rankings", "fetch_net_rankings",
+            "Train four factor regression", "train_four_factor_regression",
             {"season": season_year}, steps,
             label=f"[9/{TOTAL_STEPS}]",
         )
         self._run_step(
+            "Fetch NET rankings", "fetch_net_rankings",
+            {"season": season_year}, steps,
+            label=f"[10/{TOTAL_STEPS}]",
+        )
+        self._run_step(
             "Compute Strength of Record", "compute_sor",
             {"season": season_year, "trials": sor_trials}, steps,
-            label=f"[10/{TOTAL_STEPS}]",
+            label=f"[11/{TOTAL_STEPS}]",
         )
         self._run_step(
             "Compute game values", "compute_game_value",
             {"season": season_year}, steps,
-            label=f"[11/{TOTAL_STEPS}]",
+            label=f"[12/{TOTAL_STEPS}]",
         )
         self._run_step(
             "Compute Strength of Schedule", "compute_sos",
             {"season": season_year}, steps,
-            label=f"[12/{TOTAL_STEPS}]",
+            label=f"[13/{TOTAL_STEPS}]",
         )
         self._run_step(
             "Compute Wins Above Bubble", "compute_wab",
             {"season": season_year}, steps,
-            label=f"[13/{TOTAL_STEPS}]",
+            label=f"[14/{TOTAL_STEPS}]",
         )
 
         # Summary

@@ -207,7 +207,7 @@ function FourFactorsTab({ team, ranks }: { team: TeamSeason; ranks: TeamRanks })
             {team.four_factor_index_100.toFixed(1)}
           </div>
           <p className="text-sm text-text-muted">
-            Weighted composite score: eFG% (40%), TOV% (20%), REB% (20%), FTR (20%)
+            A composite rating that measures how strong a team is across the four key areas most tied to winning.
           </p>
         </div>
       )}
@@ -533,7 +533,7 @@ function ResumeTab({ team, ranks }: { team: TeamSeason; ranks: TeamRanks }) {
             )}
           </div>
           <p className="text-text-muted text-sm mt-2">
-            NCAA Evaluation Tool ranking (using AdjEM as proxy)
+            NCAA Evaluation Tool ranking
           </p>
         </div>
         
