@@ -215,6 +215,7 @@ class RankingsSerializer(serializers.Serializer):
     net_rank = serializers.IntegerField()
     sos_rank = serializers.IntegerField()
     sos_win_pct = serializers.FloatField()
+    ap_poll_week6 = serializers.IntegerField(allow_null=True, required=False)
 
     # Legacy fields for compatibility
     aor_100 = serializers.FloatField(source="adj_o")
