@@ -828,61 +828,86 @@ function GameLogTab({ team }: { team: TeamSeason }) {
             </tr>
           </thead>
           <tbody>
-            {gameLog.map((game, index) => (
-              <tr 
+            {gameLog.map((game, index) => {
+              const isNonD1 = game.opponent_is_d1 === false;
+              const oppPts = game.margin != null ? game.pts - game.margin : null;
+              const scoreStr = oppPts != null ? `${game.pts}-${oppPts}` : `${game.pts}`;
+              return (
+              <tr
                 key={game.id || index}
-                className="border-t border-ui-border hover:bg-ui-surface-dark/50 transition-colors"
+                className={clsx(
+                  'border-t border-ui-border transition-colors',
+                  isNonD1 ? 'bg-ui-surface/50' : 'hover:bg-ui-surface-dark/50'
+                )}
               >
                 <td className="px-4 py-3 text-sm">
-                  {new Date(game.game_date).toLocaleDateString('en-US', { 
-                    month: 'short', 
-                    day: 'numeric' 
+                  {new Date(game.game_date).toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
                   })}
                 </td>
                 <td className="px-4 py-3 text-sm font-medium">
                   {game.opponent_name}
+                  {isNonD1 && (
+                    <span className="ml-2 text-xs text-amber-500/90 font-normal">
+                      (Non-D1)
+                    </span>
+                  )}
                 </td>
                 <td className="px-4 py-3 text-center text-sm">
-                  <span className={clsx(
-                    'px-2 py-1 rounded text-xs font-medium',
-                    game.home_away === 'H' && 'bg-green-500/20 text-green-400',
-                    game.home_away === 'A' && 'bg-red-500/20 text-red-400',
-                    game.home_away === 'N' && 'bg-blue-500/20 text-blue-400'
-                  )}>
+                  <span
+                    className={clsx(
+                      'px-2 py-1 rounded text-xs font-medium',
+                      game.home_away === 'H' && 'bg-green-500/20 text-green-400',
+                      game.home_away === 'A' && 'bg-red-500/20 text-red-400',
+                      game.home_away === 'N' && 'bg-blue-500/20 text-blue-400'
+                    )}
+                  >
                     {game.home_away === 'H' ? 'Home' : game.home_away === 'A' ? 'Away' : 'Neutral'}
                   </span>
                 </td>
                 <td className="px-4 py-3 text-center text-sm">
-                  <span className={clsx(
-                    'font-bold',
-                    game.result === 'W' ? 'text-green-400' : 'text-red-400'
-                  )}>
+                  <span
+                    className={clsx(
+                      'font-bold',
+                      game.result === 'W' ? 'text-green-400' : 'text-red-400'
+                    )}
+                  >
                     {game.result}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-right text-sm">
-                  {game.pts}-{game.pts - (game.margin || 0)}
-                </td>
                 <td className="px-4 py-3 text-right text-sm font-mono">
-                  {game.ortg?.toFixed(1) || '-'}
+                  {scoreStr}
                 </td>
-                <td className="px-4 py-3 text-right text-sm font-mono">
-                  {game.drtg?.toFixed(1) || '-'}
-                </td>
-                <td className="px-4 py-3 text-right text-sm font-mono">
-                  {game.efg_pct != null ? formatPercent(game.efg_pct) : '-'}
-                </td>
-                <td className="px-4 py-3 text-right text-sm font-mono">
-                  {game.tov_pct != null ? formatPercent(game.tov_pct) : '-'}
-                </td>
-                <td className="px-4 py-3 text-right text-sm font-mono">
-                  {game.orb_pct != null ? formatPercent(game.orb_pct) : '-'}
-                </td>
-                <td className="px-4 py-3 text-right text-sm font-mono">
-                  {game.ftr != null ? formatPercent(game.ftr) : '-'}
-                </td>
+                {isNonD1 ? (
+                  <td colSpan={6} className="px-4 py-3 text-sm text-text-muted italic">
+                    Non-D1 opponent — advanced stats not computed
+                  </td>
+                ) : (
+                  <>
+                    <td className="px-4 py-3 text-right text-sm font-mono">
+                      {game.ortg?.toFixed(1) ?? '—'}
+                    </td>
+                    <td className="px-4 py-3 text-right text-sm font-mono">
+                      {game.drtg?.toFixed(1) ?? '—'}
+                    </td>
+                    <td className="px-4 py-3 text-right text-sm font-mono">
+                      {game.efg_pct != null ? formatPercent(game.efg_pct) : '—'}
+                    </td>
+                    <td className="px-4 py-3 text-right text-sm font-mono">
+                      {game.tov_pct != null ? formatPercent(game.tov_pct) : '—'}
+                    </td>
+                    <td className="px-4 py-3 text-right text-sm font-mono">
+                      {game.orb_pct != null ? formatPercent(game.orb_pct) : '—'}
+                    </td>
+                    <td className="px-4 py-3 text-right text-sm font-mono">
+                      {game.ftr != null ? formatPercent(game.ftr) : '—'}
+                    </td>
+                  </>
+                )}
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>

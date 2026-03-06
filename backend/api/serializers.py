@@ -1019,6 +1019,7 @@ class GameLogSerializer(serializers.ModelSerializer):
     team_name = serializers.CharField(source="team.name", read_only=True)
     opponent_name = serializers.CharField(source="opponent.name", read_only=True)
     opponent_slug = serializers.CharField(source="opponent.slug", read_only=True)
+    opponent_is_d1 = serializers.BooleanField(source="opponent.is_d1", read_only=True)
     opponent_net_rank = serializers.SerializerMethodField()
     quadrant = serializers.SerializerMethodField()
     game_date = serializers.DateField(source="game.game_date", read_only=True)
@@ -1099,6 +1100,7 @@ class GameLogSerializer(serializers.ModelSerializer):
             "team_name",
             "opponent_name",
             "opponent_slug",
+            "opponent_is_d1",
             "opponent_net_rank",
             "quadrant",
             "home_away",

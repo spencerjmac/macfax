@@ -1,14 +1,18 @@
 """
 Management command: purge_non_d1_teams
 
-Deletes all Team records where is_d1=False, along with all associated data:
-  - Games where the non-D1 team is home or away (cascades to TeamGameStats)
-  - Any orphaned TeamGameStats rows where the non-D1 team is the opponent
-  - TeamSeasonRatings, TeamSeasonMetrics, TeamExternalId for non-D1 teams
+Deletes only non-D1 Team records that are NOT involved in any Game (as home or away).
+Teams that appear as opponents in D1 vs non-D1 games are kept so that:
+  - Game and TeamGameStats records stay valid (record and game log include those games).
+  - D1 team W-L record continues to count all games.
 
-This is safe to run after fix_team_duplicates, which will have already moved
-real game data from informal-name teams (e.g. "UConn") to canonical D1 teams
-(e.g. "Connecticut") and marked the informal-name records as non-D1.
+For each non-D1 team that is never referenced in any Game, we delete:
+  - TeamSeasonRatings, TeamSeasonMetrics, TeamExternalId for that team
+  - The Team record
+
+No Games or TeamGameStats are ever deleted by this command.
+
+Safe to run after fix_team_duplicates. Use --dry-run to see what would be removed.
 
 Usage:
     python manage.py purge_non_d1_teams
@@ -17,10 +21,11 @@ Usage:
 
 from django.core.management.base import BaseCommand
 from django.db import transaction
+from django.db.models import Q
 
 
 class Command(BaseCommand):
-    help = "Delete all non-D1 Team records and their associated data"
+    help = "Delete non-D1 teams that are not used in any game (keeps D1 vs non-D1 games)"
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -34,43 +39,46 @@ class Command(BaseCommand):
 
         from core.models import (
             Team,
-            Game,
-            TeamGameStats,
             TeamSeasonRatings,
             TeamSeasonMetrics,
             TeamExternalId,
         )
 
-        non_d1 = Team.objects.filter(is_d1=False)
-        team_count = non_d1.count()
+        # Non-D1 teams that appear in at least one game (home or away) — KEEP these
+        non_d1_in_games = Team.objects.filter(is_d1=False).filter(
+            Q(home_games__isnull=False) | Q(away_games__isnull=False)
+        ).distinct()
+
+        # Non-D1 teams that are not in any game — safe to delete
+        all_non_d1 = Team.objects.filter(is_d1=False)
+        orphan_non_d1 = all_non_d1.exclude(
+            id__in=non_d1_in_games.values_list("id", flat=True)
+        )
+        team_count = orphan_non_d1.count()
+        kept_count = all_non_d1.count() - team_count
 
         if team_count == 0:
-            self.stdout.write(self.style.SUCCESS("No non-D1 teams found. Nothing to do."))
+            self.stdout.write(
+                self.style.SUCCESS(
+                    "No orphan non-D1 teams (all non-D1 teams are used in games). Nothing to do."
+                )
+            )
+            if all_non_d1.exists():
+                self.stdout.write(
+                    f"  {all_non_d1.count()} non-D1 team(s) kept (appear as opponents in games)."
+                )
             return
 
-        # Count related data that will be removed
-        games_involved = Game.objects.filter(
-            home_team__is_d1=False
-        ) | Game.objects.filter(away_team__is_d1=False)
-        games_involved = games_involved.distinct()
-        game_count = games_involved.count()
+        ratings_count = TeamSeasonRatings.objects.filter(team__in=orphan_non_d1).count()
+        metrics_count = TeamSeasonMetrics.objects.filter(team__in=orphan_non_d1).count()
+        ext_id_count = TeamExternalId.objects.filter(team__in=orphan_non_d1).count()
 
-        # Game stats cascade-deleted with games; count orphans (opponent ref only)
-        orphan_stats = TeamGameStats.objects.filter(
-            opponent__is_d1=False
-        ).exclude(game__in=games_involved)
-        orphan_stat_count = orphan_stats.count()
-
-        ratings_count = TeamSeasonRatings.objects.filter(team__is_d1=False).count()
-        metrics_count = TeamSeasonMetrics.objects.filter(team__is_d1=False).count()
-        ext_id_count = TeamExternalId.objects.filter(team__is_d1=False).count()
-
-        self.stdout.write(f"\nNon-D1 teams to delete:          {team_count}")
-        self.stdout.write(f"Games to delete (+ their stats): {game_count}")
-        self.stdout.write(f"Orphaned opponent-only stats:    {orphan_stat_count}")
+        self.stdout.write(f"\nOrphan non-D1 teams to delete:   {team_count}")
+        self.stdout.write(f"Non-D1 teams kept (in games):     {kept_count}")
         self.stdout.write(f"TeamSeasonRatings to delete:     {ratings_count}")
         self.stdout.write(f"TeamSeasonMetrics to delete:     {metrics_count}")
-        self.stdout.write(f"TeamExternalId records to delete:{ext_id_count}\n")
+        self.stdout.write(f"TeamExternalId records to delete:{ext_id_count}")
+        self.stdout.write("  (No games or TeamGameStats are deleted.)\n")
 
         if dry_run:
             self.stdout.write(
@@ -84,23 +92,12 @@ class Command(BaseCommand):
             return
 
         with transaction.atomic():
-            # 1. Delete games involving non-D1 teams (cascades to TeamGameStats)
-            deleted_games, _ = games_involved.delete()
-            self.stdout.write(f"  Deleted {deleted_games} game-related records (games + stats)")
-
-            # 2. Delete any remaining orphaned stats where non-D1 is only the opponent
-            deleted_orphans, _ = TeamGameStats.objects.filter(opponent__is_d1=False).delete()
-            if deleted_orphans:
-                self.stdout.write(f"  Deleted {deleted_orphans} orphaned opponent-only stats")
-
-            # 3. Delete computed data for non-D1 teams
-            r, _ = TeamSeasonRatings.objects.filter(team__is_d1=False).delete()
-            m, _ = TeamSeasonMetrics.objects.filter(team__is_d1=False).delete()
-            e, _ = TeamExternalId.objects.filter(team__is_d1=False).delete()
+            r, _ = TeamSeasonRatings.objects.filter(team__in=orphan_non_d1).delete()
+            m, _ = TeamSeasonMetrics.objects.filter(team__in=orphan_non_d1).delete()
+            e, _ = TeamExternalId.objects.filter(team__in=orphan_non_d1).delete()
             self.stdout.write(f"  Deleted {r} ratings, {m} metrics, {e} external IDs")
 
-            # 4. Delete non-D1 teams
-            deleted_teams, _ = non_d1.delete()
-            self.stdout.write(f"  Deleted {deleted_teams} non-D1 team records")
+            deleted_teams, _ = orphan_non_d1.delete()
+            self.stdout.write(f"  Deleted {deleted_teams} orphan non-D1 team records")
 
         self.stdout.write(self.style.SUCCESS("\nDone."))

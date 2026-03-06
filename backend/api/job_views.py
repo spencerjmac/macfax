@@ -147,40 +147,68 @@ class DataProcessingJobViewSet(viewsets.ModelViewSet):
         """
         SSE endpoint that streams job output in real-time.
         Polls the DataProcessingJob.logs field every 500ms and yields new lines.
-        Sends a final {"type": "done", "status": "..."} event when the job finishes.
+        Supports resume via Last-Event-ID (browser reconnect) or ?since=N (line index).
+        Sends id: <line_index> with each log event so reconnects only receive new lines.
         """
         job = self.get_object()
         job_db_id = job.id
 
+        # Resume from line index (browser sends Last-Event-ID; or client can pass ?since=N)
+        last_event_id = request.META.get("HTTP_LAST_EVENT_ID", "").strip()
+        since_param = request.GET.get("since", "").strip()
+        try:
+            initial_line = int(since_param) if since_param else (int(last_event_id) + 1 if last_event_id else 0)
+        except ValueError:
+            initial_line = 0
+        initial_line = max(0, initial_line)
+
         def event_stream():
-            last_len = 0
+            from django.db import close_old_connections
+
+            last_sent_line = initial_line
+            last_keepalive = time.monotonic()
+            keepalive_interval = 15.0
+            consecutive_errors = 0
+            max_errors_before_yield = 3
+
             while True:
                 try:
-                    from django.db import close_old_connections
                     close_old_connections()
                     current = DataProcessingJob.objects.get(id=job_db_id)
+                    consecutive_errors = 0
                 except DataProcessingJob.DoesNotExist:
                     break
-                except Exception:
+                except Exception as e:
+                    consecutive_errors += 1
+                    logger.warning("stream poll error for job %s: %s", job_db_id, e)
+                    if consecutive_errors >= max_errors_before_yield:
+                        yield f"data: {json.dumps({'type': 'error', 'message': 'Stream stalled; reconnect to resume.'})}\n\n"
+                        consecutive_errors = 0
                     time.sleep(1)
                     continue
 
                 logs = current.logs or ""
-                if len(logs) > last_len:
-                    new_text = logs[last_len:]
-                    last_len = len(logs)
-                    for line in new_text.splitlines():
-                        yield f"data: {json.dumps({'type': 'log', 'line': line})}\n\n"
+                lines = logs.splitlines()
+                if last_sent_line < len(lines):
+                    for i in range(last_sent_line, len(lines)):
+                        # id enables browser to send Last-Event-ID on reconnect so we resume from here
+                        yield f"id: {i}\ndata: {json.dumps({'type': 'log', 'line': lines[i]})}\n\n"
+                    last_sent_line = len(lines)
 
                 if current.status in ("success", "failed", "cancelled"):
-                    yield f"data: {json.dumps({'type': 'done', 'status': current.status})}\n\n"
+                    yield f"id: end\ndata: {json.dumps({'type': 'done', 'status': current.status})}\n\n"
                     break
+
+                now = time.monotonic()
+                if now - last_keepalive >= keepalive_interval:
+                    yield ": keepalive\n\n"
+                    last_keepalive = now
 
                 time.sleep(0.5)
 
         response = StreamingHttpResponse(event_stream(), content_type="text/event-stream")
-        response["Cache-Control"] = "no-cache"
-        response["X-Accel-Buffering"] = "no"  # disable nginx buffering
+        response["Cache-Control"] = "no-cache, no-store"
+        response["X-Accel-Buffering"] = "no"
         return response
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminUser])
