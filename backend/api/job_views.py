@@ -2,10 +2,15 @@
 Data Processing Job Management Views
 API endpoints for triggering and monitoring update_all and other data processing jobs.
 
-New streaming endpoints:
+Streaming (SSE):
   POST /api/jobs/run/          — start update_all in background, returns job_id immediately
   GET  /api/jobs/{id}/stream/  — SSE stream of live output (polls DB every 500ms)
   POST /api/jobs/{id}/cancel/  — send SIGTERM to the subprocess and mark cancelled
+
+  Under WSGI (e.g. Gunicorn), each open /stream/ connection holds one worker for the
+  entire job. With few workers, other requests can queue. Use more workers, limit
+  concurrent streams, or run under ASGI (e.g. Daphne) if you need many simultaneous
+  viewers. See Django docs on StreamingHttpResponse and WSGI.
 
 Legacy synchronous endpoints (kept for backward compat):
   POST /api/jobs/start_update_all/
@@ -37,12 +42,14 @@ class ServerSentEventRenderer(BaseRenderer):
     (which send Accept: text/event-stream) before the action runs.
     The actual response is a StreamingHttpResponse, not rendered here.
     """
+
     media_type = "text/event-stream"
     format = "event-stream"
     charset = "utf-8"
 
     def render(self, data, accepted_media_type=None, renderer_context=None):
         return data
+
 
 from core.models import DataProcessingJob, Season
 
@@ -135,7 +142,9 @@ class DataProcessingJobViewSet(viewsets.ModelViewSet):
         )
         t.start()
 
-        return Response({"job_id": job_id, "id": job.id}, status=status.HTTP_201_CREATED)
+        return Response(
+            {"job_id": job_id, "id": job.id}, status=status.HTTP_201_CREATED
+        )
 
     @action(
         detail=True,
@@ -149,6 +158,9 @@ class DataProcessingJobViewSet(viewsets.ModelViewSet):
         Polls the DataProcessingJob.logs field every 500ms and yields new lines.
         Supports resume via Last-Event-ID (browser reconnect) or ?since=N (line index).
         Sends id: <line_index> with each log event so reconnects only receive new lines.
+
+        Note: Under WSGI (Gunicorn), this response keeps one worker busy for the full
+        duration of the stream. Avoid opening many stream tabs; use more workers if needed.
         """
         job = self.get_object()
         job_db_id = job.id
@@ -157,7 +169,11 @@ class DataProcessingJobViewSet(viewsets.ModelViewSet):
         last_event_id = request.META.get("HTTP_LAST_EVENT_ID", "").strip()
         since_param = request.GET.get("since", "").strip()
         try:
-            initial_line = int(since_param) if since_param else (int(last_event_id) + 1 if last_event_id else 0)
+            initial_line = (
+                int(since_param)
+                if since_param
+                else (int(last_event_id) + 1 if last_event_id else 0)
+            )
         except ValueError:
             initial_line = 0
         initial_line = max(0, initial_line)
@@ -206,7 +222,9 @@ class DataProcessingJobViewSet(viewsets.ModelViewSet):
 
                 time.sleep(0.5)
 
-        response = StreamingHttpResponse(event_stream(), content_type="text/event-stream")
+        response = StreamingHttpResponse(
+            event_stream(), content_type="text/event-stream"
+        )
         response["Cache-Control"] = "no-cache, no-store"
         response["X-Accel-Buffering"] = "no"
         return response
@@ -258,7 +276,9 @@ class DataProcessingJobViewSet(viewsets.ModelViewSet):
             completed_at=timezone.now(),
             error_message="Marked failed by admin (process was no longer running).",
         )
-        logger.info(f"fix_stuck: marked {count} jobs as failed by {request.user.username}")
+        logger.info(
+            f"fix_stuck: marked {count} jobs as failed by {request.user.username}"
+        )
         return Response({"fixed": count})
 
     @action(detail=False, methods=["post"], permission_classes=[IsAdminUser])
@@ -355,7 +375,9 @@ class DataProcessingJobViewSet(viewsets.ModelViewSet):
                 logger.exception(f"update_all job {job_id} failed")
 
             return Response(
-                DataProcessingJobSerializer(DataProcessingJob.objects.get(pk=job.pk)).data,
+                DataProcessingJobSerializer(
+                    DataProcessingJob.objects.get(pk=job.pk)
+                ).data,
                 status=status.HTTP_201_CREATED,
             )
 
@@ -421,7 +443,9 @@ class DataProcessingJobViewSet(viewsets.ModelViewSet):
                 logger.exception(f"ingest_gamelogs job {job_id} failed")
 
             return Response(
-                DataProcessingJobSerializer(DataProcessingJob.objects.get(pk=job.pk)).data,
+                DataProcessingJobSerializer(
+                    DataProcessingJob.objects.get(pk=job.pk)
+                ).data,
                 status=status.HTTP_201_CREATED,
             )
 
@@ -493,7 +517,9 @@ class DataProcessingJobViewSet(viewsets.ModelViewSet):
                 logger.exception(f"Subjob {job_id} failed")
 
             return Response(
-                DataProcessingJobSerializer(DataProcessingJob.objects.get(pk=job.pk)).data,
+                DataProcessingJobSerializer(
+                    DataProcessingJob.objects.get(pk=job.pk)
+                ).data,
                 status=status.HTTP_201_CREATED,
             )
 
