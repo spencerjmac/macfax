@@ -65,7 +65,7 @@ class Command(BaseCommand):
         parser.add_argument(
             "--days",
             type=int,
-            help="Ingest only the last N days of games (ending yesterday)",
+            help="Ingest only the last N days of games (including today)",
         )
         parser.add_argument(
             "--iterations",
@@ -152,10 +152,10 @@ class Command(BaseCommand):
         if not skip_ingest:
             ingest_options = {"season": season_year, "workers": ingest_workers}
             if days:
-                yesterday = datetime.now().date() - timedelta(days=1)
-                start_date = yesterday - timedelta(days=days - 1)
+                today = datetime.now().date()
+                start_date = today - timedelta(days=days - 1)
                 ingest_options["start"] = start_date.strftime("%Y-%m-%d")
-                ingest_options["end"] = yesterday.strftime("%Y-%m-%d")
+                ingest_options["end"] = today.strftime("%Y-%m-%d")
                 self.stdout.write(
                     f"[1/{TOTAL_STEPS}] Ingesting last {days} day(s): "
                     f"{ingest_options['start']} → {ingest_options['end']}..."
