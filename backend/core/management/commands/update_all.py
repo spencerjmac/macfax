@@ -93,6 +93,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         from datetime import datetime, timedelta
         from core.models import PipelineConfig
+
         cfg = PipelineConfig.get_config()
 
         season_year = options["season"]
@@ -108,12 +109,18 @@ class Command(BaseCommand):
         self.stdout.write("\n" + "=" * 80)
         self.stdout.write("CBB ANALYTICS DASHBOARD — AUTOMATED UPDATE")
         self.stdout.write("=" * 80)
-        self.stdout.write(f"Season : {season_year} ({season_year-1}-{str(season_year)[2:]})")
-        ncaa_base = getattr(settings, "NCAA_API_BASE_URL", "https://ncaa-api.henrygd.me").rstrip("/")
+        self.stdout.write(
+            f"Season : {season_year} ({season_year-1}-{str(season_year)[2:]})"
+        )
+        ncaa_base = getattr(
+            settings, "NCAA_API_BASE_URL", "https://ncaa-api.henrygd.me"
+        ).rstrip("/")
         if "ncaa-api.henrygd.me" in ncaa_base:
             self.stdout.write(f"NCAA API: public demo (fallback) — {ncaa_base}")
         else:
-            self.stdout.write(self.style.SUCCESS(f"NCAA API: self-hosted — {ncaa_base}"))
+            self.stdout.write(
+                self.style.SUCCESS(f"NCAA API: self-hosted — {ncaa_base}")
+            )
         self.stdout.write(f"Started: {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
         self.stdout.write("=" * 80 + "\n")
 
@@ -132,7 +139,9 @@ class Command(BaseCommand):
             verb = "Created" if created else "Using existing"
             self.stdout.write(self.style.SUCCESS(f"[SETUP] {verb} Season {season}\n"))
         except Exception as e:
-            self.stderr.write(self.style.ERROR(f"[SETUP FATAL] Cannot create season: {e}\n"))
+            self.stderr.write(
+                self.style.ERROR(f"[SETUP FATAL] Cannot create season: {e}\n")
+            )
             sys.exit(1)
 
         # ── Pipeline steps ────────────────────────────────────────────────────
@@ -151,8 +160,16 @@ class Command(BaseCommand):
                     f"{ingest_options['start']} → {ingest_options['end']}..."
                 )
             else:
-                self.stdout.write(f"[1/{TOTAL_STEPS}] Ingesting game logs from NCAA API...")
-            self._run_step("Ingest game logs", "ingest_gamelogs", ingest_options, steps, fatal=False)
+                self.stdout.write(
+                    f"[1/{TOTAL_STEPS}] Ingesting game logs from NCAA API..."
+                )
+            self._run_step(
+                "Ingest game logs",
+                "ingest_gamelogs",
+                ingest_options,
+                steps,
+                fatal=False,
+            )
         else:
             self.stdout.write(f"[SKIP] [1/{TOTAL_STEPS}] Skipping game ingestion\n")
             steps.append(("Ingest game logs", True, "Skipped"))
@@ -161,66 +178,93 @@ class Command(BaseCommand):
         connection.close()  # fresh connection after potential parallel ingest
 
         self._run_step(
-            "Compute team metrics", "compute_team_metrics",
-            {"season": season_year}, steps, fatal=True,
+            "Compute team metrics",
+            "compute_team_metrics",
+            {"season": season_year},
+            steps,
+            fatal=True,
             label=f"[2/{TOTAL_STEPS}]",
         )
         self._run_step(
-            "Compute national averages", "compute_national_averages",
-            {"season": season_year}, steps, fatal=True,
+            "Compute national averages",
+            "compute_national_averages",
+            {"season": season_year},
+            steps,
+            fatal=True,
             label=f"[3/{TOTAL_STEPS}]",
         )
         self._run_step(
-            "Compute adjusted ratings", "compute_adjusted_ratings",
-            {"season": season_year, "iterations": iterations}, steps, fatal=True,
+            "Compute adjusted ratings",
+            "compute_adjusted_ratings",
+            {"season": season_year, "iterations": iterations},
+            steps,
+            fatal=True,
             label=f"[4/{TOTAL_STEPS}]",
         )
 
         # HCA and sigma are derived from adjusted ratings — must come before
         # compute_sor, compute_game_value, and compute_wab which all depend on them.
         self._run_step(
-            "Compute home-court advantage", "compute_hca",
-            {"season": season_year}, steps,
+            "Compute home-court advantage",
+            "compute_hca",
+            {"season": season_year},
+            steps,
             label=f"[5/{TOTAL_STEPS}]",
         )
         self._run_step(
-            "Compute prediction sigma", "compute_sigma",
-            {"season": season_year}, steps,
+            "Compute prediction sigma",
+            "compute_sigma",
+            {"season": season_year},
+            steps,
             label=f"[6/{TOTAL_STEPS}]",
         )
         self._run_step(
-            "Compute adjusted four factors", "compute_adjusted_four_factors",
-            {"season": season_year}, steps,
+            "Compute adjusted four factors",
+            "compute_adjusted_four_factors",
+            {"season": season_year},
+            steps,
             label=f"[7/{TOTAL_STEPS}]",
         )
         self._run_step(
-            "Compute four factor index", "compute_four_factor_index",
-            {"season": season_year}, steps,
+            "Compute four factor index",
+            "compute_four_factor_index",
+            {"season": season_year},
+            steps,
             label=f"[8/{TOTAL_STEPS}]",
         )
         self._run_step(
-            "Fetch NET rankings", "fetch_net_rankings",
-            {"season": season_year}, steps,
+            "Fetch NET rankings",
+            "fetch_net_rankings",
+            {"season": season_year},
+            steps,
             label=f"[9/{TOTAL_STEPS}]",
         )
         self._run_step(
-            "Compute Strength of Record", "compute_sor",
-            {"season": season_year, "trials": sor_trials}, steps,
+            "Compute Strength of Record",
+            "compute_sor",
+            {"season": season_year, "trials": sor_trials},
+            steps,
             label=f"[10/{TOTAL_STEPS}]",
         )
         self._run_step(
-            "Compute game values", "compute_game_value",
-            {"season": season_year}, steps,
+            "Compute game values",
+            "compute_game_value",
+            {"season": season_year},
+            steps,
             label=f"[11/{TOTAL_STEPS}]",
         )
         self._run_step(
-            "Compute Strength of Schedule", "compute_sos",
-            {"season": season_year}, steps,
+            "Compute Strength of Schedule",
+            "compute_sos",
+            {"season": season_year},
+            steps,
             label=f"[12/{TOTAL_STEPS}]",
         )
         self._run_step(
-            "Compute Wins Above Bubble", "compute_wab",
-            {"season": season_year}, steps,
+            "Compute Wins Above Bubble",
+            "compute_wab",
+            {"season": season_year},
+            steps,
             label=f"[13/{TOTAL_STEPS}]",
         )
 
@@ -287,7 +331,9 @@ class Command(BaseCommand):
     def _print_summary(self, start_time, end_time, duration, steps, failed):
         self.stdout.write("\n" + "=" * 80)
         if not failed:
-            self.stdout.write(self.style.SUCCESS("UPDATE COMPLETE — ALL STEPS SUCCESSFUL"))
+            self.stdout.write(
+                self.style.SUCCESS("UPDATE COMPLETE — ALL STEPS SUCCESSFUL")
+            )
         else:
             self.stdout.write(self.style.ERROR("UPDATE COMPLETED WITH ERRORS"))
         self.stdout.write("=" * 80)
