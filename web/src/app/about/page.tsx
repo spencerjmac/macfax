@@ -1,221 +1,187 @@
 import { Metadata } from 'next';
-import { getMetadata } from '@/lib/data';
 import Link from 'next/link';
+import { BarChart3, Swords, ScatterChart, BookOpen, FlaskConical, TrendingUp, Users } from 'lucide-react';
 
 export const metadata: Metadata = {
-  title: 'About | macfax',
-  description: 'Learn about our data sources, methodology, and how we calculate advanced college basketball metrics.',
+  title: 'About | MacFax',
+  description: 'MacFax is an independent college basketball analytics platform — advanced efficiency metrics, four factors analysis, matchup tools, and original visualizations.',
 };
 
-export default async function AboutPage() {
-  const meta = await getMetadata();
-  
+export default function AboutPage() {
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <h1 className="text-4xl font-bold mb-8">About macfax</h1>
-      
-      {/* Overview */}
-      <section className="mb-12">
-        <h2 className="text-2xl font-bold mb-4">Project Overview</h2>
-        <p className="text-text-primary mb-4">
-          macfax is a comprehensive college basketball analytics platform that aggregates and analyzes 
-          data from multiple sources to provide advanced metrics, efficiency ratings, and predictive models 
-          for all 365 NCAA Division I men's basketball teams.
-        </p>
-        <p className="text-text-primary">
-          Our mission is to make advanced basketball analytics accessible and understandable, combining 
-          the best features of sites like KenPom and T-Rank with original analysis and visualizations.
+    <div className="container mx-auto px-4 py-12 max-w-4xl">
+
+      {/* Hero */}
+      <section className="mb-16">
+        <h1 className="text-5xl font-bold mb-6">
+          What is MacFax?
+        </h1>
+        <p className="text-xl text-text-muted leading-relaxed max-w-2xl">
+          MacFax is an independent college basketball analytics platform built to give fans, analysts,
+          and bracket sickos a serious edge. We combine adjusted efficiency ratings, four factors
+          breakdowns, matchup forecasting, and original visualizations — all in one place, updated daily.
         </p>
       </section>
-      
-      {/* Data Sources */}
-      <section className="mb-12">
-        <h2 className="text-2xl font-bold mb-4">Data Sources</h2>
-        <p className="text-text-muted mb-6">
-          We aggregate data from three primary sources, each providing unique insights:
-        </p>
-        
-        <div className="space-y-6">
-          <div className="p-6 bg-ui-surface border border-ui-border rounded-lg">
-            <h3 className="text-xl font-bold mb-2">KenPom.com</h3>
-            <p className="text-text-primary mb-2">
-              Provides adjusted efficiency metrics (AdjEM, AdjO, AdjD), tempo, luck ratings, and strength of schedule.
-            </p>
-            <ul className="list-disc list-inside text-text-muted text-sm space-y-1">
-              <li>Adjusted for opponent quality and pace</li>
-              <li>Updated daily throughout the season</li>
-              <li>Gold standard for efficiency metrics</li>
-            </ul>
+
+      {/* What it does */}
+      <section className="mb-16">
+        <h2 className="text-2xl font-bold mb-8">What MacFax gives you</h2>
+        <div className="grid md:grid-cols-2 gap-5">
+          <div className="p-6 bg-ui-card border border-ui-border rounded-lg flex gap-4">
+            <BarChart3 className="w-8 h-8 text-brand shrink-0 mt-0.5" strokeWidth={1.5} />
+            <div>
+              <h3 className="font-bold mb-1">Team Rankings</h3>
+              <p className="text-text-muted text-sm">
+                Adjusted efficiency ratings, four factors, and sorting across all 365 D1 teams.
+                Find who's actually good, not just who has the easy schedule.
+              </p>
+            </div>
           </div>
-          
-          <div className="p-6 bg-ui-surface border border-ui-border rounded-lg">
-            <h3 className="text-xl font-bold mb-2">Bart Torvik (T-Rank)</h3>
-            <p className="text-text-primary mb-2">
-              Comprehensive Four Factors data, shooting splits, and advanced team statistics.
-            </p>
-            <ul className="list-disc list-inside text-text-muted text-sm space-y-1">
-              <li>Detailed Four Factors breakdown (eFG%, TOV%, ORB%, FTR)</li>
-              <li>2P% and 3P% shooting splits</li>
-              <li>Wins Above Bubble (WAB) and Barthag ratings</li>
-            </ul>
+
+          <div className="p-6 bg-ui-card border border-ui-border rounded-lg flex gap-4">
+            <Swords className="w-8 h-8 text-brand shrink-0 mt-0.5" strokeWidth={1.5} />
+            <div>
+              <h3 className="font-bold mb-1">Matchup Tool</h3>
+              <p className="text-text-muted text-sm">
+                Compare any two teams head-to-head. See projected efficiency margins and
+                where each team wins or loses the four-factor battle.
+              </p>
+            </div>
           </div>
-          
-          <div className="p-6 bg-ui-surface border border-ui-border rounded-lg">
-            <h3 className="text-xl font-bold mb-2">CBB Analytics</h3>
-            <p className="text-text-primary mb-2">
-              Additional adjusted metrics and supplemental data validation.
-            </p>
-            <ul className="list-disc list-inside text-text-muted text-sm space-y-1">
-              <li>Alternative adjusted efficiency calculations</li>
-              <li>Cross-validation of Four Factors</li>
-              <li>Independent data verification</li>
-            </ul>
+
+          <div className="p-6 bg-ui-card border border-ui-border rounded-lg flex gap-4">
+            <ScatterChart className="w-8 h-8 text-brand shrink-0 mt-0.5" strokeWidth={1.5} />
+            <div>
+              <h3 className="font-bold mb-1">Visualizations</h3>
+              <p className="text-text-muted text-sm">
+                The Trapezoid of Excellence, Efficiency Landscape, Kill Shot analysis, and Crystal Ball —
+                original charts that tell a story beyond the box score.
+              </p>
+            </div>
           </div>
-        </div>
-      </section>
-      
-      {/* Methodology */}
-      <section className="mb-12">
-        <h2 className="text-2xl font-bold mb-4">Methodology</h2>
-        
-        <div className="space-y-6">
-          <div>
-            <h3 className="text-lg font-bold mb-2">Data Collection</h3>
-            <p className="text-text-primary">
-              We use automated Python scripts with browser automation (Playwright) to collect data from public 
-              sources daily. All scraping is done ethically with appropriate rate limiting and respects robots.txt 
-              policies.
-            </p>
-          </div>
-          
-          <div>
-            <h3 className="text-lg font-bold mb-2">Data Normalization</h3>
-            <p className="text-text-primary">
-              Team names are normalized across all three sources using a comprehensive mapping system. This ensures 
-              that "UConn", "Connecticut", and "CONN" all refer to the same team, enabling seamless cross-dataset analysis.
-            </p>
-          </div>
-          
-          <div>
-            <h3 className="text-lg font-bold mb-2">Metric Calculations</h3>
-            <p className="text-text-primary mb-3">
-              Our derived metrics (margins, edges) are calculated using standard formulas:
-            </p>
-            <ul className="list-disc list-inside text-text-muted space-y-2">
-              <li><strong>eFG% Margin:</strong> Team eFG% minus Opponent eFG%</li>
-              <li><strong>Turnover Edge:</strong> Forced TOV% minus Team TOV%</li>
-              <li><strong>Rebounding Edge:</strong> ORB% minus (100% - DRB%)</li>
-              <li><strong>FTR Margin:</strong> Team FTR minus Opponent FTR</li>
-            </ul>
-          </div>
-          
-          <div>
-            <h3 className="text-lg font-bold mb-2">Update Frequency</h3>
-            <p className="text-text-primary">
-              Data is scraped and processed daily during the season. The website is rebuilt with fresh data each day 
-              to ensure you're always seeing the most current statistics.
-            </p>
-            <div className="mt-3 p-4 bg-ui-surface border border-ui-border rounded">
-              <strong className="text-brand-orange">Last Updated:</strong>{' '}
-              <span className="font-mono">{new Date(meta.lastUpdated).toLocaleString()}</span>
+
+          <div className="p-6 bg-ui-card border border-ui-border rounded-lg flex gap-4">
+            <BookOpen className="w-8 h-8 text-brand shrink-0 mt-0.5" strokeWidth={1.5} />
+            <div>
+              <h3 className="font-bold mb-1">Glossary</h3>
+              <p className="text-text-muted text-sm">
+                Plain-English definitions for every metric. No jargon walls,
+                just clear explanations of what the numbers mean and why they matter.
+              </p>
             </div>
           </div>
         </div>
       </section>
-      
-      {/* Technology */}
-      <section className="mb-12">
-        <h2 className="text-2xl font-bold mb-4">Technology Stack</h2>
-        <div className="grid md:grid-cols-2 gap-4">
-          <div className="p-4 bg-ui-surface border border-ui-border rounded-lg">
-            <h3 className="font-bold mb-2">Frontend</h3>
-            <ul className="text-sm text-text-muted space-y-1">
-              <li>Next.js 14 (App Router)</li>
-              <li>TypeScript</li>
-              <li>Tailwind CSS</li>
-              <li>Apache ECharts</li>
-              <li>TanStack Table</li>
-            </ul>
-          </div>
-          <div className="p-4 bg-ui-surface border border-ui-border rounded-lg">
-            <h3 className="font-bold mb-2">Data Pipeline</h3>
-            <ul className="text-sm text-text-muted space-y-1">
-              <li>Python 3.14</li>
-              <li>Playwright</li>
-              <li>pandas + BeautifulSoup</li>
-              <li>SQLite</li>
-              <li>CSV/JSON export</li>
-            </ul>
-          </div>
-        </div>
-      </section>
-      
-      {/* Disclaimers */}
-      <section className="mb-12">
-        <h2 className="text-2xl font-bold mb-4">Disclaimers & Attribution</h2>
-        <div className="p-6 bg-ui-surface border-l-4 border-brand-orange">
-          <p className="text-text-primary mb-3">
-            <strong>Not Affiliated:</strong> This project is not affiliated with, endorsed by, or officially 
-            connected to KenPom.com, barttorvik.com, or CBB Analytics. We are an independent project created 
-            for educational and analytical purposes.
-          </p>
-          <p className="text-text-primary mb-3">
-            <strong>Data Attribution:</strong> All efficiency metrics are calculated using methodologies 
-            pioneered by Ken Pomeroy. Four Factors analysis is based on Dean Oliver's work. We gratefully 
-            acknowledge these contributions to basketball analytics.
-          </p>
-          <p className="text-text-primary">
-            <strong>Accuracy:</strong> While we strive for accuracy, this tool is provided "as is" for 
-            informational and entertainment purposes. Always verify critical information with official sources.
-          </p>
-        </div>
-      </section>
-      
-      {/* Contact */}
-      <section className="mb-12">
-        <h2 className="text-2xl font-bold mb-4">Project Stats</h2>
-        <div className="grid md:grid-cols-3 gap-4 text-center">
-          <div className="p-6 bg-ui-card border border-ui-border rounded-lg">
-            <div className="text-4xl font-bold font-mono text-brand-orange">{meta.teamCount}</div>
-            <div className="text-text-muted mt-2">Teams Tracked</div>
-          </div>
-          <div className="p-6 bg-ui-card border border-ui-border rounded-lg">
-            <div className="text-4xl font-bold font-mono text-brand-orange">
-              {meta.sources.kenpom + meta.sources.torvik + meta.sources.cbbAnalytics}
+
+      {/* What makes it different */}
+      <section className="mb-16">
+        <h2 className="text-2xl font-bold mb-6">What makes it different</h2>
+        <div className="space-y-4">
+          <div className="p-6 bg-ui-surface border border-ui-border rounded-lg">
+            <div className="flex items-start gap-3">
+              <FlaskConical className="w-5 h-5 text-brand shrink-0 mt-0.5" strokeWidth={1.5} />
+              <div>
+                <h3 className="font-semibold mb-1">Everything in one place</h3>
+                <p className="text-text-muted text-sm">
+                  Adjusted efficiency, four factors, shooting splits, WAB, Barthag, and schedule strength —
+                  unified under one roof instead of scattered across five tabs on three different sites.
+                </p>
+              </div>
             </div>
-            <div className="text-text-muted mt-2">Data Points</div>
           </div>
-          <div className="p-6 bg-ui-card border border-ui-border rounded-lg">
-            <div className="text-4xl font-bold font-mono text-brand-orange">Daily</div>
-            <div className="text-text-muted mt-2">Updates</div>
+
+          <div className="p-6 bg-ui-surface border border-ui-border rounded-lg">
+            <div className="flex items-start gap-3">
+              <TrendingUp className="w-5 h-5 text-brand shrink-0 mt-0.5" strokeWidth={1.5} />
+              <div>
+                <h3 className="font-semibold mb-1">Original analysis, not just republished numbers</h3>
+                <p className="text-text-muted text-sm">
+                  MacFax builds on established efficiency frameworks to produce its own derived metrics,
+                  composite ratings, and matchup projections. The goal isn't to mirror other platforms —
+                  it's to say something new.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-6 bg-ui-surface border border-ui-border rounded-lg">
+            <div className="flex items-start gap-3">
+              <Users className="w-5 h-5 text-brand shrink-0 mt-0.5" strokeWidth={1.5} />
+              <div>
+                <h3 className="font-semibold mb-1">Built for actual fans</h3>
+                <p className="text-text-muted text-sm">
+                  Whether you're researching a bracket, scouting a game, or just trying to understand
+                  why your team keeps losing winnable games — MacFax is designed to be useful, not academic.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
-      
-      {/* Links */}
-      <section className="text-center">
-        <h2 className="text-2xl font-bold mb-4">Explore More</h2>
-        <div className="flex flex-wrap justify-center gap-4">
-          <Link 
-            href="/rankings" 
-            className="px-6 py-3 bg-brand-orange text-white rounded-lg hover:bg-brand-orange-hover transition-colors"
-          >
-            View Rankings
-          </Link>
-          <Link 
-            href="/glossary" 
-            className="px-6 py-3 bg-ui-surface border border-ui-border rounded-lg hover:border-brand-orange transition-colors"
-          >
-            Metrics Glossary
-          </Link>
-          <Link 
-            href="/matchup" 
-            className="px-6 py-3 bg-ui-surface border border-ui-border rounded-lg hover:border-brand-orange transition-colors"
-          >
-            Matchup Tool
-          </Link>
+
+      {/* Metrics Philosophy */}
+      <section className="mb-16">
+        <h2 className="text-2xl font-bold mb-4">Metrics philosophy</h2>
+        <p className="text-text-primary mb-4 leading-relaxed">
+          MacFax is built around the idea that the four factors — shooting efficiency, turnover rate,
+          rebounding, and free throw rate — explain most of what happens in a college basketball game.
+          Adjusted efficiency tells you how good a team is relative to who they've played. Everything
+          else is context.
+        </p>
+        <p className="text-text-muted leading-relaxed">
+          As the site continues to evolve, MacFax will keep expanding its models, visuals, and tools
+          to provide a stronger picture of team quality and game outlook.
+        </p>
+      </section>
+
+      {/* Built by */}
+      <section className="mb-16">
+        <h2 className="text-2xl font-bold mb-4">Built by</h2>
+        <p className="text-text-primary leading-relaxed">
+          MacFax is an independent project — not affiliated with any university, media company,
+          or analytics service. It was built by someone who got frustrated trying to cross-reference
+          five different sites every morning and decided to just build the thing they actually wanted.
+        </p>
+      </section>
+
+      {/* Disclaimer */}
+      <section className="mb-16">
+        <div className="p-6 bg-ui-surface border-l-4 border-brand rounded-r-lg">
+          <p className="text-text-primary text-sm mb-2">
+            <strong>Independent platform.</strong> MacFax is not affiliated with or endorsed by
+            KenPom.com, barttorvik.com, or any other analytics site. Adjusted efficiency metrics
+            draw on methodologies pioneered by Ken Pomeroy and Dean Oliver — we acknowledge their
+            foundational work.
+          </p>
+          <p className="text-text-muted text-sm">
+            The platform is informed by established basketball analytics principles and exists 
+            for educational, analytical, and informational purposes.
+          </p>
         </div>
       </section>
+
+      {/* CTA Links */}
+      <section className="flex flex-wrap gap-4">
+        <Link
+          href="/rankings"
+          className="px-6 py-3 bg-brand text-white rounded-lg hover:bg-brand-hover transition-colors font-medium"
+        >
+          View Rankings
+        </Link>
+        <Link
+          href="/matchup"
+          className="px-6 py-3 bg-ui-surface border border-ui-border rounded-lg hover:border-brand transition-colors"
+        >
+          Matchup Tool
+        </Link>
+        <Link
+          href="/glossary"
+          className="px-6 py-3 bg-ui-surface border border-ui-border rounded-lg hover:border-brand transition-colors"
+        >
+          Metrics Glossary
+        </Link>
+      </section>
+
     </div>
   );
 }
