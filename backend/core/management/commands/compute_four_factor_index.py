@@ -2,14 +2,14 @@
 Management command to compute Four Factor Index (FFI) for all teams
 
 The Four Factor Index is a composite metric combining the four factors:
-- eFG margin (40.69% weight)
-- Turnover edge (40.69% weight)
-- Rebounding edge (14.32% weight)
-- FTR margin (4.28% weight)
+- eFG margin (45% weight)
+- Turnover edge (24% weight)
+- Rebounding edge (22% weight)
+- FTR margin (9% weight)
 
 Formula:
 1. Compute z-scores for each margin across all teams
-2. FFI_z = 0.4069*z_eFG + 0.4069*z_TOV + 0.1432*z_REB + 0.0428*z_FTR
+2. FFI_z = 0.45*z_eFG + 0.24*z_TOV + 0.22*z_REB + 0.09*z_FTR
 3. FFI_100 = clamp(50 + 20*FFI_z, 0, 100)
 
 Computes both raw FFI (from raw margins) and adjusted FFI (from adjusted margins).
@@ -127,10 +127,10 @@ class Command(BaseCommand):
 
             # Weighted FFI z-score
             ffi_z = (
-                0.4069 * z_efg +
-                0.4069 * z_tov +
-                0.1432 * z_reb +
-                0.0428 * z_ftr
+                0.45 * z_efg +
+                0.24 * z_tov +
+                0.22 * z_reb +
+                0.09 * z_ftr
             )
 
             # Scale to 0-100
@@ -185,10 +185,10 @@ class Command(BaseCommand):
 
                 # Weighted FFI z-score
                 ffi_z = (
-                    0.4069 * z_efg +
-                    0.4069 * z_tov +
-                    0.1432 * z_reb +
-                    0.0428 * z_ftr
+                    0.45 * z_efg +
+                    0.24 * z_tov +
+                    0.22 * z_reb +
+                    0.09 * z_ftr
                 )
 
                 # Scale to 0-100
