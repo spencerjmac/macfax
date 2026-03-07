@@ -74,3 +74,5 @@ Sheet*.csv
 
 # Compressed files
 *.zip
+backend/core/management/commands/backtest_shrinkage.py
+backend/core/management/commands/compare_k_floor.py
