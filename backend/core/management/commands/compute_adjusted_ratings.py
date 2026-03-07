@@ -149,10 +149,10 @@ class Command(BaseCommand):
 
         avg_games_played = team_games_count / num_d1_teams if num_d1_teams > 0 else 0
 
-        # Dynamic k: starts at 300, decays to floor of 170
+        # Dynamic k: starts at 300, decays to floor of 150
         # At 16 games (midseason): k ≈ 200
-        # At 21+ games: k = 170 (floor)
-        # Clamped between 170 and 300 for safety
+        # At 21+ games: k = 150 (floor)
+        # Clamped between 150 and 300 for safety
         if shrinkage_k is None:  # dynamic schedule using PipelineConfig bounds
             shrinkage_k = min(
                 cfg.adj_ratings_shrinkage_ceiling,
@@ -370,11 +370,12 @@ class Command(BaseCommand):
                         # observed performance is in the same neutral world as the expected margin.
                         obs_margin_100 = aor_g - adr_g
                         exp_margin_100 = team_aem - opp_aem
-                        closeness_factor = math.exp(
-                            -max(0.0, abs(obs_margin_100) - abs(exp_margin_100))
-                            / CLOSE_M
-                        )
+                        
+                        closer_than_expected = max(0.0, abs(exp_margin_100) - abs(obs_margin_100))
+                        closeness_factor = 1.0 - math.exp(-closer_than_expected / CLOSE_M)
+                        
                         boost = 1.0 + (BOOST_MAX - 1.0) * closeness_factor
+
                         w_imp = min(1.0, base * boost)
 
                         current_importance_weights[imp_key] = w_imp
