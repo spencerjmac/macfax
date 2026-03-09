@@ -17,11 +17,13 @@ from core.models import Conference, Season, TeamSeasonMetrics
 
 
 # D1 conferences (code, full name) for 2025-26
+# Codes here MUST match the keys returned by RankingsSerializer.get_conference (conf_map)
 CONFERENCES = [
     ("ACC", "Atlantic Coast Conference"),
+    ("AE", "America East"),
     ("Amer", "American Athletic Conference"),
     ("A10", "Atlantic 10"),
-    ("ASUN", "ASUN Conference"),
+    ("ASun", "ASUN Conference"),
     ("B10", "Big Ten"),
     ("B12", "Big 12"),
     ("BE", "Big East"),
@@ -39,15 +41,15 @@ CONFERENCES = [
     ("MWC", "Mountain West Conference"),
     ("NEC", "Northeast Conference"),
     ("OVC", "Ohio Valley Conference"),
-    ("Pac-12", "Pac-12 Conference"),
-    ("Patriot", "Patriot League"),
+    ("Pat", "Patriot League"),
+    ("SB", "Sun Belt"),
+    ("SC", "Southern Conference"),
     ("SEC", "Southeastern Conference"),
-    ("SoCon", "Southern Conference"),
+    ("Slnd", "Southland Conference"),
     ("Sum", "Summit League"),
     ("SWAC", "Southwestern Athletic Conference"),
     ("WAC", "Western Athletic Conference"),
     ("WCC", "West Coast Conference"),
-    ("Ind", "Independent"),
 ]
 
 
