@@ -18,6 +18,7 @@ Legacy synchronous endpoints (kept for backward compat):
   POST /api/jobs/start_subjob/
 """
 
+import asyncio
 import json
 import logging
 import os
@@ -25,6 +26,8 @@ import signal
 import threading
 import time
 import uuid
+
+from asgiref.sync import sync_to_async
 
 from django.http import StreamingHttpResponse
 from django.utils import timezone
@@ -178,19 +181,27 @@ class DataProcessingJobViewSet(viewsets.ModelViewSet):
             initial_line = 0
         initial_line = max(0, initial_line)
 
-        def event_stream():
+        async def event_stream():
             from django.db import close_old_connections
+
+            # Send immediately so the response starts and proxies/ASGI don't buffer
+            yield ": stream started\n\n"
 
             last_sent_line = initial_line
             last_keepalive = time.monotonic()
             keepalive_interval = 15.0
             consecutive_errors = 0
             max_errors_before_yield = 3
+            empty_poll_count = 0
+
+            @sync_to_async
+            def get_job():
+                close_old_connections()
+                return DataProcessingJob.objects.get(id=job_db_id)
 
             while True:
                 try:
-                    close_old_connections()
-                    current = DataProcessingJob.objects.get(id=job_db_id)
+                    current = await get_job()
                     consecutive_errors = 0
                 except DataProcessingJob.DoesNotExist:
                     break
@@ -200,11 +211,19 @@ class DataProcessingJobViewSet(viewsets.ModelViewSet):
                     if consecutive_errors >= max_errors_before_yield:
                         yield f"data: {json.dumps({'type': 'error', 'message': 'Stream stalled; reconnect to resume.'})}\n\n"
                         consecutive_errors = 0
-                    time.sleep(1)
+                    await asyncio.sleep(1)
                     continue
 
                 logs = current.logs or ""
                 lines = logs.splitlines()
+                if not lines and current.status == "running":
+                    empty_poll_count += 1
+                    # Send a comment every ~5s so the client sees the stream is alive
+                    if empty_poll_count == 10:
+                        yield ": waiting for job output...\n\n"
+                        empty_poll_count = 0
+                else:
+                    empty_poll_count = 0
                 if last_sent_line < len(lines):
                     for i in range(last_sent_line, len(lines)):
                         # id enables browser to send Last-Event-ID on reconnect so we resume from here
@@ -220,7 +239,7 @@ class DataProcessingJobViewSet(viewsets.ModelViewSet):
                     yield ": keepalive\n\n"
                     last_keepalive = now
 
-                time.sleep(0.5)
+                await asyncio.sleep(0.5)
 
         response = StreamingHttpResponse(
             event_stream(), content_type="text/event-stream"
