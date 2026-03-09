@@ -65,6 +65,30 @@ class Command(BaseCommand):
             help='Disable importance weighting (default: enabled)'
         )
         parser.add_argument(
+            '--imp-c',
+            type=float,
+            default=40.0,
+            help='Importance: AdjEM gap where base weight drops to 0.5 (default: 40.0)'
+        )
+        parser.add_argument(
+            '--imp-floor',
+            type=float,
+            default=0.35,
+            help='Importance: minimum importance weight (default: 0.35)'
+        )
+        parser.add_argument(
+            '--close-m',
+            type=float,
+            default=12.0,
+            help='Importance: closeness boost scale in margin/100poss (default: 12.0)'
+        )
+        parser.add_argument(
+            '--boost-max',
+            type=float,
+            default=1.40,
+            help='Importance: maximum closeness boost multiplier (default: 1.40)'
+        )
+        parser.add_argument(
             '--update-natavg',
             action='store_true',
             default=False,
@@ -81,11 +105,11 @@ class Command(BaseCommand):
         update_natavg = options['update_natavg']
 
         # --- Importance weight constants ---
-        IMP_C = 40.0          # gap (AdjEM pts) where base weight drops to 0.5
-        IMP_FLOOR = 0.35      # minimum importance weight
-        FREEZE_ITERATION = 6  # freeze weights after this iteration
-        CLOSE_M = 12.0        # closeness scale (margin per 100 poss)
-        BOOST_MAX = 1.25      # max boost for unexpectedly close mismatches
+        IMP_C            = options['imp_c']       # gap (AdjEM pts) where base weight drops to 0.5
+        IMP_FLOOR        = options['imp_floor']   # minimum importance weight
+        FREEZE_ITERATION = 6                      # freeze weights after this iteration
+        CLOSE_M          = options['close_m']     # closeness scale (margin per 100 poss)
+        BOOST_MAX        = options['boost_max']   # max boost for unexpectedly close mismatches
         
         # Get season
         try:
@@ -133,9 +157,9 @@ class Command(BaseCommand):
         
         avg_games_played = team_games_count / num_d1_teams if num_d1_teams > 0 else 0
         
-        # Dynamic k: starts at 300, decays to floor of 170
+        # Dynamic k: starts at 300, decays to floor of 150
         # At 16 games (midseason): k ≈ 200
-        # At 21+ games: k = 170 (floor)
+        # At ~24+ games: k = 150 (floor)
         # Clamped between 150 and 300 for safety
         if shrinkage_k is None:  # dynamic schedule (default)
             shrinkage_k = min(300, max(150, 300 - (avg_games_played * 6.25)))

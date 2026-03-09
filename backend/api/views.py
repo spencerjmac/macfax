@@ -568,7 +568,7 @@ class MatchupViewSet(viewsets.ViewSet):
             )
 
         # Use HCA and sigma from national averages, with fallbacks
-        hca_points = nat_avg.hca_points if nat_avg.hca_points else 1.85
+        hca_points = nat_avg.hca_points if nat_avg.hca_points else 3.20
         sigma = nat_avg.prediction_sigma if nat_avg.prediction_sigma else 11.08
 
         # ===== FORECAST =====
