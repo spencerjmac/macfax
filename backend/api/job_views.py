@@ -2,10 +2,15 @@
 Data Processing Job Management Views
 API endpoints for triggering and monitoring update_all and other data processing jobs.
 
-New streaming endpoints:
+Streaming (SSE):
   POST /api/jobs/run/          — start update_all in background, returns job_id immediately
   GET  /api/jobs/{id}/stream/  — SSE stream of live output (polls DB every 500ms)
   POST /api/jobs/{id}/cancel/  — send SIGTERM to the subprocess and mark cancelled
+
+  Under WSGI (e.g. Gunicorn), each open /stream/ connection holds one worker for the
+  entire job. With few workers, other requests can queue. Use more workers, limit
+  concurrent streams, or run under ASGI (e.g. Daphne) if you need many simultaneous
+  viewers. See Django docs on StreamingHttpResponse and WSGI.
 
 Legacy synchronous endpoints (kept for backward compat):
   POST /api/jobs/start_update_all/
@@ -13,6 +18,7 @@ Legacy synchronous endpoints (kept for backward compat):
   POST /api/jobs/start_subjob/
 """
 
+import asyncio
 import json
 import logging
 import os
@@ -20,6 +26,8 @@ import signal
 import threading
 import time
 import uuid
+
+from asgiref.sync import sync_to_async
 
 from django.http import StreamingHttpResponse
 from django.utils import timezone
@@ -37,12 +45,14 @@ class ServerSentEventRenderer(BaseRenderer):
     (which send Accept: text/event-stream) before the action runs.
     The actual response is a StreamingHttpResponse, not rendered here.
     """
+
     media_type = "text/event-stream"
     format = "event-stream"
     charset = "utf-8"
 
     def render(self, data, accepted_media_type=None, renderer_context=None):
         return data
+
 
 from core.models import DataProcessingJob, Season
 
@@ -135,7 +145,9 @@ class DataProcessingJobViewSet(viewsets.ModelViewSet):
         )
         t.start()
 
-        return Response({"job_id": job_id, "id": job.id}, status=status.HTTP_201_CREATED)
+        return Response(
+            {"job_id": job_id, "id": job.id}, status=status.HTTP_201_CREATED
+        )
 
     @action(
         detail=True,
@@ -147,40 +159,93 @@ class DataProcessingJobViewSet(viewsets.ModelViewSet):
         """
         SSE endpoint that streams job output in real-time.
         Polls the DataProcessingJob.logs field every 500ms and yields new lines.
-        Sends a final {"type": "done", "status": "..."} event when the job finishes.
+        Supports resume via Last-Event-ID (browser reconnect) or ?since=N (line index).
+        Sends id: <line_index> with each log event so reconnects only receive new lines.
+
+        Note: Under WSGI (Gunicorn), this response keeps one worker busy for the full
+        duration of the stream. Avoid opening many stream tabs; use more workers if needed.
         """
         job = self.get_object()
         job_db_id = job.id
 
-        def event_stream():
-            last_len = 0
+        # Resume from line index (browser sends Last-Event-ID; or client can pass ?since=N)
+        last_event_id = request.META.get("HTTP_LAST_EVENT_ID", "").strip()
+        since_param = request.GET.get("since", "").strip()
+        try:
+            initial_line = (
+                int(since_param)
+                if since_param
+                else (int(last_event_id) + 1 if last_event_id else 0)
+            )
+        except ValueError:
+            initial_line = 0
+        initial_line = max(0, initial_line)
+
+        async def event_stream():
+            from django.db import close_old_connections
+
+            # Send immediately so the response starts and proxies/ASGI don't buffer
+            yield ": stream started\n\n"
+
+            last_sent_line = initial_line
+            last_keepalive = time.monotonic()
+            keepalive_interval = 15.0
+            consecutive_errors = 0
+            max_errors_before_yield = 3
+            empty_poll_count = 0
+
+            @sync_to_async
+            def get_job():
+                close_old_connections()
+                return DataProcessingJob.objects.get(id=job_db_id)
+
             while True:
                 try:
-                    from django.db import close_old_connections
-                    close_old_connections()
-                    current = DataProcessingJob.objects.get(id=job_db_id)
+                    current = await get_job()
+                    consecutive_errors = 0
                 except DataProcessingJob.DoesNotExist:
                     break
-                except Exception:
-                    time.sleep(1)
+                except Exception as e:
+                    consecutive_errors += 1
+                    logger.warning("stream poll error for job %s: %s", job_db_id, e)
+                    if consecutive_errors >= max_errors_before_yield:
+                        yield f"data: {json.dumps({'type': 'error', 'message': 'Stream stalled; reconnect to resume.'})}\n\n"
+                        consecutive_errors = 0
+                    await asyncio.sleep(1)
                     continue
 
                 logs = current.logs or ""
-                if len(logs) > last_len:
-                    new_text = logs[last_len:]
-                    last_len = len(logs)
-                    for line in new_text.splitlines():
-                        yield f"data: {json.dumps({'type': 'log', 'line': line})}\n\n"
+                lines = logs.splitlines()
+                if not lines and current.status == "running":
+                    empty_poll_count += 1
+                    # Send a comment every ~5s so the client sees the stream is alive
+                    if empty_poll_count == 10:
+                        yield ": waiting for job output...\n\n"
+                        empty_poll_count = 0
+                else:
+                    empty_poll_count = 0
+                if last_sent_line < len(lines):
+                    for i in range(last_sent_line, len(lines)):
+                        # id enables browser to send Last-Event-ID on reconnect so we resume from here
+                        yield f"id: {i}\ndata: {json.dumps({'type': 'log', 'line': lines[i]})}\n\n"
+                    last_sent_line = len(lines)
 
                 if current.status in ("success", "failed", "cancelled"):
-                    yield f"data: {json.dumps({'type': 'done', 'status': current.status})}\n\n"
+                    yield f"id: end\ndata: {json.dumps({'type': 'done', 'status': current.status})}\n\n"
                     break
 
-                time.sleep(0.5)
+                now = time.monotonic()
+                if now - last_keepalive >= keepalive_interval:
+                    yield ": keepalive\n\n"
+                    last_keepalive = now
 
-        response = StreamingHttpResponse(event_stream(), content_type="text/event-stream")
-        response["Cache-Control"] = "no-cache"
-        response["X-Accel-Buffering"] = "no"  # disable nginx buffering
+                await asyncio.sleep(0.5)
+
+        response = StreamingHttpResponse(
+            event_stream(), content_type="text/event-stream"
+        )
+        response["Cache-Control"] = "no-cache, no-store"
+        response["X-Accel-Buffering"] = "no"
         return response
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminUser])
@@ -230,7 +295,9 @@ class DataProcessingJobViewSet(viewsets.ModelViewSet):
             completed_at=timezone.now(),
             error_message="Marked failed by admin (process was no longer running).",
         )
-        logger.info(f"fix_stuck: marked {count} jobs as failed by {request.user.username}")
+        logger.info(
+            f"fix_stuck: marked {count} jobs as failed by {request.user.username}"
+        )
         return Response({"fixed": count})
 
     @action(detail=False, methods=["post"], permission_classes=[IsAdminUser])
@@ -327,7 +394,9 @@ class DataProcessingJobViewSet(viewsets.ModelViewSet):
                 logger.exception(f"update_all job {job_id} failed")
 
             return Response(
-                DataProcessingJobSerializer(DataProcessingJob.objects.get(pk=job.pk)).data,
+                DataProcessingJobSerializer(
+                    DataProcessingJob.objects.get(pk=job.pk)
+                ).data,
                 status=status.HTTP_201_CREATED,
             )
 
@@ -393,7 +462,9 @@ class DataProcessingJobViewSet(viewsets.ModelViewSet):
                 logger.exception(f"ingest_gamelogs job {job_id} failed")
 
             return Response(
-                DataProcessingJobSerializer(DataProcessingJob.objects.get(pk=job.pk)).data,
+                DataProcessingJobSerializer(
+                    DataProcessingJob.objects.get(pk=job.pk)
+                ).data,
                 status=status.HTTP_201_CREATED,
             )
 
@@ -465,7 +536,9 @@ class DataProcessingJobViewSet(viewsets.ModelViewSet):
                 logger.exception(f"Subjob {job_id} failed")
 
             return Response(
-                DataProcessingJobSerializer(DataProcessingJob.objects.get(pk=job.pk)).data,
+                DataProcessingJobSerializer(
+                    DataProcessingJob.objects.get(pk=job.pk)
+                ).data,
                 status=status.HTTP_201_CREATED,
             )
 

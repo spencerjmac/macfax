@@ -15,6 +15,7 @@ from core.models import (
     TeamSeasonMetrics,
     TeamSeasonRatings,
     DataProcessingJob,
+    PipelineConfig,
 )
 from .checklist import compute_national_champion_checklist, compute_season_context
 
@@ -1025,6 +1026,7 @@ class GameLogSerializer(serializers.ModelSerializer):
     team_name = serializers.CharField(source="team.name", read_only=True)
     opponent_name = serializers.CharField(source="opponent.name", read_only=True)
     opponent_slug = serializers.CharField(source="opponent.slug", read_only=True)
+    opponent_is_d1 = serializers.BooleanField(source="opponent.is_d1", read_only=True)
     opponent_net_rank = serializers.SerializerMethodField()
     quadrant = serializers.SerializerMethodField()
     game_date = serializers.DateField(source="game.game_date", read_only=True)
@@ -1105,6 +1107,7 @@ class GameLogSerializer(serializers.ModelSerializer):
             "team_name",
             "opponent_name",
             "opponent_slug",
+            "opponent_is_d1",
             "opponent_net_rank",
             "quadrant",
             "home_away",
@@ -1413,3 +1416,48 @@ class DataProcessingJobSerializer(serializers.ModelSerializer):
 
     def get_status_display(self, obj):
         return obj.get_status_display()
+
+
+class PipelineConfigSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the singleton PipelineConfig model.
+    All fields are writable; the view restricts access to admin users.
+    """
+
+    class Meta:
+        model = PipelineConfig
+        fields = [
+            # Adjusted Ratings
+            "adj_ratings_iterations",
+            "adj_ratings_convergence",
+            "adj_ratings_shrinkage_floor",
+            "adj_ratings_shrinkage_ceiling",
+            "adj_ratings_shrinkage_decay",
+            # Adjusted Four Factors
+            "adj_ff_iterations",
+            # Four Factor Index
+            "ffi_weight_efg",
+            "ffi_weight_tov",
+            "ffi_weight_reb",
+            "ffi_weight_ftr",
+            "ffi_scale_midpoint",
+            "ffi_scale_multiplier",
+            # Strength of Record
+            "sor_trials",
+            "sor_baseline_rank_min",
+            "sor_baseline_rank_max",
+            "sor_fallback_rank_min",
+            "sor_fallback_rank_max",
+            # WAB / Game Value
+            "wab_bubble_rank",
+            # Strength of Schedule
+            "sos_baseline_adjem",
+            "sos_logistic_sigma",
+            "sos_home_advantage",
+            "sos_away_penalty",
+            # Shared Fallbacks
+            "fallback_hca",
+            "fallback_sigma",
+            "fallback_avg_ortg",
+        ]
+

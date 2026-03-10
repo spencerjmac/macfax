@@ -20,6 +20,62 @@ interface Season {
   is_current: boolean;
 }
 
+interface PipelineConfig {
+  adj_ratings_iterations: number;
+  adj_ratings_convergence: number;
+  adj_ratings_shrinkage_floor: number;
+  adj_ratings_shrinkage_ceiling: number;
+  adj_ratings_shrinkage_decay: number;
+  adj_ff_iterations: number;
+  ffi_weight_efg: number;
+  ffi_weight_tov: number;
+  ffi_weight_reb: number;
+  ffi_weight_ftr: number;
+  ffi_scale_midpoint: number;
+  ffi_scale_multiplier: number;
+  sor_trials: number;
+  sor_baseline_rank_min: number;
+  sor_baseline_rank_max: number;
+  sor_fallback_rank_min: number;
+  sor_fallback_rank_max: number;
+  wab_bubble_rank: number;
+  sos_baseline_adjem: number;
+  sos_logistic_sigma: number;
+  sos_home_advantage: number;
+  sos_away_penalty: number;
+  fallback_hca: number;
+  fallback_sigma: number;
+  fallback_avg_ortg: number;
+}
+
+const DEFAULT_CONFIG: PipelineConfig = {
+  adj_ratings_iterations: 25,
+  adj_ratings_convergence: 0.001,
+  adj_ratings_shrinkage_floor: 170,
+  adj_ratings_shrinkage_ceiling: 300,
+  adj_ratings_shrinkage_decay: 6.25,
+  adj_ff_iterations: 3,
+  ffi_weight_efg: 0.4069,
+  ffi_weight_tov: 0.4069,
+  ffi_weight_reb: 0.1432,
+  ffi_weight_ftr: 0.0428,
+  ffi_scale_midpoint: 50,
+  ffi_scale_multiplier: 20,
+  sor_trials: 10000,
+  sor_baseline_rank_min: 20,
+  sor_baseline_rank_max: 30,
+  sor_fallback_rank_min: 15,
+  sor_fallback_rank_max: 35,
+  wab_bubble_rank: 45,
+  sos_baseline_adjem: 0.0,
+  sos_logistic_sigma: 10.0,
+  sos_home_advantage: 1.5,
+  sos_away_penalty: 1.5,
+  fallback_hca: 1.85,
+  fallback_sigma: 11.08,
+  fallback_avg_ortg: 108.0,
+};
+
 interface Job {
   id: number;
   job_id: string;
@@ -94,14 +150,28 @@ export default function AdminPage() {
   const [submitting, setSubmitting] = useState(false);
   const [startError, setStartError] = useState('');
 
-  // live terminal
+  // live terminal (capped to avoid freeze with huge output)
+  const MAX_LOG_LINES = 2500;
   const [logLines, setLogLines] = useState<string[]>([]);
+  const [streamDisconnected, setStreamDisconnected] = useState(false);
   const termRef = useRef<HTMLDivElement>(null);
   const esRef = useRef<EventSource | null>(null);
+  const reconnectAttemptsRef = useRef(0);
+  const RECONNECT_MAX = 3;
+  const RECONNECT_DELAY_MS = 2000;
 
   // history
   const [jobs, setJobs] = useState<Job[]>([]);
   const [historyBusy, setHistoryBusy] = useState(false);
+
+  // pipeline config
+  const [config, setConfig] = useState<PipelineConfig>(DEFAULT_CONFIG);
+  const [configLoading, setConfigLoading] = useState(false);
+  const [configSaving, setConfigSaving] = useState(false);
+  const [configError, setConfigError] = useState('');
+  const [configSaved, setConfigSaved] = useState(false);
+  const [configOpen, setConfigOpen] = useState<Record<string, boolean>>({});
+  const [adminTab, setAdminTab] = useState<'jobs' | 'config'>('jobs');
 
   // ── Auto-scroll terminal ────────────────────────────────────────────────────
   useEffect(() => {
@@ -123,6 +193,7 @@ export default function AdminPage() {
     if (!user) return;
     loadSeasons();
     loadJobs();
+    loadConfig();
     const iv = setInterval(loadJobs, 5000);
     return () => clearInterval(iv);
   }, [user]);
@@ -185,34 +256,55 @@ export default function AdminPage() {
   };
 
   // ── SSE stream ─────────────────────────────────────────────────────────────
-  const openStream = useCallback((jobDbId: number) => {
+  // since = line index to resume from (server sends only lines from there; browser sends Last-Event-ID automatically)
+  const openStream = useCallback((jobDbId: number, isReattach = false, since?: number) => {
     if (esRef.current) {
       esRef.current.close();
       esRef.current = null;
     }
+    if (isReattach) {
+      reconnectAttemptsRef.current = 0;
+      if (since == null || since === 0) setLogLines([]);
+    }
+    setStreamDisconnected(false);
     setJobStatus('running');
-    const es = new EventSource(`${API}/api/jobs/${jobDbId}/stream/`, {
-      withCredentials: true,
-    });
+    const url =
+      since != null && since > 0
+        ? `${API}/api/jobs/${jobDbId}/stream/?since=${since}`
+        : `${API}/api/jobs/${jobDbId}/stream/`;
+    const es = new EventSource(url, { withCredentials: true });
     esRef.current = es;
 
     es.onmessage = (evt) => {
       const data = JSON.parse(evt.data);
       if (data.type === 'log') {
-        setLogLines((prev) => [...prev, data.line as string]);
+        setLogLines((prev) => {
+          const next = [...prev, data.line as string];
+          return next.length > MAX_LOG_LINES ? next.slice(-MAX_LOG_LINES) : next;
+        });
       } else if (data.type === 'done') {
         setJobStatus(data.status as string);
         setRunningJobDbId(null);
+        setStreamDisconnected(false);
+        reconnectAttemptsRef.current = 0;
         es.close();
         esRef.current = null;
         loadJobs();
+      } else if (data.type === 'error') {
+        setStreamDisconnected(true);
       }
     };
 
     es.onerror = () => {
-      setJobStatus((prev) => (prev === 'running' ? 'failed' : prev));
       es.close();
       esRef.current = null;
+      const attempts = reconnectAttemptsRef.current;
+      if (attempts < RECONNECT_MAX) {
+        reconnectAttemptsRef.current = attempts + 1;
+        setTimeout(() => openStream(jobDbId), RECONNECT_DELAY_MS);
+      } else {
+        setStreamDisconnected(true);
+      }
     };
   }, []);
 
@@ -289,6 +381,106 @@ export default function AdminPage() {
       loadJobs();
     }
   };
+
+  // ── Pipeline Config ────────────────────────────────────────────────────────
+  const loadConfig = async () => {
+    setConfigLoading(true);
+    try {
+      const r = await apiFetch('/api/pipeline-config/');
+      if (r.ok) {
+        const d: PipelineConfig = await r.json();
+        setConfig(d);
+        // Pre-populate the job runner fields from stored config
+        setIterations(d.adj_ratings_iterations);
+        setSorTrials(d.sor_trials);
+      }
+    } catch {
+      // silently ignore — form stays at defaults
+    } finally {
+      setConfigLoading(false);
+    }
+  };
+
+  const saveConfig = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setConfigSaving(true);
+    setConfigError('');
+    setConfigSaved(false);
+    try {
+      const r = await apiFetch('/api/pipeline-config/', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+        body: JSON.stringify(config),
+      });
+      if (r.ok) {
+        const d: PipelineConfig = await r.json();
+        setConfig(d);
+        setIterations(d.adj_ratings_iterations);
+        setSorTrials(d.sor_trials);
+        setConfigSaved(true);
+        setTimeout(() => setConfigSaved(false), 3000);
+      } else {
+        const d = await r.json();
+        setConfigError(JSON.stringify(d));
+      }
+    } catch (err) {
+      setConfigError(String(err));
+    } finally {
+      setConfigSaving(false);
+    }
+  };
+
+  const cfgNum = (field: keyof PipelineConfig) => ({
+    type: 'number' as const,
+    step: 'any',
+    value: config[field],
+    onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
+      setConfig((prev) => ({ ...prev, [field]: parseFloat(e.target.value) || 0 })),
+    className:
+      'w-full px-2 py-1 bg-gray-800 border border-gray-700 rounded text-sm text-white focus:outline-none focus:border-blue-500',
+  });
+
+  const cfgInt = (field: keyof PipelineConfig) => ({
+    ...cfgNum(field),
+    step: '1',
+    onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
+      setConfig((prev) => ({ ...prev, [field]: parseInt(e.target.value, 10) || 0 })),
+  });
+
+  const toggleSection = (id: string) =>
+    setConfigOpen((prev) => ({ ...prev, [id]: !prev[id] }));
+
+  const ConfigSection = ({
+    id, title, children,
+  }: {
+    id: string;
+    title: string;
+    children: React.ReactNode;
+  }) => (
+    <div className="border border-gray-800 rounded">
+      <button
+        type="button"
+        onClick={() => toggleSection(id)}
+        className="w-full flex items-center justify-between px-4 py-2.5 text-sm font-medium text-gray-300 hover:bg-gray-800 transition text-left"
+      >
+        {title}
+        <span className="text-gray-500 text-xs">{configOpen[id] ? '▲' : '▼'}</span>
+      </button>
+      {configOpen[id] && (
+        <div className="px-4 pb-4 pt-2 grid grid-cols-2 gap-x-6 gap-y-3 border-t border-gray-800">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+
+  const Field = ({ label, help, children }: { label: string; help?: string; children: React.ReactNode }) => (
+    <div>
+      <label className="block text-xs text-gray-400 mb-0.5">{label}</label>
+      {children}
+      {help && <p className="text-xs text-gray-600 mt-0.5">{help}</p>}
+    </div>
+  );
 
   const deleteJob = async (jobId: number) => {
     const r = await apiFetch(`/api/jobs/${jobId}/`, {
@@ -398,6 +590,36 @@ export default function AdminPage() {
         </div>
       </header>
 
+      {/* Tab bar */}
+      <div className="border-b border-gray-800">
+        <nav className="flex gap-0 px-6">
+          <button
+            type="button"
+            onClick={() => setAdminTab('jobs')}
+            className={`px-4 py-3 text-sm font-medium border-b-2 transition ${
+              adminTab === 'jobs'
+                ? 'border-blue-500 text-white'
+                : 'border-transparent text-gray-400 hover:text-gray-200'
+            }`}
+          >
+            Jobs
+          </button>
+          <button
+            type="button"
+            onClick={() => setAdminTab('config')}
+            className={`px-4 py-3 text-sm font-medium border-b-2 transition ${
+              adminTab === 'config'
+                ? 'border-blue-500 text-white'
+                : 'border-transparent text-gray-400 hover:text-gray-200'
+            }`}
+          >
+            Pipeline Config
+          </button>
+        </nav>
+      </div>
+
+      {adminTab === 'jobs' && (
+        <>
       <div className="flex h-[calc(60vh-49px)]">
         {/* ── Left panel: controls ─────────────────────────────────────── */}
         <aside className="w-72 flex-shrink-0 border-r border-gray-800 p-5 overflow-y-auto">
@@ -550,6 +772,21 @@ export default function AdminPage() {
             )}
           </div>
 
+          {streamDisconnected && runningJobDbId !== null && (
+            <div className="flex items-center justify-between gap-4 px-4 py-2 bg-amber-900/50 border-b border-amber-700/50">
+              <span className="text-sm text-amber-200">
+                Stream disconnected. Job may still be running.
+              </span>
+              <button
+                type="button"
+                onClick={() => openStream(runningJobDbId!, true, logLines.length)}
+                className="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded text-sm font-medium transition"
+              >
+                Reattach
+              </button>
+            </div>
+          )}
+
           {/* Terminal body */}
           <div
             ref={termRef}
@@ -562,11 +799,18 @@ export default function AdminPage() {
                   : 'Output will appear here when you run the pipeline.'}
               </p>
             ) : (
-              logLines.map((line, i) => (
-                <div key={i} className={lineClass(line)}>
-                  {line || '\u00a0'}
-                </div>
-              ))
+              <>
+                {logLines.length >= MAX_LOG_LINES && (
+                  <p className="text-gray-500 mb-1 sticky top-0 bg-gray-950/90 py-1">
+                    … showing last {MAX_LOG_LINES} lines
+                  </p>
+                )}
+                {logLines.map((line, i) => (
+                  <div key={i} className={lineClass(line)}>
+                    {line || '\u00a0'}
+                  </div>
+                ))}
+              </>
             )}
             {isRunning && (
               <div className="mt-1 text-gray-600 animate-pulse">▌</div>
@@ -574,8 +818,134 @@ export default function AdminPage() {
           </div>
         </main>
       </div>
+      </>
+      )}
 
-      {/* ── Job history ─────────────────────────────────────────────────── */}
+      {adminTab === 'config' && (
+      <section className="border-t border-gray-800 px-6 pb-6">
+        <div className="py-3 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">
+            Pipeline Configuration
+          </h2>
+          {configLoading && <span className="text-xs text-gray-500">Loading…</span>}
+        </div>
+        <form onSubmit={saveConfig} className="px-6 pb-6 space-y-3">
+          <ConfigSection id="adj-ratings" title="Adjusted Ratings">
+            <Field label="Iterations" help="Max solver iterations">
+              <input {...cfgInt('adj_ratings_iterations')} />
+            </Field>
+            <Field label="Convergence" help="Max AdjEM Δ to stop">
+              <input {...cfgNum('adj_ratings_convergence')} />
+            </Field>
+            <Field label="Shrinkage Floor" help="Min k (possessions)">
+              <input {...cfgInt('adj_ratings_shrinkage_floor')} />
+            </Field>
+            <Field label="Shrinkage Ceiling" help="Max k (possessions)">
+              <input {...cfgInt('adj_ratings_shrinkage_ceiling')} />
+            </Field>
+            <Field label="Shrinkage Decay" help="k drop per avg game">
+              <input {...cfgNum('adj_ratings_shrinkage_decay')} />
+            </Field>
+          </ConfigSection>
+
+          <ConfigSection id="adj-ff" title="Adjusted Four Factors">
+            <Field label="Iterations">
+              <input {...cfgInt('adj_ff_iterations')} />
+            </Field>
+          </ConfigSection>
+
+          <ConfigSection id="ffi" title="Four Factor Index">
+            <Field label="eFG% Weight" help="Weights should sum to 1.0">
+              <input {...cfgNum('ffi_weight_efg')} />
+            </Field>
+            <Field label="TOV Edge Weight">
+              <input {...cfgNum('ffi_weight_tov')} />
+            </Field>
+            <Field label="Rebounding Weight">
+              <input {...cfgNum('ffi_weight_reb')} />
+            </Field>
+            <Field label="FTR Weight">
+              <input {...cfgNum('ffi_weight_ftr')} />
+            </Field>
+            <Field label="Scale Midpoint" help="Output center (default 50)">
+              <input {...cfgInt('ffi_scale_midpoint')} />
+            </Field>
+            <Field label="Scale Multiplier" help="z-score multiplier (default 20)">
+              <input {...cfgInt('ffi_scale_multiplier')} />
+            </Field>
+          </ConfigSection>
+
+          <ConfigSection id="sor" title="Strength of Record">
+            <Field label="Monte Carlo Trials">
+              <input {...cfgInt('sor_trials')} />
+            </Field>
+            <Field label="Baseline Rank Min" help="Primary range start">
+              <input {...cfgInt('sor_baseline_rank_min')} />
+            </Field>
+            <Field label="Baseline Rank Max" help="Primary range end">
+              <input {...cfgInt('sor_baseline_rank_max')} />
+            </Field>
+            <Field label="Fallback Rank Min">
+              <input {...cfgInt('sor_fallback_rank_min')} />
+            </Field>
+            <Field label="Fallback Rank Max">
+              <input {...cfgInt('sor_fallback_rank_max')} />
+            </Field>
+          </ConfigSection>
+
+          <ConfigSection id="wab" title="WAB / Game Value">
+            <Field label="Bubble Team Rank" help="AdjEM rank used as WAB baseline">
+              <input {...cfgInt('wab_bubble_rank')} />
+            </Field>
+          </ConfigSection>
+
+          <ConfigSection id="sos" title="Strength of Schedule">
+            <Field label="Baseline AdjEM" help="Average D1 team anchor">
+              <input {...cfgNum('sos_baseline_adjem')} />
+            </Field>
+            <Field label="Logistic Sigma" help="Win-prob spread parameter">
+              <input {...cfgNum('sos_logistic_sigma')} />
+            </Field>
+            <Field label="Home Advantage (pts)">
+              <input {...cfgNum('sos_home_advantage')} />
+            </Field>
+            <Field label="Away Penalty (pts)">
+              <input {...cfgNum('sos_away_penalty')} />
+            </Field>
+          </ConfigSection>
+
+          <ConfigSection id="fallbacks" title="Shared Fallbacks">
+            <Field label="Fallback HCA (pts)" help="Used before compute_hca runs">
+              <input {...cfgNum('fallback_hca')} />
+            </Field>
+            <Field label="Fallback Sigma" help="Used before compute_sigma runs">
+              <input {...cfgNum('fallback_sigma')} />
+            </Field>
+            <Field label="Fallback Avg ORtg" help="Used before compute_national_averages runs">
+              <input {...cfgNum('fallback_avg_ortg')} />
+            </Field>
+          </ConfigSection>
+
+          <div className="flex items-center gap-4 pt-2">
+            <button
+              type="submit"
+              disabled={configSaving}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded font-medium disabled:opacity-50 transition"
+            >
+              {configSaving ? 'Saving…' : 'Save Configuration'}
+            </button>
+            {configSaved && (
+              <span className="text-green-400 text-sm">Saved successfully.</span>
+            )}
+            {configError && (
+              <span className="text-red-400 text-sm">{configError}</span>
+            )}
+          </div>
+        </form>
+      </section>
+      )}
+
+      {adminTab === 'jobs' && (
       <section className="border-t border-gray-800">
         <div className="px-6 py-3 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">
@@ -676,6 +1046,7 @@ export default function AdminPage() {
           </table>
         </div>
       </section>
+      )}
     </div>
   );
 }

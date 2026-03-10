@@ -35,21 +35,24 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
+        from core.models import PipelineConfig
+        cfg = PipelineConfig.get_config()
+
         season_year = options['season']
-        
+
         try:
             season = Season.objects.get(year=season_year)
         except Season.DoesNotExist:
             self.stdout.write(self.style.ERROR(f'Season {season_year} not found'))
             return
 
-        # Constants
-        BASELINE_ADJEM = 0.0  # Average D1 team
-        SIGMA = 10.0  # Spread parameter
+        # Constants from config
+        BASELINE_ADJEM = cfg.sos_baseline_adjem
+        SIGMA = cfg.sos_logistic_sigma
         SITE_ADJ = {
-            'H': 1.5,   # Home advantage
-            'N': 0.0,   # Neutral
-            'A': -1.5,  # Away disadvantage
+            'H': cfg.sos_home_advantage,
+            'N': 0.0,
+            'A': -cfg.sos_away_penalty,
         }
 
         self.stdout.write(f'\n{"="*60}')

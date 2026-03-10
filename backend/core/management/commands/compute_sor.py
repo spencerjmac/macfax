@@ -35,13 +35,16 @@ class Command(BaseCommand):
         parser.add_argument(
             '--trials',
             type=int,
-            default=10000,
-            help='Number of Monte Carlo trials (default: 10000)'
+            default=None,
+            help='Number of Monte Carlo trials (default: from PipelineConfig)'
         )
-    
+
     def handle(self, *args, **options):
+        from core.models import PipelineConfig
+        cfg = PipelineConfig.get_config()
+
         season_year = options['season']
-        num_trials = options['trials']
+        num_trials = options['trials'] or cfg.sor_trials
         
         try:
             season = Season.objects.get(year=season_year)
@@ -60,9 +63,9 @@ class Command(BaseCommand):
             self.stderr.write(f"❌ National averages not found for {season_year}")
             return
         
-        nat_avg_ortg = nat_avg.avg_ortg or 108.0
-        hca_points = nat_avg.hca_points if nat_avg.hca_points is not None else 1.85
-        sigma = nat_avg.prediction_sigma if nat_avg.prediction_sigma is not None else 11.08
+        nat_avg_ortg = nat_avg.avg_ortg or cfg.fallback_avg_ortg
+        hca_points = nat_avg.hca_points if nat_avg.hca_points is not None else cfg.fallback_hca
+        sigma = nat_avg.prediction_sigma if nat_avg.prediction_sigma is not None else cfg.fallback_sigma
 
         self.stdout.write(f"📊 National Context:")
         self.stdout.write(f"  • Avg ORtg: {nat_avg_ortg:.2f}")
@@ -79,14 +82,23 @@ class Command(BaseCommand):
             self.stderr.write(f"❌ No teams found for {season_year}")
             return
         
-        # Calculate baseline team (avg of ranks #20-30)
-        baseline_teams = [t for t in all_teams if 20 <= (t.rank_adj_em or 999) <= 30]
+        # Calculate baseline team (avg of configured rank range)
+        baseline_teams = [
+            t for t in all_teams
+            if cfg.sor_baseline_rank_min <= (t.rank_adj_em or 999) <= cfg.sor_baseline_rank_max
+        ]
         if len(baseline_teams) < 5:
-            # Fallback to #15-35 if not enough teams in #20-30
-            baseline_teams = [t for t in all_teams if 15 <= (t.rank_adj_em or 999) <= 35]
-        
+            # Fallback to wider range if primary range is underpopulated
+            baseline_teams = [
+                t for t in all_teams
+                if cfg.sor_fallback_rank_min <= (t.rank_adj_em or 999) <= cfg.sor_fallback_rank_max
+            ]
+
         if not baseline_teams:
-            self.stderr.write(f"❌ Cannot compute baseline team (ranks #20-30 not found)")
+            self.stderr.write(
+                f"❌ Cannot compute baseline team "
+                f"(ranks #{cfg.sor_baseline_rank_min}-{cfg.sor_baseline_rank_max} not found)"
+            )
             return
         
         baseline_adj_em = np.mean([t.adj_em for t in baseline_teams])

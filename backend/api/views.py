@@ -4,10 +4,9 @@ DRF Views for CBB Analytics API
 
 from django.views.decorators.cache import cache_page
 from django.utils.decorators import method_decorator
-from django.views.decorators.cache import cache_page
-from django.utils.decorators import method_decorator
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, generics
 from rest_framework.decorators import action
+from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
@@ -22,6 +21,7 @@ from core.models import (
     TeamSeasonMetrics,
     TeamSeasonRatings,
     NationalAverages,
+    PipelineConfig,
 )
 from .serializers import (
     SeasonSerializer,
@@ -37,6 +37,7 @@ from .serializers import (
     TeamSeasonMetricsSerializer,
     TeamSeasonRatingsSerializer,
     GameDetailSerializer,
+    PipelineConfigSerializer,
 )
 from .matchup_engine import (
     forecast_game,
@@ -967,3 +968,18 @@ class GameViewSet(viewsets.ReadOnlyModelViewSet):
         game = self.get_object()
         serializer = GameDetailSerializer(game)
         return Response(serializer.data)
+
+
+class PipelineConfigView(generics.RetrieveUpdateAPIView):
+    """
+    GET  /api/pipeline-config/  — return the singleton config row
+    PATCH /api/pipeline-config/ — partial-update one or more fields
+
+    Restricted to Django admin users (is_staff=True).
+    """
+
+    permission_classes = [IsAdminUser]
+    serializer_class = PipelineConfigSerializer
+
+    def get_object(self):
+        return PipelineConfig.get_config()
