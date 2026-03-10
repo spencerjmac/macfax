@@ -21,8 +21,11 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
+        from core.models import PipelineConfig
+        cfg = PipelineConfig.get_config()
+
         season_year = options['season']
-        
+
         self.stdout.write(f'\n{"="*80}')
         self.stdout.write(f'COMPUTING HOME COURT ADVANTAGE (HCA)')
         self.stdout.write(f'{"="*80}\n')
@@ -128,7 +131,7 @@ class Command(BaseCommand):
             final_hca = adjusted_hca
         else:
             self.stdout.write(self.style.WARNING('  Not enough data for strength-adjusted HCA'))
-            final_hca = simple_hca if home_margins else 3.5  # Fallback to league average
+            final_hca = simple_hca if home_margins else cfg.fallback_hca
         
         # Store in database
         nat_avg.hca_points = final_hca

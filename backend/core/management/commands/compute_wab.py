@@ -34,47 +34,53 @@ class Command(BaseCommand):
         )
     
     def handle(self, *args, **options):
+        from core.models import PipelineConfig
+        cfg = PipelineConfig.get_config()
+
         season_year = options['season']
-        
+
         # Get season
         try:
             season = Season.objects.get(year=season_year)
         except Season.DoesNotExist:
             self.stderr.write(f"❌ Season {season_year} not found")
             return
-        
+
         self.stdout.write(f"\n{'='*80}")
         self.stdout.write(f"Computing WAB for {season.display_name}")
         self.stdout.write(f"{'='*80}\n")
-        
+
         # Get national averages
         try:
             nat_avg = NationalAverages.objects.get(season=season)
             nat_avg_ortg = nat_avg.avg_ortg
-            hca_points = nat_avg.hca_points if nat_avg.hca_points else 1.85
-            sigma = nat_avg.prediction_sigma if nat_avg.prediction_sigma else 11.08
+            hca_points = nat_avg.hca_points if nat_avg.hca_points else cfg.fallback_hca
+            sigma = nat_avg.prediction_sigma if nat_avg.prediction_sigma else cfg.fallback_sigma
         except NationalAverages.DoesNotExist:
             self.stderr.write(f"❌ National averages not found for {season.display_name}")
             self.stderr.write("   Run 'compute_national_averages' first")
             return
-        
+
         # Get all teams with ratings (sorted by adj_em descending)
         # IMPORTANT: Use ALL D1 teams, never filtered by conference
         all_teams = TeamSeasonRatings.objects.filter(
             season=season
         ).select_related('team').order_by('-adj_em')
-        
+
         total_teams = all_teams.count()
-        
-        if total_teams < 45:
-            self.stderr.write(f"❌ Need at least 45 teams to define Bubble Team, found {total_teams}")
+        bubble_rank = cfg.wab_bubble_rank
+
+        if total_teams < bubble_rank:
+            self.stderr.write(
+                f"❌ Need at least {bubble_rank} teams to define Bubble Team, found {total_teams}"
+            )
             return
-        
-        # Identify Bubble Team (#45 ranked by adj_em)
-        bubble_team_rating = all_teams[44]  # 0-indexed, so 44 = 45th team
+
+        # Identify Bubble Team (configured rank, 0-indexed)
+        bubble_team_rating = all_teams[bubble_rank - 1]
         bubble_team = bubble_team_rating.team
-        
-        self.stdout.write(f"📊 Bubble Team (#45): {bubble_team.name}")
+
+        self.stdout.write(f"📊 Bubble Team (#{bubble_rank}): {bubble_team.name}")
         self.stdout.write(f"   • Adj EM: {bubble_team_rating.adj_em:.2f}")
         self.stdout.write(f"   • Adj O: {bubble_team_rating.adj_o:.2f}")
         self.stdout.write(f"   • Adj D: {bubble_team_rating.adj_d:.2f}\n")

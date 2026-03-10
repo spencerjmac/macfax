@@ -20,31 +20,34 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
+        from core.models import PipelineConfig
+        cfg = PipelineConfig.get_config()
+
         season_year = options['season']
-        
+
         self.stdout.write(f'\n{"="*80}')
         self.stdout.write(f'COMPUTING PREDICTION SIGMA (Error Standard Deviation)')
         self.stdout.write(f'{"="*80}\n')
-        
+
         # Get season
         try:
             season = Season.objects.get(year=season_year)
         except Season.DoesNotExist:
             self.stdout.write(self.style.ERROR(f'Season {season_year} not found!'))
             return
-        
+
         self.stdout.write(f'Season: {season.display_name}')
-        
+
         # Get or create national averages
         nat_avg, created = NationalAverages.objects.get_or_create(season=season)
         if nat_avg.avg_ortg is None:
             self.stdout.write(self.style.ERROR('National averages not computed yet!'))
             return
-        
+
         if nat_avg.hca_points is None:
             self.stdout.write(self.style.WARNING('HCA not computed yet. Run compute_hca first.'))
-            self.stdout.write(self.style.WARNING('Using default HCA of 3.5 points for calculations.'))
-            hca = 3.5
+            self.stdout.write(self.style.WARNING(f'Using fallback HCA of {cfg.fallback_hca} points for calculations.'))
+            hca = cfg.fallback_hca
         else:
             hca = nat_avg.hca_points
             self.stdout.write(f'Using HCA: {hca:.2f} points')
@@ -110,7 +113,7 @@ class Command(BaseCommand):
             return
         
         # Compute sigma
-        sigma = statistics.stdev(residuals) if len(residuals) > 1 else 11.0
+        sigma = statistics.stdev(residuals) if len(residuals) > 1 else cfg.fallback_sigma
         mean_error = statistics.mean(residuals)
         median_error = statistics.median(residuals)
         

@@ -3,7 +3,7 @@ from django.utils import timezone
 from .models import (
     Season, Conference, Team, TeamSeasonStats,
     TeamExternalId, Game, TeamGameStats, ScoringEvent,
-    TeamSeasonMetrics, TeamSeasonRatings, DataProcessingJob
+    TeamSeasonMetrics, TeamSeasonRatings, DataProcessingJob, PipelineConfig
 )
 
 
@@ -149,6 +149,72 @@ class DataProcessingJobAdmin(admin.ModelAdmin):
         if obj is None:
             return True
         return not obj.is_running
+
+
+@admin.register(PipelineConfig)
+class PipelineConfigAdmin(admin.ModelAdmin):
+    fieldsets = (
+        ("Adjusted Ratings", {
+            "fields": (
+                "adj_ratings_iterations",
+                "adj_ratings_convergence",
+                "adj_ratings_shrinkage_floor",
+                "adj_ratings_shrinkage_ceiling",
+                "adj_ratings_shrinkage_decay",
+            ),
+        }),
+        ("Adjusted Four Factors", {
+            "fields": ("adj_ff_iterations",),
+        }),
+        ("Four Factor Index Weights", {
+            "description": "Weights must sum to 1.0. Defaults are derived from regression training.",
+            "fields": (
+                "ffi_weight_efg",
+                "ffi_weight_tov",
+                "ffi_weight_reb",
+                "ffi_weight_ftr",
+                "ffi_scale_midpoint",
+                "ffi_scale_multiplier",
+            ),
+        }),
+        ("Strength of Record", {
+            "fields": (
+                "sor_trials",
+                "sor_baseline_rank_min",
+                "sor_baseline_rank_max",
+                "sor_fallback_rank_min",
+                "sor_fallback_rank_max",
+            ),
+        }),
+        ("WAB / Game Value", {
+            "fields": ("wab_bubble_rank",),
+        }),
+        ("Strength of Schedule", {
+            "fields": (
+                "sos_baseline_adjem",
+                "sos_logistic_sigma",
+                "sos_home_advantage",
+                "sos_away_penalty",
+            ),
+        }),
+        ("Shared Fallbacks", {
+            "description": (
+                "Used when the corresponding NationalAverages values have not been computed yet "
+                "(e.g. on the very first pipeline run). Updated automatically after each run."
+            ),
+            "fields": (
+                "fallback_hca",
+                "fallback_sigma",
+                "fallback_avg_ortg",
+            ),
+        }),
+    )
+
+    def has_add_permission(self, request):
+        return not PipelineConfig.objects.exists()
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 # Customize admin site branding

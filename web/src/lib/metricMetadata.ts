@@ -1,6 +1,7 @@
 export type Better = 'higher' | 'lower' | 'neutral';
 
-export type MetricFormat = 'number1' | 'number2' | 'percent1' | 'int';
+// 'number1pct' — formats as X.X% without multiplying by 100 (value already in pct-point form)
+export type MetricFormat = 'number1' | 'number2' | 'percent1' | 'number1pct' | 'int';
 
 export interface MetricMeta {
   key: string;
@@ -28,9 +29,9 @@ const BASE_METRICS: MetricMeta[] = [
   { key: 'raw_orb', label: 'Raw ORB%', tooltip: 'Raw offensive rebound rate.', format: 'percent1', better: 'higher', showRank: true, heatmap: true },
   { key: 'raw_drb', label: 'Raw DRB%', tooltip: 'Raw defensive rebound rate.', format: 'percent1', better: 'higher', showRank: true, heatmap: true },
   { key: 'raw_reb_edge', label: 'Raw REB Edge', tooltip: 'Raw rebound edge (ORB% - opp ORB%).', format: 'percent1', better: 'higher', showRank: true, heatmap: true },
-  { key: 'raw_ftr', label: 'Raw FTR', tooltip: 'Raw free throw rate (offense).', format: 'number2', better: 'higher', showRank: true, heatmap: true },
-  { key: 'raw_ftr_d', label: 'Raw FTR D', tooltip: 'Raw free throw rate allowed.', format: 'number2', better: 'lower', showRank: true, heatmap: true },
-  { key: 'raw_ftr_margin', label: 'Raw FTR Margin', tooltip: 'Raw FTR margin (team - opponent).', format: 'number2', better: 'higher', showRank: true, heatmap: true },
+  { key: 'raw_ftr', label: 'Raw FTR', tooltip: 'Raw free throw rate (offense).', format: 'percent1', better: 'higher', showRank: true, heatmap: true },
+  { key: 'raw_ftr_d', label: 'Raw FTR D', tooltip: 'Raw free throw rate allowed.', format: 'percent1', better: 'lower', showRank: true, heatmap: true },
+  { key: 'raw_ftr_margin', label: 'Raw FTR Margin', tooltip: 'Raw FTR margin (team - opponent).', format: 'number1pct', better: 'higher', showRank: true, heatmap: true },
   { key: 'raw_four_factor_index_100', label: 'Raw FFI', tooltip: 'Raw Four Factor Index.', format: 'number1', better: 'higher', showRank: true, heatmap: true },
 
   { key: 'eFG', label: 'Adj eFG%', tooltip: 'Adjusted effective FG% (offense).', format: 'percent1', better: 'higher', showRank: true, heatmap: true },
@@ -42,9 +43,9 @@ const BASE_METRICS: MetricMeta[] = [
   { key: 'orb', label: 'Adj ORB%', tooltip: 'Adjusted offensive rebound rate.', format: 'percent1', better: 'higher', showRank: true, heatmap: true },
   { key: 'drb', label: 'Adj DRB%', tooltip: 'Adjusted defensive rebound rate.', format: 'percent1', better: 'higher', showRank: true, heatmap: true },
   { key: 'reb_edge', label: 'Adj REB Edge', tooltip: 'Adjusted rebound edge (ORB% - opp ORB%).', format: 'percent1', better: 'higher', showRank: true, heatmap: true },
-  { key: 'ftr', label: 'Adj FTR', tooltip: 'Adjusted free throw rate (offense).', format: 'number2', better: 'higher', showRank: true, heatmap: true },
-  { key: 'ftr_d', label: 'Adj FTR D', tooltip: 'Adjusted free throw rate allowed.', format: 'number2', better: 'lower', showRank: true, heatmap: true },
-  { key: 'ftr_margin', label: 'Adj FTR Margin', tooltip: 'Adjusted FTR margin (team - opponent).', format: 'number2', better: 'higher', showRank: true, heatmap: true },
+  { key: 'ftr', label: 'Adj FTR', tooltip: 'Adjusted free throw rate (offense).', format: 'percent1', better: 'higher', showRank: true, heatmap: true },
+  { key: 'ftr_d', label: 'Adj FTR D', tooltip: 'Adjusted free throw rate allowed.', format: 'percent1', better: 'lower', showRank: true, heatmap: true },
+  { key: 'ftr_margin', label: 'Adj FTR Margin', tooltip: 'Adjusted FTR margin (team - opponent).', format: 'number1pct', better: 'higher', showRank: true, heatmap: true },
 ];
 
 export const METRIC_DEFINITIONS: Record<string, MetricMeta> = Object.fromEntries(
