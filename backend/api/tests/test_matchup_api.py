@@ -49,7 +49,6 @@ class MatchupAPITestCase(TestCase):
         self.michigan_ratings = TeamSeasonRatings.objects.create(
             team=self.michigan,
             season=self.season,
-            conference=self.b10,
             wins=20,
             losses=5,
             games_played=25,
@@ -79,7 +78,6 @@ class MatchupAPITestCase(TestCase):
         self.duke_ratings = TeamSeasonRatings.objects.create(
             team=self.duke,
             season=self.season,
-            conference=self.acc,
             wins=22,
             losses=3,
             games_played=25,
@@ -113,6 +111,18 @@ class MatchupAPITestCase(TestCase):
             games=25,
             wins=20,
             losses=5,
+            adj_em=18.5,
+            adj_o=115.0,
+            adj_d=96.5,
+            adj_tempo=70.0,
+            efg_pct=53.5,
+            tov_pct=16.0,
+            orb_pct=30.0,
+            ftr=35.0,
+            efg_pct_d=48.5,
+            tov_pct_d=19.0,
+            drb_pct=72.0,
+            ftr_d=30.0,
             fg3_rate=38.0,
             fg3_pct=36.5,
             fg2_pct=52.0
@@ -125,6 +135,18 @@ class MatchupAPITestCase(TestCase):
             games=25,
             wins=22,
             losses=3,
+            adj_em=22.0,
+            adj_o=118.0,
+            adj_d=96.0,
+            adj_tempo=72.0,
+            efg_pct=54.0,
+            tov_pct=15.5,
+            orb_pct=32.0,
+            ftr=38.0,
+            efg_pct_d=49.0,
+            tov_pct_d=20.0,
+            drb_pct=70.0,
+            ftr_d=32.0,
             fg3_rate=40.0,
             fg3_pct=38.0,
             fg2_pct=54.0
@@ -134,15 +156,15 @@ class MatchupAPITestCase(TestCase):
         self.nat_avg = NationalAverages.objects.create(
             season=self.season,
             avg_ortg=108.0,
-            avg_drtg=108.0,
-            avg_tempo=69.5,
-            avg_efg_pct=51.5,
-            avg_tov_pct=17.5,
-            avg_orb_pct=28.0,
+            avg_pace=69.5,
+            avg_efg=51.5,
+            avg_tov=17.5,
+            avg_orb=28.0,
             avg_ftr=33.0,
-            hca_estimate=1.85,
+            hca_points=1.85,
             prediction_sigma=11.08,
-            games_analyzed=5000,
+            total_possessions=100000,
+            total_games=5000,
             coef_efg=Decimal('0.995'),
             coef_tov=Decimal('0.912'),
             coef_orb=Decimal('0.464'),
@@ -164,6 +186,7 @@ class MatchupAPITestCase(TestCase):
             )
             
             game = Game.objects.create(
+                source_game_id=f"test-{team.slug}-{i}",
                 season_year=2026,
                 game_date=date(2026, 2, 25 - i),
                 home_team=team if i % 2 == 0 else opponent,
@@ -179,10 +202,8 @@ class MatchupAPITestCase(TestCase):
                 game=game,
                 team=team,
                 opponent=opponent,
-                pts=75 + i if i % 2 == 0 else 70 + i,
-                opponent_pts=70 + i if i % 2 == 0 else 75 + i,
-                possessions=70,
-                ortg_team=107.0 + i
+                home_away='H' if i % 2 == 0 else 'A',
+                pts=75 + i if i % 2 == 0 else 70 + i
             )
     
     def test_matchup_api_basic(self):
@@ -220,8 +241,8 @@ class MatchupAPITestCase(TestCase):
         
         self.assertEqual(data['site'], 'neutral')
         # Duke should be favored (higher adj_em)
-        self.assertLess(data['forecast']['predicted_margin'], 0)
-        self.assertLess(data['forecast']['win_probability_a'], 0.5)
+        self.assertLess(data['forecast']['margin'], 0)
+        self.assertLess(data['forecast']['prob_a'], 0.5)
     
     def test_matchup_api_home_site(self):
         """Test matchup with Team A at home"""
@@ -246,13 +267,13 @@ class MatchupAPITestCase(TestCase):
         
         # Michigan should have better odds at home
         self.assertGreater(
-            data['forecast']['win_probability_a'],
-            neutral_data['forecast']['win_probability_a']
+            data['forecast']['prob_a'],
+            neutral_data['forecast']['prob_a']
         )
         
         # Margin should improve by HCA
-        margin_diff = (data['forecast']['predicted_margin'] - 
-                      neutral_data['forecast']['predicted_margin'])
+        margin_diff = (data['forecast']['margin'] - 
+                      neutral_data['forecast']['margin'])
         self.assertAlmostEqual(margin_diff, 1.85, delta=0.1)
     
     def test_matchup_api_away_site(self):
@@ -278,8 +299,8 @@ class MatchupAPITestCase(TestCase):
         
         # Michigan should have worse odds playing away
         self.assertLess(
-            data['forecast']['win_probability_a'],
-            neutral_data['forecast']['win_probability_a']
+            data['forecast']['prob_a'],
+            neutral_data['forecast']['prob_a']
         )
     
     def test_matchup_api_site_toggle_symmetry(self):
@@ -302,14 +323,14 @@ class MatchupAPITestCase(TestCase):
             'site': 'away'
         }).json()
         
-        hca = self.nat_avg.hca_estimate
+        hca = self.nat_avg.hca_points
         
         # Home margin - Neutral margin ≈ HCA
-        home_boost = home['forecast']['predicted_margin'] - neutral['forecast']['predicted_margin']
+        home_boost = home['forecast']['margin'] - neutral['forecast']['margin']
         self.assertAlmostEqual(home_boost, hca, delta=0.1)
         
         # Neutral margin - Away margin ≈ HCA
-        away_penalty = neutral['forecast']['predicted_margin'] - away['forecast']['predicted_margin']
+        away_penalty = neutral['forecast']['margin'] - away['forecast']['margin']
         self.assertAlmostEqual(away_penalty, hca, delta=0.1)
     
     def test_matchup_api_four_factor_breakdown(self):
@@ -326,12 +347,12 @@ class MatchupAPITestCase(TestCase):
         # Check all four factors present
         self.assertIn('efg_edge', ff)
         self.assertIn('tov_edge', ff)
-        self.assertIn('reb_edge', ff)
+        self.assertIn('orb_edge', ff)
         self.assertIn('ftr_edge', ff)
         
         # Check individual values
-        self.assertIn('efg_a', ff)
-        self.assertIn('efg_b', ff)
+        self.assertIn('exp_efg_a', ff)
+        self.assertIn('exp_efg_b', ff)
     
     def test_matchup_api_points_breakdown(self):
         """Test points breakdown from regression"""
@@ -345,11 +366,11 @@ class MatchupAPITestCase(TestCase):
         pb = data['points_breakdown']
         
         # Check structure
-        for factor in ['efg', 'tov', 'reb', 'ftr']:
-            self.assertIn(factor, pb)
-            self.assertIn('points_a', pb[factor])
-            self.assertIn('points_b', pb[factor])
-            self.assertIn('edge', pb[factor])
+        self.assertIn('pts_from_efg', pb)
+        self.assertIn('pts_from_tov', pb)
+        self.assertIn('pts_from_orb', pb)
+        self.assertIn('pts_from_ftr', pb)
+        self.assertIn('total_margin', pb)
     
     def test_matchup_api_top_drivers(self):
         """Test top drivers identification"""
@@ -369,11 +390,11 @@ class MatchupAPITestCase(TestCase):
         for driver in drivers:
             self.assertIn('factor', driver)
             self.assertIn('edge', driver)
-            self.assertIn('impact', driver)
-            self.assertIn('description', driver)
+            self.assertIn('points', driver)
+            self.assertIn('team', driver)
         
         # Should be sorted by absolute impact
-        impacts = [abs(d['impact']) for d in drivers]
+        impacts = [abs(d['points']) for d in drivers]
         self.assertEqual(impacts, sorted(impacts, reverse=True))
     
     def test_matchup_api_shot_profile(self):
@@ -404,15 +425,15 @@ class MatchupAPITestCase(TestCase):
         vol = data['volatility']
         
         # Check structure
-        self.assertIn('score', vol)
-        self.assertIn('pace_score', vol)
-        self.assertIn('three_pt_score', vol)
-        self.assertIn('variance_score', vol)
+        self.assertIn('volatility_score', vol)
+        self.assertIn('pace_component', vol)
+        self.assertIn('three_pt_component', vol)
+        self.assertIn('variance_component', vol)
         self.assertIn('reasons', vol)
         
         # Score should be 0-100
-        self.assertGreaterEqual(vol['score'], 0)
-        self.assertLessEqual(vol['score'], 100)
+        self.assertGreaterEqual(vol['volatility_score'], 0)
+        self.assertLessEqual(vol['volatility_score'], 100)
     
     def test_matchup_api_recent_form(self):
         """Test recent form analysis is included"""
@@ -518,8 +539,8 @@ class MatchupAPITestCase(TestCase):
         data2 = response2.json()
         
         self.assertAlmostEqual(
-            data1['forecast']['predicted_margin'],
-            data2['forecast']['predicted_margin'],
+            data1['forecast']['margin'],
+            data2['forecast']['margin'],
             places=2
         )
 
@@ -545,11 +566,15 @@ class MatchupEdgeCasesTestCase(TestCase):
         self.nat_avg = NationalAverages.objects.create(
             season=self.season,
             avg_ortg=108.0,
-            avg_drtg=108.0,
-            avg_tempo=69.5,
-            hca_estimate=1.85,
+            avg_pace=69.5,
+            avg_efg=51.5,
+            avg_tov=17.5,
+            avg_orb=28.0,
+            avg_ftr=33.0,
+            hca_points=1.85,
             prediction_sigma=11.08,
-            games_analyzed=5000,
+            total_possessions=100000,
+            total_games=5000,
             coef_efg=Decimal('0.995'),
             coef_tov=Decimal('0.912'),
             coef_orb=Decimal('0.464'),
@@ -563,7 +588,6 @@ class MatchupEdgeCasesTestCase(TestCase):
         TeamSeasonRatings.objects.create(
             team=self.team_a,
             season=self.season,
-            conference=self.conf,
             wins=15,
             losses=10,
             games_played=25,
@@ -587,7 +611,6 @@ class MatchupEdgeCasesTestCase(TestCase):
         TeamSeasonRatings.objects.create(
             team=self.team_b,
             season=self.season,
-            conference=self.conf,
             wins=18,
             losses=7,
             games_played=25,
@@ -628,14 +651,13 @@ class MatchupEdgeCasesTestCase(TestCase):
         
         # Shot profile might be None or have default values
         # Volatility should use default variance score
-        self.assertEqual(data['volatility']['variance_score'], 50.0)
+        self.assertEqual(data['volatility']['variance_component'], 50.0)
     
     def test_team_with_limited_games(self):
         """Test matchup when teams have few games"""
         TeamSeasonRatings.objects.create(
             team=self.team_a,
             season=self.season,
-            conference=self.conf,
             wins=3,
             losses=0,
             games_played=3,
@@ -659,7 +681,6 @@ class MatchupEdgeCasesTestCase(TestCase):
         TeamSeasonRatings.objects.create(
             team=self.team_b,
             season=self.season,
-            conference=self.conf,
             wins=2,
             losses=1,
             games_played=3,
@@ -687,6 +708,7 @@ class MatchupEdgeCasesTestCase(TestCase):
                 name=f"Opponent A {i}"
             )
             game = Game.objects.create(
+                source_game_id=f"test-limited-{i}",
                 season_year=2026,
                 game_date=date(2026, 11, 10 + i),
                 home_team=self.team_a,
@@ -700,9 +722,8 @@ class MatchupEdgeCasesTestCase(TestCase):
                 game=game,
                 team=self.team_a,
                 opponent=opponent,
-                pts=85,
-                opponent_pts=70,
-                possessions=72
+                home_away='H',
+                pts=85
             )
         
         response = self.client.get('/api/matchup/', {
@@ -727,7 +748,6 @@ class MatchupEdgeCasesTestCase(TestCase):
         TeamSeasonRatings.objects.create(
             team=self.team_a,
             season=self.season,
-            conference=self.conf,
             wins=25,
             losses=0,
             games_played=25,
@@ -742,6 +762,7 @@ class MatchupEdgeCasesTestCase(TestCase):
             adj_ftr=42.0,
             adj_opp_efg_pct=46.0,
             adj_opp_tov_pct=22.0,
+            adj_opp_orb_pct=20.0,
             adj_drb_pct=65.0,
             adj_opp_ftr=28.0,
             ffi_adj=70.0,
@@ -752,7 +773,6 @@ class MatchupEdgeCasesTestCase(TestCase):
         TeamSeasonRatings.objects.create(
             team=self.team_b,
             season=self.season,
-            conference=self.conf,
             wins=5,
             losses=20,
             games_played=25,
@@ -767,6 +787,7 @@ class MatchupEdgeCasesTestCase(TestCase):
             adj_ftr=28.0,
             adj_opp_efg_pct=56.0,
             adj_opp_tov_pct=15.0,
+            adj_opp_orb_pct=35.0,
             adj_drb_pct=75.0,
             adj_opp_ftr=40.0,
             ffi_adj=30.0,
@@ -783,12 +804,12 @@ class MatchupEdgeCasesTestCase(TestCase):
         data = response.json()
         
         # Elite team should dominate
-        self.assertGreater(data['forecast']['predicted_margin'], 25.0)
-        self.assertGreater(data['forecast']['win_probability_a'], 0.95)
+        self.assertGreater(data['forecast']['margin'], 25.0)
+        self.assertGreater(data['forecast']['prob_a'], 0.95)
         
         # Four factors should all favor elite team
         ff = data['four_factor_edges']
         self.assertGreater(ff['efg_edge'], 8.0)
         self.assertGreater(ff['tov_edge'], 4.0)
-        self.assertGreater(ff['reb_edge'], 5.0)
+        self.assertGreater(ff['orb_edge'], 5.0)
         self.assertGreater(ff['ftr_edge'], 10.0)

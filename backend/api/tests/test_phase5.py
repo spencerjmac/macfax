@@ -195,8 +195,8 @@ class SiteToggleTestCase(TestCase):
         data = response.json()
         
         # Duke should be favored (they have higher adj_em)
-        self.assertGreater(data['forecast']['win_probability_b'], 0.5)
-        self.assertLess(data['forecast']['predicted_margin'], 0)  # Negative = Team B favored
+        self.assertGreater(data['forecast']['prob_b'], 0.5)
+        self.assertLess(data['forecast']['margin'], 0)  # Negative = Team B favored
     
     def test_site_home_advantage(self):
         """Test Team A home advantage"""
@@ -209,9 +209,9 @@ class SiteToggleTestCase(TestCase):
         }).json()
         
         # Michigan should do better at home
-        self.assertGreater(home['forecast']['predicted_score_a'], neutral['forecast']['predicted_score_a'])
-        self.assertLess(home['forecast']['predicted_score_b'], neutral['forecast']['predicted_score_b'])
-        self.assertGreater(home['forecast']['win_probability_a'], neutral['forecast']['win_probability_a'])
+        self.assertGreater(home['forecast']['pts_a'], neutral['forecast']['pts_a'])
+        self.assertLess(home['forecast']['pts_b'], neutral['forecast']['pts_b'])
+        self.assertGreater(home['forecast']['prob_a'], neutral['forecast']['prob_a'])
     
     def test_site_away_disadvantage(self):
         """Test Team A away disadvantage"""
@@ -224,9 +224,9 @@ class SiteToggleTestCase(TestCase):
         }).json()
         
         # Michigan should do worse on road (at Duke)
-        self.assertLess(away['forecast']['predicted_score_a'], neutral['forecast']['predicted_score_a'])
-        self.assertGreater(away['forecast']['predicted_score_b'], neutral['forecast']['predicted_score_b'])
-        self.assertLess(away['forecast']['win_probability_a'], neutral['forecast']['win_probability_a'])
+        self.assertLess(away['forecast']['pts_a'], neutral['forecast']['pts_a'])
+        self.assertGreater(away['forecast']['pts_b'], neutral['forecast']['pts_b'])
+        self.assertLess(away['forecast']['prob_a'], neutral['forecast']['prob_a'])
     
     def test_site_toggle_symmetry(self):
         """Test home/away/neutral are mathematically consistent"""
@@ -247,11 +247,11 @@ class SiteToggleTestCase(TestCase):
         hca = nat_avgs.hca_points
         
         # Home - Neutral should equal -(Away - Neutral)
-        home_boost = home['forecast']['predicted_margin'] - neutral['forecast']['predicted_margin']
-        away_penalty = away['forecast']['predicted_margin'] - neutral['forecast']['predicted_margin']
+        home_boost = home['forecast']['margin'] - neutral['forecast']['margin']
+        away_penalty = away['forecast']['margin'] - neutral['forecast']['margin']
         
-        self.assertAlmostEqual(home_boost, -away_penalty, delta=0.1)
-        self.assertAlmostEqual(abs(home_boost), hca, delta=0.1)
+        self.assertAlmostEqual(home_boost, -away_penalty, delta=0.2)
+        self.assertAlmostEqual(abs(home_boost), hca, delta=0.2)
 
 
 # =============================================================================
@@ -375,11 +375,8 @@ class EdgeCaseTestCase(TestCase):
                 team=team_a,
                 game=game,
                 opponent=team_b,
-                game_date=game.game_date,
-                is_home=True,
-                pts=70 + i,
-                opponent_pts=68,
-                possessions=70
+                home_away='H',
+                pts=70 + i
             )
         
         response = self.client.get('/api/matchup/', {

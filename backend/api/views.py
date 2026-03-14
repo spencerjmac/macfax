@@ -529,8 +529,8 @@ class MatchupViewSet(viewsets.ViewSet):
             )
 
         # Get teams
-        team_a = get_object_or_404(Team, slug=team_a_slug)
-        team_b = get_object_or_404(Team, slug=team_b_slug)
+        team_a = get_object_or_404(Team, slug=team_a_slug.lower())
+        team_b = get_object_or_404(Team, slug=team_b_slug.lower())
 
         # Get team ratings (using TeamSeasonRatings which has our computed data)
         try:
