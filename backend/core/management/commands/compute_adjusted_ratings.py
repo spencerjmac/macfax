@@ -69,7 +69,6 @@ class Command(BaseCommand):
             help="Disable importance weighting (default: enabled)",
         )
         parser.add_argument(
-<<<<<<< HEAD
             '--imp-c',
             type=float,
             default=40.0,
@@ -94,12 +93,8 @@ class Command(BaseCommand):
             help='Importance: maximum closeness boost multiplier (default: 1.40)'
         )
         parser.add_argument(
-            '--update-natavg',
-            action='store_true',
-=======
             "--update-natavg",
             action="store_true",
->>>>>>> f30abb3a38b0de62245663674e7c4d3e39719121
             default=False,
             help="Overwrite NationalAverages.avg_ortg with mean of computed AdjO (default: off)",
         )
@@ -120,21 +115,12 @@ class Command(BaseCommand):
         update_natavg = options["update_natavg"]
 
         # --- Importance weight constants ---
-<<<<<<< HEAD
-        IMP_C            = options['imp_c']       # gap (AdjEM pts) where base weight drops to 0.5
-        IMP_FLOOR        = options['imp_floor']   # minimum importance weight
-        FREEZE_ITERATION = 6                      # freeze weights after this iteration
-        CLOSE_M          = options['close_m']     # closeness scale (margin per 100 poss)
-        BOOST_MAX        = options['boost_max']   # max boost for unexpectedly close mismatches
-        
-=======
-        IMP_C = 40.0  # gap (AdjEM pts) where base weight drops to 0.5
-        IMP_FLOOR = 0.35  # minimum importance weight
+        IMP_C = 40.0          # gap (AdjEM pts) where base weight drops to 0.5
+        IMP_FLOOR = 0.35      # minimum importance weight
         FREEZE_ITERATION = 6  # freeze weights after this iteration
-        CLOSE_M = 12.0  # closeness scale (margin per 100 poss)
-        BOOST_MAX = 1.25  # max boost for unexpectedly close mismatches
-
->>>>>>> f30abb3a38b0de62245663674e7c4d3e39719121
+        CLOSE_M = 12.0        # closeness scale (margin per 100 poss)
+        BOOST_MAX = 1.40      # max boost for unexpectedly close mismatches
+        
         # Get season
         try:
             season = Season.objects.get(year=season_year)
@@ -186,17 +172,10 @@ class Command(BaseCommand):
         ).count()
 
         avg_games_played = team_games_count / num_d1_teams if num_d1_teams > 0 else 0
-<<<<<<< HEAD
         
-        # Dynamic k: starts at 300, decays to floor of 150
+        # Dynamic k: starts at 300, decays to floor of 170
         # At 16 games (midseason): k ≈ 200
-        # At ~24+ games: k = 150 (floor)
-=======
-
-        # Dynamic k: starts at 300, decays to floor of 150
-        # At 16 games (midseason): k ≈ 200
-        # At 21+ games: k = 150 (floor)
->>>>>>> f30abb3a38b0de62245663674e7c4d3e39719121
+        # At 21+ games: k = 170 (floor)
         # Clamped between 150 and 300 for safety
         if shrinkage_k is None:  # dynamic schedule using PipelineConfig bounds
             shrinkage_k = min(
