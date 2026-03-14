@@ -170,50 +170,56 @@ class ComputeWinProbabilityWithConfidenceTestCase(TestCase):
     """Tests for compute_win_probability_with_confidence function"""
     
     def test_confidence_interval_contains_margin(self):
-        """Test 95% CI contains expected margin"""
+        """Test CI contains expected margin"""
         result = compute_win_probability_with_confidence(10.0, 11.0)
-        self.assertTrue(result['ci_low'] < 10.0 < result['ci_high'])
+        self.assertTrue(result['margin_low'] < 10.0 < result['margin_high'])
     
     def test_confidence_interval_width(self):
-        """Test 95% CI is approximately 4 sigma wide"""
+        """Test CI is approximately 2 sigma wide (±1σ)"""
         result = compute_win_probability_with_confidence(5.0, 11.0)
-        width = result['ci_high'] - result['ci_low']
-        # 95% CI ≈ ±1.96σ = 3.92σ total width
-        expected_width = 3.92 * 11.0
+        width = result['margin_high'] - result['margin_low']
+        # CI = ±1σ = 2σ total width
+        expected_width = 2 * 11.0
         self.assertAlmostEqual(width, expected_width, places=0)
     
     def test_confidence_interval_symmetric_for_even_game(self):
         """Test CI is symmetric around 0 for even game"""
         result = compute_win_probability_with_confidence(0.0, 11.0)
-        self.assertAlmostEqual(result['ci_low'], -result['ci_high'], places=2)
+        self.assertAlmostEqual(result['margin_low'], -result['margin_high'], places=2)
 
 
 class ComputeFourFactorsTestCase(TestCase):
     """Tests for compute_matchup_four_factors function"""
     
     def test_four_factors_normal(self):
-        """Test four factors with normal values"""
+        """Test four factors with normal values (using identity defensive stats)"""
         result = compute_matchup_four_factors(
             efg_a=53.0, tov_a=16.5, orb_a=28.0, ftr_a=32.0,
-            efg_b=51.0, tov_b=18.0, orb_b=30.0, ftr_b=35.0
+            efg_d_a=51.0, tov_d_a=17.0, orb_d_a=30.0, ftr_d_a=35.0,
+            efg_b=51.0, tov_b=18.0, orb_b=30.0, ftr_b=35.0,
+            efg_d_b=51.0, tov_d_b=17.0, orb_d_b=30.0, ftr_d_b=35.0,
+            nat_efg=51.0, nat_tov=17.0, nat_orb=30.0, nat_ftr=35.0
         )
         
         self.assertAlmostEqual(result['efg_edge'], 2.0, places=1)
-        self.assertAlmostEqual(result['tov_edge'], -1.5, places=1)  # Lower is better
-        self.assertAlmostEqual(result['reb_edge'], -2.0, places=1)
+        self.assertAlmostEqual(result['tov_edge'], 1.5, places=1)  # B has higher TOV%
+        self.assertAlmostEqual(result['orb_edge'], -2.0, places=1)
         self.assertAlmostEqual(result['ftr_edge'], -3.0, places=1)
     
     def test_four_factors_edges_are_differences(self):
-        """Test edges are simple differences"""
+        """Test edges are differences oriented positive = Team A advantage"""
         result = compute_matchup_four_factors(
             efg_a=55.0, tov_a=15.0, orb_a=32.0, ftr_a=40.0,
-            efg_b=50.0, tov_b=20.0, orb_b=25.0, ftr_b=30.0
+            efg_d_a=51.0, tov_d_a=17.0, orb_d_a=30.0, ftr_d_a=35.0,
+            efg_b=50.0, tov_b=20.0, orb_b=25.0, ftr_b=30.0,
+            efg_d_b=51.0, tov_d_b=17.0, orb_d_b=30.0, ftr_d_b=35.0,
+            nat_efg=51.0, nat_tov=17.0, nat_orb=30.0, nat_ftr=35.0
         )
         
         # Positive edge = Team A advantage
         self.assertGreater(result['efg_edge'], 0)
         self.assertGreater(result['tov_edge'], 0)  # Lower TOV% is better
-        self.assertGreater(result['reb_edge'], 0)
+        self.assertGreater(result['orb_edge'], 0)
         self.assertGreater(result['ftr_edge'], 0)
 
 
@@ -336,28 +342,28 @@ class ComputeVolatilityTestCase(TestCase):
     """Tests for compute_volatility_score function"""
     
     def test_volatility_low(self):
-        """Test low volatility game (slow, few 3s, consistent)"""
+        """Test low volatility game (fast pace, few 3s, consistent)"""
         result = compute_volatility_score(
-            tempo_a=65.0, tempo_b=66.0,
+            tempo_a=74.0, tempo_b=75.0,  # Fast pace = low pace volatility
             fg3_rate_a=30.0, fg3_rate_b=32.0,
             recent_variance_a=6.0, recent_variance_b=7.0
         )
         
-        self.assertLess(result['score'], 40.0)  # Should be low
+        self.assertLess(result['volatility_score'], 40.0)  # Should be low
         self.assertIn('reasons', result)
     
     def test_volatility_high(self):
-        """Test high volatility game (fast, lots of 3s, inconsistent)"""
+        """Test high volatility game (slow pace, lots of 3s, inconsistent)"""
         result = compute_volatility_score(
-            tempo_a=74.0, tempo_b=75.0,
+            tempo_a=64.0, tempo_b=65.0,  # Slow pace = high pace volatility
             fg3_rate_a=48.0, fg3_rate_b=50.0,
             recent_variance_a=16.0, recent_variance_b=18.0
         )
         
-        self.assertGreater(result['score'], 65.0)  # Should be high
-        self.assertGreater(result['pace_score'], 70.0)
-        self.assertGreater(result['three_pt_score'], 70.0)
-        self.assertGreater(result['variance_score'], 60.0)
+        self.assertGreater(result['volatility_score'], 65.0)  # Should be high
+        self.assertGreater(result['pace_component'], 70.0)
+        self.assertGreater(result['three_pt_component'], 70.0)
+        self.assertGreater(result['variance_component'], 60.0)
     
     def test_volatility_components_weighted(self):
         """Test volatility components are weighted (30/40/30)"""
@@ -368,11 +374,11 @@ class ComputeVolatilityTestCase(TestCase):
         )
         
         # Score should be weighted average
-        weighted = (0.30 * result['pace_score'] + 
-                   0.40 * result['three_pt_score'] + 
-                   0.30 * result['variance_score'])
+        weighted = (0.30 * result['pace_component'] + 
+                   0.40 * result['three_pt_component'] + 
+                   0.30 * result['variance_component'])
         
-        self.assertAlmostEqual(result['score'], weighted, places=1)
+        self.assertAlmostEqual(result['volatility_score'], weighted, places=1)
     
     def test_volatility_no_variance_data(self):
         """Test volatility when recent variance not provided"""
@@ -383,7 +389,7 @@ class ComputeVolatilityTestCase(TestCase):
         )
         
         # Should use default variance score of 50
-        self.assertEqual(result['variance_score'], 50.0)
+        self.assertEqual(result['variance_component'], 50.0)
     
     def test_volatility_reasons_generated(self):
         """Test volatility generates contextual reasons"""
@@ -417,8 +423,8 @@ class ForecastGameIntegrationTestCase(TestCase):
     def test_forecast_game_complete(self):
         """Test complete game forecast"""
         result = forecast_game(
-            adj_o_a=115.0, adj_d_a=95.0, adj_tempo_a=70.0,
-            adj_o_b=110.0, adj_d_b=98.0, adj_tempo_b=72.0,
+            adj_o_a=115.0, adj_d_a=95.0, adj_em_a=20.0, tempo_a=70.0,
+            adj_o_b=110.0, adj_d_b=98.0, adj_em_b=12.0, tempo_b=72.0,
             site='neutral',
             nat_avg_ortg=108.0,
             hca_points=1.85,
@@ -426,30 +432,30 @@ class ForecastGameIntegrationTestCase(TestCase):
         )
         
         # Should return all required fields
-        self.assertIn('predicted_score_a', result)
-        self.assertIn('predicted_score_b', result)
-        self.assertIn('predicted_margin', result)
-        self.assertIn('win_probability_a', result)
-        self.assertIn('win_probability_b', result)
-        self.assertIn('confidence_interval_low', result)
-        self.assertIn('confidence_interval_high', result)
-        self.assertIn('game_pace', result)
+        self.assertIn('pts_a', result)
+        self.assertIn('pts_b', result)
+        self.assertIn('margin', result)
+        self.assertIn('prob_a', result)
+        self.assertIn('prob_b', result)
+        self.assertIn('prob_a_low', result)
+        self.assertIn('prob_a_high', result)
+        self.assertIn('pace', result)
         
         # Scores should be reasonable (60-90 range)
-        self.assertTrue(60 < result['predicted_score_a'] < 90)
-        self.assertTrue(60 < result['predicted_score_b'] < 90)
+        self.assertTrue(60 < result['pts_a'] < 90)
+        self.assertTrue(60 < result['pts_b'] < 90)
         
         # Probabilities sum to 1
         self.assertAlmostEqual(
-            result['win_probability_a'] + result['win_probability_b'],
+            result['prob_a'] + result['prob_b'],
             1.0, places=5
         )
     
     def test_forecast_game_home_site(self):
         """Test forecast with home site advantage"""
         neutral = forecast_game(
-            adj_o_a=115.0, adj_d_a=95.0, adj_tempo_a=70.0,
-            adj_o_b=110.0, adj_d_b=98.0, adj_tempo_b=72.0,
+            adj_o_a=115.0, adj_d_a=95.0, adj_em_a=20.0, tempo_a=70.0,
+            adj_o_b=110.0, adj_d_b=98.0, adj_em_b=12.0, tempo_b=72.0,
             site='neutral',
             nat_avg_ortg=108.0,
             hca_points=3.0,
@@ -457,8 +463,8 @@ class ForecastGameIntegrationTestCase(TestCase):
         )
         
         home = forecast_game(
-            adj_o_a=115.0, adj_d_a=95.0, adj_tempo_a=70.0,
-            adj_o_b=110.0, adj_d_b=98.0, adj_tempo_b=72.0,
+            adj_o_a=115.0, adj_d_a=95.0, adj_em_a=20.0, tempo_a=70.0,
+            adj_o_b=110.0, adj_d_b=98.0, adj_em_b=12.0, tempo_b=72.0,
             site='home',
             nat_avg_ortg=108.0,
             hca_points=3.0,
@@ -466,18 +472,18 @@ class ForecastGameIntegrationTestCase(TestCase):
         )
         
         # Home team should score more
-        self.assertGreater(home['predicted_score_a'], neutral['predicted_score_a'])
-        self.assertLess(home['predicted_score_b'], neutral['predicted_score_b'])
+        self.assertGreater(home['pts_a'], neutral['pts_a'])
+        self.assertLess(home['pts_b'], neutral['pts_b'])
         
         # Margin should increase by HCA
-        margin_diff = home['predicted_margin'] - neutral['predicted_margin']
+        margin_diff = home['margin'] - neutral['margin']
         self.assertAlmostEqual(margin_diff, 3.0, places=1)
     
     def test_forecast_game_away_site(self):
         """Test forecast with away site (Team B home)"""
         neutral = forecast_game(
-            adj_o_a=115.0, adj_d_a=95.0, adj_tempo_a=70.0,
-            adj_o_b=110.0, adj_d_b=98.0, adj_tempo_b=72.0,
+            adj_o_a=115.0, adj_d_a=95.0, adj_em_a=20.0, tempo_a=70.0,
+            adj_o_b=110.0, adj_d_b=98.0, adj_em_b=12.0, tempo_b=72.0,
             site='neutral',
             nat_avg_ortg=108.0,
             hca_points=3.0,
@@ -485,8 +491,8 @@ class ForecastGameIntegrationTestCase(TestCase):
         )
         
         away = forecast_game(
-            adj_o_a=115.0, adj_d_a=95.0, adj_tempo_a=70.0,
-            adj_o_b=110.0, adj_d_b=98.0, adj_tempo_b=72.0,
+            adj_o_a=115.0, adj_d_a=95.0, adj_em_a=20.0, tempo_a=70.0,
+            adj_o_b=110.0, adj_d_b=98.0, adj_em_b=12.0, tempo_b=72.0,
             site='away',
             nat_avg_ortg=108.0,
             hca_points=3.0,
@@ -494,37 +500,37 @@ class ForecastGameIntegrationTestCase(TestCase):
         )
         
         # Away team (A) should score less, home team (B) more
-        self.assertLess(away['predicted_score_a'], neutral['predicted_score_a'])
-        self.assertGreater(away['predicted_score_b'], neutral['predicted_score_b'])
+        self.assertLess(away['pts_a'], neutral['pts_a'])
+        self.assertGreater(away['pts_b'], neutral['pts_b'])
     
     def test_forecast_game_site_symmetry(self):
         """Test that home/away/neutral sites are mathematically consistent"""
         neutral_margin = forecast_game(
-            adj_o_a=115.0, adj_d_a=95.0, adj_tempo_a=70.0,
-            adj_o_b=110.0, adj_d_b=98.0, adj_tempo_b=72.0,
+            adj_o_a=115.0, adj_d_a=95.0, adj_em_a=20.0, tempo_a=70.0,
+            adj_o_b=110.0, adj_d_b=98.0, adj_em_b=12.0, tempo_b=72.0,
             site='neutral',
             nat_avg_ortg=108.0,
             hca_points=4.0,
             sigma=11.08
-        )['predicted_margin']
+        )['margin']
         
         home_margin = forecast_game(
-            adj_o_a=115.0, adj_d_a=95.0, adj_tempo_a=70.0,
-            adj_o_b=110.0, adj_d_b=98.0, adj_tempo_b=72.0,
+            adj_o_a=115.0, adj_d_a=95.0, adj_em_a=20.0, tempo_a=70.0,
+            adj_o_b=110.0, adj_d_b=98.0, adj_em_b=12.0, tempo_b=72.0,
             site='home',
             nat_avg_ortg=108.0,
             hca_points=4.0,
             sigma=11.08
-        )['predicted_margin']
+        )['margin']
         
         away_margin = forecast_game(
-            adj_o_a=115.0, adj_d_a=95.0, adj_tempo_a=70.0,
-            adj_o_b=110.0, adj_d_b=98.0, adj_tempo_b=72.0,
+            adj_o_a=115.0, adj_d_a=95.0, adj_em_a=20.0, tempo_a=70.0,
+            adj_o_b=110.0, adj_d_b=98.0, adj_em_b=12.0, tempo_b=72.0,
             site='away',
             nat_avg_ortg=108.0,
             hca_points=4.0,
             sigma=11.08
-        )['predicted_margin']
+        )['margin']
         
         # Verify symmetry: home - neutral = neutral - away = HCA
         self.assertAlmostEqual(home_margin - neutral_margin, 4.0, places=1)
@@ -537,8 +543,8 @@ class EdgeCaseTestCase(TestCase):
     def test_extreme_efficiency_values(self):
         """Test with extreme but valid efficiency values"""
         result = forecast_game(
-            adj_o_a=130.0, adj_d_a=85.0, adj_tempo_a=75.0,  # Elite team
-            adj_o_b=95.0, adj_d_b=115.0, adj_tempo_b=65.0,   # Weak team
+            adj_o_a=130.0, adj_d_a=85.0, adj_em_a=45.0, tempo_a=75.0,  # Elite team
+            adj_o_b=95.0, adj_d_b=115.0, adj_em_b=-20.0, tempo_b=65.0,   # Weak team
             site='neutral',
             nat_avg_ortg=108.0,
             hca_points=1.85,
@@ -546,14 +552,14 @@ class EdgeCaseTestCase(TestCase):
         )
         
         # Elite team should dominate
-        self.assertGreater(result['predicted_margin'], 20.0)
-        self.assertGreater(result['win_probability_a'], 0.9)
+        self.assertGreater(result['margin'], 20.0)
+        self.assertGreater(result['prob_a'], 0.9)
     
     def test_very_slow_pace(self):
         """Test with very slow pace"""
         result = forecast_game(
-            adj_o_a=110.0, adj_d_a=98.0, adj_tempo_a=60.0,
-            adj_o_b=108.0, adj_d_b=100.0, adj_tempo_b=62.0,
+            adj_o_a=110.0, adj_d_a=98.0, adj_em_a=12.0, tempo_a=60.0,
+            adj_o_b=108.0, adj_d_b=100.0, adj_em_b=8.0, tempo_b=62.0,
             site='neutral',
             nat_avg_ortg=108.0,
             hca_points=1.85,
@@ -561,15 +567,15 @@ class EdgeCaseTestCase(TestCase):
         )
         
         # Pace should be slow
-        self.assertLess(result['game_pace'], 65.0)
+        self.assertLess(result['pace'], 65.0)
         # Scores should be lower due to fewer possessions
-        self.assertLess(result['predicted_score_a'], 70.0)
+        self.assertLess(result['pts_a'], 70.0)
     
     def test_very_fast_pace(self):
         """Test with very fast pace"""
         result = forecast_game(
-            adj_o_a=115.0, adj_d_a=95.0, adj_tempo_a=78.0,
-            adj_o_b=113.0, adj_d_b=97.0, adj_tempo_b=76.0,
+            adj_o_a=115.0, adj_d_a=95.0, adj_em_a=20.0, tempo_a=78.0,
+            adj_o_b=113.0, adj_d_b=97.0, adj_em_b=16.0, tempo_b=76.0,
             site='neutral',
             nat_avg_ortg=108.0,
             hca_points=1.85,
@@ -577,6 +583,6 @@ class EdgeCaseTestCase(TestCase):
         )
         
         # Pace should be fast
-        self.assertGreater(result['game_pace'], 75.0)
+        self.assertGreater(result['pace'], 75.0)
         # Scores should be higher due to more possessions
-        self.assertGreater(result['predicted_score_a'], 75.0)
+        self.assertGreater(result['pts_a'], 75.0)
