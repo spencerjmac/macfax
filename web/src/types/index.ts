@@ -92,6 +92,10 @@ export interface TeamSeason {
   sos_adjEM: number | null;
   ncsos_adjEM: number | null;
   barthag: number | null;
+
+  // NCAA Tournament
+  tournament_seed: number | null;
+  tournament_region: string | null;
   
   // Source metadata
   sources: {
@@ -210,6 +214,95 @@ export interface EfficiencyLandscapeData {
     hit_miss_delta: number;
   };
   teams: EfficiencyLandscapeTeam[];
+}
+
+// ==================== Crystal Ball ====================
+
+export interface ChecklistItem {
+  key: string;
+  label: string;
+  pass: boolean;
+  value: string;
+  threshold: string;
+  details: string;
+}
+
+export interface CrystalBallTeam {
+  team_name: string;
+  team_slug: string;
+  team_logo: string | null;
+  conference: string;
+  record: string;
+  rank: number | null;
+  adj_em: number;
+  adj_o: number;
+  adj_d: number;
+  tournament_seed: number | null;
+  tournament_region: string | null;
+  checklist: {
+    passedCount: number;
+    totalCount: number;
+    score: number;
+    items: ChecklistItem[];
+  };
+}
+
+export interface CrystalBallData {
+  season: number;
+  season_display: string;
+  filter: string;
+  total_teams: number;
+  teams: CrystalBallTeam[];
+}
+
+// ==================== Cinderella Index ====================
+
+export interface CinderellaComponents {
+  adj_em_pct: number;
+  adj_d_pct: number;
+  opp_efg_pct: number;
+  opp_tov_pct: number;
+  tov_avoid_pct: number;
+  orb_pct: number;
+  fg3_rate_pct: number;
+  fg3_pct_pct: number;
+  slow_tempo_pct: number;
+  wab_pct: number;
+  sos_pct: number;
+}
+
+export interface CinderellaScore {
+  profile_score: number;
+  underseeded_strength: number;
+  defense_score: number;
+  possession_score: number;
+  variance_score: number;
+  resume_score: number;
+  seed_residual: number | null;
+  components: CinderellaComponents;
+}
+
+export interface CinderellaTeam {
+  team_name: string;
+  team_slug: string;
+  team_logo: string | null;
+  conference: string;
+  record: string;
+  rank: number | null;
+  adj_em: number;
+  adj_d: number;
+  adj_tempo: number;
+  tournament_seed: number | null;
+  tournament_region: string | null;
+  cinderella: CinderellaScore;
+}
+
+export interface CinderellaData {
+  season: number;
+  season_display: string;
+  has_tournament: boolean;
+  total_teams: number;
+  teams: CinderellaTeam[];
 }
 
 // ==================== Matchup Prediction ====================

@@ -1,5 +1,5 @@
 import type { TeamsData, TeamSeason, DatasetMetadata } from '@/types';
-import { buildTeamRanks, buildChampionChecklist } from './rankings';
+import { buildTeamRanks, buildChampionChecklist, buildCinderellaIndex } from './rankings';
 
 const DEFAULT_SEASON = 2026;
 const API_RANKINGS_PATH = '/api/rankings/';
@@ -13,6 +13,7 @@ function mapApiRowToTeamSeason(team: Record<string, unknown>): TeamSeason {
     v != null && typeof v === 'number' ? v / 100 : null;
   const num = (v: unknown): number | null =>
     v != null && typeof v === 'number' ? v : null;
+  const seasonDisplay = '2025-26';
 
   return {
     teamId: (team.team_slug as string) || '',
@@ -20,7 +21,7 @@ function mapApiRowToTeamSeason(team: Record<string, unknown>): TeamSeason {
     teamNameAlt: [(team.team_name as string) || ''],
     conference: (team.conference as string) || 'Ind',
     logoUrl: (team.team_logo as string) || '/logos/default.png',
-    season: '2025-26',
+    season: seasonDisplay,
     lastUpdated: new Date().toISOString().slice(0, 10),
     games,
     record,
@@ -70,6 +71,8 @@ function mapApiRowToTeamSeason(team: Record<string, unknown>): TeamSeason {
     sos_rank: num(team.sos_rank),
     sos_win_pct: num(team.sos_win_pct),
     ap_poll_week6: (team.ap_poll_week6 as number) ?? null,
+    tournament_seed: (team.tournament_seed as number) ?? null,
+    tournament_region: (team.tournament_region as string) ?? null,
     sor: null,
     luck: null,
     sos_adjEM: null,
@@ -80,11 +83,11 @@ function mapApiRowToTeamSeason(team: Record<string, unknown>): TeamSeason {
 }
 
 /** Fetch rankings from backend API */
-async function fetchRankingsFromApi(season: number): Promise<TeamsData> {
+async function fetchRankingsFromApi(): Promise<TeamsData> {
   // Server-side: prefer the internal Docker URL (never exposed to browsers).
   // Client-side: falls back to the public URL baked in at build time.
   const base = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
-  const url = `${base}${API_RANKINGS_PATH}?season=${season}`;
+  const url = `${base}${API_RANKINGS_PATH}`;
   
   // Log for debugging
   console.log('[fetchRankingsFromApi] Fetching from:', url);
@@ -109,14 +112,14 @@ async function fetchRankingsFromApi(season: number): Promise<TeamsData> {
   }
   const json = (await res.json()) as { results?: Record<string, unknown>[]; count?: number };
   const results = json.results ?? [];
-  const teams = results.map(mapApiRowToTeamSeason);
+  const teams = results.map(r => mapApiRowToTeamSeason(r));
   
   console.log('[fetchRankingsFromApi] Success! Teams count:', teams.length);
   
   return {
     metadata: {
       lastUpdated: new Date().toISOString(),
-      season: `${season - 1}-${String(season).slice(-2)}`,
+      season: '2025-26',
       teamCount: teams.length,
       sources: { kenpom: 0, torvik: 0, cbbAnalytics: 0 },
     },
@@ -136,13 +139,13 @@ const isBuildPhase = () => process.env.NEXT_PHASE === 'phase-production-build';
 
 export async function getAllTeams(): Promise<TeamSeason[]> {
   if (isBuildPhase()) return [];
-  const apiData = await fetchRankingsFromApi(DEFAULT_SEASON);
+  const apiData = await fetchRankingsFromApi();
   return apiData.teams;
 }
 
 export async function getMetadata(): Promise<DatasetMetadata> {
   if (isBuildPhase()) return emptyMetadata;
-  const apiData = await fetchRankingsFromApi(DEFAULT_SEASON);
+  const apiData = await fetchRankingsFromApi();
   return apiData.metadata;
 }
 
@@ -151,17 +154,19 @@ export async function getTeamWithContext(slug: string): Promise<
       team: TeamSeason;
       ranks: ReturnType<typeof buildTeamRanks>;
       checklist: ReturnType<typeof buildChampionChecklist>;
+      cinderella: ReturnType<typeof buildCinderellaIndex>;
     }
   | null
 > {
   if (isBuildPhase()) return null;
-  const apiData = await fetchRankingsFromApi(DEFAULT_SEASON);
+  const apiData = await fetchRankingsFromApi();
   const teams = apiData.teams;
   const team = teams.find((t) => t.teamId === slug || t.teamName?.toLowerCase() === slug.toLowerCase());
   if (!team) return null;
 
   const ranks = buildTeamRanks(teams, team);
   const checklist = buildChampionChecklist(team, ranks, teams);
+  const cinderella = buildCinderellaIndex(teams, team);
 
-  return { team, ranks, checklist };
+  return { team, ranks, checklist, cinderella };
 }

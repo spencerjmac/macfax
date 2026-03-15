@@ -16,6 +16,8 @@ from .views import (
 from .job_views import DataProcessingJobViewSet
 from .trapezoid_views import TrapezoidView
 from .landscape_views import EfficiencyLandscapeView
+from .crystal_ball_views import CrystalBallView
+from .cinderella_views import CinderellaView
 from .viz_builder_views import VizStatsView, VizScatterView
 from .auth_views import csrf, login_view, logout_view, me
 
@@ -35,6 +37,8 @@ urlpatterns = [
     path("auth/me/", me, name="auth-me"),
     path("viz/landscape/", EfficiencyLandscapeView.as_view(), name="viz-landscape"),
     path("viz/trapezoid/", TrapezoidView.as_view(), name="viz-trapezoid"),
+    path("viz/crystal-ball/", CrystalBallView.as_view(), name="viz-crystal-ball"),
+    path("viz/cinderella/", CinderellaView.as_view(), name="viz-cinderella"),
     path("viz/stats/", VizStatsView.as_view(), name="viz-stats"),
     path("viz/scatter/", VizScatterView.as_view(), name="viz-scatter"),
     path("pipeline-config/", PipelineConfigView.as_view(), name="pipeline-config"),

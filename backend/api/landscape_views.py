@@ -124,11 +124,20 @@ class EfficiencyLandscapeView(APIView):
         # This ensures tier boundaries stay constant regardless of conference selection
         max_net = max(t['rating'].adj_em for t in all_teams_data)
         
-        # Filter by conference AFTER computing national baseline
-        if conference_filter and conference_filter.upper() != 'ALL':
-            teams_data = [t for t in all_teams_data if t['conference_code'] == conference_filter]
-        else:
+        # Filter by conference / tournament AFTER computing national baseline
+        _TOURNAMENT_REGIONS = {'SOUTH', 'EAST', 'WEST', 'MIDWEST'}
+        if not conference_filter or conference_filter.upper() == 'ALL':
             teams_data = all_teams_data
+        elif conference_filter == 'NCAA_TOURNAMENT':
+            teams_data = [t for t in all_teams_data if t['rating'].tournament_seed is not None]
+        elif conference_filter.upper() in _TOURNAMENT_REGIONS:
+            teams_data = [
+                t for t in all_teams_data
+                if t['rating'].tournament_region and
+                t['rating'].tournament_region.upper() == conference_filter.upper()
+            ]
+        else:
+            teams_data = [t for t in all_teams_data if t['conference_code'] == conference_filter]
         
         # Take top N teams
         teams_data = teams_data[:top_n]

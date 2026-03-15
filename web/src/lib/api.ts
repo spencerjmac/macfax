@@ -4,6 +4,8 @@ import type {
   Conference,
   TrapezoidData,
   EfficiencyLandscapeData,
+  CrystalBallData,
+  CinderellaData,
   VizStats,
   VizScatterData,
 } from '@/types';
@@ -101,6 +103,28 @@ export const api = {
   async getLandscape(params: { conference?: string; top?: number }): Promise<EfficiencyLandscapeData> {
     return fetchJson<EfficiencyLandscapeData>(
       buildUrl('/viz/landscape', { conference: params.conference, top: params.top })
+    );
+  },
+
+  async getCrystalBall(params: { season?: number; filter?: string }): Promise<CrystalBallData> {
+    return fetchJson<CrystalBallData>(
+      buildUrl('/viz/crystal-ball', { season: params.season, filter: params.filter })
+    );
+  },
+
+  async getCinderella(params: {
+    season?: number;
+    min_seed?: number;
+    max_seed?: number;
+    show_all?: boolean;
+  }): Promise<CinderellaData> {
+    return fetchJson<CinderellaData>(
+      buildUrl('/viz/cinderella', {
+        season: params.season,
+        min_seed: params.min_seed,
+        max_seed: params.max_seed,
+        show_all: params.show_all,
+      })
     );
   },
 

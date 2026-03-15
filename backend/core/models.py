@@ -1122,6 +1122,24 @@ class TeamSeasonRatings(models.Model):
         null=True, blank=True, help_text="AP Poll Week 6 ranking (1-25, null if unranked)"
     )
 
+    # NCAA Tournament
+    TOURNAMENT_REGION_CHOICES = [
+        ('South', 'South'),
+        ('East', 'East'),
+        ('West', 'West'),
+        ('Midwest', 'Midwest'),
+    ]
+    tournament_seed = models.IntegerField(
+        null=True, blank=True,
+        help_text="NCAA Tournament seed (1-16, null if not in tournament)"
+    )
+    tournament_region = models.CharField(
+        max_length=20,
+        null=True, blank=True,
+        choices=TOURNAMENT_REGION_CHOICES,
+        help_text="NCAA Tournament region (South/East/West/Midwest)"
+    )
+
     # Model parameters
     games_played = models.IntegerField(
         default=0, help_text="Total games played (all opponents)"

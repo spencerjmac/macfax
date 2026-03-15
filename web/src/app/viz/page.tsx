@@ -104,24 +104,52 @@ export default function VisualizationsPage() {
         {/* Crystal Ball */}
         <Link 
           href="/viz/crystal-ball"
-          className="block bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow overflow-hidden border-2 border-transparent hover:border-gray-300 opacity-75"
+          className="block bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow overflow-hidden border-2 border-transparent hover:border-blue-500"
         >
           <div className="p-6">
             <div className="flex items-start justify-between mb-4">
               <div>
                 <h2 className="text-2xl font-bold mb-2">The Crystal Ball</h2>
-                <span className="inline-block px-2 py-1 text-xs font-semibold text-gray-600 bg-gray-200 rounded">
-                  COMING SOON
+                <span className="inline-block px-2 py-1 text-xs font-semibold text-green-800 bg-green-100 rounded">
+                  LIVE
                 </span>
               </div>
               <div className="text-4xl">🔮</div>
             </div>
             <p className="text-gray-600 mb-4">
-              Championship profile analysis using a rules engine with configurable thresholds for 
-              efficiency margins, Four Factors, and historical championship benchmarks.
+              Every team scored against 15 historical championship benchmarks — efficiency margins,
+              Four Factors, resume, and more. Ranks contenders from pretenders to title favorites.
             </p>
-            <div className="text-gray-500 font-medium flex items-center">
-              Preview Coming Soon
+            <div className="text-blue-600 font-medium flex items-center">
+              View Visualization
+              <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
+          </div>
+        </Link>
+
+        {/* Cinderella Index */}
+        <Link
+          href="/viz/cinderella"
+          className="block bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow overflow-hidden border-2 border-transparent hover:border-blue-500"
+        >
+          <div className="p-6">
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <h2 className="text-2xl font-bold mb-2">Cinderella Index</h2>
+                <span className="inline-block px-2 py-1 text-xs font-semibold text-green-800 bg-green-100 rounded">
+                  LIVE
+                </span>
+              </div>
+              <div className="text-4xl">🥿</div>
+            </div>
+            <p className="text-gray-600 mb-4">
+              Which double-digit seeds are built to cause chaos? Five pillars — underseeded strength,
+              defense, possession, variance, and resume — combine into a single upset-potential score.
+            </p>
+            <div className="text-blue-600 font-medium flex items-center">
+              View Visualization
               <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>

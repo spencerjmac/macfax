@@ -59,8 +59,8 @@ class NCAAAPIClient:
         # Setup session with retry logic (502 = Bad Gateway, common when public API is flaky)
         self.session = requests.Session()
         retry_strategy = Retry(
-            total=2,
-            backoff_factor=1.0,
+            total=5,
+            backoff_factor=2.0,
             status_forcelist=[
                 428,
                 429,
@@ -576,12 +576,12 @@ class ESPNAPIClient:
                 "venue": comp.get("venue", {}).get("fullName"),
                 "home": {
                     "id": home_team.get("team", {}).get("id"),
-                    "name": home_team.get("team", {}).get("displayName"),
+                    "name": home_team.get("team", {}).get("shortDisplayName") or home_team.get("team", {}).get("displayName"),
                     "score": home_team.get("score"),
                 },
                 "away": {
                     "id": away_team.get("team", {}).get("id"),
-                    "name": away_team.get("team", {}).get("displayName"),
+                    "name": away_team.get("team", {}).get("shortDisplayName") or away_team.get("team", {}).get("displayName"),
                     "score": away_team.get("score"),
                 },
                 "_raw": event,
@@ -695,7 +695,7 @@ class ESPNAPIClient:
                 key = "home" if is_home else "away"
                 result[key] = {
                     "id": team_id,
-                    "name": team_data.get("team", {}).get("displayName"),
+                    "name": team_data.get("team", {}).get("shortDisplayName") or team_data.get("team", {}).get("displayName"),
                     "stats": stats,
                 }
 

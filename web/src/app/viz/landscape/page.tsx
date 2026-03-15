@@ -88,11 +88,20 @@ export default function EfficiencyLandscapePage() {
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="ALL">All Conferences</option>
-              {conferences.map((conf) => (
-                <option key={conf.code} value={conf.code}>
-                  {conf.name} ({conf.code})
-                </option>
-              ))}
+              <optgroup label="NCAA Tournament">
+                <option value="NCAA_TOURNAMENT">🏀 NCAA Tournament</option>
+                <option value="SOUTH">↳ South Region</option>
+                <option value="EAST">↳ East Region</option>
+                <option value="WEST">↳ West Region</option>
+                <option value="MIDWEST">↳ Midwest Region</option>
+              </optgroup>
+              <optgroup label="Conferences">
+                {conferences.map((conf) => (
+                  <option key={conf.code} value={conf.code}>
+                    {conf.name} ({conf.code})
+                  </option>
+                ))}
+              </optgroup>
             </select>
           </div>
           
