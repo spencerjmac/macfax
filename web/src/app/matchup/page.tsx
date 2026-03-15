@@ -3,6 +3,8 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
+import { getTeamColors, withOpacity, DEFAULT_A, DEFAULT_B, type TeamColors } from '@/lib/team-colors';
+import { extractDominantColor } from '@/lib/color-extract';
 import type { MatchupResult, TopDriver, Team } from '@/types';
 
 export const dynamic = 'force-dynamic';
@@ -22,6 +24,59 @@ function MatchupPageInner() {
   const [result, setResult] = useState<MatchupResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [colorA, setColorA] = useState<TeamColors>(DEFAULT_A);
+  const [colorB, setColorB] = useState<TeamColors>(DEFAULT_B);
+
+  // Update team colors whenever the matchup result changes.
+  // Immediately applies the hardcoded lookup fallback, then upgrades to
+  // ESPN's official brand hex as soon as the async fetch resolves.
+  useEffect(() => {
+    if (!result) {
+      setColorA(DEFAULT_A);
+      setColorB(DEFAULT_B);
+      return;
+    }
+
+    // Step 1 — immediate: hardcoded lookup table (synchronous)
+    setColorA(getTeamColors(result.teamA.slug) ?? DEFAULT_A);
+    setColorB(getTeamColors(result.teamB.slug) ?? DEFAULT_B);
+
+    let cancelled = false;
+
+    async function fetchColor(
+      teamName: string,
+      teamSlug: string,
+      logoUrl: string | null,
+      setter: (c: TeamColors) => void,
+    ) {
+      // Step 2 — accurate: ESPN official brand colors
+      try {
+        const res = await fetch(
+          `/api/team-colors?name=${encodeURIComponent(teamName)}&slug=${encodeURIComponent(teamSlug)}`
+        );
+        if (res.ok) {
+          const data = await res.json() as { primary: string; secondary: string };
+          if (!cancelled && data.primary) {
+            setter({ primary: data.primary, secondary: data.secondary ?? data.primary });
+            return;
+          }
+        }
+      } catch { /* fall through to canvas */ }
+
+      // Step 3 — canvas extraction from logo (when logo_url is populated)
+      if (logoUrl) {
+        const extracted = await extractDominantColor(logoUrl);
+        if (!cancelled && extracted) {
+          setter({ primary: extracted, secondary: extracted });
+        }
+      }
+    }
+
+    fetchColor(result.teamA.name, result.teamA.slug, result.teamA.logo_url, setColorA);
+    fetchColor(result.teamB.name, result.teamB.slug, result.teamB.logo_url, setColorB);
+
+    return () => { cancelled = true; };
+  }, [result]);
   
   // Load teams on mount
   useEffect(() => {
@@ -269,30 +324,32 @@ function MatchupPageInner() {
       {result && (
         <div className="space-y-6">
           {/* Forecast Section */}
-          <ForecastSection result={result} />
-          
+          <ForecastSection result={result} colorA={colorA} colorB={colorB} />
+
           {/* Four Factor Breakdown */}
-          <FourFactorSection result={result} />
-          
+          <FourFactorSection result={result} colorA={colorA} colorB={colorB} />
+
           {/* Top Drivers */}
-          <TopDriversSection drivers={result.top_drivers ?? []} teamA={result.teamA.name} teamB={result.teamB.name} />
-          
+          <TopDriversSection drivers={result.top_drivers ?? []} teamA={result.teamA.name} teamB={result.teamB.name} colorA={colorA} colorB={colorB} />
+
           {/* Shot Profile */}
           {result.shot_profile && (
-            <ShotProfileSection profile={result.shot_profile} teamA={result.teamA.name} teamB={result.teamB.name} />
+            <ShotProfileSection profile={result.shot_profile} teamA={result.teamA.name} teamB={result.teamB.name} colorA={colorA} colorB={colorB} />
           )}
-          
+
           {/* Volatility */}
           <VolatilitySection volatility={result.volatility} />
-          
+
           {/* Recent Form */}
           <RecentFormSection
             teamA={result.teamA}
             teamB={result.teamB}
             formA={result.recent_form_a}
             formB={result.recent_form_b}
+            colorA={colorA}
+            colorB={colorB}
           />
-          
+
           {/* Metadata Footer */}
           <MetadataSection metadata={result.metadata} season={result.season} />
         </div>
@@ -311,7 +368,7 @@ export default function MatchupPage() {
 
 // ==================== Forecast Section ====================
 
-function ForecastSection({ result }: { result: MatchupResult }) {
+function ForecastSection({ result, colorA, colorB }: { result: MatchupResult; colorA: TeamColors; colorB: TeamColors }) {
   const { forecast, teamA, teamB } = result;
   const favorite = forecast.margin > 0 ? teamA : teamB;
   
@@ -325,7 +382,8 @@ function ForecastSection({ result }: { result: MatchupResult }) {
           {teamA.logo_url && (
             <img src={teamA.logo_url} alt={teamA.name} className="w-20 h-20 mx-auto mb-2 object-contain" />
           )}
-          <p className="text-lg font-bold">{teamA.name}</p>
+          <p className="text-lg font-bold" style={{ color: colorA.primary }}>{teamA.name}</p>
+          <div className="w-12 h-1 mx-auto rounded-full mt-1 mb-1" style={{ backgroundColor: colorA.primary }} />
           <p className="text-sm text-gray-600">#{teamA.rank} • {teamA.record}</p>
         </div>
         
@@ -344,7 +402,8 @@ function ForecastSection({ result }: { result: MatchupResult }) {
           {teamB.logo_url && (
             <img src={teamB.logo_url} alt={teamB.name} className="w-20 h-20 mx-auto mb-2 object-contain" />
           )}
-          <p className="text-lg font-bold">{teamB.name}</p>
+          <p className="text-lg font-bold" style={{ color: colorB.primary }}>{teamB.name}</p>
+          <div className="w-12 h-1 mx-auto rounded-full mt-1 mb-1" style={{ backgroundColor: colorB.primary }} />
           <p className="text-sm text-gray-600">#{teamB.rank} • {teamB.record}</p>
         </div>
       </div>
@@ -352,12 +411,12 @@ function ForecastSection({ result }: { result: MatchupResult }) {
       {/* Predicted Score */}
       <div className="grid grid-cols-3 gap-4 mb-6">
         <div className="text-center">
-          <p className="text-5xl font-bold text-blue mono">
+          <p className="text-5xl font-bold mono" style={{ color: colorA.primary }}>
             {forecast.pts_a.toFixed(0)}
           </p>
           <p className="text-sm text-gray-600 mt-1">Predicted Score</p>
         </div>
-        
+
         <div className="flex items-center justify-center">
           <div className="text-center">
             <p className="text-sm text-gray-600 mb-2">Expected Margin</p>
@@ -370,9 +429,9 @@ function ForecastSection({ result }: { result: MatchupResult }) {
             </p>
           </div>
         </div>
-        
+
         <div className="text-center">
-          <p className="text-5xl font-bold text-primary mono">
+          <p className="text-5xl font-bold mono" style={{ color: colorB.primary }}>
             {forecast.pts_b.toFixed(0)}
           </p>
           <p className="text-sm text-gray-600 mt-1">Predicted Score</p>
@@ -382,24 +441,32 @@ function ForecastSection({ result }: { result: MatchupResult }) {
       {/* Win Probability Meter */}
       <div className="mb-4">
         <div className="flex justify-between mb-2">
-          <span className="text-lg font-bold">
+          <span className="text-lg font-bold" style={{ color: colorA.primary }}>
             {(forecast.prob_a * 100).toFixed(1)}%
           </span>
           <span className="text-sm text-gray-600">Win Probability</span>
-          <span className="text-lg font-bold">
+          <span className="text-lg font-bold" style={{ color: colorB.primary }}>
             {(forecast.prob_b * 100).toFixed(1)}%
           </span>
         </div>
-        <div className="w-full h-8 bg-gray-200 rounded-full overflow-hidden relative">
+        <div className="w-full h-8 rounded-full overflow-hidden flex relative">
           <div
-            className="h-full bg-gradient-to-r from-blue-500 to-blue-600 transition-all"
-            style={{ width: `${forecast.prob_a * 100}%` }}
+            className="h-full transition-all"
+            style={{ width: `${forecast.prob_a * 100}%`, backgroundColor: colorA.primary }}
           />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-xs font-medium text-white mix-blend-difference">
+          <div
+            className="h-full transition-all flex-1"
+            style={{ backgroundColor: colorB.primary }}
+          />
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <span className="text-xs font-medium text-white drop-shadow">
               {favorite.name} favored
             </span>
           </div>
+        </div>
+        <div className="flex justify-between mt-1 text-xs">
+          <span style={{ color: colorA.primary }} className="font-semibold">{teamA.name}</span>
+          <span style={{ color: colorB.primary }} className="font-semibold">{teamB.name}</span>
         </div>
       </div>
       
@@ -415,7 +482,7 @@ function ForecastSection({ result }: { result: MatchupResult }) {
 
 // ==================== Four Factor Section ====================
 
-function FourFactorSection({ result }: { result: MatchupResult }) {
+function FourFactorSection({ result, colorA, colorB }: { result: MatchupResult; colorA: TeamColors; colorB: TeamColors }) {
   const { four_factor_edges, points_breakdown, teamA, teamB } = result;
   const pb = points_breakdown ?? undefined;
 
@@ -456,8 +523,20 @@ function FourFactorSection({ result }: { result: MatchupResult }) {
   
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
-      <h2 className="text-2xl font-bold mb-6">Four Factor Breakdown</h2>
-      
+      <h2 className="text-2xl font-bold mb-2">Four Factor Breakdown</h2>
+
+      {/* Team color legend */}
+      <div className="flex gap-4 mb-5 text-xs font-medium">
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: colorA.primary }} />
+          <span style={{ color: colorA.primary }}>{teamA.name} advantage</span>
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: colorB.primary }} />
+          <span style={{ color: colorB.primary }}>{teamB.name} advantage</span>
+        </span>
+      </div>
+
       <div className="space-y-6">
         {factors.map((factor) => (
           <div key={factor.key}>
@@ -469,14 +548,14 @@ function FourFactorSection({ result }: { result: MatchupResult }) {
             </div>
             
             {/* Values */}
-            <div className="flex justify-between text-xs text-gray-600 mb-2">
-              <span>{teamA.name}: {factor.valueA.toFixed(1)}%</span>
-              <span>{teamB.name}: {factor.valueB.toFixed(1)}%</span>
+            <div className="flex justify-between text-xs font-medium mb-2">
+              <span style={{ color: colorA.primary }}>{teamA.name}: {factor.valueA.toFixed(1)}%</span>
+              <span style={{ color: colorB.primary }}>{teamB.name}: {factor.valueB.toFixed(1)}%</span>
             </div>
             
             {/* Bar */}
             <div className="relative">
-              <FactorBar value={factor.edge} />
+              <FactorBar value={factor.edge} colorA={colorA} colorB={colorB} />
             </div>
             
             {/* Points Impact (when regression coefficients available) */}
@@ -495,17 +574,18 @@ function FourFactorSection({ result }: { result: MatchupResult }) {
   );
 }
 
-function FactorBar({ value }: { value: number }) {
+function FactorBar({ value, colorA, colorB }: { value: number; colorA: TeamColors; colorB: TeamColors }) {
   const percentage = Math.min(Math.abs(value) / 10 * 100, 100); // Scale: 10% edge = 100% bar
-  const color = value > 0 ? 'bg-blue-500' : 'bg-negative';
-  
+  const bg = value > 0 ? colorA.primary : colorB.primary;
+
   return (
     <div className="w-full h-6 bg-gray-200 rounded overflow-hidden">
       <div
-        className={`h-full ${color} transition-all`}
+        className="h-full transition-all"
         style={{
           width: `${percentage}%`,
           marginLeft: value < 0 ? `${100 - percentage}%` : '0',
+          backgroundColor: bg,
         }}
       />
     </div>
@@ -514,7 +594,7 @@ function FactorBar({ value }: { value: number }) {
 
 // ==================== Top Drivers Section ====================
 
-function TopDriversSection({ drivers, teamA, teamB }: { drivers: TopDriver[]; teamA: string; teamB: string }) {
+function TopDriversSection({ drivers, teamA, teamB, colorA, colorB }: { drivers: TopDriver[]; teamA: string; teamB: string; colorA: TeamColors; colorB: TeamColors }) {
   // Generate description based on driver data
   const getDescription = (driver: TopDriver) => {
     const leadingTeam = driver.team === 'a' ? teamA : teamB;
@@ -531,7 +611,7 @@ function TopDriversSection({ drivers, teamA, teamB }: { drivers: TopDriver[]; te
       
       <div className="space-y-4">
         {drivers.map((driver, index) => (
-          <div key={index} className="border-l-4 border-brand pl-4 py-2">
+          <div key={index} className="border-l-4 pl-4 py-2" style={{ borderColor: driver.team === 'a' ? colorA.primary : colorB.primary }}>
             <div className="flex justify-between items-start">
               <div>
                 <p className="font-bold text-lg">
@@ -557,7 +637,7 @@ function TopDriversSection({ drivers, teamA, teamB }: { drivers: TopDriver[]; te
 
 // ==================== Shot Profile Section ====================
 
-function ShotProfileSection({ profile, teamA, teamB }: { profile: any; teamA: string; teamB: string }) {
+function ShotProfileSection({ profile, teamA, teamB, colorA, colorB }: { profile: any; teamA: string; teamB: string; colorA: TeamColors; colorB: TeamColors }) {
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
       <h2 className="text-2xl font-bold mb-6">Shot Profile Analysis</h2>
@@ -575,12 +655,12 @@ function ShotProfileSection({ profile, teamA, teamB }: { profile: any; teamA: st
             <span className="text-sm font-bold">{profile.fg3_rate_b.toFixed(1)}%</span>
           </div>
           <p className="text-xs text-gray-600 mt-2">
-            Edge: <span className={profile.fg3_rate_edge > 0 ? 'text-blue-600 font-bold' : 'text-negative font-bold'}>
+            Edge: <span className="font-bold" style={{ color: profile.fg3_rate_edge > 0 ? colorA.primary : colorB.primary }}>
               {profile.fg3_rate_edge > 0 ? '+' : ''}{profile.fg3_rate_edge.toFixed(1)}%
             </span>
           </p>
         </div>
-        
+
         {/* 3P% */}
         <div>
           <p className="text-sm font-medium text-gray-700 mb-3">3-Point Percentage</p>
@@ -593,12 +673,12 @@ function ShotProfileSection({ profile, teamA, teamB }: { profile: any; teamA: st
             <span className="text-sm font-bold">{profile.fg3_pct_b.toFixed(1)}%</span>
           </div>
           <p className="text-xs text-gray-600 mt-2">
-            Edge: <span className={profile.fg3_pct_edge > 0 ? 'text-blue-600 font-bold' : 'text-negative font-bold'}>
+            Edge: <span className="font-bold" style={{ color: profile.fg3_pct_edge > 0 ? colorA.primary : colorB.primary }}>
               {profile.fg3_pct_edge > 0 ? '+' : ''}{profile.fg3_pct_edge.toFixed(1)}%
             </span>
           </p>
         </div>
-        
+
         {/* 2P% */}
         <div>
           <p className="text-sm font-medium text-gray-700 mb-3">2-Point Percentage</p>
@@ -611,7 +691,7 @@ function ShotProfileSection({ profile, teamA, teamB }: { profile: any; teamA: st
             <span className="text-sm font-bold">{profile.fg2_pct_b.toFixed(1)}%</span>
           </div>
           <p className="text-xs text-gray-600 mt-2">
-            Edge: <span className={profile.fg2_pct_edge > 0 ? 'text-blue-600 font-bold' : 'text-negative font-bold'}>
+            Edge: <span className="font-bold" style={{ color: profile.fg2_pct_edge > 0 ? colorA.primary : colorB.primary }}>
               {profile.fg2_pct_edge > 0 ? '+' : ''}{profile.fg2_pct_edge.toFixed(1)}%
             </span>
           </p>
@@ -712,7 +792,7 @@ function VolatilitySection({ volatility }: { volatility: any }) {
 
 // ==================== Recent Form Section ====================
 
-function RecentFormSection({ teamA, teamB, formA, formB }: any) {
+function RecentFormSection({ teamA, teamB, formA, formB, colorA, colorB }: any) {
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
       <h2 className="text-2xl font-bold mb-6">Recent Form (Last {formA.games_analyzed} Games)</h2>
@@ -723,8 +803,8 @@ function RecentFormSection({ teamA, teamB, formA, formB }: any) {
           <h3 className="text-lg font-bold mb-4">{teamA.name}</h3>
           
           <div className="grid grid-cols-3 gap-3 mb-4">
-            <div className="text-center p-3 bg-blue-50 rounded">
-              <p className="text-xl font-bold text-blue-600">{formA.record}</p>
+            <div className="text-center p-3 rounded" style={{ backgroundColor: withOpacity(colorA.primary, 0.1) }}>
+              <p className="text-xl font-bold" style={{ color: colorA.primary }}>{formA.record}</p>
               <p className="text-xs text-gray-600">Record</p>
             </div>
             <div className="text-center p-3 bg-gray-50 rounded">
@@ -757,8 +837,8 @@ function RecentFormSection({ teamA, teamB, formA, formB }: any) {
           <h3 className="text-lg font-bold mb-4">{teamB.name}</h3>
           
           <div className="grid grid-cols-3 gap-3 mb-4">
-            <div className="text-center p-3 bg-brand/10 rounded">
-              <p className="text-xl font-bold text-brand">{formB.record}</p>
+            <div className="text-center p-3 rounded" style={{ backgroundColor: withOpacity(colorB.primary, 0.1) }}>
+              <p className="text-xl font-bold" style={{ color: colorB.primary }}>{formB.record}</p>
               <p className="text-xs text-gray-600">Record</p>
             </div>
             <div className="text-center p-3 bg-gray-50 rounded">
