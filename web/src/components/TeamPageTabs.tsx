@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { TeamSeason } from '@/types';
-import { TeamRanks, ChecklistItem } from '@/lib/rankings';
+import { TeamRanks, ChecklistItem, CinderellaIndexResult } from '@/lib/rankings';
 import { StatCard, MetricCard, FactorCardWithRanks } from './StatCards';
 import ChampionChecklistCard from './ChampionChecklistCard';
 import clsx from 'clsx';
@@ -15,6 +15,7 @@ interface TeamPageTabsProps {
     total: number;
     items: ChecklistItem[];
   };
+  cinderella: CinderellaIndexResult;
 }
 
 type TabId = 'overview' | 'four-factors' | 'offense-defense' | 'resume' | 'charts' | 'game-log';
@@ -30,7 +31,7 @@ function formatPercent(value: number | null | undefined, digits = 1): string {
   return `${pct.toFixed(digits)}%`;
 }
 
-export default function TeamPageTabs({ team, ranks, checklist }: TeamPageTabsProps) {
+export default function TeamPageTabs({ team, ranks, checklist, cinderella }: TeamPageTabsProps) {
   const [activeTab, setActiveTab] = useState<TabId>('overview');
   
   const tabs = [
@@ -66,7 +67,7 @@ export default function TeamPageTabs({ team, ranks, checklist }: TeamPageTabsPro
       
       {/* Tab Content */}
       <div>
-        {activeTab === 'overview' && <OverviewTab team={team} ranks={ranks} checklist={checklist} />}
+        {activeTab === 'overview' && <OverviewTab team={team} ranks={ranks} checklist={checklist} cinderella={cinderella} />}
         {activeTab === 'four-factors' && <FourFactorsTab team={team} ranks={ranks} />}
         {activeTab === 'offense-defense' && <OffenseDefenseTab team={team} ranks={ranks} />}
         {activeTab === 'resume' && <ResumeTab team={team} ranks={ranks} />}
@@ -81,7 +82,8 @@ export default function TeamPageTabs({ team, ranks, checklist }: TeamPageTabsPro
 function OverviewTab({ 
   team, 
   ranks, 
-  checklist 
+  checklist,
+  cinderella,
 }: { 
   team: TeamSeason; 
   ranks: TeamRanks;
@@ -90,6 +92,7 @@ function OverviewTab({
     total: number;
     items: ChecklistItem[];
   };
+  cinderella: CinderellaIndexResult;
 }) {
   return (
     <div className="space-y-8">
@@ -183,6 +186,86 @@ function OverviewTab({
           total={checklist.total}
           items={checklist.items}
         />
+      </div>
+
+      {/* Cinderella Index — only shown for seeds 9+ after bracket is set */}
+      {team.tournament_seed != null && team.tournament_seed >= 9 && (
+        <CinderellaCard team={team} cin={cinderella} />
+      )}
+    </div>
+  );
+}
+
+// Cinderella Index Card (team profile)
+function CinderellaCard({ team, cin }: { team: TeamSeason; cin: CinderellaIndexResult }) {
+  const getTierLabel = (score: number) => {
+    if (score >= 65) return { label: 'Elite Cinderella Threat', color: 'text-red-700', bg: 'bg-red-50 border-red-200' };
+    if (score >= 50) return { label: 'Notable Upset Risk',     color: 'text-amber-700', bg: 'bg-amber-50 border-amber-200' };
+    if (score >= 35) return { label: 'Moderate Risk',          color: 'text-blue-700',  bg: 'bg-blue-50 border-blue-200' };
+    return             { label: 'Low Threat',                  color: 'text-slate-500', bg: 'bg-slate-50 border-slate-200' };
+  };
+
+  const tier = getTierLabel(cin.profileScore);
+
+  function MiniBar({ label, value, color }: { label: string; value: number; color: string }) {
+    return (
+      <div>
+        <div className="flex justify-between text-xs mb-1">
+          <span className="text-text-muted">{label}</span>
+          <span className={clsx('font-mono font-semibold', color)}>{value.toFixed(0)}</span>
+        </div>
+        <div className="h-1.5 bg-ui-border rounded-full overflow-hidden">
+          <div className={clsx('h-full rounded-full', color.replace('text-', 'bg-'))} style={{ width: `${value}%` }} />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-5 border border-ui-border rounded-lg bg-ui-surface">
+      <div className="flex items-start justify-between mb-4">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-lg">🥿</span>
+            <h2 className="text-lg font-bold">Cinderella Index</h2>
+          </div>
+          <p className="text-xs text-text-muted">
+            Upset-potential score based on strength, defense, possession, variance &amp; resume.
+          </p>
+        </div>
+        <div className="text-right">
+          <div className="text-4xl font-bold font-mono text-text-primary">{cin.profileScore.toFixed(0)}</div>
+          <div className={clsx('text-xs font-semibold mt-0.5', tier.color)}>{tier.label}</div>
+        </div>
+      </div>
+
+      {cin.seedResidual != null && (
+        <div className={clsx(
+          'mb-4 px-3 py-2 rounded-md border text-xs font-medium',
+          cin.seedResidual > 2 ? 'bg-red-50 border-red-200 text-red-800'
+            : cin.seedResidual > 0 ? 'bg-amber-50 border-amber-200 text-amber-800'
+            : 'bg-slate-50 border-slate-200 text-slate-500',
+        )}>
+          {cin.seedResidual > 0
+            ? `⚠ Seeded ${cin.seedResidual} spot${cin.seedResidual !== 1 ? 's' : ''} worse than AdjEM suggests — underseeded!`
+            : cin.seedResidual < 0
+            ? `AdjEM-to-seed is ${Math.abs(cin.seedResidual)} spot${Math.abs(cin.seedResidual) !== 1 ? 's' : ''} better than seed — correctly or overseeded.`
+            : 'Seeded exactly where AdjEM expects.'}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <MiniBar label={`Underseeded (28%)`} value={cin.underseededStrength} color="text-brand" />
+        <MiniBar label={`Defense (27%)`}     value={cin.defenseScore}        color="text-blue-600" />
+        <MiniBar label={`Possession (21%)`}  value={cin.possessionScore}     color="text-green-600" />
+        <MiniBar label={`Variance (14%)`}    value={cin.varianceScore}       color="text-purple-600" />
+        <MiniBar label={`Resume (10%)`}      value={cin.resumeScore}         color="text-amber-600" />
+      </div>
+
+      <div className="mt-3 text-right">
+        <a href="/viz/cinderella" className="text-xs text-brand hover:underline">
+          View full Cinderella Index →
+        </a>
       </div>
     </div>
   );

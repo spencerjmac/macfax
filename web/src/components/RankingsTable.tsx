@@ -52,6 +52,11 @@ export default function RankingsTable({ data }: RankingsTableProps) {
 
   const filteredData = useMemo(() => {
     if (conferenceFilter === 'all') return data;
+    if (conferenceFilter === 'ncaa_tournament') return data.filter((t) => t.tournament_seed != null);
+    if (conferenceFilter === 'ncaa_south') return data.filter((t) => t.tournament_region === 'South');
+    if (conferenceFilter === 'ncaa_east') return data.filter((t) => t.tournament_region === 'East');
+    if (conferenceFilter === 'ncaa_west') return data.filter((t) => t.tournament_region === 'West');
+    if (conferenceFilter === 'ncaa_midwest') return data.filter((t) => t.tournament_region === 'Midwest');
     return data.filter((t) => t.conference === conferenceFilter);
   }, [data, conferenceFilter]);
 
@@ -204,6 +209,11 @@ export default function RankingsTable({ data }: RankingsTableProps) {
                   {team.teamName.charAt(0)}
                 </div>
               )}
+              {team.tournament_seed != null && (
+                <span className="text-[11px] font-bold text-brand/80 w-4 text-right shrink-0">
+                  {team.tournament_seed}
+                </span>
+              )}
               <span className="font-medium">{team.teamName}</span>
             </Link>
           );
@@ -261,6 +271,11 @@ export default function RankingsTable({ data }: RankingsTableProps) {
                 <div className="w-5 h-5 bg-ui-surface rounded-full flex items-center justify-center text-xs font-bold text-text-muted">
                   {team.teamName.charAt(0)}
                 </div>
+              )}
+              {team.tournament_seed != null && (
+                <span className="text-[10px] font-bold text-brand/80 w-4 text-right shrink-0">
+                  {team.tournament_seed}
+                </span>
               )}
               <span className="font-medium text-sm">{team.teamName}</span>
             </Link>
@@ -388,11 +403,20 @@ export default function RankingsTable({ data }: RankingsTableProps) {
             className="px-3 py-2 bg-ui-surface border border-ui-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand/50"
           >
             <option value="all">All Conferences</option>
-            {conferences.map((conf) => (
-              <option key={conf} value={conf}>
-                {conf}
-              </option>
-            ))}
+            <optgroup label="NCAA Tournament">
+              <option value="ncaa_tournament">🏀 NCAA Tournament</option>
+              <option value="ncaa_south">↳ South Region</option>
+              <option value="ncaa_east">↳ East Region</option>
+              <option value="ncaa_west">↳ West Region</option>
+              <option value="ncaa_midwest">↳ Midwest Region</option>
+            </optgroup>
+            <optgroup label="Conferences">
+              {conferences.map((conf) => (
+                <option key={conf} value={conf}>
+                  {conf}
+                </option>
+              ))}
+            </optgroup>
           </select>
         </div>
 

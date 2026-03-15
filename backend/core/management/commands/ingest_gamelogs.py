@@ -611,7 +611,7 @@ class Command(BaseCommand):
         )
         if game_date_str:
             try:
-                # Try MM/DD/YYYY format (NCAA)
+                # Try MM/DD/YYYY format (NCAA with slashes)
                 if "/" in game_date_str:
                     game_date = datetime.strptime(game_date_str, "%m/%d/%Y").date()
                 # Try ISO format (ESPN)
@@ -620,8 +620,11 @@ class Command(BaseCommand):
                         game_date_str.replace("Z", "+00:00")
                     ).date()
                 # Try YYYY-MM-DD
-                else:
+                elif game_date_str[4:5] == "-":
                     game_date = datetime.strptime(game_date_str, "%Y-%m-%d").date()
+                # Try MM-DD-YYYY (NCAA historical API returns dashes not slashes)
+                else:
+                    game_date = datetime.strptime(game_date_str, "%m-%d-%Y").date()
             except Exception as e:
                 logger.warning(f"Could not parse date '{game_date_str}': {e}")
                 game_date = date.today()

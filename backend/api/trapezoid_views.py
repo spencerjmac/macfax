@@ -265,13 +265,23 @@ class TrapezoidView(APIView):
                 'rank_adj_em': rating.rank_adj_em,
                 'wins': rating.wins,
                 'losses': rating.losses,
+                'tournament_seed': rating.tournament_seed,
+                'tournament_region': rating.tournament_region,
             })
         
-        # Filter by conference AFTER getting conference data
-        if conference_filter and conference_filter != 'ALL':
-            teams_data = [t for t in all_teams_data if t['conference__code'] == conference_filter]
-        else:
+        # Filter by conference / tournament AFTER getting conference data
+        _TOURNAMENT_REGIONS = {'SOUTH', 'EAST', 'WEST', 'MIDWEST'}
+        if not conference_filter or conference_filter == 'ALL':
             teams_data = all_teams_data
+        elif conference_filter == 'NCAA_TOURNAMENT':
+            teams_data = [t for t in all_teams_data if t['tournament_seed'] is not None]
+        elif conference_filter in _TOURNAMENT_REGIONS:
+            teams_data = [
+                t for t in all_teams_data
+                if t['tournament_region'] and t['tournament_region'].upper() == conference_filter
+            ]
+        else:
+            teams_data = [t for t in all_teams_data if t['conference__code'] == conference_filter]
         
         # Take top N teams
         teams_data = teams_data[:top_n]

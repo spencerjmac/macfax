@@ -217,6 +217,10 @@ class RankingsSerializer(serializers.Serializer):
     sos_win_pct = serializers.FloatField()
     ap_poll_week6 = serializers.IntegerField(allow_null=True, required=False)
 
+    # NCAA Tournament
+    tournament_seed = serializers.IntegerField(allow_null=True, required=False)
+    tournament_region = serializers.CharField(allow_null=True, required=False)
+
     # Legacy fields for compatibility
     aor_100 = serializers.FloatField(source="adj_o")
     adr_100 = serializers.FloatField(source="adj_d")

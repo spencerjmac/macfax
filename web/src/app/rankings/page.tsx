@@ -21,7 +21,7 @@ export default async function RankingsPage() {
       <div className="mb-8">
         <h1 className="text-4xl font-bold mb-2">Team Rankings</h1>
         <p className="text-text-muted">
-          Complete rankings for {meta.teamCount} NCAA Division I teams. 
+          Complete rankings for {meta.teamCount} NCAA Division I teams &mdash; {meta.season}
           <span className="ml-2 text-sm">
             Last updated: {new Date(meta.lastUpdated).toLocaleDateString()}
           </span>
