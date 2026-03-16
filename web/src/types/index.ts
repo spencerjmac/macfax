@@ -279,6 +279,7 @@ export interface CinderellaScore {
   variance_score: number;
   resume_score: number;
   seed_residual: number | null;
+  p_sweet16: number | null;
   components: CinderellaComponents;
 }
 
@@ -303,6 +304,51 @@ export interface CinderellaData {
   has_tournament: boolean;
   total_teams: number;
   teams: CinderellaTeam[];
+}
+
+// ==================== Bracket Simulator ====================
+
+export interface BracketTeamData {
+  team_id: number;
+  name: string;
+  slug: string;
+  logo_url: string | null;
+  seed: number;
+  region: string;
+  adj_em: number;
+  record: string;
+  is_first_four: boolean;
+}
+
+export interface BracketSlot {
+  seed: number;
+  is_first_four: boolean;
+  teams: BracketTeamData[];
+}
+
+export interface TeamRoundProbs {
+  p_r64: number;     // P(appears in R64) — 1.0 for non-FF teams
+  p_r32: number;     // P(advances to R32, i.e., wins R64)
+  p_s16: number;     // P(advances to Sweet 16)
+  p_e8: number;      // P(advances to Elite 8)
+  p_ff: number;      // P(advances to Final Four)
+  p_final: number;   // P(appears in Championship game)
+  p_champion: number;
+}
+
+export interface BracketData {
+  season: number;
+  season_label: string;
+  n_sims: number;
+  ff_pairings: [string, string][];
+  r64_pods: [number, number][];
+  regions: {
+    East: BracketSlot[];
+    West: BracketSlot[];
+    South: BracketSlot[];
+    Midwest: BracketSlot[];
+  };
+  probabilities: Record<string, TeamRoundProbs>;
 }
 
 // ==================== Matchup Prediction ====================

@@ -23,8 +23,9 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import get_object_or_404
 
-from core.models import Season, TeamSeasonRatings, TeamSeasonMetrics
+from core.models import Season, TeamSeasonRatings, TeamSeasonMetrics, NationalAverages
 from .serializers import RankingsSerializer
+from .bracket_engine import build_bracket_from_ratings, compute_p_sweet16
 
 
 # ---------------------------------------------------------------------------
@@ -102,7 +103,7 @@ def _build_context(all_ratings, metrics_map):
 # Scoring engine
 # ---------------------------------------------------------------------------
 
-def _score(rating, ctx, metrics):
+def _score(rating, ctx, metrics, bracket_region=None, nat_avg_ortg=None, sigma=None):
     r   = rating
     m   = metrics  # TeamSeasonMetrics or None
     p_h = _pct_higher
@@ -151,6 +152,32 @@ def _score(rating, ctx, metrics):
     sos_p   = p_l(r.sos_win_pct,  ctx['all_sos']) if (r.sos_win_pct  is not None and ctx['all_sos'].size   > 0) else 0.5
     resume  = 0.60 * wab_p + 0.40 * sos_p
 
+    # ── P(Sweet 16) via bracket engine ───────────────────────────────────────
+    p_sweet16 = None
+    if (
+        r.tournament_seed is not None
+        and bracket_region is not None
+        and nat_avg_ortg is not None
+        and sigma is not None
+    ):
+        from .bracket_engine import BracketTeam
+        bt = BracketTeam(
+            team_id=r.team_id,
+            name=r.team.name,
+            slug=r.team.slug,
+            logo_url=r.team.logo_url,
+            seed=r.tournament_seed,
+            region=r.tournament_region,
+            adj_o=r.adj_o,
+            adj_d=r.adj_d,
+            adj_em=r.adj_em,
+            adj_tempo=r.adj_tempo,
+            wins=r.wins,
+            losses=r.losses,
+            is_first_four=len(bracket_region.get(r.tournament_seed, [])) == 2,
+        )
+        p_sweet16 = compute_p_sweet16(bt, bracket_region, nat_avg_ortg, sigma)
+
     # ── Combined Profile ──────────────────────────────────────────────────
     profile = (
         0.28 * underseeded +
@@ -168,6 +195,7 @@ def _score(rating, ctx, metrics):
         'variance_score':       round(variance    * 100, 1),
         'resume_score':         round(resume      * 100, 1),
         'seed_residual':        seed_residual,
+        'p_sweet16':             round(p_sweet16, 4) if p_sweet16 is not None else None,
         # Raw component percentiles for tooltip detail
         'components': {
             'adj_em_pct':    round(adj_em_pct    * 100, 1),
@@ -214,6 +242,15 @@ class CinderellaView(APIView):
                 return Response({'error': 'No current season found'},
                                 status=status.HTTP_404_NOT_FOUND)
 
+        # National averages (needed for P(Sweet 16) computation)
+        try:
+            nat = NationalAverages.objects.get(season=season)
+            nat_avg_ortg = nat.avg_ortg or 108.0
+            sigma = nat.prediction_sigma or 11.08
+        except NationalAverages.DoesNotExist:
+            nat_avg_ortg = 108.0
+            sigma = 11.08
+
         all_ratings = list(
             TeamSeasonRatings.objects
             .filter(season=season, team__is_d1=True)
@@ -232,6 +269,9 @@ class CinderellaView(APIView):
         has_tournament = bool(ctx.get('seed_residuals'))
         conf_ser      = RankingsSerializer()
 
+        # Build bracket for P(Sweet 16) computation (reuses already-loaded ratings)
+        bracket = build_bracket_from_ratings(all_ratings) if has_tournament else None
+
         # Decide which teams to show in the response
         if show_all:
             display_ratings = all_ratings
@@ -248,7 +288,12 @@ class CinderellaView(APIView):
 
         results = []
         for r in display_ratings:
-            cin = _score(r, ctx, metrics_map.get(r.team_id))
+            # Pass per-region bracket slice for P(Sweet 16) calculation
+            region_bracket = bracket.get(r.tournament_region, {}) if bracket and r.tournament_region else None
+            cin = _score(r, ctx, metrics_map.get(r.team_id),
+                         bracket_region=region_bracket,
+                         nat_avg_ortg=nat_avg_ortg,
+                         sigma=sigma)
             results.append({
                 'team_name':         r.team.name,
                 'team_slug':         r.team.slug,

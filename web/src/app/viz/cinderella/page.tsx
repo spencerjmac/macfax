@@ -201,6 +201,23 @@ function TeamRow({ team, rank }: { team: CinderellaTeam; rank: number }) {
           </td>
         )}
 
+        {/* P(Sweet 16) */}
+        {cin.seed_residual != null && (
+          <td className="px-3 py-3 text-center text-xs font-mono hidden lg:table-cell w-16">
+            {cin.p_sweet16 != null ? (
+              <span className={clsx(
+                'font-semibold',
+                cin.p_sweet16 >= 0.20 ? 'text-emerald-600' :
+                cin.p_sweet16 >= 0.10 ? 'text-blue-600' : 'text-text-muted',
+              )}>
+                {(cin.p_sweet16 * 100).toFixed(0)}%
+              </span>
+            ) : (
+              <span className="text-text-muted">—</span>
+            )}
+          </td>
+        )}
+
         {/* Expand */}
         <td className="px-3 py-3 text-center text-text-muted text-xs w-8">
           <span className={clsx('transition-transform inline-block', expanded ? 'rotate-90' : '')}>▶</span>
@@ -479,6 +496,11 @@ export default function CinderellaPage() {
                 {hasSeedResiduals && (
                   <th className="px-3 py-3 text-center text-xs font-semibold text-text-muted hidden lg:table-cell" title="Actual seed minus expected seed from AdjEM rank. Positive = more dangerous than seeded.">
                     Δ Seed
+                  </th>
+                )}
+                {hasSeedResiduals && (
+                  <th className="px-3 py-3 text-center text-xs font-semibold text-emerald-600 hidden lg:table-cell" title="Analytical probability of advancing to the Sweet 16 based on this team's actual bracket path.">
+                    P(S16)
                   </th>
                 )}
                 <th className="w-8" />
