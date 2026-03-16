@@ -6,6 +6,7 @@ import type {
   EfficiencyLandscapeData,
   CrystalBallData,
   CinderellaData,
+  BracketData,
   VizStats,
   VizScatterData,
 } from '@/types';
@@ -130,6 +131,12 @@ export const api = {
 
   async getVizStats(): Promise<VizStats> {
     return fetchJson<VizStats>(buildUrl('/viz/stats'));
+  },
+
+  async getBracket(params: { season?: number; n_sims?: number } = {}): Promise<BracketData> {
+    return fetchJson<BracketData>(
+      buildUrl('/viz/bracket', { season: params.season, n_sims: params.n_sims })
+    );
   },
 
   async getVizScatter(params: { x: string; y: string; colorBy?: string }): Promise<VizScatterData> {
