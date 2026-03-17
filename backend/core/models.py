@@ -1487,7 +1487,7 @@ class PipelineConfig(models.Model):
 
     # ── Adjusted Ratings ──────────────────────────────────────────────────────
     adj_ratings_iterations = models.IntegerField(
-        default=25,
+        default=75,
         help_text="Max solver iterations before declaring convergence (compute_adjusted_ratings --iterations)",
     )
     adj_ratings_convergence = models.FloatField(
@@ -1515,19 +1515,19 @@ class PipelineConfig(models.Model):
 
     # ── Four Factor Index ─────────────────────────────────────────────────────
     ffi_weight_efg = models.FloatField(
-        default=0.4069,
+        default=0.47,
         help_text="eFG% margin weight in the FFI composite score",
     )
     ffi_weight_tov = models.FloatField(
-        default=0.4069,
+        default=0.24,
         help_text="Turnover edge weight in the FFI composite score",
     )
     ffi_weight_reb = models.FloatField(
-        default=0.1432,
+        default=0.21,
         help_text="Rebounding edge weight in the FFI composite score",
     )
     ffi_weight_ftr = models.FloatField(
-        default=0.0428,
+        default=0.08,
         help_text="FTR margin weight in the FFI composite score",
     )
     ffi_scale_midpoint = models.IntegerField(
