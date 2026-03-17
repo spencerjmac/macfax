@@ -4,10 +4,17 @@ Management command to compute adjusted four factors for each team-season
 Adjusted four factors account for opponent quality and site factors (home/away/neutral).
 
 Formula for each game:
-    Adj_eFG_g = eFG_g * (Nat_eFG / OppDef_eFG_allowed) * SiteFactor
-    Adj_TOV_g = TOV%_g * (Nat_TOV / OppDef_TOV_forced) * SiteFactor
-    Adj_ORB_g = ORB%_g * (Nat_ORB / OppDef_ORB_allowed) * SiteFactor
-    Adj_FTR_g = FTR_g * (Nat_FTR / OppDef_FTR_allowed) * SiteFactor
+    Offensive (use offensive SiteFactor: Home=0.9862, Away=1.0140):
+    Adj_eFG_g  = eFG_g  * (Nat_eFG / OppDef_eFG_allowed) * OffSiteFactor
+    Adj_TOV_g  = TOV%_g * (Nat_TOV / OppDef_TOV_forced)  * OffSiteFactor
+    Adj_ORB_g  = ORB%_g * (Nat_ORB / OppDef_ORB_allowed) * OffSiteFactor
+    Adj_FTR_g  = FTR_g  * (Nat_FTR / OppDef_FTR_allowed) * OffSiteFactor
+
+    Defensive (use defensive SiteFactor: Home=1.0140, Away=0.9862 — inverse of offensive):
+    Adj_OppEFG_g = OppEFG_g * (Nat_eFG / OppOff_eFG) * DefSiteFactor
+    Adj_OppTOV_g = OppTOV_g * (Nat_TOV / OppOff_TOV) * DefSiteFactor
+    Adj_OppORB_g = OppORB_g * (Nat_ORB / OppOff_ORB) * DefSiteFactor
+    Adj_FTR_g    = OppFTR_g * (Nat_FTR / OppOff_FTR) * DefSiteFactor
 
 Aggregated using possession-weighted averaging.
 
@@ -141,7 +148,7 @@ class Command(BaseCommand):
                     
                     opp_adj_def_efg = four_factors[opp_id]['adj_opp_efg']
                     opp_adj_def_tov = four_factors[opp_id]['adj_opp_tov']
-                    opp_adj_off_orb = four_factors[opp_id]['adj_orb']  # Opponent's ORB%
+                    opp_adj_orb_allowed = four_factors[opp_id]['adj_opp_orb']  # Opponent's ORB-allowed (defensive rebounding weakness)
                     opp_adj_def_ftr = four_factors[opp_id]['adj_opp_ftr']
                     
                     # Get opponent's adjusted offensive four factors (for our defense)
@@ -159,11 +166,12 @@ class Command(BaseCommand):
                     raw_opp_efg = tgs.opp_efg_pct
                     raw_opp_tov = tgs.opp_tov_pct
                     raw_opp_orb = tgs.opp_orb_pct if hasattr(tgs, 'opp_orb_pct') else (100 - tgs.drb_pct)  # Opponent ORB%
-                    raw_drb = 100 - tgs.orb_pct if opp_tgs else 0  # DRB% = 100 - opp's ORB%
+                    raw_drb = (100 - raw_opp_orb) if raw_opp_orb is not None else 0  # DRB% = 100 - opp's ORB%
                     raw_opp_ftr = tgs.opp_ftr
 
-                    # Site factor
-                    site_factor = tgs.site_factor
+                    # Site factors (different for offense vs defense, matching compute_adjusted_ratings)
+                    site_factor = tgs.site_factor            # Offensive: Home=0.9862, Away=1.0140
+                    def_site_factor = tgs.defensive_site_factor  # Defensive: Home=1.0140, Away=0.9862
 
                     # Weight by possessions
                     weight = tgs.poss_game or 0
@@ -179,8 +187,8 @@ class Command(BaseCommand):
                         adj_tov_g = raw_tov * (nat_avg.avg_tov / opp_adj_def_tov) * site_factor
                         sum_weighted_tov += weight * adj_tov_g
                     
-                    if raw_orb is not None and opp_adj_off_orb > 0:
-                        adj_orb_g = raw_orb * (nat_avg.avg_orb / opp_adj_off_orb) * site_factor
+                    if raw_orb is not None and opp_adj_orb_allowed > 0:
+                        adj_orb_g = raw_orb * (nat_avg.avg_orb / opp_adj_orb_allowed) * site_factor
                         sum_weighted_orb += weight * adj_orb_g
                     
                     if raw_ftr is not None and opp_adj_def_ftr > 0:
@@ -189,25 +197,25 @@ class Command(BaseCommand):
 
                     # Compute adjusted defensive four factors (opponent's adjusted offensive stats)
                     if raw_opp_efg is not None and opp_adj_off_efg > 0:
-                        adj_opp_efg_g = raw_opp_efg * (nat_avg.avg_efg / opp_adj_off_efg) * site_factor
+                        adj_opp_efg_g = raw_opp_efg * (nat_avg.avg_efg / opp_adj_off_efg) * def_site_factor
                         sum_weighted_opp_efg += weight * adj_opp_efg_g
                     
                     if raw_opp_tov is not None and opp_adj_off_tov > 0:
                         # For defense, we want high TOV% forced (opponent's low TOV%)
-                        adj_opp_tov_g = raw_opp_tov * (nat_avg.avg_tov / opp_adj_off_tov) * site_factor
+                        adj_opp_tov_g = raw_opp_tov * (nat_avg.avg_tov / opp_adj_off_tov) * def_site_factor
                         sum_weighted_opp_tov += weight * adj_opp_tov_g
                     
                     if raw_opp_orb is not None and opp_adj_off_orb > 0:
                         # Opponent ORB% (defensive stat - lower is better)
-                        adj_opp_orb_g = raw_opp_orb * (nat_avg.avg_orb / opp_adj_off_orb) * site_factor
+                        adj_opp_orb_g = raw_opp_orb * (nat_avg.avg_orb / opp_adj_off_orb) * def_site_factor
                         sum_weighted_opp_orb += weight * adj_opp_orb_g
                     
                     if raw_drb is not None and opp_adj_off_orb > 0:
-                        adj_drb_g = raw_drb * (nat_avg.avg_orb / opp_adj_off_orb) * site_factor
+                        adj_drb_g = raw_drb * (nat_avg.avg_orb / opp_adj_off_orb) * def_site_factor
                         sum_weighted_drb += weight * adj_drb_g
                     
                     if raw_opp_ftr is not None and opp_adj_off_ftr > 0:
-                        adj_opp_ftr_g = raw_opp_ftr * (nat_avg.avg_ftr / opp_adj_off_ftr) * site_factor
+                        adj_opp_ftr_g = raw_opp_ftr * (nat_avg.avg_ftr / opp_adj_off_ftr) * def_site_factor
                         sum_weighted_opp_ftr += weight * adj_opp_ftr_g
 
                     sum_weights += weight
