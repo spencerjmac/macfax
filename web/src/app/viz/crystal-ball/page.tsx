@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import type { CrystalBallData, CrystalBallTeam, ChecklistItem } from '@/types';
+import SeasonSelect from '@/components/SeasonSelect';
 import clsx from 'clsx';
 
 // ---------------------------------------------------------------------------
@@ -244,7 +245,9 @@ export default function CrystalBallPage() {
       {/* Filters */}
       <div className="flex flex-wrap gap-4 items-end">
 
-        {/* Tournament toggle — only shown once we have bracket data */}
+        <SeasonSelect value={season} onChange={setSeason} />
+
+        {/* Tournament toggle — only shown once we have bracket data */}}
         {hasTournamentData && (
           <div className="flex rounded-lg overflow-hidden border border-ui-border text-sm">
             <button

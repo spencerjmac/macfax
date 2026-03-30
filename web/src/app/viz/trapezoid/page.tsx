@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { api } from '@/lib/api';
 import type { TrapezoidData, Conference } from '@/types';
+import SeasonSelect from '@/components/SeasonSelect';
 
 // Dynamically import ECharts to avoid SSR issues
 const ReactECharts = dynamic(() => import('echarts-for-react'), { ssr: false });
@@ -15,6 +16,7 @@ export default function TrapezoidPage() {
   const [error, setError] = useState<string | null>(null);
   
   // Filters
+  const [season, setSeason] = useState(2026);
   const [conferenceFilter, setConferenceFilter] = useState('ALL');
   const [topN, setTopN] = useState(365);
   const [debouncedTopN, setDebouncedTopN] = useState(365);
@@ -35,7 +37,7 @@ export default function TrapezoidPage() {
   // Load data when filters change
   useEffect(() => {
     loadData();
-  }, [conferenceFilter, debouncedTopN]);
+  }, [season, conferenceFilter, debouncedTopN]);
   
   async function loadConferences() {
     try {
@@ -50,6 +52,7 @@ export default function TrapezoidPage() {
     try {
       setLoading(true);
       const result = await api.getTrapezoid({
+        season,
         conference: conferenceFilter === 'ALL' ? undefined : conferenceFilter,
         top: debouncedTopN,
       });
@@ -267,6 +270,9 @@ export default function TrapezoidPage() {
       
       {/* Filters */}
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+        <div className="flex flex-wrap gap-4 mb-4 items-center">
+          <SeasonSelect value={season} onChange={(s) => { setSeason(s); setConferenceFilter('ALL'); }} />
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">

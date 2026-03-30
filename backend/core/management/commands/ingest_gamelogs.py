@@ -71,6 +71,7 @@ def process_game_job(
             mapper=mapper,
             refresh=refresh,
             dry_run=dry_run,
+            source=source,
         )
 
         return result
@@ -127,6 +128,11 @@ class Command(BaseCommand):
             metavar="N",
             help="In-process parallel workers for game ingestion (default: 1). Use 2+ for multiprocessing.",
         )
+        parser.add_argument(
+            "--create-season",
+            action="store_true",
+            help="Auto-create Season object if it doesn't exist (useful for historical seasons)",
+        )
 
     def handle(self, *args, **options):
         season_year = options["season"]
@@ -136,23 +142,51 @@ class Command(BaseCommand):
         source = options.get("source", "ncaa")
         workers = max(1, int(options.get("workers", 1)))
 
+        create_season = options.get("create_season", False)
+        current_year = date.today().year
+
         # Get or create season
         try:
             season = Season.objects.get(year=season_year)
         except Season.DoesNotExist:
-            raise CommandError(f"Season {season_year} not found. Create it first.")
+            if create_season:
+                prev_year = season_year - 1
+                display_name = f"{prev_year}-{str(season_year)[2:]}"
+                is_current = (season_year == current_year) or (
+                    season_year == current_year + 1 and date.today().month >= 10
+                )
+                season = Season.objects.create(
+                    year=season_year,
+                    display_name=display_name,
+                    is_current=is_current,
+                )
+                self.stdout.write(
+                    self.style.SUCCESS(f"Created season: {display_name}")
+                )
+            else:
+                raise CommandError(
+                    f"Season {season_year} not found. "
+                    f"Run with --create-season to auto-create it."
+                )
 
         # Determine date range
         start_date = self._parse_date(options.get("start"))
         end_date = self._parse_date(options.get("end"))
 
         if not start_date:
-            # Default: start of season (November 1)
+            # Default: start of season (November 1 of the prior calendar year)
             start_date = date(season_year - 1, 11, 1)
 
         if not end_date:
-            # Default to yesterday so we don't request today's games (often not played yet; boxscores 502/428)
-            end_date = date.today() - timedelta(days=1)
+            # For past (completed) seasons default to April 15 of the ending year
+            # so we don't loop through years of empty dates.
+            # For the current/upcoming season default to yesterday.
+            if season_year < date.today().year or (
+                season_year == date.today().year and date.today().month > 8
+            ):
+                end_date = date(season_year, 4, 15)
+            else:
+                end_date = date.today() - timedelta(days=1)
 
         if start_date > end_date:
             raise CommandError("Start date must be before end date")
@@ -349,6 +383,7 @@ class Command(BaseCommand):
                                 mapper=mapper,
                                 refresh=refresh,
                                 dry_run=dry_run,
+                                source=source,
                             )
                             if result["created"]:
                                 stats["games_created"] += 1
@@ -397,6 +432,7 @@ class Command(BaseCommand):
         mapper: TeamMapper,
         refresh: bool,
         dry_run: bool,
+        source: str = "ncaa",
     ) -> Dict[str, any]:
         """Process a single game"""
         # Extract basic game info
@@ -513,6 +549,7 @@ class Command(BaseCommand):
             season=season,
             home_team=home_team,
             away_team=away_team,
+            source=source,
         )
 
         # Skip stat extraction if game doesn't have final scores
@@ -581,6 +618,7 @@ class Command(BaseCommand):
         season: Season,
         home_team: Team,
         away_team: Team,
+        source: str = "ncaa",
     ) -> Game:
         """Create or update Game record"""
         # Parse game data
@@ -667,7 +705,7 @@ class Command(BaseCommand):
                 "home_score": home_score,
                 "away_score": away_score,
                 "neutral_site": neutral,
-                "source": "ncaa",
+                "source": source,
                 "raw_json": game_data,
             },
         )

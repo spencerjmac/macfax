@@ -202,7 +202,16 @@ class Command(BaseCommand):
         team_time_scale = {}
 
         if recency_lambda > 0:
-            today = date.today()
+            # Use the last game date in the season as the "today" reference so that
+            # recency weighting is calibrated within the season (not from wall-clock
+            # today, which would give ~zero weight to all games in historical seasons).
+            last_game = (
+                Game.objects.filter(season_year=season_year, status="final")
+                .order_by("-game_date")
+                .values("game_date")
+                .first()
+            )
+            today = last_game["game_date"] if last_game else date.today()
 
             # Exponential decay weight per game
             for g in Game.objects.filter(

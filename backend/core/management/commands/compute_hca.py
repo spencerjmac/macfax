@@ -84,7 +84,7 @@ class Command(BaseCommand):
         
         # Create team stats cache for faster lookup
         team_stats_cache = {}
-        for ts in TeamSeasonRatings.objects.filter(season=season, team__is_d1=True).select_related('team'):
+        for ts in TeamSeasonRatings.objects.filter(season=season, team__is_d1=True, games_played__gt=0).select_related('team'):
             team_stats_cache[ts.team.id] = ts
         
         self.stdout.write(f'  Team stats available: {len(team_stats_cache)} teams')

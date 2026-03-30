@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   useReactTable,
   getCoreRowModel,
@@ -11,7 +12,7 @@ import {
   SortingState,
   ColumnFiltersState,
 } from '@tanstack/react-table';
-import { TeamSeason } from '@/types';
+import { TeamSeason, SeasonInfo } from '@/types';
 import Link from 'next/link';
 import clsx from 'clsx';
 import HeaderWithTooltip from './HeaderWithTooltip';
@@ -20,6 +21,8 @@ import { computeRanks, getPercentileColor, RankData } from '@/lib/rankingUtils';
 
 interface RankingsTableProps {
   data: TeamSeason[];
+  seasons?: SeasonInfo[];
+  selectedSeason?: number;
 }
 
 type TabId = 'overview' | 'four-factors' | 'adjusted-four-factors';
@@ -30,7 +33,8 @@ interface SubColSpec {
   label: string;
 }
 
-export default function RankingsTable({ data }: RankingsTableProps) {
+export default function RankingsTable({ data, seasons = [], selectedSeason }: RankingsTableProps) {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabId>('overview');
   const [sorting, setSorting] = useState<SortingState>([
     { id: 'rank', desc: false },
@@ -386,6 +390,26 @@ export default function RankingsTable({ data }: RankingsTableProps) {
     <div className="space-y-4">
       {/* Filters */}
       <div className="flex flex-wrap gap-4 items-center">
+        {/* Season selector */}
+        {seasons.length > 1 && (
+          <div>
+            <select
+              value={selectedSeason ?? ''}
+              onChange={(e) => {
+                const val = e.target.value;
+                router.push(val ? `/rankings?season=${val}` : '/rankings');
+              }}
+              className="px-3 py-2 bg-ui-surface border border-ui-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand/50 font-medium"
+            >
+              {seasons.map((s) => (
+                <option key={s.year} value={s.year}>
+                  {s.display_name}{s.is_current ? ' (Current)' : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         <div className="flex-1 min-w-[200px]">
           <input
             type="text"

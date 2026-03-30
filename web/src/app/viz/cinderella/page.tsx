@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import type { CinderellaData, CinderellaTeam } from '@/types';
+import SeasonSelect from '@/components/SeasonSelect';
 import clsx from 'clsx';
 
 // ---------------------------------------------------------------------------
@@ -397,17 +398,7 @@ export default function CinderellaPage() {
       {/* Controls */}
       <div className="flex flex-wrap gap-3 mb-6 items-center">
         {/* Season */}
-        <div className="flex items-center gap-2">
-          <label className="text-sm font-medium text-text-muted">Season:</label>
-          <select
-            value={season}
-            onChange={(e) => setSeason(Number(e.target.value))}
-            className="text-sm border border-ui-border rounded px-2 py-1 bg-ui-surface"
-          >
-            <option value={2026}>2025–26</option>
-            <option value={2025}>2024–25</option>
-          </select>
-        </div>
+        <SeasonSelect value={season} onChange={setSeason} />
 
         {/* Seed filter pills (only if tournament data available) */}
         {hasTournament && (

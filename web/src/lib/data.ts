@@ -1,8 +1,8 @@
-import type { TeamsData, TeamSeason, DatasetMetadata } from '@/types';
+import type { TeamsData, TeamSeason, DatasetMetadata, SeasonInfo } from '@/types';
 import { buildTeamRanks, buildChampionChecklist, buildCinderellaIndex } from './rankings';
 
-const DEFAULT_SEASON = 2026;
 const API_RANKINGS_PATH = '/api/rankings/';
+const API_SEASONS_PATH = '/api/seasons/'
 
 /** Map API ranking row (snake_case) to frontend TeamSeason */
 function mapApiRowToTeamSeason(team: Record<string, unknown>): TeamSeason {
@@ -13,15 +13,13 @@ function mapApiRowToTeamSeason(team: Record<string, unknown>): TeamSeason {
     v != null && typeof v === 'number' ? v / 100 : null;
   const num = (v: unknown): number | null =>
     v != null && typeof v === 'number' ? v : null;
-  const seasonDisplay = '2025-26';
-
   return {
     teamId: (team.team_slug as string) || '',
     teamName: (team.team_name as string) || '',
     teamNameAlt: [(team.team_name as string) || ''],
     conference: (team.conference as string) || 'Ind',
     logoUrl: (team.team_logo as string) || '/logos/default.png',
-    season: seasonDisplay,
+    season: (team.season_display as string) || '',
     lastUpdated: new Date().toISOString().slice(0, 10),
     games,
     record,
@@ -83,21 +81,15 @@ function mapApiRowToTeamSeason(team: Record<string, unknown>): TeamSeason {
 }
 
 /** Fetch rankings from backend API */
-async function fetchRankingsFromApi(): Promise<TeamsData> {
+async function fetchRankingsFromApi(season?: number): Promise<TeamsData> {
   // Server-side: prefer the internal Docker URL (never exposed to browsers).
   // Client-side: falls back to the public URL baked in at build time.
   const base = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
-  const url = `${base}${API_RANKINGS_PATH}`;
-  
-  // Log for debugging
-  console.log('[fetchRankingsFromApi] Fetching from:', url);
-  console.log('[fetchRankingsFromApi] API_INTERNAL_URL:', process.env.API_INTERNAL_URL);
-  console.log('[fetchRankingsFromApi] NEXT_PUBLIC_API_BASE_URL:', process.env.NEXT_PUBLIC_API_BASE_URL);
-  
+  const params = season ? `?season=${season}` : '';
+  const url = `${base}${API_RANKINGS_PATH}${params}`;
+
   const res = await fetch(url, { cache: 'no-store' });
-  
-  console.log('[fetchRankingsFromApi] Response status:', res.status);
-  
+
   if (!res.ok) {
     console.error('[fetchRankingsFromApi] Fetch failed:', res.status, res.statusText);
     return {
@@ -113,18 +105,29 @@ async function fetchRankingsFromApi(): Promise<TeamsData> {
   const json = (await res.json()) as { results?: Record<string, unknown>[]; count?: number };
   const results = json.results ?? [];
   const teams = results.map(r => mapApiRowToTeamSeason(r));
-  
-  console.log('[fetchRankingsFromApi] Success! Teams count:', teams.length);
-  
+
+  // Derive season display from the first result, or fall back to a computed value
+  const seasonDisplay = teams[0]?.season || (season ? `${season - 1}-${String(season).slice(2)}` : 'N/A');
+
   return {
     metadata: {
       lastUpdated: new Date().toISOString(),
-      season: '2025-26',
+      season: seasonDisplay,
       teamCount: teams.length,
       sources: { kenpom: 0, torvik: 0, cbbAnalytics: 0 },
     },
     teams,
   };
+}
+
+/** Fetch the list of seasons that have computed ratings */
+async function fetchSeasonsFromApi(): Promise<SeasonInfo[]> {
+  const base = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
+  const url = `${base}${API_SEASONS_PATH}?has_ratings=true`;
+  const res = await fetch(url, { cache: 'no-store' });
+  if (!res.ok) return [];
+  const json = (await res.json()) as SeasonInfo[] | { results?: SeasonInfo[] };
+  return Array.isArray(json) ? json : (json.results ?? []);
 }
 
 const emptyMetadata: DatasetMetadata = {
@@ -137,15 +140,20 @@ const emptyMetadata: DatasetMetadata = {
 /** During Next.js production build (e.g. Docker) no backend is running; avoid fetch. */
 const isBuildPhase = () => process.env.NEXT_PHASE === 'phase-production-build';
 
-export async function getAllTeams(): Promise<TeamSeason[]> {
+export async function getAllSeasons(): Promise<SeasonInfo[]> {
   if (isBuildPhase()) return [];
-  const apiData = await fetchRankingsFromApi();
+  return fetchSeasonsFromApi();
+}
+
+export async function getAllTeams(season?: number): Promise<TeamSeason[]> {
+  if (isBuildPhase()) return [];
+  const apiData = await fetchRankingsFromApi(season);
   return apiData.teams;
 }
 
-export async function getMetadata(): Promise<DatasetMetadata> {
+export async function getMetadata(season?: number): Promise<DatasetMetadata> {
   if (isBuildPhase()) return emptyMetadata;
-  const apiData = await fetchRankingsFromApi();
+  const apiData = await fetchRankingsFromApi(season);
   return apiData.metadata;
 }
 

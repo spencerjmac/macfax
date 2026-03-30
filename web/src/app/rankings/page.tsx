@@ -1,5 +1,5 @@
 import { Metadata } from 'next';
-import { getAllTeams, getMetadata } from '@/lib/data';
+import { getAllTeams, getAllSeasons, getMetadata } from '@/lib/data';
 import RankingsTable from '@/components/RankingsTable';
 
 // Force dynamic rendering - never cache this page
@@ -11,10 +11,20 @@ export const metadata: Metadata = {
   description: 'Complete NCAA Division I men\'s basketball rankings with adjusted efficiency metrics, four factors, and advanced statistics.',
 };
 
-export default async function RankingsPage() {
-  const teams = await getAllTeams();
-  const meta = await getMetadata();
-  
+interface RankingsPageProps {
+  searchParams: Promise<{ season?: string }>;
+}
+
+export default async function RankingsPage({ searchParams }: RankingsPageProps) {
+  const params = await searchParams;
+  const seasonYear = params.season ? parseInt(params.season, 10) : undefined;
+
+  const [teams, seasons, meta] = await Promise.all([
+    getAllTeams(seasonYear),
+    getAllSeasons(),
+    getMetadata(seasonYear),
+  ]);
+
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Header */}
@@ -27,10 +37,10 @@ export default async function RankingsPage() {
           </span>
         </p>
       </div>
-      
+
       {/* Rankings Table */}
-      <RankingsTable data={teams} />
-      
+      <RankingsTable data={teams} seasons={seasons} selectedSeason={seasonYear} />
+
       {/* Legend */}
       <div className="mt-8 p-6 bg-ui-surface border border-ui-border rounded-lg">
         <h2 className="font-bold text-lg mb-4">Metric Definitions</h2>

@@ -2,6 +2,7 @@ import type {
   Team,
   MatchupResult,
   Conference,
+  SeasonInfo,
   TrapezoidData,
   EfficiencyLandscapeData,
   CrystalBallData,
@@ -13,7 +14,7 @@ import type {
 
 type QueryParams = Record<string, string | number | boolean | undefined | null>;
 
-const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000').replace(/\/$/, '');
+const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8000').replace(/\/$/, '');
 const API_ROOT = `${API_BASE_URL}/api`;
 
 function buildUrl(path: string, params?: QueryParams): string {
@@ -95,15 +96,20 @@ export const api = {
     return unwrapResults<Conference>(data);
   },
 
-  async getTrapezoid(params: { conference?: string; top?: number }): Promise<TrapezoidData> {
+  async getSeasons(): Promise<SeasonInfo[]> {
+    const data = await fetchJson<any>(buildUrl('/seasons/', { has_ratings: 'true' }));
+    return unwrapResults<SeasonInfo>(data);
+  },
+
+  async getTrapezoid(params: { season?: number; conference?: string; top?: number }): Promise<TrapezoidData> {
     return fetchJson<TrapezoidData>(
-      buildUrl('/viz/trapezoid', { conference: params.conference, top: params.top })
+      buildUrl('/viz/trapezoid', { season: params.season, conference: params.conference, top: params.top })
     );
   },
 
-  async getLandscape(params: { conference?: string; top?: number }): Promise<EfficiencyLandscapeData> {
+  async getLandscape(params: { season?: number; conference?: string; top?: number }): Promise<EfficiencyLandscapeData> {
     return fetchJson<EfficiencyLandscapeData>(
-      buildUrl('/viz/landscape', { conference: params.conference, top: params.top })
+      buildUrl('/viz/landscape', { season: params.season, conference: params.conference, top: params.top })
     );
   },
 
@@ -129,8 +135,8 @@ export const api = {
     );
   },
 
-  async getVizStats(): Promise<VizStats> {
-    return fetchJson<VizStats>(buildUrl('/viz/stats'));
+  async getVizStats(params: { season?: number } = {}): Promise<VizStats> {
+    return fetchJson<VizStats>(buildUrl('/viz/stats', { season: params.season }));
   },
 
   async getBracket(params: { season?: number; n_sims?: number } = {}): Promise<BracketData> {
@@ -139,9 +145,9 @@ export const api = {
     );
   },
 
-  async getVizScatter(params: { x: string; y: string; colorBy?: string }): Promise<VizScatterData> {
+  async getVizScatter(params: { season?: number; x: string; y: string; colorBy?: string }): Promise<VizScatterData> {
     return fetchJson<VizScatterData>(
-      buildUrl('/viz/scatter', { x: params.x, y: params.y, colorBy: params.colorBy })
+      buildUrl('/viz/scatter', { season: params.season, x: params.x, y: params.y, colorBy: params.colorBy })
     );
   },
 };

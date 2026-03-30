@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import type { EfficiencyLandscapeData, Conference } from '@/types';
+import SeasonSelect from '@/components/SeasonSelect';
 
 export default function EfficiencyLandscapePage() {
   const router = useRouter();
@@ -14,6 +15,7 @@ export default function EfficiencyLandscapePage() {
   const [hoveredTeam, setHoveredTeam] = useState<string | null>(null);
   
   // Filters
+  const [season, setSeason] = useState(2026);
   const [conferenceFilter, setConferenceFilter] = useState('ALL');
   const [topN, setTopN] = useState(365);
   const [debouncedTopN, setDebouncedTopN] = useState(365);
@@ -34,7 +36,7 @@ export default function EfficiencyLandscapePage() {
   // Load data when filters change
   useEffect(() => {
     loadData();
-  }, [conferenceFilter, debouncedTopN]);
+  }, [season, conferenceFilter, debouncedTopN]);
   
   async function loadConferences() {
     try {
@@ -49,6 +51,7 @@ export default function EfficiencyLandscapePage() {
     try {
       setLoading(true);
       const result = await api.getLandscape({
+        season,
         conference: conferenceFilter === 'ALL' ? undefined : conferenceFilter,
         top: debouncedTopN,
       });
@@ -77,6 +80,9 @@ export default function EfficiencyLandscapePage() {
       
       {/* Filters */}
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+        <div className="flex flex-wrap gap-4 mb-4 items-center">
+          <SeasonSelect value={season} onChange={(s) => { setSeason(s); setConferenceFilter('ALL'); }} />
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">

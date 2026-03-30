@@ -108,3 +108,9 @@ espn:
   "W Carolina": "Western Carolina"
   "W Illinois": "Western Illinois"
   "W Michigan": "Western Mich."
+
+  # ESPN team ID overrides (external_id: canonical_name)
+  # These fix cases where fuzzy name matching chose the wrong team.
+  # The key is the ESPN numeric team ID as returned in scoreboard/boxscore data.
+  "61": "Georgia"     # ESPN "Georgia Bulldogs" (id=61) was fuzzy-matching to "Georgia College"
+  "104": "Boston University"  # ESPN uses id=104 in some contexts; our DB uses id=103

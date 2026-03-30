@@ -302,7 +302,7 @@ class CrystalBallView(APIView):
         # All D1 rated teams — used for stable season context
         all_qs = (
             TeamSeasonRatings.objects
-            .filter(season=season, team__is_d1=True)
+            .filter(season=season, team__is_d1=True, games_played__gt=0)
             .select_related("team")
         )
 
