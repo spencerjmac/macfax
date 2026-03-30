@@ -208,7 +208,8 @@ class TrapezoidView(APIView):
         # CRITICAL: Only include D1 teams
         all_teams_queryset = TeamSeasonRatings.objects.filter(
             season=season,
-            team__is_d1=True  # Only D1 teams
+            team__is_d1=True,  # Only D1 teams
+            games_played__gt=0,  # Exclude stubs (teams not D1 in this season)
         ).values('adj_tempo', 'adj_em')
         
         # Extract tempo and em values from ALL teams for trapezoid boundaries
@@ -233,7 +234,8 @@ class TrapezoidView(APIView):
         # CRITICAL: Only include D1 teams
         display_queryset = TeamSeasonRatings.objects.filter(
             season=season,
-            team__is_d1=True  # Only D1 teams
+            team__is_d1=True,  # Only D1 teams
+            games_played__gt=0,  # Exclude stubs (teams not D1 in this season)
         ).select_related('team').order_by('-adj_em')
         
         # Use the same serializer to get conference data (it has comprehensive mapping)

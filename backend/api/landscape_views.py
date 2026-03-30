@@ -83,7 +83,8 @@ class EfficiencyLandscapeView(APIView):
         # CRITICAL: Only include D1 teams
         queryset = TeamSeasonRatings.objects.filter(
             season=season,
-            team__is_d1=True  # Only D1 teams
+            team__is_d1=True,  # Only D1 teams
+            games_played__gt=0,  # Exclude stubs (teams not D1 in this season)
         ).select_related('team')
         
         # Order by Adj EM descending

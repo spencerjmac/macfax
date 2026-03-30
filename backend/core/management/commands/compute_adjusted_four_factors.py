@@ -255,42 +255,34 @@ class Command(BaseCommand):
             ff = four_factors[team.id]
             
             try:
-                # Get or create TeamSeasonRatings
-                rating, created = TeamSeasonRatings.objects.get_or_create(
+                # Only update existing TeamSeasonRatings — never create stubs for teams
+                # that weren't processed by compute_adjusted_ratings (e.g. teams that
+                # weren't D1 in this historical season).
+                updated = TeamSeasonRatings.objects.filter(
                     team=team,
                     season=season,
-                    defaults={
-                        'adj_o': 0.0,
-                        'adj_d': 0.0,
-                        'adj_em': 0.0,
-                        'adj_tempo': 0.0,
-                    }
+                ).update(
+                    adj_efg_pct=round(ff['adj_efg'], 2),
+                    adj_tov_pct=round(ff['adj_tov'], 2),
+                    adj_orb_pct=round(ff['adj_orb'], 2),
+                    adj_ftr=round(ff['adj_ftr'], 2),
+                    adj_opp_efg_pct=round(ff['adj_opp_efg'], 2),
+                    adj_opp_tov_pct=round(ff['adj_opp_tov'], 2),
+                    adj_opp_orb_pct=round(ff['adj_opp_orb'], 2),
+                    adj_drb_pct=round(ff['adj_drb'], 2),
+                    adj_opp_ftr=round(ff['adj_opp_ftr'], 2),
                 )
 
-                # Update adjusted four factors
-                rating.adj_efg_pct = round(ff['adj_efg'], 2)
-                rating.adj_tov_pct = round(ff['adj_tov'], 2)
-                rating.adj_orb_pct = round(ff['adj_orb'], 2)
-                rating.adj_ftr = round(ff['adj_ftr'], 2)
-                
-                rating.adj_opp_efg_pct = round(ff['adj_opp_efg'], 2)
-                rating.adj_opp_tov_pct = round(ff['adj_opp_tov'], 2)
-                rating.adj_opp_orb_pct = round(ff['adj_opp_orb'], 2)
-                rating.adj_drb_pct = round(ff['adj_drb'], 2)
-                rating.adj_opp_ftr = round(ff['adj_opp_ftr'], 2)
-
-                # Compute adjusted margins
-                rating.adj_efg_margin = round(rating.adj_efg_pct - rating.adj_opp_efg_pct, 2)
-                rating.adj_tov_edge = round(rating.adj_opp_tov_pct - rating.adj_tov_pct, 2)
-                rating.adj_reb_edge = round(rating.adj_orb_pct - rating.adj_opp_orb_pct, 2)
-                rating.adj_ftr_margin = round(rating.adj_ftr - rating.adj_opp_ftr, 2)
-
-                rating.save()
-
-                if created:
-                    created_count += 1
-                else:
+                if updated:
+                    # Recompute margin fields separately (they depend on the adj fields)
+                    rating = TeamSeasonRatings.objects.get(team=team, season=season)
+                    rating.adj_efg_margin = round(rating.adj_efg_pct - rating.adj_opp_efg_pct, 2)
+                    rating.adj_tov_edge = round(rating.adj_opp_tov_pct - rating.adj_tov_pct, 2)
+                    rating.adj_reb_edge = round(rating.adj_orb_pct - rating.adj_opp_orb_pct, 2)
+                    rating.adj_ftr_margin = round(rating.adj_ftr - rating.adj_opp_ftr, 2)
+                    rating.save(update_fields=['adj_efg_margin', 'adj_tov_edge', 'adj_reb_edge', 'adj_ftr_margin'])
                     updated_count += 1
+                # else: team has no ratings row yet (not yet processed by compute_adjusted_ratings) — skip
 
             except Exception as e:
                 self.stdout.write(

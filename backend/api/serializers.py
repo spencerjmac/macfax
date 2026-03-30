@@ -157,6 +157,7 @@ class RankingsSerializer(serializers.Serializer):
     team_name = serializers.CharField(source="team.name")
     team_slug = serializers.CharField(source="team.slug")
     team_logo = serializers.CharField(source="team.logo_url")
+    season_display = serializers.CharField(source="season.display_name")
     conference = serializers.SerializerMethodField()
     record = serializers.SerializerMethodField()
 

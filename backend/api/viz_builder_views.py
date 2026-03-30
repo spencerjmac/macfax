@@ -159,6 +159,7 @@ class VizScatterView(APIView):
         queryset = TeamSeasonRatings.objects.filter(
             season=season,
             team__is_d1=True,
+            games_played__gt=0,  # Exclude stubs (teams not D1 in this season)
         ).select_related('team')
         
         # Use RankingsSerializer for conference lookup (same as trapezoid/landscape)

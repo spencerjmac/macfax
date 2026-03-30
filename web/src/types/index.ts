@@ -139,6 +139,13 @@ export interface Conference {
   name: string;
 }
 
+export interface SeasonInfo {
+  id: number;
+  year: number;
+  display_name: string;
+  is_current: boolean;
+}
+
 // Trapezoid types
 export interface TrapezoidBoundaries {
   x_left_top: number;

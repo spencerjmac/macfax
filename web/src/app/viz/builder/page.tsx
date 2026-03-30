@@ -6,6 +6,7 @@ import dynamicImport from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import type { VizStats, VizScatterData, StatMetadata } from '@/types';
+import SeasonSelect from '@/components/SeasonSelect';
 
 export const dynamic = 'force-dynamic';
 
@@ -72,6 +73,7 @@ function VizBuilderPageInner() {
   // UI state from URL params
   const [xStat, setXStat] = useState(searchParams.get('x') || 'adj_o');
   const [yStat, setYStat] = useState(searchParams.get('y') || 'adj_d');
+  const [season, setSeason] = useState(2026);
   const [showRegression, setShowRegression] = useState(searchParams.get('reg') !== '0');
   const [colorByConference, setColorByConference] = useState(searchParams.get('color') !== '0');
   const [invertX, setInvertX] = useState(searchParams.get('invX') === '1');
@@ -96,7 +98,7 @@ function VizBuilderPageInner() {
       loadScatterData();
       updateURL();
     }
-  }, [xStat, yStat]);
+  }, [xStat, yStat, season]);
 
   // Reset legend selection when data or color-by-conference changes
   useEffect(() => {
@@ -118,7 +120,7 @@ function VizBuilderPageInner() {
   async function loadStats() {
     try {
       setLoading(true);
-      const result = await api.getVizStats();
+      const result = await api.getVizStats({ season });
       setStats(result);
       setError(null);
     } catch (err: any) {
@@ -133,6 +135,7 @@ function VizBuilderPageInner() {
     try {
       setDataLoading(true);
       const result = await api.getVizScatter({
+        season,
         x: xStat,
         y: yStat,
         colorBy: colorByConference ? 'conference' : undefined,
@@ -466,6 +469,9 @@ function VizBuilderPageInner() {
         
         {/* Controls */}
         <div className="bg-white rounded-lg shadow-sm p-6">
+          <div className="flex flex-wrap gap-4 mb-4 items-center">
+            <SeasonSelect value={season} onChange={setSeason} />
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* X-axis selector */}
             <div>

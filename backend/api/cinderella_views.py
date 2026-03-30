@@ -253,7 +253,7 @@ class CinderellaView(APIView):
 
         all_ratings = list(
             TeamSeasonRatings.objects
-            .filter(season=season, team__is_d1=True)
+            .filter(season=season, team__is_d1=True, games_played__gt=0)
             .select_related('team')
         )
         if not all_ratings:

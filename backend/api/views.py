@@ -55,11 +55,23 @@ class SeasonViewSet(viewsets.ReadOnlyModelViewSet):
     """
     GET /api/seasons
     Returns list of all available seasons
+
+    Query Params:
+    - has_ratings: if 'true', only return seasons that have TeamSeasonRatings data
     """
 
-    queryset = Season.objects.all()
     serializer_class = SeasonSerializer
     pagination_class = None  # Disable pagination for seasons
+
+    def get_queryset(self):
+        from core.models import TeamSeasonRatings
+        qs = Season.objects.all()
+        if self.request.query_params.get('has_ratings') == 'true':
+            seasons_with_ratings = (
+                TeamSeasonRatings.objects.values_list('season_id', flat=True).distinct()
+            )
+            qs = qs.filter(id__in=seasons_with_ratings)
+        return qs
 
 
 class ConferenceViewSet(viewsets.ReadOnlyModelViewSet):
@@ -108,7 +120,7 @@ class RankingsViewSet(viewsets.ReadOnlyModelViewSet):
         # stored in rank_adj_em (which may have been computed before non-D1 teams
         # were purged and therefore contains gaps when filtered to D1 only).
         queryset = (
-            TeamSeasonRatings.objects.filter(season=season, team__is_d1=True)
+            TeamSeasonRatings.objects.filter(season=season, team__is_d1=True, games_played__gt=0)
             .select_related("team", "season")
             .prefetch_related(
                 Prefetch(

@@ -480,7 +480,9 @@ class ESPNAPIClient:
 
         date_str = game_date.strftime("%Y%m%d")
         url = f"{self.BASE_URL}/scoreboard"
-        params = {"dates": date_str}
+        # groups=50 = all D1 men's basketball conferences; limit=500 ensures we get
+        # the full slate (~200 games on busy days) rather than the default ~18
+        params = {"dates": date_str, "groups": "50", "limit": "500"}
 
         try:
             logger.info(f"Fetching ESPN scoreboard for {game_date}")
@@ -638,8 +640,16 @@ class ESPNAPIClient:
                     stat_name = stat.get("name", "").lower().replace(" ", "")
                     stat_val = stat.get("displayValue", "0")
 
-                    # Map ESPN stat names to our schema
+                    # Map ESPN stat names to our schema.
+                    # ESPN returns shooting stats as a compound name like
+                    # "fieldGoalsMade-fieldGoalsAttempted" with displayValue "22-58".
+                    # We add the compound forms so the X-Y split below handles them.
                     stat_map = {
+                        # Compound (actual ESPN names)
+                        "fieldgoalsmade-fieldgoalsattempted": "fieldGoalsMade",
+                        "threepointfieldgoalsmade-threepointfieldgoalsattempted": "threePointFieldGoalsMade",
+                        "freethrowsmade-freethrowsattempted": "freeThrowsMade",
+                        # Individual names (fallback)
                         "fieldgoalsmade": "fieldGoalsMade",
                         "fieldgoals": "fieldGoalsMade",
                         "fieldgoalsattempted": "fieldGoalsAttempted",
