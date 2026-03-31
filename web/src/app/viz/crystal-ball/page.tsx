@@ -247,7 +247,7 @@ export default function CrystalBallPage() {
 
         <SeasonSelect value={season} onChange={setSeason} />
 
-        {/* Tournament toggle — only shown once we have bracket data */}}
+        {/* Tournament toggle — only shown once we have bracket data */}
         {hasTournamentData && (
           <div className="flex rounded-lg overflow-hidden border border-ui-border text-sm">
             <button
