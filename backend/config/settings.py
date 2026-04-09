@@ -39,6 +39,8 @@ INSTALLED_APPS = [
     # Local apps
     "core",
     "api",
+    "backtesting",
+    "nba",
 ]
 
 MIDDLEWARE = [

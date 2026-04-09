@@ -535,3 +535,76 @@ export interface VizScatterData {
   points: VizScatterPoint[];
   last_updated: string | null;
 }
+
+export interface NCAAPlayerSeasonStats {
+  player_name: string;
+  player_id: string;
+  position: string | null;
+  jersey: string | null;
+  headshot_url: string | null;
+  team_name: string;
+  season_display: string;
+  // Traditional
+  gp: number;
+  mpg: number;
+  pts: number;
+  reb: number;
+  ast: number;
+  stl: number;
+  blk: number;
+  tov: number;
+  pf: number;
+  fg_pct: number | null;
+  fg3_pct: number | null;
+  ft_pct: number | null;
+  fga_pg: number;
+  fg3a_pg: number;
+  ftm_pg: number;
+  fta_pg: number;
+  oreb_pg: number;
+  dreb_pg: number;
+  efg_pct: number | null;
+  ts_pct: number | null;
+  ast_to: number | null;
+  // On-court impact (from ESPN PBP)
+  on_court_secs_pg: number | null;
+  on_court_pts_pg: number | null;
+  on_court_def_pg: number | null;
+  on_court_net_pg: number | null;
+  on_court_ortg: number | null;
+  on_court_drtg: number | null;
+  on_court_net: number | null;
+  // On-court Four Factors (Phase D)
+  on_court_efg_pct: number | null;
+  on_court_tov_pct: number | null;
+  on_court_orb_pct: number | null;
+  on_court_ftr: number | null;
+  on_court_opp_efg_pct: number | null;
+  on_court_opp_tov_pct: number | null;
+  on_court_drb_pct: number | null;
+  on_court_opp_ftr: number | null;
+  on_court_efg_margin: number | null;
+  on_court_tov_edge: number | null;
+  on_court_reb_edge: number | null;
+  on_court_ftr_margin: number | null;
+  on_court_ffi: number | null;
+  o_mpir: number | null;
+  d_mpir: number | null;
+  mpir: number | null;
+  // BPR (Bayesian Performance Rating)
+  bpr: number | null;
+  obpr: number | null;
+  dbpr: number | null;
+  box_bpr: number | null;
+  box_obpr: number | null;
+  box_dbpr: number | null;
+  prior_mean_obpr: number | null;
+  prior_mean_dbpr: number | null;
+  prior_sd_obpr: number | null;
+  prior_sd_dbpr: number | null;
+  off_poss: number | null;
+  def_poss: number | null;
+  adj_team_off_eff_on: number | null;
+  adj_team_def_eff_on: number | null;
+  bpr_model_version: string | null;
+}

@@ -12,6 +12,8 @@ from .views import (
     MatchupViewSet,
     GameViewSet,
     PipelineConfigView,
+    TeamRosterView,
+    LeaguePlayersView,
 )
 from .job_views import DataProcessingJobViewSet
 from .trapezoid_views import TrapezoidView
@@ -44,4 +46,6 @@ urlpatterns = [
     path("viz/stats/", VizStatsView.as_view(), name="viz-stats"),
     path("viz/scatter/", VizScatterView.as_view(), name="viz-scatter"),
     path("pipeline-config/", PipelineConfigView.as_view(), name="pipeline-config"),
+    path("team/<slug:slug>/players/", TeamRosterView.as_view(), name="team-roster"),
+    path("players/", LeaguePlayersView.as_view(), name="league-players"),
 ]

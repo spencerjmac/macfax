@@ -730,3 +730,144 @@ class ESPNAPIClient:
             result["scoringPlays"] = scoring_plays
 
         return result
+
+    def get_player_box_score(self, game_id: str) -> List[Dict[str, Any]]:
+        """
+        Fetch per-player box score rows for a completed ESPN game.
+
+        Returns a flat list of dicts, one per player per team:
+        {
+          espn_athlete_id, display_name, short_name, jersey, position,
+          headshot_url, espn_team_id, team_display_name,
+          starter, did_not_play,
+          minutes (float), points, fg_made, fg_attempted,
+          fg3_made, fg3_attempted, ft_made, ft_attempted,
+          rebounds, offensive_rebounds, defensive_rebounds,
+          assists, turnovers, steals, blocks, fouls,
+        }
+        """
+        self._rate_limit()
+        url = f"{self.BASE_URL}/summary"
+        try:
+            response = self.session.get(url, params={"event": game_id}, timeout=self.timeout)
+            response.raise_for_status()
+            data = response.json()
+        except Exception as e:
+            logger.error(f"ESPN summary fetch failed for {game_id}: {e}")
+            return []
+
+        boxscore = data.get("boxscore", {})
+        player_entries = boxscore.get("players", [])
+        if not player_entries:
+            return []
+
+        rows = []
+        for team_entry in player_entries:
+            team_info = team_entry.get("team", {})
+            espn_team_id = str(team_info.get("id", ""))
+            team_name = team_info.get("displayName", "")
+
+            statistics = team_entry.get("statistics", [])
+            if not statistics:
+                continue
+            stat_group = statistics[0]
+            keys = stat_group.get("keys", [])
+            athletes = stat_group.get("athletes", [])
+
+            for athlete_entry in athletes:
+                athlete = athlete_entry.get("athlete", {})
+                raw_stats = athlete_entry.get("stats", [])
+                did_not_play = athlete_entry.get("didNotPlay", False)
+
+                if len(raw_stats) != len(keys):
+                    continue
+
+                stat = dict(zip(keys, raw_stats))
+
+                def _int(val: str, default: int = 0) -> int:
+                    try:
+                        return int(str(val).strip())
+                    except (ValueError, TypeError):
+                        return default
+
+                def _parse_made_att(val: str):
+                    """Parse '10-15' → (10, 15); '10' → (10, 0)."""
+                    s = str(val).strip()
+                    if "-" in s:
+                        parts = s.split("-", 1)
+                        return _int(parts[0]), _int(parts[1])
+                    return _int(s), 0
+
+                def _parse_minutes(val: str) -> float:
+                    """Parse 'MM:SS' or plain int → float minutes."""
+                    s = str(val).strip()
+                    if ":" in s:
+                        parts = s.split(":", 1)
+                        try:
+                            return int(parts[0]) + int(parts[1]) / 60.0
+                        except (ValueError, IndexError):
+                            return 0.0
+                    try:
+                        return float(s)
+                    except ValueError:
+                        return 0.0
+
+                fg_made, fg_att = _parse_made_att(stat.get("fieldGoalsMade-fieldGoalsAttempted", "0-0"))
+                fg3_made, fg3_att = _parse_made_att(stat.get("threePointFieldGoalsMade-threePointFieldGoalsAttempted", "0-0"))
+                ft_made, ft_att = _parse_made_att(stat.get("freeThrowsMade-freeThrowsAttempted", "0-0"))
+
+                position_obj = athlete.get("position", {})
+                rows.append({
+                    "espn_athlete_id": str(athlete.get("id", "")),
+                    "display_name": athlete.get("displayName", ""),
+                    "short_name": athlete.get("shortName", ""),
+                    "jersey": athlete.get("jersey", ""),
+                    "position": position_obj.get("abbreviation", "") if isinstance(position_obj, dict) else "",
+                    "headshot_url": (athlete.get("headshot") or {}).get("href", ""),
+                    "espn_team_id": espn_team_id,
+                    "team_display_name": team_name,
+                    "starter": athlete_entry.get("starter", False),
+                    "did_not_play": did_not_play,
+                    "minutes": _parse_minutes(stat.get("minutes", "0")),
+                    "points": _int(stat.get("points", "0")),
+                    "fg_made": fg_made,
+                    "fg_attempted": fg_att,
+                    "fg3_made": fg3_made,
+                    "fg3_attempted": fg3_att,
+                    "ft_made": ft_made,
+                    "ft_attempted": ft_att,
+                    "rebounds": _int(stat.get("rebounds", "0")),
+                    "offensive_rebounds": _int(stat.get("offensiveRebounds", "0")),
+                    "defensive_rebounds": _int(stat.get("defensiveRebounds", "0")),
+                    "assists": _int(stat.get("assists", "0")),
+                    "turnovers": _int(stat.get("turnovers", "0")),
+                    "steals": _int(stat.get("steals", "0")),
+                    "blocks": _int(stat.get("blocks", "0")),
+                    "fouls": _int(stat.get("fouls", "0")),
+                })
+        return rows
+
+    def get_plays(self, game_id: str) -> List[Dict[str, Any]]:
+        """
+        Fetch the full plays array from the ESPN summary endpoint.
+
+        Returns a list of play dicts.  Each play has at minimum:
+          sequenceNumber, type.id, type.text, period.number,
+          clock.displayValue, text, homeScore, awayScore,
+          team.id (optional), participants (optional list of {athlete: {id}}).
+
+        Substitution plays (type.id == '584') are the ones used for lineup
+        reconstruction; scoring plays also update homeScore/awayScore.
+        """
+        self._rate_limit()
+        url = f"{self.BASE_URL}/summary"
+        try:
+            response = self.session.get(
+                url, params={"event": game_id}, timeout=self.timeout
+            )
+            response.raise_for_status()
+            data = response.json()
+        except Exception as e:  # noqa: BLE001
+            logger.error("ESPN summary fetch failed for %s: %s", game_id, e)
+            return []
+        return data.get("plays", [])

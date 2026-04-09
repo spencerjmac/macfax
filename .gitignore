@@ -79,3 +79,5 @@ backend/core/management/commands/compare_k_floor.py
 backend/core/management/commands/backtest_hca.py
 backend/core/management/commands/backtest_importance.py
 backend/core/management/commands/backtest_recency.py
+
+lightbulb.py

@@ -16,6 +16,7 @@ from core.models import (
     TeamSeasonRatings,
     DataProcessingJob,
     PipelineConfig,
+    PlayerSeasonStats,
 )
 from .checklist import compute_national_champion_checklist, compute_season_context
 
@@ -1466,3 +1467,44 @@ class PipelineConfigSerializer(serializers.ModelSerializer):
             "fallback_avg_ortg",
         ]
 
+
+
+class PlayerSeasonStatsSerializer(serializers.ModelSerializer):
+    player_name = serializers.CharField(source="player.display_name", read_only=True)
+    player_id = serializers.CharField(source="player.espn_athlete_id", read_only=True)
+    position = serializers.CharField(source="player.position", read_only=True)
+    jersey = serializers.CharField(source="player.jersey", read_only=True)
+    headshot_url = serializers.CharField(source="player.headshot_url", read_only=True)
+    team_name = serializers.SerializerMethodField()
+    season_display = serializers.CharField(source="season.display_name", read_only=True)
+
+    class Meta:
+        model = PlayerSeasonStats
+        fields = [
+            "player_name", "player_id", "position", "jersey", "headshot_url",
+            "team_name", "season_display",
+            "gp", "mpg", "pts", "reb", "ast", "stl", "blk", "tov", "pf",
+            "fg_pct", "fg3_pct", "ft_pct", "fga_pg", "fg3a_pg",
+            "ftm_pg", "fta_pg", "oreb_pg", "dreb_pg",
+            "efg_pct", "ts_pct", "ast_to",
+            # On-court raw ratings (from ESPN PBP lineup reconstruction)
+            "on_court_secs_pg", "on_court_pts_pg", "on_court_def_pg",
+            "on_court_net_pg",
+            "on_court_ortg", "on_court_drtg", "on_court_net",
+            # On-court Four Factors (Phase D — populated after sync_ncaa_pbp --force)
+            "on_court_efg_pct", "on_court_tov_pct", "on_court_orb_pct", "on_court_ftr",
+            "on_court_opp_efg_pct", "on_court_opp_tov_pct", "on_court_drb_pct", "on_court_opp_ftr",
+            "on_court_efg_margin", "on_court_tov_edge", "on_court_reb_edge", "on_court_ftr_margin",
+            "on_court_ffi",
+            "o_mpir", "d_mpir", "mpir",
+            # BPR (Bayesian Performance Rating)
+            "bpr", "obpr", "dbpr",
+            "box_bpr", "box_obpr", "box_dbpr",
+            "prior_mean_obpr", "prior_mean_dbpr", "prior_sd_obpr", "prior_sd_dbpr",
+            "off_poss", "def_poss",
+            "adj_team_off_eff_on", "adj_team_def_eff_on",
+            "bpr_model_version",
+        ]
+
+    def get_team_name(self, obj):
+        return obj.team.name if obj.team else ""

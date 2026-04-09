@@ -4,8 +4,9 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import clsx from 'clsx';
+import SportSwitcher from './SportSwitcher';
 
-const navItems = [
+const NCAA_NAV = [
   { href: '/rankings', label: 'Rankings' },
   { href: '/matchup', label: 'Matchup' },
   { href: '/viz', label: 'Visualizations' },
@@ -13,8 +14,17 @@ const navItems = [
   { href: '/about', label: 'About' },
 ];
 
+const NBA_NAV = [
+  { href: '/nba/rankings', label: 'Rankings' },
+  { href: '/nba/viz', label: 'Visualizations' },
+  { href: '/nba/model-health', label: 'Model Health' },
+  { href: '/about', label: 'About' },
+];
+
 export default function Navigation() {
   const pathname = usePathname();
+  const isNBA = pathname?.startsWith('/nba');
+  const navItems = isNBA ? NBA_NAV : NCAA_NAV;
   
   return (
     <nav className="bg-bg text-textOnDark sticky top-0 z-50 border-b-4 border-brand">
@@ -48,11 +58,13 @@ export default function Navigation() {
             </div>
           </Link>
           
-          {/* Nav Links */}
+          {/* Nav Links + Sport Switcher */}
           <div className="hidden md:flex items-center space-x-1">
+            <SportSwitcher />
+            <div className="w-px h-6 bg-gray-700 mx-2" />
             {navItems.map((item) => {
               const isActive = pathname === item.href || 
-                (item.href === '/viz' && pathname?.startsWith('/viz'));
+                (item.href !== '/' && item.href !== '/nba' && pathname?.startsWith(item.href));
               
               return (
                 <Link

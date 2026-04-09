@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { TeamSeason } from '@/types';
+import { TeamSeason, NCAAPlayerSeasonStats } from '@/types';
 import { TeamRanks, ChecklistItem, CinderellaIndexResult } from '@/lib/rankings';
 import { StatCard, MetricCard, FactorCardWithRanks } from './StatCards';
 import ChampionChecklistCard from './ChampionChecklistCard';
+import { api } from '@/lib/api';
 import clsx from 'clsx';
 
 interface TeamPageTabsProps {
@@ -18,7 +19,7 @@ interface TeamPageTabsProps {
   cinderella: CinderellaIndexResult;
 }
 
-type TabId = 'overview' | 'four-factors' | 'offense-defense' | 'resume' | 'charts' | 'game-log';
+type TabId = 'overview' | 'four-factors' | 'offense-defense' | 'resume' | 'charts' | 'game-log' | 'players';
 
 function asPercentPoint(value: number | null | undefined): number | null {
   if (value == null || Number.isNaN(value)) return null;
@@ -33,6 +34,23 @@ function formatPercent(value: number | null | undefined, digits = 1): string {
 
 export default function TeamPageTabs({ team, ranks, checklist, cinderella }: TeamPageTabsProps) {
   const [activeTab, setActiveTab] = useState<TabId>('overview');
+  const [players, setPlayers] = useState<NCAAPlayerSeasonStats[]>([]);
+  const [playersLoading, setPlayersLoading] = useState(false);
+  const [playersLoaded, setPlayersLoaded] = useState(false);
+
+  useEffect(() => {
+    if (activeTab === 'players' && !playersLoaded) {
+      setPlayersLoading(true);
+      // team.season is "2024-25" format — take the start year and add 1 → 2025
+      // e.g. "2025-26".split('-')[0] = "2025" → 2025 + 1 = 2026
+      const startYear = team.season ? parseInt(team.season.split('-')[0], 10) : NaN;
+      const seasonYear = !isNaN(startYear) && startYear > 0 ? startYear + 1 : undefined;
+      api.getTeamRoster(team.teamId, seasonYear)
+        .then((data) => { setPlayers(data); setPlayersLoaded(true); })
+        .catch(() => setPlayers([]))
+        .finally(() => setPlayersLoading(false));
+    }
+  }, [activeTab, playersLoaded, team.teamId, team.season]);
   
   const tabs = [
     { id: 'overview' as TabId, label: 'Overview' },
@@ -41,6 +59,7 @@ export default function TeamPageTabs({ team, ranks, checklist, cinderella }: Tea
     { id: 'resume' as TabId, label: 'Resume' },
     { id: 'charts' as TabId, label: 'Charts' },
     { id: 'game-log' as TabId, label: 'Game Log' },
+    { id: 'players' as TabId, label: 'Players' },
   ];
   
   return (
@@ -73,6 +92,7 @@ export default function TeamPageTabs({ team, ranks, checklist, cinderella }: Tea
         {activeTab === 'resume' && <ResumeTab team={team} ranks={ranks} />}
         {activeTab === 'charts' && <ChartsTab team={team} />}
         {activeTab === 'game-log' && <GameLogTab team={team} />}
+        {activeTab === 'players' && <PlayersTab players={players} loading={playersLoading} />}
       </div>
     </div>
   );
@@ -998,6 +1018,96 @@ function GameLogTab({ team }: { team: TeamSeason }) {
       <div className="text-sm text-text-muted mt-4">
         Total Games: {gameLog.length}
       </div>
+    </div>
+  );
+}
+
+// Players Tab
+function PlayersTab({
+  players,
+  loading,
+}: {
+  players: NCAAPlayerSeasonStats[];
+  loading: boolean;
+}) {
+  if (loading) {
+    return <div className="text-text-muted py-8 text-center">Loading roster...</div>;
+  }
+
+  if (players.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-text-muted mb-2">No player data available for this team.</p>
+        <p className="text-xs text-text-muted font-mono">
+          Run: <code>python manage.py sync_ncaa_player_gamelogs --season 2025</code>
+          <br />then: <code>python manage.py compute_ncaa_player_season_stats --season 2025</code>
+        </p>
+      </div>
+    );
+  }
+
+  function fmtPct(v: number | null | undefined): string {
+    if (v == null) return '—';
+    return `${(v * 100).toFixed(1)}%`;
+  }
+
+  function fmtStat(v: number | null | undefined, digits = 1): string {
+    if (v == null) return '—';
+    return v.toFixed(digits);
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="text-text-muted border-b border-ui-border">
+            <th className="text-left px-3 py-2 font-medium">Player</th>
+            <th className="text-center px-3 py-2 font-medium w-8">Pos</th>
+            <th className="text-right px-3 py-2 font-medium">GP</th>
+            <th className="text-right px-3 py-2 font-medium">MPG</th>
+            <th className="text-right px-3 py-2 font-medium text-brand">PTS</th>
+            <th className="text-right px-3 py-2 font-medium">REB</th>
+            <th className="text-right px-3 py-2 font-medium">AST</th>
+            <th className="text-right px-3 py-2 font-medium">STL</th>
+            <th className="text-right px-3 py-2 font-medium">BLK</th>
+            <th className="text-right px-3 py-2 font-medium">TOV</th>
+            <th className="text-right px-3 py-2 font-medium">FG%</th>
+            <th className="text-right px-3 py-2 font-medium">3P%</th>
+            <th className="text-right px-3 py-2 font-medium">FT%</th>
+          </tr>
+        </thead>
+        <tbody>
+          {players.map((p) => (
+            <tr
+              key={p.player_id}
+              className="border-b border-ui-border/50 hover:bg-ui-surface/50 transition-colors"
+            >
+              <td className="px-3 py-2">
+                <div className="flex items-center gap-2">
+                  {p.jersey && (
+                    <span className="text-xs text-text-muted w-5 text-right shrink-0">
+                      #{p.jersey}
+                    </span>
+                  )}
+                  <span className="font-medium text-text-primary">{p.player_name}</span>
+                </div>
+              </td>
+              <td className="px-3 py-2 text-center text-text-muted">{p.position || '—'}</td>
+              <td className="px-3 py-2 text-right font-mono">{p.gp}</td>
+              <td className="px-3 py-2 text-right font-mono">{fmtStat(p.mpg)}</td>
+              <td className="px-3 py-2 text-right font-mono font-semibold text-brand">{fmtStat(p.pts)}</td>
+              <td className="px-3 py-2 text-right font-mono">{fmtStat(p.reb)}</td>
+              <td className="px-3 py-2 text-right font-mono">{fmtStat(p.ast)}</td>
+              <td className="px-3 py-2 text-right font-mono">{fmtStat(p.stl)}</td>
+              <td className="px-3 py-2 text-right font-mono">{fmtStat(p.blk)}</td>
+              <td className="px-3 py-2 text-right font-mono">{fmtStat(p.tov)}</td>
+              <td className="px-3 py-2 text-right font-mono">{fmtPct(p.fg_pct)}</td>
+              <td className="px-3 py-2 text-right font-mono">{fmtPct(p.fg3_pct)}</td>
+              <td className="px-3 py-2 text-right font-mono">{fmtPct(p.ft_pct)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

@@ -1611,3 +1611,312 @@ class PipelineConfig(models.Model):
         """Return the singleton config row, creating it with defaults if absent."""
         obj, _ = cls.objects.get_or_create(pk=1)
         return obj
+
+
+class Player(models.Model):
+    """NCAA college basketball player, identified by ESPN athlete ID."""
+
+    espn_athlete_id = models.CharField(max_length=20, unique=True, db_index=True)
+    display_name = models.CharField(max_length=150)
+    short_name = models.CharField(max_length=100, blank=True, default="")
+    jersey = models.CharField(max_length=5, blank=True, default="")
+    position = models.CharField(
+        max_length=10, blank=True, default="", help_text="Position abbreviation (G, F, C)"
+    )
+    headshot_url = models.CharField(max_length=300, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["display_name"]
+
+    def __str__(self):
+        return self.display_name
+
+
+class PlayerGameStats(models.Model):
+    """Per-game box score for a single NCAA player from ESPN."""
+
+    player = models.ForeignKey(Player, on_delete=models.CASCADE, related_name="game_stats")
+    game = models.ForeignKey("Game", on_delete=models.CASCADE, related_name="player_stats")
+    team = models.ForeignKey(
+        Team, on_delete=models.SET_NULL, null=True, blank=True, related_name="player_game_stats"
+    )
+    starter = models.BooleanField(default=False)
+    did_not_play = models.BooleanField(default=False)
+    minutes = models.FloatField(default=0.0)
+    points = models.IntegerField(default=0)
+    fg_made = models.IntegerField(default=0)
+    fg_attempted = models.IntegerField(default=0)
+    fg3_made = models.IntegerField(default=0)
+    fg3_attempted = models.IntegerField(default=0)
+    ft_made = models.IntegerField(default=0)
+    ft_attempted = models.IntegerField(default=0)
+    rebounds = models.IntegerField(default=0)
+    offensive_rebounds = models.IntegerField(default=0)
+    defensive_rebounds = models.IntegerField(default=0)
+    assists = models.IntegerField(default=0)
+    turnovers = models.IntegerField(default=0)
+    steals = models.IntegerField(default=0)
+    blocks = models.IntegerField(default=0)
+    fouls = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["player", "game"], name="unique_player_game")
+        ]
+        indexes = [
+            models.Index(fields=["game"]),
+            models.Index(fields=["player", "team"]),
+        ]
+
+    def __str__(self):
+        return f"{self.player.display_name} @ {self.game}"
+
+
+class PlayerSeasonStats(models.Model):
+    """Aggregated per-season stats for an NCAA player on a specific team."""
+
+    player = models.ForeignKey(Player, on_delete=models.CASCADE, related_name="season_stats")
+    team = models.ForeignKey(
+        Team, on_delete=models.SET_NULL, null=True, blank=True, related_name="player_season_stats"
+    )
+    season = models.ForeignKey(Season, on_delete=models.CASCADE, related_name="player_season_stats")
+    gp = models.IntegerField(default=0, help_text="Games played")
+    mpg = models.FloatField(default=0.0, help_text="Minutes per game")
+    pts = models.FloatField(default=0.0)
+    reb = models.FloatField(default=0.0)
+    ast = models.FloatField(default=0.0)
+    stl = models.FloatField(default=0.0)
+    blk = models.FloatField(default=0.0)
+    tov = models.FloatField(default=0.0)
+    pf = models.FloatField(default=0.0)
+    fg_pct = models.FloatField(null=True, blank=True)
+    fg3_pct = models.FloatField(null=True, blank=True)
+    ft_pct = models.FloatField(null=True, blank=True)
+    fga_pg = models.FloatField(default=0.0, help_text="FG attempts per game")
+    fg3a_pg = models.FloatField(default=0.0, help_text="3PA per game")
+    # Per-game counting rates computed from PlayerGameStats totals
+    ftm_pg = models.FloatField(default=0.0, help_text="FTM per game")
+    fta_pg = models.FloatField(default=0.0, help_text="FTA per game")
+    oreb_pg = models.FloatField(default=0.0, help_text="Offensive rebounds per game")
+    dreb_pg = models.FloatField(default=0.0, help_text="Defensive rebounds per game")
+    # Shooting efficiency
+    efg_pct = models.FloatField(null=True, blank=True, help_text="Effective FG% = (FGM + 0.5*FG3M) / FGA")
+    ts_pct = models.FloatField(null=True, blank=True, help_text="True Shooting% = PTS / (2*(FGA + 0.44*FTA))")
+    # Playmaking ratio
+    ast_to = models.FloatField(null=True, blank=True, help_text="Assist-to-turnover ratio")
+    # On-court raw ratings (from ESPN PBP lineup reconstruction)
+    on_court_secs_pg = models.FloatField(
+        null=True, blank=True,
+        help_text="Avg seconds on court per game (from PBP)",
+    )
+    on_court_pts_pg = models.FloatField(
+        null=True, blank=True,
+        help_text="Avg team pts scored while on per game",
+    )
+    on_court_def_pg = models.FloatField(
+        null=True, blank=True,
+        help_text="Avg team pts allowed while on per game",
+    )
+    on_court_net_pg = models.FloatField(
+        null=True, blank=True,
+        help_text="Avg net pts while on per game",
+    )
+    on_court_ortg = models.FloatField(
+        null=True, blank=True,
+        help_text="On-court pts per 40 min on court (raw, from PBP)",
+    )
+    on_court_drtg = models.FloatField(
+        null=True, blank=True,
+        help_text="On-court opp pts per 40 min on court (raw, from PBP)",
+    )
+    on_court_net = models.FloatField(
+        null=True, blank=True,
+        help_text="On-court net rating per 40 min on court (raw, from PBP)",
+    )
+
+    # ── On-court Four Factors (team while player is on; Phase D) ─────────────
+    on_court_efg_pct     = models.FloatField(null=True, blank=True, help_text="Team eFG% while on court")
+    on_court_tov_pct     = models.FloatField(null=True, blank=True, help_text="Team TOV% while on court")
+    on_court_orb_pct     = models.FloatField(null=True, blank=True, help_text="Team ORB% while on court")
+    on_court_ftr         = models.FloatField(null=True, blank=True, help_text="Team FTR (FTA/FGA) while on court")
+    on_court_opp_efg_pct = models.FloatField(null=True, blank=True, help_text="Opp eFG% while on court")
+    on_court_opp_tov_pct = models.FloatField(null=True, blank=True, help_text="Opp TOV% while on court")
+    on_court_drb_pct     = models.FloatField(null=True, blank=True, help_text="Team DRB% (opp ORB%) while on court")
+    on_court_opp_ftr     = models.FloatField(null=True, blank=True, help_text="Opp FTR while on court")
+    on_court_efg_margin  = models.FloatField(null=True, blank=True, help_text="eFG% margin while on")
+    on_court_tov_edge    = models.FloatField(null=True, blank=True, help_text="TOV edge while on")
+    on_court_reb_edge    = models.FloatField(null=True, blank=True, help_text="Rebound edge while on")
+    on_court_ftr_margin  = models.FloatField(null=True, blank=True, help_text="FTR margin while on")
+    on_court_ffi         = models.FloatField(null=True, blank=True, help_text="Four Factor Index (0-100) while on court")
+
+    # ── MPIR (Macfax Player Impact Rating) ───────────────────────────────────
+    o_mpir = models.FloatField(null=True, blank=True, help_text="Offensive MPIR: blend of on-court offensive impact and box-score offensive prior")
+    d_mpir = models.FloatField(null=True, blank=True, help_text="Defensive MPIR: blend of on-court defensive impact and box-score defensive prior")
+    mpir   = models.FloatField(null=True, blank=True, help_text="Macfax Player Impact Rating = O-MPIR + D-MPIR")
+
+    # ── BPR (Bayesian Performance Rating) ────────────────────────────────────
+    # Core outputs (prior-informed Bayesian RAPM)
+    bpr  = models.FloatField(null=True, blank=True, help_text="Bayesian Performance Rating = OBPR + DBPR")
+    obpr = models.FloatField(null=True, blank=True, help_text="Offensive BPR: pts/100 poss above D1 avg on offense")
+    dbpr = models.FloatField(null=True, blank=True, help_text="Defensive BPR: pts/100 poss better than D1 avg on defense")
+    # Box BPR (box-score model only; no lineup data required)
+    box_bpr  = models.FloatField(null=True, blank=True, help_text="Box BPR = box_obpr + box_dbpr")
+    box_obpr = models.FloatField(null=True, blank=True, help_text="Offensive Box BPR (box-score model)*")
+    box_dbpr = models.FloatField(null=True, blank=True, help_text="Defensive Box BPR (box-score model)")
+    # Preseason priors
+    preseason_obpr = models.FloatField(null=True, blank=True, help_text="Preseason estimated OBPR")
+    preseason_dbpr = models.FloatField(null=True, blank=True, help_text="Preseason estimated DBPR")
+    # Bayesian prior parameters used in RAPM fit
+    prior_mean_obpr = models.FloatField(null=True, blank=True, help_text="Prior mean for OBPR in Bayesian RAPM")
+    prior_mean_dbpr = models.FloatField(null=True, blank=True, help_text="Prior mean for DBPR in Bayesian RAPM")
+    prior_sd_obpr   = models.FloatField(null=True, blank=True, help_text="Prior SD for OBPR")
+    prior_sd_dbpr   = models.FloatField(null=True, blank=True, help_text="Prior SD for DBPR")
+    # Possession counts (estimated from box events while on court)
+    off_poss = models.FloatField(null=True, blank=True, help_text="Estimated offensive possessions while on court")
+    def_poss = models.FloatField(null=True, blank=True, help_text="Estimated defensive possessions while on court")
+    # Adjusted on-court team efficiencies (pts/100 poss)
+    adj_team_off_eff_on = models.FloatField(null=True, blank=True, help_text="Team adj off eff (pts/100 poss) while player on court")
+    adj_team_def_eff_on = models.FloatField(null=True, blank=True, help_text="Team adj def eff (pts/100 poss) while player on court")
+    # Baseline RAPM targets (raw, before prior-informed fit)
+    # These are stored as training targets for future Box BPR training,
+    # eliminating recursive contamination (prior-informed BPR → Box BPR → next BPR).
+    baseline_obpr = models.FloatField(null=True, blank=True, help_text="Baseline RAPM OBPR (before prior-informed fit; clean target for Box BPR training)")
+    baseline_dbpr = models.FloatField(null=True, blank=True, help_text="Baseline RAPM DBPR (before prior-informed fit; clean target for Box BPR training)")
+    # BPR source provenance — records where each component came from
+    obpr_source = models.CharField(max_length=20, null=True, blank=True, help_text="Source of OBPR: 'rapm', 'box_bpr', or null")
+    dbpr_source = models.CharField(max_length=20, null=True, blank=True, help_text="Source of DBPR: 'rapm', 'box_bpr', or null")
+    bpr_source  = models.CharField(max_length=20, null=True, blank=True, help_text="Source of total BPR: 'rapm', 'box_bpr', 'mixed', 'partial', or null")
+    # BPR model metadata
+    bpr_model_version = models.CharField(max_length=32, null=True, blank=True, help_text="BPR model version tag")
+    bpr_last_updated  = models.DateTimeField(null=True, blank=True, help_text="When BPR was last computed")
+
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["player", "season", "team"], name="unique_player_season_team"
+            )
+        ]
+        indexes = [
+            models.Index(fields=["team", "season"]),
+            models.Index(fields=["player", "season"]),
+        ]
+
+    def __str__(self):
+        return f"{self.player.display_name} — {self.season}"
+
+
+class PlayerGameStint(models.Model):
+    """
+    One contiguous on-court stint for a player within a single half/OT period.
+
+    Created by sync_ncaa_pbp from ESPN play-by-play data.
+    Aggregated into PlayerSeasonStats.on_court_* by compute_ncaa_player_impact.
+    """
+
+    player = models.ForeignKey(
+        Player, on_delete=models.CASCADE, related_name="game_stints"
+    )
+    game = models.ForeignKey(
+        Game, on_delete=models.CASCADE, related_name="player_stints"
+    )
+    team = models.ForeignKey(
+        Team, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="player_stints",
+    )
+    stint_index = models.IntegerField(help_text="0-based sequential per (player, game)")
+    period = models.IntegerField(
+        default=1, help_text="1=first half, 2=second half, 3+=OT"
+    )
+    clock_start_secs = models.IntegerField(
+        help_text="Seconds remaining in period at stint start"
+    )
+    clock_end_secs = models.IntegerField(
+        help_text="Seconds remaining in period at stint end"
+    )
+    secs_on = models.IntegerField(
+        default=0, help_text="Duration in seconds (clock_start - clock_end)"
+    )
+    pts_scored = models.IntegerField(
+        default=0, help_text="Team pts scored while this player was on court"
+    )
+    pts_allowed = models.IntegerField(
+        default=0, help_text="Opp pts scored while this player was on court"
+    )
+    plus_minus = models.IntegerField(
+        default=0, help_text="pts_scored - pts_allowed"
+    )
+
+    # ── Team box events while on court (populated by sync_ncaa_pbp Phase D) ──
+    team_fgm  = models.SmallIntegerField(default=0, help_text="Team FG made while on")
+    team_fga  = models.SmallIntegerField(default=0, help_text="Team FG attempted while on")
+    team_fg3m = models.SmallIntegerField(default=0, help_text="Team 3P made while on")
+    team_fta  = models.SmallIntegerField(default=0, help_text="Team FT attempted while on")
+    team_tov  = models.SmallIntegerField(default=0, help_text="Team turnovers while on")
+    team_oreb = models.SmallIntegerField(default=0, help_text="Team offensive rebounds while on")
+    team_dreb = models.SmallIntegerField(default=0, help_text="Team defensive rebounds while on")
+
+    # ── Opponent box events while on court ────────────────────────────────────
+    opp_fgm  = models.SmallIntegerField(default=0, help_text="Opp FG made while on")
+    opp_fga  = models.SmallIntegerField(default=0, help_text="Opp FG attempted while on")
+    opp_fg3m = models.SmallIntegerField(default=0, help_text="Opp 3P made while on")
+    opp_fta  = models.SmallIntegerField(default=0, help_text="Opp FT attempted while on")
+    opp_tov  = models.SmallIntegerField(default=0, help_text="Opp turnovers while on")
+    opp_oreb = models.SmallIntegerField(default=0, help_text="Opp offensive rebounds while on")
+    opp_dreb = models.SmallIntegerField(default=0, help_text="Opp defensive rebounds while on")
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["player", "game", "stint_index"],
+                name="unique_player_game_stint",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["game", "team"]),
+            models.Index(fields=["player", "game"]),
+        ]
+
+    def __str__(self):
+        return f"{self.player} stint {self.stint_index} in game {self.game_id}"
+
+
+class BPRModelArtifact(models.Model):
+    """
+    Stores trained BPR model weights and cross-validation metrics.
+
+    model_type choices:
+      box_off         — Box BPR offensive model (predicts OBPR from box stats)
+      box_def         — Box BPR defensive model (predicts DBPR from box stats)
+      rapm_baseline   — Single-season RAPM with global zero priors
+      rapm_informed   — Prior-informed RAPM using Box BPR as player-specific priors
+    """
+
+    season = models.ForeignKey(
+        Season, on_delete=models.CASCADE, related_name="bpr_artifacts",
+        help_text="Season this model was trained on",
+    )
+    model_type = models.CharField(
+        max_length=32,
+        help_text="box_off | box_def | rapm_baseline | rapm_informed",
+    )
+    version = models.CharField(max_length=32, help_text="Semantic version tag")
+    feature_names = models.JSONField(default=list)
+    coefficients  = models.JSONField(default=list, help_text="Trained coefficients aligned to feature_names")
+    intercept     = models.FloatField(null=True, blank=True)
+    regularization_alpha = models.FloatField(null=True, blank=True, help_text="Ridge lambda chosen by CV")
+    cv_metrics    = models.JSONField(null=True, blank=True, help_text="{rmse, r2, best_alpha, fold_rmses}")
+    assumptions   = models.JSONField(null=True, blank=True, help_text="Documented BPR article deviations")
+    n_observations = models.IntegerField(null=True, blank=True)
+    n_players      = models.IntegerField(null=True, blank=True)
+    created_at     = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"BPRModelArtifact({self.model_type}, season={self.season_id}, v={self.version})"

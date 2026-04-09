@@ -10,6 +10,7 @@ import type {
   BracketData,
   VizStats,
   VizScatterData,
+  NCAAPlayerSeasonStats,
 } from '@/types';
 
 type QueryParams = Record<string, string | number | boolean | undefined | null>;
@@ -148,6 +149,23 @@ export const api = {
   async getVizScatter(params: { season?: number; x: string; y: string; colorBy?: string }): Promise<VizScatterData> {
     return fetchJson<VizScatterData>(
       buildUrl('/viz/scatter', { season: params.season, x: params.x, y: params.y, colorBy: params.colorBy })
+    );
+  },
+
+  async getTeamRoster(slug: string, season?: number): Promise<NCAAPlayerSeasonStats[]> {
+    return fetchJson<NCAAPlayerSeasonStats[]>(
+      buildUrl(`/team/${slug}/players/`, { season })
+    );
+  },
+
+  async getLeaguePlayers(params?: {
+    season?: number;
+    ordering?: string;
+    min_gp?: number;
+    conference?: string;
+  }): Promise<NCAAPlayerSeasonStats[]> {
+    return fetchJson<NCAAPlayerSeasonStats[]>(
+      buildUrl('/players/', params)
     );
   },
 };
