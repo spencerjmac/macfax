@@ -1,0 +1,339 @@
+'use client';
+
+import { useMemo, useState } from 'react';
+import Link from 'next/link';
+import {
+  useReactTable,
+  getCoreRowModel,
+  getSortedRowModel,
+  getFilteredRowModel,
+  ColumnDef,
+  flexRender,
+  SortingState,
+} from '@tanstack/react-table';
+import clsx from 'clsx';
+import HeaderWithTooltip from './HeaderWithTooltip';
+import { computeRanks, getPercentileColor } from '@/lib/rankingUtils';
+import {
+  PLAYER_TRADITIONAL_METRICS,
+  NBA_ADVANCED_METRICS,
+  NBA_IMPACT_METRICS,
+  formatPlayerMetric,
+  type PlayerMetricMeta,
+} from '@/lib/playerMetricMetadata';
+import type { NBAPlayerSeasonStats } from '@/types/nba';
+
+type TabId = 'traditional' | 'advanced' | 'impact';
+
+interface NBAPlayerRankingsTableProps {
+  data: NBAPlayerSeasonStats[];
+  seasonDisplay?: string;
+}
+
+// Traditional keys shown for NBA (subset — no NCAA-only keys like ftm_pg)
+const NBA_TRAD_KEYS = [
+  'pts', 'reb', 'ast', 'stl', 'blk', 'tov', 'plus_minus',
+  'fg_pct', 'fg3_pct', 'ft_pct',
+  'fga_pg', 'fg3a_pg', 'fta_pg',
+  'oreb_pg', 'dreb_pg',
+];
+const NBA_ADV_KEYS  = ['ts_pct', 'efg_pct', 'usg_pct', 'oreb_pct', 'dreb_pct', 'ast_pct', 'tov_pct', 'ast_to', 'pie', 'stl_pct', 'blk_pct'];
+const NBA_IMP_KEYS  = ['mpir', 'o_mpir', 'd_mpir', 'on_court_adj_o', 'on_court_adj_d', 'on_court_adj_em', 'on_court_ortg', 'on_court_drtg', 'on_court_net', 'on_court_poss'];
+
+// plus_minus lives on the type but not in playerMetricMetadata — add it inline
+const PLUS_MINUS_META: PlayerMetricMeta = {
+  key: 'plus_minus', label: '+/-', tooltip: 'Season plus/minus per game.',
+  format: 'number1', better: 'higher', showRank: false, heatmap: true,
+};
+
+export default function NBAPlayerRankingsTable({ data, seasonDisplay }: NBAPlayerRankingsTableProps) {
+  const [activeTab, setActiveTab] = useState<TabId>('traditional');
+  const [sorting, setSorting] = useState<SortingState>([{ id: 'pts', desc: true }]);
+  const [globalFilter, setGlobalFilter] = useState('');
+  const [minPoss, setMinPoss] = useState(500);
+
+  const tabs = [
+    { id: 'traditional' as TabId, label: 'Traditional' },
+    { id: 'advanced'    as TabId, label: 'Advanced'    },
+    { id: 'impact'      as TabId, label: 'Impact'      },
+  ];
+
+  const tabDefaultSort: Record<TabId, SortingState> = {
+    traditional: [{ id: 'pts',  desc: true }],
+    advanced:    [{ id: 'ts_pct', desc: true }],
+    impact:      [{ id: 'mpir', desc: true }],
+  };
+
+  // ── Filter ──────────────────────────────────────────────────────────────
+  const filtered = useMemo(
+    () =>
+      data.filter((p) => {
+        if (p.on_court_poss == null || p.on_court_poss < minPoss) return false;
+        if (globalFilter) {
+          const q = globalFilter.toLowerCase();
+          return (
+            p.player_name.toLowerCase().includes(q) ||
+            (p.team_name ?? '').toLowerCase().includes(q)
+          );
+        }
+        return true;
+      }),
+    [data, minPoss, globalFilter]
+  );
+
+  // ── Metric lookup map ────────────────────────────────────────────────────
+  const allMetaMaps = useMemo(() => {
+    const map: Record<string, PlayerMetricMeta> = { plus_minus: PLUS_MINUS_META };
+    [...PLAYER_TRADITIONAL_METRICS, ...NBA_ADVANCED_METRICS, ...NBA_IMPACT_METRICS].forEach((m) => {
+      map[m.key] = m;
+    });
+    return map;
+  }, []);
+
+  // ── Percentile ranks ─────────────────────────────────────────────────────
+  const allKeys = [...NBA_TRAD_KEYS, ...NBA_ADV_KEYS, ...NBA_IMP_KEYS];
+  const metricRanks = useMemo(() => {
+    const rankBase = data.filter((p) => p.on_court_poss != null && p.on_court_poss >= minPoss);
+    const ranks = new Map<string, ReturnType<typeof computeRanks>>();
+    allKeys.forEach((key) => {
+      const meta = allMetaMaps[key];
+      if (!meta) return;
+      const entries = rankBase.map((p) => ({
+        id: String(p.id),
+        value: (p as any)[key] as number | null,
+      }));
+      ranks.set(key, computeRanks(entries, meta.better));
+    });
+    return ranks;
+  }, [data, minPoss, allMetaMaps]);
+
+  // ── Column factory ───────────────────────────────────────────────────────
+  const createMetricColumn = (key: string): ColumnDef<NBAPlayerSeasonStats> => {
+    const meta = allMetaMaps[key];
+    if (!meta) return { id: key } as ColumnDef<NBAPlayerSeasonStats>;
+    return {
+      accessorKey: key,
+      header: () => (
+        <HeaderWithTooltip label={meta.label} better={meta.better} tooltip={meta.tooltip} />
+      ),
+      cell: (info) => {
+        const value = info.getValue<number | null>();
+        if (value == null) return <span className="text-text-muted">—</span>;
+        const rankData = metricRanks.get(key)?.get(String(info.row.original.id));
+        const colorClass = meta.heatmap
+          ? getPercentileColor(rankData?.percentile ?? null, meta.better, true)
+          : '';
+        // Special colour for +/-
+        if (key === 'plus_minus') {
+          return (
+            <span className={clsx('font-mono text-xs', value > 0 ? 'text-emerald-700' : value < 0 ? 'text-rose-700' : '')}>
+              {value >= 0 ? '+' : ''}{value.toFixed(1)}
+            </span>
+          );
+        }
+        return (
+          <div className={clsx('flex items-center justify-between gap-1 px-2 py-1 rounded', colorClass)}>
+            <span className="font-mono text-xs">{formatPlayerMetric(value, meta.format)}</span>
+            {meta.showRank && rankData?.rank && (
+              <span className="text-[10px] text-slate-900 font-bold">#{rankData.rank}</span>
+            )}
+          </div>
+        );
+      },
+      sortDescFirst: meta.better !== 'lower',
+      size: 78,
+    };
+  };
+
+  // ── Base identity columns ────────────────────────────────────────────────
+  const baseColumns: ColumnDef<NBAPlayerSeasonStats>[] = [
+    {
+      id: 'rank',
+      header: 'Rk',
+      cell: (info) => (
+        <span className="font-mono font-semibold text-sm text-text-muted">{info.row.index + 1}</span>
+      ),
+      enableSorting: false,
+      size: 44,
+    },
+    {
+      accessorKey: 'player_name',
+      header: 'Player',
+      cell: (info) => (
+        <span className="font-medium text-sm">{info.getValue<string>()}</span>
+      ),
+      size: 170,
+    },
+    {
+      accessorKey: 'team_name',
+      header: 'Team',
+      cell: (info) => {
+        const row = info.row.original;
+        const name = info.getValue<string | null>();
+        if (!name) return <span className="text-text-muted text-xs">—</span>;
+        return row.team_slug ? (
+          <Link href={`/nba/team/${row.team_slug}`}
+            className="text-xs hover:text-brand transition-colors truncate block max-w-[110px]">
+            {name}
+          </Link>
+        ) : (
+          <span className="text-xs text-text-muted truncate block max-w-[110px]">{name}</span>
+        );
+      },
+      size: 120,
+    },
+    {
+      accessorKey: 'gp',
+      header: 'GP',
+      cell: (info) => <span className="font-mono text-sm">{info.getValue<number>()}</span>,
+      size: 44,
+    },
+    {
+      accessorKey: 'mpg',
+      header: 'MPG',
+      cell: (info) => (
+        <span className="font-mono text-sm">{(info.getValue<number | null>() ?? 0).toFixed(1)}</span>
+      ),
+      size: 50,
+      sortDescFirst: true,
+    },
+  ];
+
+  // ── Full column set per tab ──────────────────────────────────────────────
+  const columns = useMemo((): ColumnDef<NBAPlayerSeasonStats>[] => {
+    const metricCols =
+      activeTab === 'traditional' ? NBA_TRAD_KEYS.map(createMetricColumn)
+      : activeTab === 'advanced'  ? NBA_ADV_KEYS.map(createMetricColumn)
+                                  : NBA_IMP_KEYS.map(createMetricColumn);
+    return [...baseColumns, ...metricCols];
+  }, [activeTab, metricRanks]);
+
+  // ── TanStack table ───────────────────────────────────────────────────────
+  const table = useReactTable({
+    data: filtered,
+    columns,
+    state: { sorting, globalFilter },
+    onSortingChange: setSorting,
+    onGlobalFilterChange: setGlobalFilter,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+  });
+
+  return (
+    <div className="space-y-4">
+      {/* ── Filter bar ──────────────────────────────────────────────────── */}
+      <div className="flex flex-wrap gap-3 items-center">
+        <div className="flex-1 min-w-[180px]">
+          <input
+            type="text"
+            value={globalFilter}
+            onChange={(e) => setGlobalFilter(e.target.value)}
+            placeholder="Search players or teams..."
+            className="w-full px-3 py-2 bg-ui-surface border border-ui-border rounded-lg text-sm
+                       focus:outline-none focus:ring-2 focus:ring-brand/50"
+          />
+        </div>
+        <div>
+          <select
+            value={minPoss}
+            onChange={(e) => setMinPoss(Number(e.target.value))}
+            className="px-3 py-2 bg-ui-surface border border-ui-border rounded-lg text-sm
+                       focus:outline-none focus:ring-2 focus:ring-brand/50"
+          >
+            {[100, 250, 500, 750, 1000, 1500, 2000].map((n) => (
+              <option key={n} value={n}>Min {n} poss</option>
+            ))}
+          </select>
+        </div>
+        <div className="text-sm text-text-muted whitespace-nowrap">
+          {table.getFilteredRowModel().rows.length} players
+          {seasonDisplay && <span className="ml-1">· {seasonDisplay}</span>}
+        </div>
+      </div>
+
+      {/* ── Tabs ────────────────────────────────────────────────────────── */}
+      <div className="border-b border-ui-border">
+        <div className="flex space-x-1">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => {
+                setActiveTab(tab.id);
+                setSorting(tabDefaultSort[tab.id]);
+              }}
+              className={clsx(
+                'px-4 py-2 text-sm font-medium transition-colors',
+                activeTab === tab.id
+                  ? 'text-brand border-b-2 border-brand'
+                  : 'text-text-muted hover:text-text-primary',
+              )}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Impact tab context note ──────────────────────────────────────── */}
+      {activeTab === 'impact' && (
+        <div className="flex items-start gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
+          <span className="shrink-0 mt-0.5">ℹ</span>
+          <span>
+            <strong>MPIR</strong> (Macfax Player Impact Rating) combines on-court adjusted efficiency
+            with box-score priors via Bayesian shrinkage.{' '}
+            <strong>On-Ct Adj O/D/EM</strong> are opponent-adjusted team ratings while the player
+            is on the floor.
+          </span>
+        </div>
+      )}
+
+      {/* ── Table ───────────────────────────────────────────────────────── */}
+      <div className="overflow-x-auto border border-ui-border rounded-lg">
+        <table className="w-full">
+          <thead>
+            {table.getHeaderGroups().map((hg) => (
+              <tr key={hg.id} className="border-b border-ui-border bg-ui-surface">
+                {hg.headers.map((header) => (
+                  <th
+                    key={header.id}
+                    onClick={header.column.getToggleSortingHandler()}
+                    className={clsx(
+                      'px-2 py-2 text-xs font-semibold text-text-secondary uppercase tracking-wider text-left',
+                      header.column.getCanSort() && 'cursor-pointer select-none hover:bg-ui-hover',
+                    )}
+                    style={{ width: header.column.getSize() }}
+                  >
+                    <div className="flex items-center gap-1">
+                      {flexRender(header.column.columnDef.header, header.getContext())}
+                      {header.column.getIsSorted() && (
+                        <span className="text-brand">
+                          {header.column.getIsSorted() === 'desc' ? '↓' : '↑'}
+                        </span>
+                      )}
+                    </div>
+                  </th>
+                ))}
+              </tr>
+            ))}
+          </thead>
+          <tbody>
+            {table.getRowModel().rows.map((row) => (
+              <tr key={row.id} className="border-b border-ui-border hover:bg-ui-hover transition-colors">
+                {row.getVisibleCells().map((cell) => (
+                  <td key={cell.id} className="px-2 py-2 text-sm" style={{ width: cell.column.getSize() }}>
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {table.getFilteredRowModel().rows.length === 0 && (
+        <div className="text-center py-8 text-text-muted">No players found. Try adjusting the filters.</div>
+      )}
+    </div>
+  );
+}

@@ -9,12 +9,11 @@ Configuration constants for CBB Analytics
 # Default: 20 (provides good separation while keeping outliers within bounds)
 FOUR_FACTOR_SCALE = 20
 
-# Four Factor Weights (Dean Oliver's research)
-# Source: Basketball on Paper (Oliver, 2004)
-# These sum to ~1.0 and represent the relative importance of each factor
+# Four Factor Weights (updated March 2026 — tuned for college basketball)
+# Previously used Dean Oliver's original weights (efg=tov=0.4069, reb=0.1432, ftr=0.0428)
 FOUR_FACTOR_WEIGHTS = {
-    'efg': 0.4069,      # Effective FG% (most important)
-    'tov': 0.4069,      # Turnover Rate (equally important)
-    'reb': 0.1432,      # Rebounding (moderately important)
-    'ftr': 0.0428,      # Free Throw Rate (least important)
+    'efg': 0.45,        # Effective FG% (most important)
+    'tov': 0.24,        # Turnover Rate
+    'reb': 0.22,        # Rebounding (elevated vs. Oliver — more impactful in college)
+    'ftr': 0.09,        # Free Throw Rate
 }

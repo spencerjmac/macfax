@@ -23,6 +23,8 @@ interface RankingsTableProps {
   data: TeamSeason[];
   seasons?: SeasonInfo[];
   selectedSeason?: number;
+  /** Sport context — defaults to 'ncaa'. Reserved for future sport-aware column config. */
+  sport?: 'ncaa';
 }
 
 type TabId = 'overview' | 'four-factors' | 'adjusted-four-factors';

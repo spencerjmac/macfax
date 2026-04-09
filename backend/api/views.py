@@ -22,6 +22,7 @@ from core.models import (
     TeamSeasonRatings,
     NationalAverages,
     PipelineConfig,
+    PlayerSeasonStats,
 )
 from .serializers import (
     SeasonSerializer,
@@ -38,6 +39,7 @@ from .serializers import (
     TeamSeasonRatingsSerializer,
     GameDetailSerializer,
     PipelineConfigSerializer,
+    PlayerSeasonStatsSerializer,
 )
 from .matchup_engine import (
     forecast_game,
@@ -995,3 +997,111 @@ class PipelineConfigView(generics.RetrieveUpdateAPIView):
 
     def get_object(self):
         return PipelineConfig.get_config()
+
+
+class LeaguePlayersView(generics.ListAPIView):
+    """
+    GET /api/players/?season=YYYY&ordering=-pts&min_gp=5
+
+    League-wide NCAA player season stats, ordered by pts (or any allowed field).
+    Filter by minimum games played via min_gp (default 5).
+    """
+    serializer_class = PlayerSeasonStatsSerializer
+    pagination_class = None
+
+    _ALLOWED_ORDERINGS = {
+        # Traditional
+        "pts", "-pts", "reb", "-reb", "ast", "-ast",
+        "stl", "-stl", "blk", "-blk", "tov", "-tov",
+        "mpg", "-mpg", "gp", "-gp", "pf", "-pf",
+        "fg_pct", "-fg_pct", "fg3_pct", "-fg3_pct", "ft_pct", "-ft_pct",
+        "fga_pg", "-fga_pg", "fg3a_pg", "-fg3a_pg",
+        "ftm_pg", "-ftm_pg", "fta_pg", "-fta_pg",
+        "oreb_pg", "-oreb_pg", "dreb_pg", "-dreb_pg",
+        "efg_pct", "-efg_pct", "ts_pct", "-ts_pct",
+        "ast_to", "-ast_to",
+        # On-court ratings
+        "on_court_ortg", "-on_court_ortg",
+        "on_court_drtg", "-on_court_drtg",
+        "on_court_net", "-on_court_net",
+        "on_court_net_pg", "-on_court_net_pg",
+        "on_court_secs_pg", "-on_court_secs_pg",
+        # On-court Four Factors
+        "on_court_efg_pct", "-on_court_efg_pct",
+        "on_court_tov_pct", "-on_court_tov_pct",
+        "on_court_orb_pct", "-on_court_orb_pct",
+        "on_court_ftr", "-on_court_ftr",
+        "on_court_opp_efg_pct", "-on_court_opp_efg_pct",
+        "on_court_opp_tov_pct", "-on_court_opp_tov_pct",
+        "on_court_drb_pct", "-on_court_drb_pct",
+        "on_court_opp_ftr", "-on_court_opp_ftr",
+        "on_court_efg_margin", "-on_court_efg_margin",
+        "on_court_tov_edge", "-on_court_tov_edge",
+        "on_court_reb_edge", "-on_court_reb_edge",
+        "on_court_ftr_margin", "-on_court_ftr_margin",
+        "on_court_ffi", "-on_court_ffi",
+        "mpir", "-mpir", "o_mpir", "-o_mpir", "d_mpir", "-d_mpir",
+        # BPR (Bayesian Performance Rating)
+        "bpr", "-bpr", "obpr", "-obpr", "dbpr", "-dbpr",
+        "box_bpr", "-box_bpr", "box_obpr", "-box_obpr", "box_dbpr", "-box_dbpr",
+        "off_poss", "-off_poss", "def_poss", "-def_poss",
+    }
+
+    def get_queryset(self):
+        season_param = self.request.query_params.get("season")
+        ordering = self.request.query_params.get("ordering", "-pts")
+        if ordering not in self._ALLOWED_ORDERINGS:
+            ordering = "-pts"
+
+        min_gp = max(1, int(self.request.query_params.get("min_gp", "5")))
+        conf_param = self.request.query_params.get("conference")
+
+        if season_param:
+            try:
+                season = Season.objects.get(year=int(season_param))
+            except (Season.DoesNotExist, ValueError):
+                return PlayerSeasonStats.objects.none()
+        else:
+            season = (
+                Season.objects.filter(is_current=True).first()
+                or Season.objects.order_by("-year").first()
+            )
+            if season is None:
+                return PlayerSeasonStats.objects.none()
+
+        qs = (
+            PlayerSeasonStats.objects
+            .filter(season=season, gp__gte=min_gp)
+            .select_related("player", "team", "season")
+        )
+        if conf_param:
+            qs = qs.filter(
+                team__season_stats__season=season,
+                team__season_stats__conference__code=conf_param,
+            )
+
+        return qs.order_by(ordering)
+
+
+class TeamRosterView(generics.ListAPIView):
+    """
+    GET /api/team/<slug>/players/?season=YYYY
+
+    Returns per-season averages for all players on the given team.
+    """
+    serializer_class = PlayerSeasonStatsSerializer
+    pagination_class = None  # Roster is small; return plain array
+
+    def get_queryset(self):
+        slug = self.kwargs.get("slug")
+        season_year = self.request.query_params.get("season")
+
+        team = get_object_or_404(Team, slug=slug)
+
+        qs = PlayerSeasonStats.objects.filter(team=team).select_related(
+            "player", "team", "season"
+        )
+        if season_year:
+            qs = qs.filter(season__year=season_year)
+
+        return qs.order_by("-pts")
