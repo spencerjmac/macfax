@@ -65,7 +65,7 @@ pyyaml==6.0.1
     # via cbb-analytics-backend
 rapidfuzz==3.6.1
     # via cbb-analytics-backend
-requests==2.31.0
+requests==2.32.3
     # via cbb-analytics-backend
 scipy==1.17.1
     # via cbb-analytics-backend
