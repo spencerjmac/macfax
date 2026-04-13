@@ -26,10 +26,8 @@ v1.2 key change — eliminating recursive prior-target contamination:
   RAPM before prior-informed fit), NOT on the final obpr / dbpr fields.
   Teacher-student chain: baseline RAPM → Box BPR → final prior-informed RAPM.
 
-# TODO MULTI-YEAR: to support rolling multi-season RAPM, extend build_rapm_dataset()
-#   in datasets.py to accept a list of season_years and combine observations across
-#   seasons before fitting.  The player_index and n_players would cover all seasons.
-#   Mark the artifact with rapm_window="multi_season".
+# Multi-year RAPM is supported via build_rapm_dataset(season_years=[...]).
+# Pass rapm_years to run_bpr_season() to activate rolling window mode.
 
 Returns a summary dict with per-phase stats for logging and validation.
 """
@@ -49,6 +47,8 @@ from core.analytics.player_value.bpr.constants import (
     MIN_PRIOR_TRAINING_SAMPLES,
     MIN_GP_BOX_BPR,
     MIN_MPG_BOX_BPR,
+    PRIOR_SD_DEFAULT_OFF,
+    PRIOR_SD_DEFAULT_DEF,
     BPR_SOURCE_RAPM,
     BPR_SOURCE_BOX,
     BPR_SOURCE_MIXED,
@@ -60,6 +60,7 @@ from core.analytics.player_value.bpr.rapm import (
     fit_prior_informed_rapm,
     tune_prior_sd_scale,
     tune_prior_sd_scales_separate,
+    extract_target_season,
 )
 from core.analytics.player_value.bpr.box_bpr import (
     extract_box_features,
@@ -79,10 +80,21 @@ def run_bpr_season(
     skip_box_bpr: bool = False,
     skip_prior_rapm: bool = False,
     rapm_lambda_override: float | None = None,
+    rapm_years: "list[int] | None" = None,
     verbose: bool = True,
 ) -> dict:
     """
     Run the full BPR pipeline for `season_year`.
+
+    Args:
+        season_year:          The target season (BPR written to this season's records).
+        rapm_years:           Season years to pool for RAPM estimation.  Defaults to
+                              [season_year] (single-season).  Pass e.g. [2024, 2025, 2026]
+                              for a 3-year rolling window.
+        skip_box_bpr:         Skip Box BPR training (RAPM-only mode).
+        skip_prior_rapm:      Skip prior-informed RAPM (baseline RAPM = final).
+        rapm_lambda_override: Override CV lambda selection with a fixed value.
+        verbose:              Log progress information.
 
     Returns a summary dict with statistics from each phase.
     """
@@ -91,15 +103,36 @@ def run_bpr_season(
     summary: dict = {"season_year": season_year, "phases": {}}
     now = datetime.now(tz=timezone.utc)
 
+    # Resolve which season(s) contribute RAPM observations
+    _rapm_years = rapm_years if rapm_years is not None else [season_year]
+
     # ── Phase 1: Build RAPM dataset ───────────────────────────────────────────
-    logger.info(f"[BPR] Phase 1: Building RAPM dataset for season {season_year}")
-    dataset = build_rapm_dataset(season_year, verbose=verbose)
-    n_obs  = dataset["n_observations"]
-    n_players = dataset["n_players"]
+    logger.info(f"[BPR] Phase 1: Building RAPM dataset for seasons {_rapm_years}")
+    dataset = build_rapm_dataset(_rapm_years, verbose=verbose)
+    n_obs            = dataset["n_observations"]
+    n_player_seasons = dataset["n_player_seasons"]
+    n_target_players = len(dataset["target_season_player_ids"])
+    target_year      = max(_rapm_years)
+    rapm_window      = dataset["rapm_window"]
     summary["phases"]["dataset"] = {
-        "n_observations": n_obs,
-        "n_players": n_players,
+        "n_observations":      n_obs,
+        "n_player_seasons":    n_player_seasons,
+        "n_target_players":    n_target_players,
+        "rapm_window":         rapm_window,
+        "season_years":        _rapm_years,
+        "target_year":         target_year,
+        "player_season_keyed": True,
     }
+
+    # possession_totals_target is always target-season-only (v1.3.1 datasets.py guarantee)
+    _write_poss_totals = dataset["possession_totals_target"]
+    if len(_rapm_years) > 1:
+        logger.info(
+            "[BPR] Multi-year RAPM: seasons=%s, target=%s.  "
+            "Coefficients are player-season-specific (v1.3.1 — production multi-year RAPM).  "
+            "Write operations use target-season possession totals only.",
+            _rapm_years, target_year,
+        )
 
     has_stint_data = n_obs > 0
 
@@ -112,11 +145,11 @@ def run_bpr_season(
     # ── Phase 2+3: Baseline RAPM (only when stint data exists) ────────────────
     baseline_rapm: dict | None = None
     if has_stint_data:
-        logger.info(f"[BPR] Phase 2+3: Fitting baseline RAPM  ({n_obs} segments, {n_players} players)")
+        logger.info(f"[BPR] Phase 2+3: Fitting baseline RAPM  ({n_obs} segments, {n_player_seasons} player-seasons, {n_target_players} target-season players)")
         baseline_rapm = fit_baseline_rapm(
             observations=dataset["observations"],
-            player_index=dataset["player_index"],
-            n_players=n_players,
+            player_season_index=dataset["player_season_index"],
+            n_player_seasons=n_player_seasons,
             run_cv=(rapm_lambda_override is None),
             lambda_override=rapm_lambda_override,
         )
@@ -128,15 +161,16 @@ def run_bpr_season(
         }
 
         # Phase 2b: Write baseline RAPM targets to DB before any prior-informed fit.
-        # This ensures future seasons can train Box BPR on clean baseline targets,
-        # not on final prior-informed values (v1.2 recursive contamination fix).
+        # Extract only target-season coefficients before writing.
         logger.info("[BPR] Phase 2b: Writing baseline RAPM targets to DB")
+        _baseline_obpr_target = extract_target_season(baseline_rapm["obpr"], target_year)
+        _baseline_dbpr_target = extract_target_season(baseline_rapm["dbpr"], target_year)
         n_baseline_written = _write_baseline_rapm(
             season_year=season_year,
-            baseline_obpr=baseline_rapm["obpr"],
-            baseline_dbpr=baseline_rapm["dbpr"],
-            off_poss_map=dataset["possession_totals"],
-            def_poss_map=dataset["possession_totals"],
+            baseline_obpr=_baseline_obpr_target,
+            baseline_dbpr=_baseline_dbpr_target,
+            off_poss_map=_write_poss_totals,
+            def_poss_map=_write_poss_totals,
         )
         summary["phases"]["baseline_rapm"]["n_baseline_written"] = n_baseline_written
 
@@ -156,8 +190,10 @@ def run_bpr_season(
     summary["phases"]["player_season_stats"] = {"n_records": len(player_season_stats)}
 
     # ── Phase 4: Box BPR — leak-free training ─────────────────────────────────
-    off_poss_map = {pid: v["off"] for pid, v in dataset["possession_totals"].items()}
-    def_poss_map = {pid: v["def"] for pid, v in dataset["possession_totals"].items()}
+    # Use current-season-only possession totals (not pooled multi-year totals) so
+    # that Box BPR per-100-poss feature normalization reflects this season only.
+    off_poss_map = {pid: v["off"] for pid, v in _write_poss_totals.items()}
+    def_poss_map = {pid: v["def"] for pid, v in _write_poss_totals.items()}
 
     model_artifacts: dict | None = None
     box_bpr_preds:   dict | None = None
@@ -195,8 +231,8 @@ def run_bpr_season(
                     player_season_stats=player_season_stats,
                     off_poss_map=off_poss_map,
                     def_poss_map=def_poss_map,
-                    rapm_obpr=baseline_rapm["obpr"],
-                    rapm_dbpr=baseline_rapm["dbpr"],
+                    rapm_obpr=_baseline_obpr_target,
+                    rapm_dbpr=_baseline_dbpr_target,
                 )
                 model_artifacts["training_source"] = "out_of_fold"
 
@@ -229,10 +265,55 @@ def run_bpr_season(
     if has_stint_data and not skip_prior_rapm:
         logger.info("[BPR] Phase 5: Building prior maps")
         box_preds_for_prior = box_bpr_preds or {}
-        prior_mean_obpr, prior_mean_dbpr, prior_sd_obpr, prior_sd_dbpr = build_prior_maps(
-            player_ids=dataset["player_ids"],
-            box_bpr_preds=box_preds_for_prior,
+
+        # Load prior-season baseline RAPM for returning players (v1.3 history signals)
+        prior_history = _load_prior_season_history(
+            season_year=season_year,
+            player_ids=dataset["target_season_player_ids"],
         )
+        logger.info(
+            f"[BPR] Phase 5: prior-history loaded for {len(prior_history)} returning players"
+        )
+
+        prior_mean_obpr, prior_mean_dbpr, prior_sd_obpr, prior_sd_dbpr = build_prior_maps(
+            player_ids=dataset["target_season_player_ids"],
+            box_bpr_preds=box_preds_for_prior,
+            prior_history=prior_history if prior_history else None,
+        )
+
+        # Convert player_id-keyed priors → (player_id, season_year)-keyed for multi-year safety.
+        # Target-season rows receive their computed box-BPR prior.
+        # Non-target-season rows get neutral priors (mean=0, default SD) so that
+        # RAPM data dominates for those observations — no cross-season prior bleed.
+        # In single-season mode all rows share target_year so this is a no-op.
+        ps_prior_mean_obpr: dict[tuple[int, int], float] = {}
+        ps_prior_mean_dbpr: dict[tuple[int, int], float] = {}
+        ps_prior_sd_obpr:   dict[tuple[int, int], float] = {}
+        ps_prior_sd_dbpr:   dict[tuple[int, int], float] = {}
+        n_target_priors = 0
+        n_neutral_priors = 0
+        for (pid, yr) in dataset["player_season_index"]:
+            ps_key = (pid, yr)
+            if yr == target_year:
+                ps_prior_mean_obpr[ps_key] = prior_mean_obpr.get(pid, 0.0)
+                ps_prior_mean_dbpr[ps_key] = prior_mean_dbpr.get(pid, 0.0)
+                ps_prior_sd_obpr[ps_key]   = prior_sd_obpr.get(pid, PRIOR_SD_DEFAULT_OFF)
+                ps_prior_sd_dbpr[ps_key]   = prior_sd_dbpr.get(pid, PRIOR_SD_DEFAULT_DEF)
+                n_target_priors += 1
+            else:
+                # Non-target season: neutral priors so data dominates
+                ps_prior_mean_obpr[ps_key] = 0.0
+                ps_prior_mean_dbpr[ps_key] = 0.0
+                ps_prior_sd_obpr[ps_key]   = PRIOR_SD_DEFAULT_OFF
+                ps_prior_sd_dbpr[ps_key]   = PRIOR_SD_DEFAULT_DEF
+                n_neutral_priors += 1
+
+        if n_neutral_priors > 0:
+            logger.info(
+                f"[BPR] Phase 5: player-season prior conversion — "
+                f"{n_target_priors} target-season priors, "
+                f"{n_neutral_priors} neutral non-target priors (multi-year mode)"
+            )
 
         # Tune prior SD scales by CV:
         # a) Joint global scale (single multiplier for off + def)
@@ -241,24 +322,24 @@ def run_bpr_season(
         logger.info("[BPR] Phase 5: Tuning prior SD scale (joint) by CV")
         joint_scale, joint_cv = tune_prior_sd_scale(
             observations=dataset["observations"],
-            player_index=dataset["player_index"],
-            n_players=n_players,
-            prior_mean_obpr=prior_mean_obpr,
-            prior_mean_dbpr=prior_mean_dbpr,
-            prior_sd_obpr=prior_sd_obpr,
-            prior_sd_dbpr=prior_sd_dbpr,
+            player_season_index=dataset["player_season_index"],
+            n_player_seasons=n_player_seasons,
+            prior_mean_obpr=ps_prior_mean_obpr,
+            prior_mean_dbpr=ps_prior_mean_dbpr,
+            prior_sd_obpr=ps_prior_sd_obpr,
+            prior_sd_dbpr=ps_prior_sd_dbpr,
             baseline_lambda=baseline_rapm["lambda"],
         )
 
         logger.info("[BPR] Phase 5: Tuning prior SD scales (separate off/def) by CV")
         sep_off, sep_def, sep_wmse, sep_cv = tune_prior_sd_scales_separate(
             observations=dataset["observations"],
-            player_index=dataset["player_index"],
-            n_players=n_players,
-            prior_mean_obpr=prior_mean_obpr,
-            prior_mean_dbpr=prior_mean_dbpr,
-            prior_sd_obpr=prior_sd_obpr,
-            prior_sd_dbpr=prior_sd_dbpr,
+            player_season_index=dataset["player_season_index"],
+            n_player_seasons=n_player_seasons,
+            prior_mean_obpr=ps_prior_mean_obpr,
+            prior_mean_dbpr=ps_prior_mean_dbpr,
+            prior_sd_obpr=ps_prior_sd_obpr,
+            prior_sd_dbpr=ps_prior_sd_dbpr,
             baseline_lambda=baseline_rapm["lambda"],
         )
 
@@ -289,23 +370,28 @@ def run_bpr_season(
             "sd_scale_def": sd_scale_def,
             # For backward-compat with validation which reads best_sd_scale
             "best_sd_scale": sd_scale_off if chosen_tuning == "joint" else sep_off,
+            # Prior-keying audit fields
+            "prior_keying": "player_season",
+            "n_target_priors": n_target_priors,
+            "n_neutral_non_target_priors": n_neutral_priors,
         }
 
         logger.info("[BPR] Phase 5: Fitting prior-informed RAPM")
         prior_rapm = fit_prior_informed_rapm(
             observations=dataset["observations"],
-            player_index=dataset["player_index"],
-            n_players=n_players,
-            prior_mean_obpr=prior_mean_obpr,
-            prior_mean_dbpr=prior_mean_dbpr,
-            prior_sd_obpr=prior_sd_obpr,
-            prior_sd_dbpr=prior_sd_dbpr,
+            player_season_index=dataset["player_season_index"],
+            n_player_seasons=n_player_seasons,
+            prior_mean_obpr=ps_prior_mean_obpr,
+            prior_mean_dbpr=ps_prior_mean_dbpr,
+            prior_sd_obpr=ps_prior_sd_obpr,
+            prior_sd_dbpr=ps_prior_sd_dbpr,
             baseline_lambda=baseline_rapm["lambda"],
             sd_scale_off=sd_scale_off,
             sd_scale_def=sd_scale_def,
         )
-        final_obpr = prior_rapm["obpr"]
-        final_dbpr = prior_rapm["dbpr"]
+        # Slice to target-season coefficients only before writing
+        final_obpr = extract_target_season(prior_rapm["obpr"], target_year)
+        final_dbpr = extract_target_season(prior_rapm["dbpr"], target_year)
         summary["phases"]["prior_rapm"] = {
             "intercept":    prior_rapm["intercept"],
             "hca":          prior_rapm["hca"],
@@ -313,9 +399,9 @@ def run_bpr_season(
             "sd_scale_def": prior_rapm["sd_scale_def"],
         }
     elif baseline_rapm is not None:
-        # No box BPR available — use baseline RAPM as final
-        final_obpr = baseline_rapm["obpr"]
-        final_dbpr = baseline_rapm["dbpr"]
+        # No box BPR available — use baseline RAPM as final (target season only)
+        final_obpr = extract_target_season(baseline_rapm["obpr"], target_year)
+        final_dbpr = extract_target_season(baseline_rapm["dbpr"], target_year)
 
     # ── Phase 6: Write results to PlayerSeasonStats ───────────────────────────
     logger.info("[BPR] Phase 6: Writing BPR results to database")
@@ -342,6 +428,9 @@ def run_bpr_season(
             baseline_rapm=baseline_rapm,
             sd_cv_summary=summary["phases"].get("sd_scale_cv", {}),
             export_fn=export_model_artifacts,
+            rapm_window=rapm_window,
+            n_player_seasons=n_player_seasons,
+            n_target_players=n_target_players,
         )
         summary["phases"]["artifact_saved"] = True
 
@@ -638,12 +727,57 @@ def _write_bpr_results(
     }
 
 
+def _load_prior_season_history(
+    season_year: int,
+    player_ids: list[int],
+    n_prior_seasons: int = 2,
+) -> dict[int, dict]:
+    """
+    Load prior-season baseline RAPM values for players appearing in the current dataset.
+
+    Used to blend historical actual performance into preseason priors (v1.3).
+    Only returns records where BOTH baseline_obpr and baseline_dbpr are non-null
+    (i.e. the player met possession thresholds in the prior season).
+
+    Returns: {player_id: {"baseline_obpr": float, "baseline_dbpr": float}}
+    """
+    from core.models import PlayerSeasonStats
+
+    prior_years = list(range(season_year - n_prior_seasons, season_year))
+
+    qs = (
+        PlayerSeasonStats.objects
+        .filter(
+            season__year__in=prior_years,
+            player_id__in=player_ids,
+            baseline_obpr__isnull=False,
+            baseline_dbpr__isnull=False,
+        )
+        .values("player_id", "season__year", "baseline_obpr", "baseline_dbpr")
+        .order_by("player_id", "-season__year")  # most recent first
+    )
+
+    # Keep only the most recent prior-season record per player
+    history: dict[int, dict] = {}
+    for row in qs:
+        pid = row["player_id"]
+        if pid not in history:
+            history[pid] = {
+                "baseline_obpr": float(row["baseline_obpr"]),
+                "baseline_dbpr": float(row["baseline_dbpr"]),
+            }
+    return history
+
+
 def _save_model_artifact(
     season_year: int,
     model_artifacts: dict,
     baseline_rapm: dict,
     sd_cv_summary: dict,
     export_fn,
+    rapm_window: str = "single_season",
+    n_player_seasons: int = 0,
+    n_target_players: int = 0,
 ) -> None:
     from core.models import BPRModelArtifact, Season
 
@@ -667,21 +801,24 @@ def _save_model_artifact(
             "n_observations":       exported["n_train"],
             "n_players":            model_artifacts["n_train"],
             "assumptions": {
-                "model_type":       "box_bpr",
-                "rapm_window":      "single_season",  # TODO MULTI-YEAR: change when pooling seasons
-                "training_method":  model_artifacts.get("training_method"),
-                "training_source":  model_artifacts.get("training_source"),
-                "rapm_lambda":      baseline_rapm.get("lambda"),
-                "rapm_intercept":   baseline_rapm.get("intercept"),
-                "rapm_hca":         baseline_rapm.get("hca"),
-                "off_alpha":        model_artifacts.get("off_cv_alpha"),
-                "def_alpha":        model_artifacts.get("def_cv_alpha"),
-                "off_features":     model_artifacts.get("off_features"),
-                "def_features":     model_artifacts.get("def_features"),
-                "sd_scale_off":     sd_cv_summary.get("sd_scale_off"),
-                "sd_scale_def":     sd_cv_summary.get("sd_scale_def"),
-                "sd_tuning_mode":   sd_cv_summary.get("chosen_tuning"),
-                "target_contamination_fixed": True,  # v1.2: uses baseline RAPM targets
+                "model_type":              "box_bpr",
+                "rapm_window":             rapm_window,
+                "n_player_seasons":        n_player_seasons,
+                "n_target_players":        n_target_players,
+                "player_season_keyed":     True,   # v1.3.1: coefficients keyed by (player_id, season_year)
+                "training_method":         model_artifacts.get("training_method"),
+                "training_source":         model_artifacts.get("training_source"),
+                "rapm_lambda":             baseline_rapm.get("lambda"),
+                "rapm_intercept":          baseline_rapm.get("intercept"),
+                "rapm_hca":                baseline_rapm.get("hca"),
+                "off_alpha":               model_artifacts.get("off_cv_alpha"),
+                "def_alpha":               model_artifacts.get("def_cv_alpha"),
+                "off_features":            model_artifacts.get("off_features"),
+                "def_features":            model_artifacts.get("def_features"),
+                "sd_scale_off":            sd_cv_summary.get("sd_scale_off"),
+                "sd_scale_def":            sd_cv_summary.get("sd_scale_def"),
+                "sd_tuning_mode":          sd_cv_summary.get("chosen_tuning"),
+                "target_contamination_fixed": True,   # v1.2: baseline RAPM targets
             },
         },
     )

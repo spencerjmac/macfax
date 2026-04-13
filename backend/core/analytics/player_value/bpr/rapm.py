@@ -70,21 +70,24 @@ logger = logging.getLogger(__name__)
 
 def build_design_matrix(
     observations: list[dict],
-    player_index: dict[int, int],  # player_id → column index (0-based)
-    n_players: int,
+    player_season_index: dict,  # (player_id, season_year) → column index (0-based)
+    n_player_seasons: int,
     league_avg_off_eff: Optional[float] = None,
 ) -> tuple[sparse.csr_matrix, np.ndarray, np.ndarray]:
     """
     Build the sparse design matrix X, target vector y, and weight vector w.
 
+    Columns use player-season identities: the same player in different seasons
+    gets separate OBPR/DBPR columns, enabling correct multi-year RAPM.
+
     Returns:
-        X        (n_obs, 2 + 2*n_players)  CSR sparse
+        X        (n_obs, 2 + 2*n_player_seasons)  CSR sparse
         y        (n_obs,)
         weights  (n_obs,)
     """
     # Two rows per observation (home-offense + away-offense)
     n_obs = len(observations) * 2
-    n_features = 2 + 2 * n_players  # intercept + hca + OBPR×N + DBPR×N
+    n_features = 2 + 2 * n_player_seasons  # intercept + hca + OBPR×N_ps + DBPR×N_ps
 
     rows, cols, vals = [], [], []
     y = np.zeros(n_obs, dtype=np.float64)
@@ -97,6 +100,7 @@ def build_design_matrix(
         a_pts    = obs["away_pts"]
         h_poss   = obs["home_poss"]
         a_poss   = obs["away_poss"]
+        obs_year = obs["season_year"]  # used to form player-season key
         neutral  = obs.get("is_neutral", False)
         hca_sign = 0.0 if neutral else 1.0  # real home court = ±1.0
 
@@ -112,12 +116,12 @@ def build_design_matrix(
             rows.append(i); cols.append(1); vals.append(hca_sign)
             # home players: OBPR columns (offensive)
             for pid in home_ids:
-                j = player_index[pid]
+                j = player_season_index[(pid, obs_year)]
                 rows.append(i); cols.append(2 + j); vals.append(1.0)
             # away players: DBPR columns (defending against home offense)
             for pid in away_ids:
-                j = player_index[pid]
-                rows.append(i); cols.append(2 + n_players + j); vals.append(1.0)
+                j = player_season_index[(pid, obs_year)]
+                rows.append(i); cols.append(2 + n_player_seasons + j); vals.append(1.0)
 
         # ── Row 2·idx+1: away team on offense ────────────────────────────────
         i = idx * 2 + 1
@@ -128,11 +132,11 @@ def build_design_matrix(
             rows.append(i); cols.append(0); vals.append(1.0)
             rows.append(i); cols.append(1); vals.append(-hca_sign)
             for pid in away_ids:
-                j = player_index[pid]
+                j = player_season_index[(pid, obs_year)]
                 rows.append(i); cols.append(2 + j); vals.append(1.0)
             for pid in home_ids:
-                j = player_index[pid]
-                rows.append(i); cols.append(2 + n_players + j); vals.append(1.0)
+                j = player_season_index[(pid, obs_year)]
+                rows.append(i); cols.append(2 + n_player_seasons + j); vals.append(1.0)
 
     X = sparse.coo_matrix(
         (vals, (rows, cols)), shape=(n_obs, n_features)
@@ -205,7 +209,7 @@ def cross_validate_lambda(
     X: sparse.csr_matrix,
     y: np.ndarray,
     weights: np.ndarray,
-    n_players: int,
+    n_player_seasons: int,
     seed: int = 42,
 ) -> tuple[float, dict]:
     """
@@ -239,7 +243,7 @@ def cross_validate_lambda(
     obs_fold_filtered = [f for f, m in zip(obs_fold, nonzero_mask) if m]
     obs_fold_arr = np.array(obs_fold_filtered)
 
-    player_col_slice = (2, 2 + 2 * n_players)
+    player_col_slice = (2, 2 + 2 * n_player_seasons)
 
     cv_errors: dict[float, list[float]] = {lam: [] for lam in RAPM_LAMBDA_CANDIDATES}
 
@@ -277,8 +281,8 @@ def cross_validate_lambda(
 
 def fit_baseline_rapm(
     observations: list[dict],
-    player_index: dict[int, int],
-    n_players: int,
+    player_season_index: dict,
+    n_player_seasons: int,
     run_cv: bool = True,
     lambda_override: Optional[float] = None,
 ) -> dict:
@@ -287,27 +291,28 @@ def fit_baseline_rapm(
 
     Returns:
         {
-          obpr:        dict[int, float]  player_id → OBPR pts/100poss above avg
-          dbpr:        dict[int, float]  player_id → DBPR pts/100poss above avg (positive = good)
-          intercept:   float             league avg offensive efficiency
-          hca:         float             home court pts/100poss advantage
-          lambda:      float             regularization strength used
+          obpr:        dict[(player_id, season_year), float]
+          dbpr:        dict[(player_id, season_year), float]
+          intercept:   float
+          hca:         float
+          lambda:      float
           cv_metrics:  dict | None
         }
+    Use extract_target_season(result["obpr"], target_year) for {player_id: float}.
     """
     logger.info(f"Building RAPM design matrix for {len(observations)} lineup segments …")
-    X, y, weights = build_design_matrix(observations, player_index, n_players)
+    X, y, weights = build_design_matrix(observations, player_season_index, n_player_seasons)
     logger.info(f"  Design matrix: {X.shape[0]} observations × {X.shape[1]} features  "
                 f"({X.nnz} non-zeros)")
 
-    player_col_slice = (2, 2 + 2 * n_players)
+    player_col_slice = (2, 2 + 2 * n_player_seasons)
     cv_metrics = None
 
     if lambda_override is not None:
         best_lambda = lambda_override
     elif run_cv:
         best_lambda, cv_metrics = cross_validate_lambda(
-            observations, X, y, weights, n_players
+            observations, X, y, weights, n_player_seasons
         )
     else:
         best_lambda = 1.0  # conservative default
@@ -317,15 +322,15 @@ def fit_baseline_rapm(
 
     intercept = float(beta[0])
     hca       = float(beta[1])
-    obpr_block = beta[2 : 2 + n_players]
-    dbpr_block = beta[2 + n_players : 2 + 2 * n_players]
+    obpr_block = beta[2 : 2 + n_player_seasons]
+    dbpr_block = beta[2 + n_player_seasons : 2 + 2 * n_player_seasons]
 
-    player_ids = sorted(player_index, key=player_index.get)
+    player_season_keys = sorted(player_season_index, key=player_season_index.get)
 
-    # DBPR sign flip: a positive DBPR_raw means the defense ALLOWED more than
-    # average (bad defender).  We negate so higher DBPR = better defender.
-    obpr = {pid: float(obpr_block[i]) for i, pid in enumerate(player_ids)}
-    dbpr = {pid: float(-dbpr_block[i]) for i, pid in enumerate(player_ids)}
+    # DBPR sign flip: positive DBPR_raw = allowed more than avg (bad defender).
+    # Negate so higher DBPR → better defender.
+    obpr = {ps: float(obpr_block[i]) for i, ps in enumerate(player_season_keys)}
+    dbpr = {ps: float(-dbpr_block[i]) for i, ps in enumerate(player_season_keys)}
 
     return {
         "obpr":       obpr,
@@ -339,18 +344,22 @@ def fit_baseline_rapm(
 
 def tune_prior_sd_scale(
     observations: list[dict],
-    player_index: dict[int, int],
-    n_players: int,
-    prior_mean_obpr: dict[int, float],
-    prior_mean_dbpr: dict[int, float],
-    prior_sd_obpr: dict[int, float],
-    prior_sd_dbpr: dict[int, float],
+    player_season_index: dict,
+    n_player_seasons: int,
+    prior_mean_obpr: dict[tuple[int, int], float],
+    prior_mean_dbpr: dict[tuple[int, int], float],
+    prior_sd_obpr: dict[tuple[int, int], float],
+    prior_sd_dbpr: dict[tuple[int, int], float],
     baseline_lambda: float,
     sd_scale_candidates: Optional[list[float]] = None,
     seed: int = 42,
 ) -> tuple[float, dict]:
     """
     Tune a global prior SD scale factor by 5-fold game-split CV.
+
+    Prior maps are keyed by (player_id, season_year).  Target-season rows
+    receive their computed box-BPR prior; non-target-season rows receive
+    neutral priors (mean=0, default SD) so data dominates for them.
 
     Also evaluates the BOX_ONLY_SD_SCALE_REF (0.01) as a diagnostic reference
     to capture near-box-only held-out WMSE without making it selectable.
@@ -362,7 +371,7 @@ def tune_prior_sd_scale(
     if sd_scale_candidates is None:
         sd_scale_candidates = PRIOR_SD_SCALE_CANDIDATES
 
-    X, y, weights = build_design_matrix(observations, player_index, n_players)
+    X, y, weights = build_design_matrix(observations, player_season_index, n_player_seasons)
 
     # Build game-fold assignment (same approach as lambda CV)
     game_ids = sorted({obs["game_id"] for obs in observations})
@@ -382,7 +391,7 @@ def tune_prior_sd_scale(
     obs_fold_filtered = [f for f, m in zip(obs_fold, nonzero_mask) if m]
     obs_fold_arr = np.array(obs_fold_filtered)
 
-    player_ids_ordered = sorted(player_index, key=player_index.get)
+    player_season_keys_ordered = sorted(player_season_index, key=player_season_index.get)
     n_features = X.shape[1]
 
     # Evaluate selectable candidates + box-only reference
@@ -402,16 +411,17 @@ def tune_prior_sd_scale(
             prior_means_full  = np.zeros(n_features)
             prior_lambda_diag = np.ones(n_features) * 1e-8
 
-            for i, pid in enumerate(player_ids_ordered):
-                mu_o = prior_mean_obpr.get(pid, 0.0)
-                sd_o = prior_sd_obpr.get(pid, PRIOR_SD_DEFAULT_OFF) * s
+            for i, (pid, yr) in enumerate(player_season_keys_ordered):
+                ps_key = (pid, yr)
+                mu_o = prior_mean_obpr.get(ps_key, 0.0)
+                sd_o = prior_sd_obpr.get(ps_key, PRIOR_SD_DEFAULT_OFF) * s
                 prior_means_full[2 + i] = mu_o
                 prior_lambda_diag[2 + i] = baseline_lambda / max(sd_o, 0.5) ** 2
 
-                mu_d = prior_mean_dbpr.get(pid, 0.0)
-                sd_d = prior_sd_dbpr.get(pid, PRIOR_SD_DEFAULT_DEF) * s
-                prior_means_full[2 + n_players + i] = -mu_d
-                prior_lambda_diag[2 + n_players + i] = baseline_lambda / max(sd_d, 0.5) ** 2
+                mu_d = prior_mean_dbpr.get(ps_key, 0.0)
+                sd_d = prior_sd_dbpr.get(ps_key, PRIOR_SD_DEFAULT_DEF) * s
+                prior_means_full[2 + n_player_seasons + i] = -mu_d
+                prior_lambda_diag[2 + n_player_seasons + i] = baseline_lambda / max(sd_d, 0.5) ** 2
 
             sqrt_w  = np.sqrt(w_train)
             Xw      = sparse.diags(sqrt_w) @ X_train
@@ -455,12 +465,12 @@ def tune_prior_sd_scale(
 
 def tune_prior_sd_scales_separate(
     observations: list[dict],
-    player_index: dict[int, int],
-    n_players: int,
-    prior_mean_obpr: dict[int, float],
-    prior_mean_dbpr: dict[int, float],
-    prior_sd_obpr: dict[int, float],
-    prior_sd_dbpr: dict[int, float],
+    player_season_index: dict,
+    n_player_seasons: int,
+    prior_mean_obpr: dict[tuple[int, int], float],
+    prior_mean_dbpr: dict[tuple[int, int], float],
+    prior_sd_obpr: dict[tuple[int, int], float],
+    prior_sd_dbpr: dict[tuple[int, int], float],
     baseline_lambda: float,
     sd_scale_candidates: Optional[list[float]] = None,
     seed: int = 42,
@@ -481,7 +491,7 @@ def tune_prior_sd_scales_separate(
     if sd_scale_candidates is None:
         sd_scale_candidates = PRIOR_SD_SCALE_CANDIDATES
 
-    X, y, weights = build_design_matrix(observations, player_index, n_players)
+    X, y, weights = build_design_matrix(observations, player_season_index, n_player_seasons)
 
     game_ids = sorted({obs["game_id"] for obs in observations})
     rng = random.Random(seed)
@@ -499,7 +509,7 @@ def tune_prior_sd_scales_separate(
     nonzero_mask = all_weights >= MIN_OBS_POSS
     obs_fold_arr = np.array([f for f, m in zip(obs_fold, nonzero_mask) if m])
 
-    player_ids_ordered = sorted(player_index, key=player_index.get)
+    player_season_keys_ordered = sorted(player_season_index, key=player_season_index.get)
     n_features = X.shape[1]
 
     def _cv_wmse_separate(s_off: float, s_def: float) -> float:
@@ -515,16 +525,17 @@ def tune_prior_sd_scales_separate(
 
             prior_means_full  = np.zeros(n_features)
             prior_lambda_diag = np.ones(n_features) * 1e-8
-            for i, pid in enumerate(player_ids_ordered):
-                mu_o = prior_mean_obpr.get(pid, 0.0)
-                sd_o = prior_sd_obpr.get(pid, PRIOR_SD_DEFAULT_OFF) * s_off
+            for i, (pid, yr) in enumerate(player_season_keys_ordered):
+                ps_key = (pid, yr)
+                mu_o = prior_mean_obpr.get(ps_key, 0.0)
+                sd_o = prior_sd_obpr.get(ps_key, PRIOR_SD_DEFAULT_OFF) * s_off
                 prior_means_full[2 + i] = mu_o
                 prior_lambda_diag[2 + i] = baseline_lambda / max(sd_o, 0.5) ** 2
 
-                mu_d = prior_mean_dbpr.get(pid, 0.0)
-                sd_d = prior_sd_dbpr.get(pid, PRIOR_SD_DEFAULT_DEF) * s_def
-                prior_means_full[2 + n_players + i] = -mu_d
-                prior_lambda_diag[2 + n_players + i] = baseline_lambda / max(sd_d, 0.5) ** 2
+                mu_d = prior_mean_dbpr.get(ps_key, 0.0)
+                sd_d = prior_sd_dbpr.get(ps_key, PRIOR_SD_DEFAULT_DEF) * s_def
+                prior_means_full[2 + n_player_seasons + i] = -mu_d
+                prior_lambda_diag[2 + n_player_seasons + i] = baseline_lambda / max(sd_d, 0.5) ** 2
 
             sqrt_lam = np.sqrt(prior_lambda_diag)
             X_aug = sparse.vstack([
@@ -572,12 +583,12 @@ def tune_prior_sd_scales_separate(
 
 def fit_prior_informed_rapm(
     observations: list[dict],
-    player_index: dict[int, int],
-    n_players: int,
-    prior_mean_obpr: dict[int, float],     # player_id → prior mean offensive
-    prior_mean_dbpr: dict[int, float],     # player_id → prior mean defensive
-    prior_sd_obpr: dict[int, float],       # player_id → prior SD offensive (base, before scale)
-    prior_sd_dbpr: dict[int, float],       # player_id → prior SD defensive (base, before scale)
+    player_season_index: dict,
+    n_player_seasons: int,
+    prior_mean_obpr: dict[tuple[int, int], float],  # (player_id, season_year) → prior mean offensive
+    prior_mean_dbpr: dict[tuple[int, int], float],  # (player_id, season_year) → prior mean defensive
+    prior_sd_obpr: dict[tuple[int, int], float],    # (player_id, season_year) → prior SD offensive (base)
+    prior_sd_dbpr: dict[tuple[int, int], float],    # (player_id, season_year) → prior SD defensive (base)
     baseline_lambda: float,
     sd_scale: float = 1.0,                # legacy joint scale (used when separate scales not set)
     sd_scale_off: Optional[float] = None,  # CV-tuned offensive SD multiplier (overrides sd_scale)
@@ -586,40 +597,42 @@ def fit_prior_informed_rapm(
     """
     Fit BPR with player-specific Gaussian priors (from Box BPR).
 
-    Supports both joint scaling (sd_scale applied to both off and def) and
-    separate scaling (sd_scale_off for offensive, sd_scale_def for defensive).
-    When sd_scale_off and sd_scale_def are provided, they take precedence over
-    the legacy joint sd_scale.
+    Prior means/SDs are keyed by (player_id, season_year).  In multi-year mode,
+    non-target-season rows carry neutral priors (mean=0, default SD) set upstream
+    in pipeline.py — the RAPM data dominates for those rows, which is correct.
+    Target-season rows carry the box-BPR-derived prior for the player.
 
-    Per-player penalty: λ_j = λ_global / (σ_j × sd_scale_*) ².
-    Lower sd_scale_* → tighter effective priors → more weight on box BPR.
+    Returns obpr/dbpr keyed by (player_id, season_year).
+    Use extract_target_season() to get {player_id: val} for writes.
     """
     # Separate scales override joint scale when provided
     eff_off = sd_scale_off if sd_scale_off is not None else sd_scale
     eff_def = sd_scale_def if sd_scale_def is not None else sd_scale
 
-    player_ids = sorted(player_index, key=player_index.get)
+    player_season_keys = sorted(player_season_index, key=player_season_index.get)
 
     # Build per-feature prior vectors
-    n_features = 2 + 2 * n_players
+    n_features = 2 + 2 * n_player_seasons
     prior_means_full = np.zeros(n_features)
     prior_lambda_diag = np.ones(n_features) * 1e-8  # nearly no reg on intercept/hca
 
-    for i, pid in enumerate(player_ids):
-        # OBPR prior (offensive scale)
-        mu_o  = prior_mean_obpr.get(pid, 0.0)
-        sd_o  = prior_sd_obpr.get(pid, PRIOR_SD_DEFAULT_OFF) * eff_off
+    for i, (pid, yr) in enumerate(player_season_keys):
+        ps_key = (pid, yr)
+        # OBPR prior (offensive scale) — looked up by player-season to prevent
+        # cross-season prior bleed in multi-year mode
+        mu_o  = prior_mean_obpr.get(ps_key, 0.0)
+        sd_o  = prior_sd_obpr.get(ps_key, PRIOR_SD_DEFAULT_OFF) * eff_off
         prior_means_full[2 + i] = mu_o
         prior_lambda_diag[2 + i] = baseline_lambda / max(sd_o, 0.5) ** 2
 
         # DBPR prior (defensive scale); internal sign convention: negate mean
-        mu_d  = prior_mean_dbpr.get(pid, 0.0)
-        sd_d  = prior_sd_dbpr.get(pid, PRIOR_SD_DEFAULT_DEF) * eff_def
-        prior_means_full[2 + n_players + i] = -mu_d
-        prior_lambda_diag[2 + n_players + i] = baseline_lambda / max(sd_d, 0.5) ** 2
+        mu_d  = prior_mean_dbpr.get(ps_key, 0.0)
+        sd_d  = prior_sd_dbpr.get(ps_key, PRIOR_SD_DEFAULT_DEF) * eff_def
+        prior_means_full[2 + n_player_seasons + i] = -mu_d
+        prior_lambda_diag[2 + n_player_seasons + i] = baseline_lambda / max(sd_d, 0.5) ** 2
 
     # Build design matrix
-    X, y, weights = build_design_matrix(observations, player_index, n_players)
+    X, y, weights = build_design_matrix(observations, player_season_index, n_player_seasons)
 
     # Weighted data terms
     sqrt_w = np.sqrt(weights)
@@ -635,7 +648,7 @@ def fit_prior_informed_rapm(
     y_aug = np.concatenate([yw, pen_targets])
 
     logger.info(
-        f"Fitting prior-informed RAPM ({X.shape[0]} obs, {n_players} players) "
+        f"Fitting prior-informed RAPM ({X.shape[0]} obs, {n_player_seasons} player-seasons) "
         f"sd_off={eff_off:.3f}, sd_def={eff_def:.3f} …"
     )
     result = lsqr(X_aug, y_aug, show=False)
@@ -643,11 +656,11 @@ def fit_prior_informed_rapm(
 
     intercept = float(beta[0])
     hca       = float(beta[1])
-    obpr_block = beta[2 : 2 + n_players]
-    dbpr_block = beta[2 + n_players : 2 + 2 * n_players]
+    obpr_block = beta[2 : 2 + n_player_seasons]
+    dbpr_block = beta[2 + n_player_seasons : 2 + 2 * n_player_seasons]
 
-    obpr = {pid: float(obpr_block[i]) for i, pid in enumerate(player_ids)}
-    dbpr = {pid: float(-dbpr_block[i]) for i, pid in enumerate(player_ids)}  # flip sign
+    obpr = {ps: float(obpr_block[i]) for i, ps in enumerate(player_season_keys)}
+    dbpr = {ps: float(-dbpr_block[i]) for i, ps in enumerate(player_season_keys)}  # flip sign
 
     return {
         "obpr":         obpr,
@@ -656,4 +669,27 @@ def fit_prior_informed_rapm(
         "hca":          hca,
         "sd_scale_off": eff_off,
         "sd_scale_def": eff_def,
+    }
+
+
+# ── Target-season extraction helper ─────────────────────────────────────────
+
+def extract_target_season(
+    rapm_map: dict,
+    target_year: int,
+) -> dict[int, float]:
+    """
+    Slice a player-season-keyed RAPM result dict down to the target season.
+
+    Takes:  {(player_id, season_year): float, ...}
+    Returns: {player_id: float}  for entries where season_year == target_year.
+
+    In single-season mode (all entries share the same year) this is equivalent
+    to the old {player_id: float} dict.  In multi-year mode it extracts only
+    the coefficients for the season being written to PlayerSeasonStats.
+    """
+    return {
+        pid: val
+        for (pid, yr), val in rapm_map.items()
+        if yr == target_year
     }

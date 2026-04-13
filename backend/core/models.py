@@ -1780,6 +1780,37 @@ class PlayerSeasonStats(models.Model):
     # Adjusted on-court team efficiencies (pts/100 poss)
     adj_team_off_eff_on = models.FloatField(null=True, blank=True, help_text="Team adj off eff (pts/100 poss) while player on court")
     adj_team_def_eff_on = models.FloatField(null=True, blank=True, help_text="Team adj def eff (pts/100 poss) while player on court")
+    # ── Phase E: possession-based adjusted on-court ratings ──────────────────
+    # Distinct from legacy on_court_ortg/drtg (per-40 raw pts-based values).
+    # Formula: AOR_g = rawOE_g × (NatAvg / OppAdjD) × offSiteFactor, then
+    #          shrunk toward NatAvg with k=200 poss prior. Same methodology
+    #          as compute_adjusted_ratings team engine.
+    on_court_off_poss = models.FloatField(null=True, blank=True, help_text="Offensive possessions on court (FGA + 0.44·FTA + TOV − OREB)")
+    on_court_def_poss = models.FloatField(null=True, blank=True, help_text="Defensive possessions on court (opp FGA + 0.44·FTA + TOV − OREB)")
+    on_court_raw_oe   = models.FloatField(null=True, blank=True, help_text="Raw on-court offensive efficiency (pts/100 off poss)")
+    on_court_raw_de   = models.FloatField(null=True, blank=True, help_text="Raw on-court defensive efficiency (opp pts/100 def poss)")
+    on_court_adj_o    = models.FloatField(null=True, blank=True, help_text="Adjusted on-court offensive efficiency (opponent-/site-adjusted, shrunk toward nat avg)")
+    on_court_adj_d    = models.FloatField(null=True, blank=True, help_text="Adjusted on-court defensive efficiency (opponent-/site-adjusted, shrunk toward nat avg)")
+    on_court_adj_em   = models.FloatField(null=True, blank=True, help_text="Adjusted on-court net efficiency (on_court_adj_o − on_court_adj_d)")
+
+    # ── Four Factor Impact (RAPM-based, player-specific) ─────────────────────
+    # 8 impact components — all stored positive-good.
+    off_efg_impact = models.FloatField(null=True, blank=True, help_text="Offensive eFG% impact vs average (pp, positive-good)")
+    def_efg_impact = models.FloatField(null=True, blank=True, help_text="Defensive eFG% impact: reduction in opp eFG vs average (pp, positive-good)")
+    off_tov_impact = models.FloatField(null=True, blank=True, help_text="Offensive TOV impact: reduction in team TOV% vs average (pp, positive-good)")
+    def_tov_impact = models.FloatField(null=True, blank=True, help_text="Defensive TOV generation: increase in forced opp TOV% vs average (pp, positive-good)")
+    off_orb_impact = models.FloatField(null=True, blank=True, help_text="Offensive ORB% impact vs average (pp, positive-good)")
+    def_reb_impact = models.FloatField(null=True, blank=True, help_text="Defensive rebounding impact: reduction in opp ORB% vs average (pp, positive-good)")
+    off_ftr_impact = models.FloatField(null=True, blank=True, help_text="Offensive FTR impact vs average (pp, positive-good)")
+    def_ftr_impact = models.FloatField(null=True, blank=True, help_text="Defensive FTR prevention: reduction in opp FTR vs average (pp, positive-good)")
+    # 4 combined two-way margins (off + def impact)
+    efg_impact_margin = models.FloatField(null=True, blank=True, help_text="Combined eFG impact margin (off + def)")
+    tov_impact_margin = models.FloatField(null=True, blank=True, help_text="Combined TOV impact margin (off + def)")
+    reb_impact_margin = models.FloatField(null=True, blank=True, help_text="Combined rebounding impact margin (off ORB + def REB)")
+    ftr_impact_margin = models.FloatField(null=True, blank=True, help_text="Combined FTR impact margin (off + def)")
+    # Four Factor Impact Index (0-100, standardized & weighted like team FFI)
+    four_factor_impact_index = models.FloatField(null=True, blank=True, help_text="Four Factor Impact Index (0-100): RAPM-based, player-specific, not team-context-driven")
+
     # Baseline RAPM targets (raw, before prior-informed fit)
     # These are stored as training targets for future Box BPR training,
     # eliminating recursive contamination (prior-informed BPR → Box BPR → next BPR).

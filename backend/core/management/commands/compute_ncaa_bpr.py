@@ -6,6 +6,7 @@ Usage:
     python manage.py compute_ncaa_bpr --season 2026 --skip-box-bpr
     python manage.py compute_ncaa_bpr --season 2026 --lambda 1.0
     python manage.py compute_ncaa_bpr --season 2026 --validate-only
+    python manage.py compute_ncaa_bpr --season 2026 --rapm-years 2024 2025 2026
 
 Run order:
   1. datasets.py: extract lineup segments from PlayerGameStint
@@ -60,6 +61,25 @@ class Command(BaseCommand):
             default=False,
             help="Only run validation against previously computed BPR (skip pipeline).",
         )
+        parser.add_argument(
+            "--rapm-years",
+            nargs="+",
+            type=int,
+            default=None,
+            help=(
+                "Season years to pool for RAPM estimation. Defaults to [--season] "
+                "(single-season mode, the default production path). "
+                "In multi-year mode, observations from all listed seasons are pooled "
+                "into a single design matrix. Coefficients are estimated at the "
+                "player-season level — keyed by (player_id, season_year) — so the "
+                "same player in different seasons receives independent coefficients, "
+                "not a single pooled coefficient across seasons. "
+                "Only the target season's (largest year's) coefficients and possession "
+                "totals are written back to PlayerSeasonStats; earlier seasons "
+                "contribute estimation power only. "
+                "Example: --rapm-years 2024 2025 2026"
+            ),
+        )
 
     def handle(self, *args, **options):
         season_year = options["season"]
@@ -82,6 +102,7 @@ class Command(BaseCommand):
                 skip_box_bpr=options["skip_box_bpr"],
                 skip_prior_rapm=options["skip_prior_rapm"],
                 rapm_lambda_override=options.get("lambda_override"),
+                rapm_years=options.get("rapm_years"),
                 verbose=True,
             )
         except Exception as exc:
@@ -108,16 +129,26 @@ class Command(BaseCommand):
         self._print_validation(results)
 
     def _print_validation(self, results: dict):
-        all_passed = results.get("all_passed")
+        core_passed   = results.get("all_passed_core")
+        strict_passed = results.get("all_passed_strict")
         for key, val in results.items():
             style = self.style.SUCCESS if val is True else (
                 self.style.ERROR if val is False else self.style.HTTP_INFO
             )
             self.stdout.write(f"  {key}: {style(str(val))}")
 
-        if all_passed:
-            self.stdout.write(self.style.SUCCESS("\nAll validation checks passed."))
-        elif all_passed is False:
+        self.stdout.write("")
+        if core_passed:
+            self.stdout.write(self.style.SUCCESS("  ✓ all_passed_core  (BPR arithmetic + plausible range)"))
+        else:
+            self.stdout.write(self.style.ERROR("  ✗ all_passed_core  — model output has errors, do not publish."))
+
+        if strict_passed:
+            self.stdout.write(self.style.SUCCESS("  ✓ all_passed_strict (core + completeness + HCA + predictive gain + partial rate)"))
+        elif strict_passed is False:
             self.stdout.write(
-                self.style.WARNING("\nSome validation checks failed. Review logs above.")
+                self.style.WARNING(
+                    "  ✗ all_passed_strict — one or more quality checks failed. "
+                    "Review qualified_player_check, hca_plausible, predictive_eval, n_partial_bpr."
+                )
             )

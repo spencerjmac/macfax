@@ -9,32 +9,57 @@ SETUP (always, fast, idempotent)
   • fix_team_duplicates — merge informal-name duplicates (e.g. UConn→Connecticut)
                           guards against ingest having been run out of order
   • sync_team_d1_status — ensure is_d1 flags match the YAML canonical list
-  • Season creation     — create Season row if it doesn't exist yet
+  • nba_sync_teams      — seed/update all 30 NBA franchises (idempotent)
+  • Season creation     — create NCAA Season row if it doesn't exist yet
 
-INGEST (skipped when --skip-ingest)
-  1. ingest_gamelogs    — fetch new box-scores from NCAA API
+NCAA TEAM PIPELINE
+  INGEST (skipped when --skip-ingest)
+    1.  ingest_gamelogs    — fetch new box-scores from NCAA API
 
-COMPUTE (always)
-  2.  compute_team_metrics        — raw per-team/per-game aggregates
-  3.  compute_national_averages   — national baseline stats (prereq for everything below)
-  4.  compute_adjusted_ratings    — iterative AdjO / AdjD / AdjEM / AdjTempo
-  5.  compute_hca                 — Home Court Advantage estimate → NationalAverages.hca_points
-  6.  compute_sigma               — prediction error std-dev → NationalAverages.prediction_sigma
-  7.  compute_adjusted_four_factors
-  8.  compute_four_factor_index
-  9.  train_four_factor_regression — OLS coefficients for pts_from_efg/tov/orb/ftr → matchup impact
-  10. fetch_net_rankings          — pull NET rankings from NCAA (external API)
-  11. compute_sor                 — Strength of Record (Monte Carlo, uses hca + sigma)
-  12. compute_game_value          — per-game resume value (uses hca + sigma)
-  13. compute_sos                 — Strength of Schedule (uses AdjEM)
-  14. compute_wab                 — Wins Above Bubble (uses hca + sigma + AdjEM)
+  COMPUTE
+    2.  compute_team_metrics        — raw per-team/per-game aggregates
+    3.  compute_national_averages   — national baseline stats (prereq for everything below)
+    4.  compute_adjusted_ratings    — iterative AdjO / AdjD / AdjEM / AdjTempo
+    5.  compute_hca                 — Home Court Advantage estimate → NationalAverages.hca_points
+    6.  compute_sigma               — prediction error std-dev → NationalAverages.prediction_sigma
+    7.  compute_adjusted_four_factors
+    8.  compute_four_factor_index
+    9.  train_four_factor_regression — OLS coefficients for pts_from_efg/tov/orb/ftr
+    10. fetch_net_rankings          — pull NET rankings from NCAA (external API)
+    11. compute_sor                 — Strength of Record (Monte Carlo, uses hca + sigma)
+    12. compute_game_value          — per-game resume value (uses hca + sigma)
+    13. compute_sos                 — Strength of Schedule (uses AdjEM)
+    14. compute_wab                 — Wins Above Bubble (uses hca + sigma + AdjEM)
+
+NCAA PLAYER PIPELINE (skipped when --skip-player)
+  INGEST (also skipped when --skip-ingest)
+    15. sync_ncaa_player_gamelogs   — ESPN per-player box scores
+    17. sync_ncaa_pbp               — ESPN play-by-play → PlayerGameStint (lineup stints)
+
+  COMPUTE
+    16. compute_ncaa_player_season_stats — aggregate game logs → season averages
+    18. compute_ncaa_player_impact       — on-court ratings + Four Factors
+    19. compute_ncaa_bpr                 — Bayesian Performance Rating (RAPM + Box prior)
+    20. compute_player_ffi               — Four Factor Impact Index
+
+NBA PIPELINE (skipped when --skip-nba)
+  INGEST (also skipped when --skip-ingest)
+    21. nba_sync_games              — NBA.com season game log + team box scores
+    22. nba_sync_team_logs          — per-player box scores (BoxScoreTraditionalV3)
+
+  COMPUTE
+    23. nba_compute_ratings         — opponent-adjusted ratings + FFI
+    24. nba_compute_player_stats    — roll up player season averages
+    25. nba_sync_player_advanced    — advanced + impact stats from NBA.com
 
 Usage
 ─────
   python manage.py update_all --season 2026
   python manage.py update_all --season 2026 --days 3
   python manage.py update_all --season 2026 --skip-ingest
-  python manage.py update_all --season 2026 --ingest-workers 4
+  python manage.py update_all --season 2026 --skip-player
+  python manage.py update_all --season 2026 --skip-nba
+  python manage.py update_all --season 2026 --ingest-workers 4 --player-workers 4 --nba-workers 4
 """
 
 import sys
@@ -47,7 +72,7 @@ from django.db import connection
 
 from core.models import Season
 
-TOTAL_STEPS = 14
+TOTAL_STEPS = 25
 
 
 class Command(BaseCommand):
@@ -84,7 +109,31 @@ class Command(BaseCommand):
             type=int,
             default=1,
             metavar="N",
-            help="Parallel ingest workers (default: 1)",
+            help="Parallel workers for NCAA team game log ingest (default: 1)",
+        )
+        parser.add_argument(
+            "--skip-player",
+            action="store_true",
+            help="Skip the entire NCAA player pipeline (steps 15–20)",
+        )
+        parser.add_argument(
+            "--player-workers",
+            type=int,
+            default=1,
+            metavar="N",
+            help="Parallel workers for sync_ncaa_player_gamelogs and sync_ncaa_pbp (default: 1)",
+        )
+        parser.add_argument(
+            "--skip-nba",
+            action="store_true",
+            help="Skip the entire NBA pipeline (steps 21–25)",
+        )
+        parser.add_argument(
+            "--nba-workers",
+            type=int,
+            default=1,
+            metavar="N",
+            help="Parallel workers for nba_sync_team_logs (default: 1)",
         )
 
     # ──────────────────────────────────────────────────────────────────────────
@@ -99,16 +148,20 @@ class Command(BaseCommand):
 
         season_year = options["season"]
         skip_ingest = options["skip_ingest"]
+        skip_player = options["skip_player"]
+        skip_nba    = options["skip_nba"]
         days = options.get("days")
         # CLI args override config; config values are the stored defaults
         iterations = options["iterations"] or cfg.adj_ratings_iterations
         sor_trials = options["sor_trials"] or cfg.sor_trials
         ingest_workers = max(1, int(options.get("ingest_workers", 1)))
+        player_workers = max(1, int(options.get("player_workers", 1)))
+        nba_workers    = max(1, int(options.get("nba_workers", 1)))
 
         start_time = timezone.now()
 
         self.stdout.write("\n" + "=" * 80)
-        self.stdout.write("CBB ANALYTICS DASHBOARD — AUTOMATED UPDATE")
+        self.stdout.write("MACFAX — FULL DATA PIPELINE UPDATE")
         self.stdout.write("=" * 80)
         self.stdout.write(
             f"Season : {season_year} ({season_year-1}-{str(season_year)[2:]})"
@@ -276,6 +329,145 @@ class Command(BaseCommand):
             label=f"[14/{TOTAL_STEPS}]",
         )
 
+        # ── NCAA Player Pipeline ───────────────────────────────────────────────
+        if skip_player:
+            self.stdout.write("[SKIP] NCAA player pipeline (--skip-player)\n")
+            for label in [
+                "Sync NCAA player gamelogs",
+                "Compute NCAA player season stats",
+                "Sync NCAA PBP stints",
+                "Compute NCAA player impact",
+                "Compute NCAA BPR",
+                "Compute NCAA player FFI",
+            ]:
+                steps.append((label, True, "Skipped (--skip-player)"))
+        else:
+            # Step 15 — player box score ingest (skippable via --skip-ingest)
+            if not skip_ingest:
+                self.stdout.write(
+                    f"[15/{TOTAL_STEPS}] Syncing NCAA player game logs from ESPN..."
+                )
+                self._run_step(
+                    "Sync NCAA player gamelogs",
+                    "sync_ncaa_player_gamelogs",
+                    {"season": season_year, "workers": player_workers, "skip_done": True},
+                    steps,
+                    fatal=False,
+                    label=f"[15/{TOTAL_STEPS}]",
+                )
+            else:
+                self.stdout.write(f"[SKIP] [15/{TOTAL_STEPS}] Skipping NCAA player gamelog ingest\n")
+                steps.append(("Sync NCAA player gamelogs", True, "Skipped (--skip-ingest)"))
+
+            self._run_step(
+                "Compute NCAA player season stats",
+                "compute_ncaa_player_season_stats",
+                {"season": season_year},
+                steps,
+                label=f"[16/{TOTAL_STEPS}]",
+            )
+
+            # Step 17 — PBP lineup stints (skippable via --skip-ingest)
+            if not skip_ingest:
+                self.stdout.write(
+                    f"[17/{TOTAL_STEPS}] Syncing NCAA PBP lineup stints from ESPN..."
+                )
+                self._run_step(
+                    "Sync NCAA PBP stints",
+                    "sync_ncaa_pbp",
+                    {"season": season_year, "workers": player_workers},
+                    steps,
+                    fatal=False,
+                    label=f"[17/{TOTAL_STEPS}]",
+                )
+            else:
+                self.stdout.write(f"[SKIP] [17/{TOTAL_STEPS}] Skipping NCAA PBP ingest\n")
+                steps.append(("Sync NCAA PBP stints", True, "Skipped (--skip-ingest)"))
+
+            self._run_step(
+                "Compute NCAA player impact",
+                "compute_ncaa_player_impact",
+                {"season": season_year},
+                steps,
+                label=f"[18/{TOTAL_STEPS}]",
+            )
+            self._run_step(
+                "Compute NCAA BPR",
+                "compute_ncaa_bpr",
+                {"season": season_year},
+                steps,
+                label=f"[19/{TOTAL_STEPS}]",
+            )
+            self._run_step(
+                "Compute NCAA player FFI",
+                "compute_player_ffi",
+                {"season": season_year},
+                steps,
+                label=f"[20/{TOTAL_STEPS}]",
+            )
+
+        # ── NBA Pipeline ──────────────────────────────────────────────────────
+        if skip_nba:
+            self.stdout.write("[SKIP] NBA pipeline (--skip-nba)\n")
+            for label in [
+                "NBA sync games",
+                "NBA sync player box scores",
+                "NBA compute ratings",
+                "NBA compute player stats",
+                "NBA sync player advanced",
+            ]:
+                steps.append((label, True, "Skipped (--skip-nba)"))
+        else:
+            # Step 21 — NBA game log ingest (skippable via --skip-ingest)
+            if not skip_ingest:
+                self._run_step(
+                    "NBA sync games",
+                    "nba_sync_games",
+                    {"season": season_year},
+                    steps,
+                    fatal=False,
+                    label=f"[21/{TOTAL_STEPS}]",
+                )
+            else:
+                self.stdout.write(f"[SKIP] [21/{TOTAL_STEPS}] Skipping NBA game log ingest\n")
+                steps.append(("NBA sync games", True, "Skipped (--skip-ingest)"))
+
+            # Step 22 — NBA per-player box scores (skippable via --skip-ingest)
+            if not skip_ingest:
+                self._run_step(
+                    "NBA sync player box scores",
+                    "nba_sync_team_logs",
+                    {"season": season_year, "workers": nba_workers},
+                    steps,
+                    fatal=False,
+                    label=f"[22/{TOTAL_STEPS}]",
+                )
+            else:
+                self.stdout.write(f"[SKIP] [22/{TOTAL_STEPS}] Skipping NBA player box score ingest\n")
+                steps.append(("NBA sync player box scores", True, "Skipped (--skip-ingest)"))
+
+            self._run_step(
+                "NBA compute ratings",
+                "nba_compute_ratings",
+                {"season": season_year},
+                steps,
+                label=f"[23/{TOTAL_STEPS}]",
+            )
+            self._run_step(
+                "NBA compute player stats",
+                "nba_compute_player_stats",
+                {"season": season_year},
+                steps,
+                label=f"[24/{TOTAL_STEPS}]",
+            )
+            self._run_step(
+                "NBA sync player advanced",
+                "nba_sync_player_advanced",
+                {"season": season_year},
+                steps,
+                label=f"[25/{TOTAL_STEPS}]",
+            )
+
         # Summary
         end_time = timezone.now()
         duration = (end_time - start_time).total_seconds()
@@ -298,11 +490,13 @@ class Command(BaseCommand):
         2. fix_team_duplicates — merge informal/canonical duplicates left over
                                  from any previous out-of-order ingest
         3. sync_team_d1_status — align is_d1 flags with the YAML canonical list
+        4. nba_sync_teams      — seed/update all 30 NBA franchises (idempotent)
         """
         setup_steps = [
             ("ensure_ncaa_teams", {}, "D1 team stubs + aliases up to date"),
             ("fix_team_duplicates", {}, "Informal/canonical duplicates merged"),
             ("sync_team_d1_status", {}, "is_d1 flags synced"),
+            ("nba_sync_teams", {}, "NBA teams seeded"),
         ]
 
         for cmd, kwargs, ok_msg in setup_steps:

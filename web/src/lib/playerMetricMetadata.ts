@@ -132,14 +132,98 @@ export const NCAA_IMPACT_METRICS: PlayerMetricMeta[] = [
     tooltip: 'Average minutes on court per game (converted from seconds in PBP data).',
     format: 'number1', better: 'neutral', showRank: false, heatmap: false,
   },
+  // ── Possession count + adjusted lineup context ──────────────────────────────
+  {
+    key: 'off_poss', label: 'Poss', group: 'Lineup Context',
+    tooltip: 'Offensive possessions played during the season (from PBP lineup segments). Used for BPR qualification threshold.',
+    format: 'int', better: 'neutral', showRank: false, heatmap: false,
+  },
+  {
+    key: 'adj_team_off_eff_on', label: 'Adj Off Eff', group: 'Lineup Context',
+    tooltip: 'Adjusted team offensive efficiency (pts/100 poss) while this player is on court. Adjusted for opponent strength.',
+    format: 'number1', better: 'higher', showRank: false, heatmap: true,
+  },
+  {
+    key: 'adj_team_def_eff_on', label: 'Adj Def Eff', group: 'Lineup Context',
+    tooltip: 'Adjusted team defensive efficiency (pts/100 poss allowed) while this player is on court. Lower is better.',
+    format: 'number1', better: 'lower', showRank: false, heatmap: true,
+  },
 ];
 
 // ─── NCAA On-Court Four Factors ───────────────────────────────────────────────
 
 export const NCAA_FF_METRICS: PlayerMetricMeta[] = [
   {
-    key: 'on_court_ffi',        label: 'On-Ct FFI',   group: 'Four Factor Index',
-    tooltip: 'On-court Four Factor Index (0-100). Weighted composite of eFG, TOV, rebound, and FTR margins vs. field. Computed same as team FFI.',
+    key: 'four_factor_impact_index', label: 'FFII',  group: 'Four Factor Impact',
+    tooltip: 'Four Factor Impact Index (0-100). RAPM-based: estimates how much this player individually moves each Four Factor, adjusted for teammates and opponents. Higher = better.',
+    format: 'number1', better: 'higher', showRank: true, heatmap: true,
+  },
+  // ── RAPM-based impact components (positive-good) ─
+  {
+    key: 'off_efg_impact', label: 'Off eFG', group: 'Factor Impact',
+    tooltip: 'Player\'s estimated effect on team eFG% when on offense vs average (percentage points). Positive = boosts team eFG.',
+    format: 'number2', better: 'higher', showRank: true, heatmap: true,
+  },
+  {
+    key: 'def_efg_impact', label: 'Def eFG', group: 'Factor Impact',
+    tooltip: 'Player\'s estimated effect on opponent eFG% when on defense vs average (pp, positive-good). Positive = reduces opp eFG.',
+    format: 'number2', better: 'higher', showRank: true, heatmap: true,
+  },
+  {
+    key: 'off_tov_impact', label: 'Off TOV', group: 'Factor Impact',
+    tooltip: 'Player\'s estimated effect on team TOV% when on offense vs average (pp, positive-good). Positive = fewer turnovers.',
+    format: 'number2', better: 'higher', showRank: true, heatmap: true,
+  },
+  {
+    key: 'def_tov_impact', label: 'Def TOV', group: 'Factor Impact',
+    tooltip: 'Player\'s estimated effect on opponent TOV% when on defense vs average (pp). Positive = forces more turnovers.',
+    format: 'number2', better: 'higher', showRank: true, heatmap: true,
+  },
+  {
+    key: 'off_orb_impact', label: 'Off ORB', group: 'Factor Impact',
+    tooltip: 'Player\'s estimated effect on team ORB% when on offense vs average (pp). Positive = better offensive rebounding.',
+    format: 'number2', better: 'higher', showRank: true, heatmap: true,
+  },
+  {
+    key: 'def_reb_impact', label: 'Def REB', group: 'Factor Impact',
+    tooltip: 'Player\'s estimated effect on opponent ORB% when on defense vs average (pp, positive-good). Positive = limits opp offensive rebounding.',
+    format: 'number2', better: 'higher', showRank: true, heatmap: true,
+  },
+  {
+    key: 'off_ftr_impact', label: 'Off FTR', group: 'Factor Impact',
+    tooltip: 'Player\'s estimated effect on team FTR when on offense vs average (pp). Positive = draws more fouls.',
+    format: 'number2', better: 'higher', showRank: true, heatmap: true,
+  },
+  {
+    key: 'def_ftr_impact', label: 'Def FTR', group: 'Factor Impact',
+    tooltip: 'Player\'s estimated effect on opponent FTR when on defense vs average (pp, positive-good). Positive = limits opponent free throws.',
+    format: 'number2', better: 'higher', showRank: true, heatmap: true,
+  },
+  // ── Combined two-way margins ─
+  {
+    key: 'efg_impact_margin', label: 'eFG Margin', group: 'Impact Margins',
+    tooltip: 'Two-way eFG impact: off_efg_impact + def_efg_impact.',
+    format: 'number2', better: 'higher', showRank: true, heatmap: true,
+  },
+  {
+    key: 'tov_impact_margin', label: 'TOV Margin', group: 'Impact Margins',
+    tooltip: 'Two-way TOV impact: off_tov_impact + def_tov_impact.',
+    format: 'number2', better: 'higher', showRank: true, heatmap: true,
+  },
+  {
+    key: 'reb_impact_margin', label: 'REB Margin', group: 'Impact Margins',
+    tooltip: 'Two-way rebounding impact: off_orb_impact + def_reb_impact.',
+    format: 'number2', better: 'higher', showRank: true, heatmap: true,
+  },
+  {
+    key: 'ftr_impact_margin', label: 'FTR Margin', group: 'Impact Margins',
+    tooltip: 'Two-way FTR impact: off_ftr_impact + def_ftr_impact.',
+    format: 'number2', better: 'higher', showRank: true, heatmap: true,
+  },
+  // ── Old on-court lineup environment (kept for context) ─
+  {
+    key: 'on_court_ffi',        label: 'On-Ct FFI',   group: 'Lineup Environment',
+    tooltip: 'On-court Four Factor Index (0-100). Measures team Four Factor profile while this player is on court — reflects lineup environment, not individual player impact.',
     format: 'number1', better: 'higher', showRank: true, heatmap: true,
   },
   // ── Offensive Four Factors ─

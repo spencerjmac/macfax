@@ -36,7 +36,10 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 from core.constants import FOUR_FACTOR_SCALE, FOUR_FACTOR_WEIGHTS
-from core.models import Game, PlayerGameStint, PlayerSeasonStats, Season
+from core.models import (
+    Game, NationalAverages, PlayerGameStint, PlayerSeasonStats,
+    Season, TeamSeasonRatings,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +67,10 @@ def _compute_four_factors(b: dict) -> dict:
 
     b keys: team_fgm, team_fga, team_fg3m, team_fta, team_tov, team_oreb, team_dreb
             opp_fgm,  opp_fga,  opp_fg3m,  opp_fta,  opp_tov,  opp_oreb,  opp_dreb
+
+    TOV% formula: TOV / (FGA + 0.44 * FTA + TOV) * 100
+    Uses exact floating-point 0.44 * FTA (no rounding) to match the rest of
+    Macfax possession math (Phase E, BPR datasets, FFI datasets).
     """
     # ── Offensive Four Factors ────────────────────────────────────────────────
     efg = _safe_pct(b["team_fgm"] + b["team_fg3m"] // 2, b["team_fga"])
@@ -71,8 +78,8 @@ def _compute_four_factors(b: dict) -> dict:
     if b["team_fga"] > 0:
         efg = round((b["team_fgm"] + 0.5 * b["team_fg3m"]) / b["team_fga"] * 100, 2)
 
-    tov_denom = b["team_fga"] + round(0.44 * b["team_fta"]) + b["team_tov"]
-    tov_pct = _safe_pct(b["team_tov"], tov_denom)
+    tov_denom = b["team_fga"] + 0.44 * b["team_fta"] + b["team_tov"]
+    tov_pct = round(b["team_tov"] / tov_denom * 100, 2) if tov_denom > 0 else None
 
     orb_denom = b["team_oreb"] + b["opp_dreb"]
     orb_pct = _safe_pct(b["team_oreb"], orb_denom)
@@ -84,8 +91,8 @@ def _compute_four_factors(b: dict) -> dict:
     if b["opp_fga"] > 0:
         opp_efg = round((b["opp_fgm"] + 0.5 * b["opp_fg3m"]) / b["opp_fga"] * 100, 2)
 
-    opp_tov_denom = b["opp_fga"] + round(0.44 * b["opp_fta"]) + b["opp_tov"]
-    opp_tov_pct = _safe_pct(b["opp_tov"], opp_tov_denom)
+    opp_tov_denom = b["opp_fga"] + 0.44 * b["opp_fta"] + b["opp_tov"]
+    opp_tov_pct = round(b["opp_tov"] / opp_tov_denom * 100, 2) if opp_tov_denom > 0 else None
 
     opp_orb_denom = b["opp_oreb"] + b["team_dreb"]
     opp_orb_pct = _safe_pct(b["opp_oreb"], opp_orb_denom)   # opp ORB%
@@ -205,6 +212,13 @@ class Command(BaseCommand):
                 "opp_fta":  0, "opp_tov":  0, "opp_oreb":  0, "opp_dreb":  0,
             })
         )
+        # Per-game box totals for Phase E (possession-based adjusted ratings).
+        # Key: (player_id, team_id) → {game_id → accumulators}
+        game_totals: dict[tuple, dict] = defaultdict(lambda: defaultdict(lambda: {
+            "pts": 0, "def_pts": 0,
+            "team_fga": 0, "team_fta": 0, "team_tov": 0, "team_oreb": 0,
+            "opp_fga":  0, "opp_fta":  0, "opp_tov":  0, "opp_oreb":  0,
+        }))
 
         for stint in stints_qs:
             pid = stint.player_id
@@ -229,6 +243,18 @@ class Command(BaseCommand):
             b["opp_tov"]  += stint.opp_tov
             b["opp_oreb"] += stint.opp_oreb
             b["opp_dreb"] += stint.opp_dreb
+            # Phase E: per-game accumulation (possession-based adjusted ratings)
+            g = game_totals[(pid, tid)][stint.game_id]
+            g["pts"]      += stint.pts_scored
+            g["def_pts"]  += stint.pts_allowed
+            g["team_fga"] += stint.team_fga
+            g["team_fta"] += stint.team_fta
+            g["team_tov"] += stint.team_tov
+            g["team_oreb"] += stint.team_oreb
+            g["opp_fga"]  += stint.opp_fga
+            g["opp_fta"]  += stint.opp_fta
+            g["opp_tov"]  += stint.opp_tov
+            g["opp_oreb"] += stint.opp_oreb
 
         # ── Load season stats map ─────────────────────────────────────────────
         season_stats_map: dict[tuple, PlayerSeasonStats] = {}
@@ -401,6 +427,127 @@ class Command(BaseCommand):
             entry["d_mpir"] = d_mpir
             entry["mpir"]   = mpir
 
+        # ── Phase E: possession-based adjusted on-court ratings ───────────────
+        # Formula mirrors compute_adjusted_ratings exactly:
+        #   AOR_g = raw_oe × (NatAvg / OppAdjD) × off_site_factor
+        #   ADR_g = raw_de × (NatAvg / OppAdjO) × def_site_factor
+        # Aggregated with possession weights, then shrunk toward nat avg with k=200 poss.
+        # Site factors are identical constants used by TeamGameStats.site_factor.
+        #
+        # Requires compute_adjusted_ratings + compute_national_averages to have run first.
+        # If Phase D box events are absent (all zeros), possessions will be < 1
+        # and those games skip — ratings remain null for that player.
+        SHRINKAGE_K = 200.0   # possessions — same Bayesian philosophy as team ratings engine
+        HCA_OFF = {"H": 0.9862, "A": 1.0140, "N": 1.0}   # mirrors TeamGameStats.site_factor
+        HCA_DEF = {"H": 1.0140, "A": 0.9862, "N": 1.0}   # mirrors TeamGameStats.defensive_site_factor
+
+        adj_ratings_available = False
+        try:
+            nat_avg = NationalAverages.objects.get(season=season)
+            team_ratings: dict[int, tuple[float, float]] = {
+                r.team_id: (r.adj_o, r.adj_d)
+                for r in TeamSeasonRatings.objects.filter(season=season)
+                                                  .only("team_id", "adj_o", "adj_d")
+            }
+            games_meta: dict[int, tuple] = {
+                g["id"]: (g["home_team_id"], g["away_team_id"], g["neutral_site"])
+                for g in Game.objects.filter(season_year=season_year, status="final")
+                                     .values("id", "home_team_id", "away_team_id", "neutral_site")
+            }
+            adj_ratings_available = bool(team_ratings)
+            self.stdout.write(
+                f"Phase E: {len(team_ratings)} teams with ratings, "
+                f"{len(games_meta)} games, nat_avg_ortg={nat_avg.avg_ortg:.2f}"
+            )
+        except NationalAverages.DoesNotExist:
+            self.stdout.write(self.style.WARNING(
+                "NationalAverages not found — skipping Phase E adjusted on-court ratings. "
+                "Run compute_national_averages first."
+            ))
+
+        adj_count = 0
+        if adj_ratings_available:
+            for (player_id, team_id), game_dict in game_totals.items():
+                if (player_id, team_id) not in computed:
+                    continue  # didn't meet min_secs threshold
+
+                sum_adj_oe_w = sum_adj_de_w = 0.0
+                sum_raw_oe_w = sum_raw_de_w = 0.0
+                sum_off_poss = sum_def_poss  = 0.0
+
+                for gid, g in game_dict.items():
+                    meta = games_meta.get(gid)
+                    if meta is None:
+                        continue
+                    home_tid, away_tid, neutral = meta
+
+                    if neutral:
+                        site = "N"
+                    elif home_tid == team_id:
+                        site = "H"
+                    else:
+                        site = "A"
+
+                    opp_id   = away_tid if home_tid == team_id else home_tid
+                    off_site = HCA_OFF[site]
+                    def_site = HCA_DEF[site]
+
+                    # Dean Oliver possession formula (0.44 coefficient — consistent with
+                    # _compute_four_factors and poss_team property on TeamGameStats)
+                    off_poss = g["team_fga"] + 0.44 * g["team_fta"] + g["team_tov"] - g["team_oreb"]
+                    def_poss = g["opp_fga"]  + 0.44 * g["opp_fta"]  + g["opp_tov"]  - g["opp_oreb"]
+                    if off_poss < 1.0 or def_poss < 1.0:
+                        continue  # Phase D box events not populated for this game
+
+                    raw_oe = 100.0 * g["pts"]     / off_poss
+                    raw_de = 100.0 * g["def_pts"]  / def_poss
+
+                    # Use final converged team adj ratings; fall back to nat_avg for non-D1
+                    opp_adj_o, opp_adj_d = team_ratings.get(opp_id, (nat_avg.avg_ortg, nat_avg.avg_ortg))
+
+                    # Identical multiplicative formula to compute_adjusted_ratings:
+                    # AOR_g = raw_oe × (NatAvg / OppAdjD) × off_site_factor
+                    adj_oe = raw_oe * (nat_avg.avg_ortg / opp_adj_d) * off_site if opp_adj_d > 0 else raw_oe
+                    adj_de = raw_de * (nat_avg.avg_ortg / opp_adj_o) * def_site if opp_adj_o > 0 else raw_de
+
+                    sum_adj_oe_w += adj_oe * off_poss
+                    sum_adj_de_w += adj_de * def_poss
+                    sum_raw_oe_w += raw_oe * off_poss
+                    sum_raw_de_w += raw_de * def_poss
+                    sum_off_poss += off_poss
+                    sum_def_poss += def_poss
+
+                if sum_off_poss < 1.0 or sum_def_poss < 1.0:
+                    continue  # no Phase D box data for any game this player appeared in
+
+                # Possession-weighted season averages (pre-shrinkage)
+                raw_adj_o = sum_adj_oe_w / sum_off_poss
+                raw_adj_d = sum_adj_de_w / sum_def_poss
+                raw_oe_s  = sum_raw_oe_w / sum_off_poss
+                raw_de_s  = sum_raw_de_w / sum_def_poss
+
+                # Shrinkage toward national average:
+                # shrunk = (poss × raw + k × nat_avg) / (poss + k)
+                adj_o  = (raw_adj_o * sum_off_poss + nat_avg.avg_ortg * SHRINKAGE_K) / (sum_off_poss + SHRINKAGE_K)
+                adj_d  = (raw_adj_d * sum_def_poss + nat_avg.avg_ortg * SHRINKAGE_K) / (sum_def_poss + SHRINKAGE_K)
+                adj_em = adj_o - adj_d
+
+                computed[(player_id, team_id)].update({
+                    "on_court_off_poss":   round(sum_off_poss, 2),
+                    "on_court_def_poss":   round(sum_def_poss, 2),
+                    "on_court_raw_oe":     round(raw_oe_s, 2),
+                    "on_court_raw_de":     round(raw_de_s, 2),
+                    "on_court_adj_o":      round(adj_o, 2),
+                    "on_court_adj_d":      round(adj_d, 2),
+                    "on_court_adj_em":     round(adj_em, 2),
+                    # Also populate the legacy compat alias fields (were always null before)
+                    "adj_team_off_eff_on": round(adj_o, 2),
+                    "adj_team_def_eff_on": round(adj_d, 2),
+                })
+                adj_count += 1
+
+            self.stdout.write(f"Phase E: {adj_count} players with adjusted on-court ratings")
+
         # ── Write to DB ───────────────────────────────────────────────────────
         FF_FIELDS = [
             "on_court_secs_pg", "on_court_pts_pg", "on_court_def_pg",
@@ -410,6 +557,11 @@ class Command(BaseCommand):
             "on_court_efg_margin", "on_court_tov_edge", "on_court_reb_edge", "on_court_ftr_margin",
             "on_court_ffi",
             "o_mpir", "d_mpir", "mpir",
+            # Phase E — possession-based adjusted on-court ratings
+            "on_court_off_poss", "on_court_def_poss",
+            "on_court_raw_oe", "on_court_raw_de",
+            "on_court_adj_o", "on_court_adj_d", "on_court_adj_em",
+            "adj_team_off_eff_on", "adj_team_def_eff_on",
         ]
 
         updated = skipped = 0

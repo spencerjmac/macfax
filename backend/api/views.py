@@ -9,7 +9,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
-from django.db.models import Q
+from django.db.models import Q, Subquery, OuterRef
 
 from core.models import (
     Season,
@@ -1073,11 +1073,30 @@ class LeaguePlayersView(generics.ListAPIView):
             PlayerSeasonStats.objects
             .filter(season=season, gp__gte=min_gp)
             .select_related("player", "team", "season")
+            .annotate(
+                conference_name=Subquery(
+                    TeamSeasonMetrics.objects
+                    .filter(team=OuterRef('team'), season=OuterRef('season'))
+                    .values('conference__name')[:1]
+                )
+            )
         )
         if conf_param:
             qs = qs.filter(
                 team__season_stats__season=season,
                 team__season_stats__conference__code=conf_param,
+            )
+
+        # BPR leaderboard mode filtering (Task 1 — v1.3)
+        # strict_bpr    → only players whose BPR came entirely from RAPM on both sides
+        # full_two_sided → both sides non-null, no partial-only players
+        # all_players   → current behaviour (no filter)  [default]
+        bpr_mode = self.request.query_params.get("bpr_mode", "all_players")
+        if bpr_mode == "strict_bpr":
+            qs = qs.filter(bpr_source="rapm")
+        elif bpr_mode == "full_two_sided":
+            qs = qs.filter(obpr__isnull=False, dbpr__isnull=False).exclude(
+                bpr_source="partial"
             )
 
         return qs.order_by(ordering)
