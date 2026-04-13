@@ -1476,13 +1476,14 @@ class PlayerSeasonStatsSerializer(serializers.ModelSerializer):
     jersey = serializers.CharField(source="player.jersey", read_only=True)
     headshot_url = serializers.CharField(source="player.headshot_url", read_only=True)
     team_name = serializers.SerializerMethodField()
+    conference_name = serializers.CharField(allow_null=True, read_only=True)
     season_display = serializers.CharField(source="season.display_name", read_only=True)
 
     class Meta:
         model = PlayerSeasonStats
         fields = [
             "player_name", "player_id", "position", "jersey", "headshot_url",
-            "team_name", "season_display",
+            "team_name", "conference_name", "season_display",
             "gp", "mpg", "pts", "reb", "ast", "stl", "blk", "tov", "pf",
             "fg_pct", "fg3_pct", "ft_pct", "fga_pg", "fg3a_pg",
             "ftm_pg", "fta_pg", "oreb_pg", "dreb_pg",
@@ -1503,6 +1504,20 @@ class PlayerSeasonStatsSerializer(serializers.ModelSerializer):
             "prior_mean_obpr", "prior_mean_dbpr", "prior_sd_obpr", "prior_sd_dbpr",
             "off_poss", "def_poss",
             "adj_team_off_eff_on", "adj_team_def_eff_on",
+            # Phase E — possession-based adjusted on-court ratings
+            "on_court_off_poss", "on_court_def_poss",
+            "on_court_raw_oe", "on_court_raw_de",
+            "on_court_adj_o", "on_court_adj_d", "on_court_adj_em",
+            # Four Factor Impact (RAPM-based, player-specific)
+            "off_efg_impact", "def_efg_impact",
+            "off_tov_impact", "def_tov_impact",
+            "off_orb_impact", "def_reb_impact",
+            "off_ftr_impact", "def_ftr_impact",
+            "efg_impact_margin", "tov_impact_margin",
+            "reb_impact_margin", "ftr_impact_margin",
+            "four_factor_impact_index",
+            "baseline_obpr", "baseline_dbpr",
+            "obpr_source", "dbpr_source", "bpr_source",
             "bpr_model_version",
         ]
 

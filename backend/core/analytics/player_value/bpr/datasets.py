@@ -166,39 +166,63 @@ def extract_lineup_segments(
     return observations
 
 
+
 # ── Full-season design matrix builder ────────────────────────────────────────
 
-def build_rapm_dataset(season_year: int, verbose: bool = True) -> dict:
+def build_rapm_dataset(season_years: "int | list[int]", verbose: bool = True) -> dict:
     """
-    Build the complete RAPM dataset for a single season.
+    Build the complete RAPM dataset for one or more seasons.
+
+    When a list of season years is provided, observations from all seasons are
+    pooled into a single design matrix.  The player_index spans all players who
+    appeared in any of the listed seasons, enabling rolling multi-year RAPM
+    estimation (Deviation #1 multi-year extension).
+
+    Args:
+        season_years: A single season year (int) or a list of season years.
+                      When given as a list, the largest year is treated as the
+                      "current" season; earlier years provide additional obs.
+        verbose:      Log progress information.
 
     Returns:
         {
-          "observations":  list[dict]   (all lineup segment observations)
-          "player_index":  dict[int, int]  (player_id → matrix column index)
-          "n_players":     int
-          "n_observations": int
-          "possession_totals": dict[int, {off, def}]  (player_id → poss counts)
+          "observations":     list[dict]       (all lineup segment observations)
+          "player_index":     dict[int, int]   (player_id → matrix column index)
+          "player_ids":       list[int]        (sorted player DB PKs)
+          "n_players":        int
+          "n_observations":   int
+          "possession_totals": dict[int, {off, def}]
+          "season_years":     list[int]        (years included in this dataset)
+          "rapm_window":      str              ("single_season" or "rolling_Nyr")
         }
     """
     from django.db.models import Prefetch
     from core.models import Game, PlayerGameStint
 
+    # Normalise to a list
+    if isinstance(season_years, int):
+        years: list[int] = [season_years]
+    else:
+        years = sorted(set(season_years))
+
     games_qs = (
         Game.objects
-        .filter(season_year=season_year)
-        .values("id", "home_team_id", "away_team_id", "neutral_site")
+        .filter(season_year__in=years)
+        .values("id", "home_team_id", "away_team_id", "neutral_site", "season_year")
     )
     game_list = list(games_qs)
     n_games = len(game_list)
 
     if verbose:
-        logger.info(f"BPR dataset: loading stints for {n_games} games (season {season_year})")
+        logger.info(
+            f"BPR dataset: loading stints for {n_games} games "
+            f"(seasons {years})"
+        )
 
-    # Load all stints for the season at once (one DB round-trip)
+    # Load all stints for the requested seasons in one DB round-trip
     stints_qs = (
         PlayerGameStint.objects
-        .filter(game__season_year=season_year)
+        .filter(game__season_year__in=years)
         .values(
             "game_id", "player_id", "team_id", "period",
             "clock_start_secs", "clock_end_secs", "secs_on",
@@ -231,7 +255,7 @@ def build_rapm_dataset(season_year: int, verbose: bool = True) -> dict:
             home_team_id=game_meta["home_team_id"],
             away_team_id=game_meta["away_team_id"],
             stints=game_stints,
-            season_year=season_year,
+            season_year=game_meta["season_year"],
             is_neutral=bool(game_meta.get("neutral_site", False)),
         )
         if obs:
@@ -246,29 +270,64 @@ def build_rapm_dataset(season_year: int, verbose: bool = True) -> dict:
             f"({games_skipped} games had no clean stints)"
         )
 
-    # Build player index (sorted for reproducibility)
-    all_player_ids = sorted({
-        pid
+    # ── Player-season index (v1.3.1) ─────────────────────────────────────────
+    # Key = (player_id, season_year) → column index.  In single-season mode this
+    # matches the old player_index exactly.  In multi-year mode each player-season
+    # receives a SEPARATE column so that (player X, 2025) and (player X, 2026)
+    # produce independent coefficients — fixing the pooled-player-id bug.
+    target_year = max(years)
+    all_player_season_pairs: list[tuple[int, int]] = sorted({
+        (pid, obs["season_year"])
         for obs in all_observations
         for pid in obs["home_player_ids"] + obs["away_player_ids"]
     })
-    player_index = {pid: i for i, pid in enumerate(all_player_ids)}
+    player_season_index: dict[tuple[int, int], int] = {
+        ps: i for i, ps in enumerate(all_player_season_pairs)
+    }
+    n_player_seasons = len(all_player_season_pairs)
 
-    # Accumulate per-player possession totals
-    possession_totals: dict[int, dict] = {pid: {"off": 0.0, "def": 0.0} for pid in all_player_ids}
+    # Accumulate per-(player, season_year) possession totals
+    possession_totals_all: dict[tuple[int, int], dict] = {
+        ps: {"off": 0.0, "def": 0.0} for ps in all_player_season_pairs
+    }
     for obs in all_observations:
+        yr = obs["season_year"]
         for pid in obs["home_player_ids"]:
-            possession_totals[pid]["off"] += obs["home_poss"]
-            possession_totals[pid]["def"] += obs["away_poss"]
+            possession_totals_all[(pid, yr)]["off"] += obs["home_poss"]
+            possession_totals_all[(pid, yr)]["def"] += obs["away_poss"]
         for pid in obs["away_player_ids"]:
-            possession_totals[pid]["off"] += obs["away_poss"]
-            possession_totals[pid]["def"] += obs["home_poss"]
+            possession_totals_all[(pid, yr)]["off"] += obs["away_poss"]
+            possession_totals_all[(pid, yr)]["def"] += obs["home_poss"]
+
+    # Target-season-only possession totals keyed by player_id.
+    # Write operations and Box BPR normalization ALWAYS use these, never pooled totals.
+    possession_totals_target: dict[int, dict] = {
+        pid: possession_totals_all[(pid, target_year)]
+        for (pid, yr) in all_player_season_pairs
+        if yr == target_year
+    }
+    target_season_player_ids: list[int] = [
+        pid for (pid, yr) in all_player_season_pairs if yr == target_year
+    ]
+
+    rapm_window = "single_season" if len(years) == 1 else f"rolling_{len(years)}yr"
 
     return {
-        "observations":     all_observations,
-        "player_index":     player_index,
-        "player_ids":       all_player_ids,
-        "n_players":        len(all_player_ids),
-        "n_observations":   len(all_observations),
-        "possession_totals": possession_totals,
+        # v1.3.1 — player-season-keyed structures (correct multi-year RAPM)
+        "player_season_index":      player_season_index,
+        "player_season_keys":       all_player_season_pairs,
+        "n_player_seasons":         n_player_seasons,
+        "possession_totals_all":    possession_totals_all,
+        "possession_totals_target": possession_totals_target,
+        "target_season_player_ids": target_season_player_ids,
+        # Common
+        "observations":             all_observations,
+        "n_observations":           len(all_observations),
+        "season_years":             years,
+        "rapm_window":              rapm_window,
+        # Backward-compat aliases (single-season: identical; multi-year: target season only)
+        "player_index":  {pid: i for i, pid in enumerate(target_season_player_ids)},
+        "player_ids":    target_season_player_ids,
+        "n_players":     len(target_season_player_ids),
+        "possession_totals": possession_totals_target,   # always target-season (v1.3.1)
     }

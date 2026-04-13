@@ -543,6 +543,7 @@ export interface NCAAPlayerSeasonStats {
   jersey: string | null;
   headshot_url: string | null;
   team_name: string;
+  conference_name: string | null;
   season_display: string;
   // Traditional
   gp: number;
@@ -606,5 +607,30 @@ export interface NCAAPlayerSeasonStats {
   def_poss: number | null;
   adj_team_off_eff_on: number | null;
   adj_team_def_eff_on: number | null;
+  // Phase E — possession-based adjusted on-court ratings
+  on_court_off_poss: number | null;
+  on_court_def_poss: number | null;
+  on_court_raw_oe: number | null;
+  on_court_raw_de: number | null;
+  on_court_adj_o: number | null;
+  on_court_adj_d: number | null;
+  on_court_adj_em: number | null;
+  // Four Factor Impact (RAPM-based, player-specific, positive-good)
+  off_efg_impact: number | null;
+  def_efg_impact: number | null;
+  off_tov_impact: number | null;
+  def_tov_impact: number | null;
+  off_orb_impact: number | null;
+  def_reb_impact: number | null;
+  off_ftr_impact: number | null;
+  def_ftr_impact: number | null;
+  efg_impact_margin: number | null;
+  tov_impact_margin: number | null;
+  reb_impact_margin: number | null;
+  ftr_impact_margin: number | null;
+  four_factor_impact_index: number | null;
+  obpr_source: string | null;
+  dbpr_source: string | null;
+  bpr_source: string | null;
   bpr_model_version: string | null;
 }

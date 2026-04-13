@@ -134,9 +134,6 @@ export default function NBAPlayerRankingsTable({ data, seasonDisplay }: NBAPlaye
         return (
           <div className={clsx('flex items-center justify-between gap-1 px-2 py-1 rounded', colorClass)}>
             <span className="font-mono text-xs">{formatPlayerMetric(value, meta.format)}</span>
-            {meta.showRank && rankData?.rank && (
-              <span className="text-[10px] text-slate-900 font-bold">#{rankData.rank}</span>
-            )}
           </div>
         );
       },
@@ -145,17 +142,8 @@ export default function NBAPlayerRankingsTable({ data, seasonDisplay }: NBAPlaye
     };
   };
 
-  // ── Base identity columns ────────────────────────────────────────────────
+  // ── Base identity columns (excluding rank, which lives in the columns useMemo) ──
   const baseColumns: ColumnDef<NBAPlayerSeasonStats>[] = [
-    {
-      id: 'rank',
-      header: 'Rk',
-      cell: (info) => (
-        <span className="font-mono font-semibold text-sm text-text-muted">{info.row.index + 1}</span>
-      ),
-      enableSorting: false,
-      size: 44,
-    },
     {
       accessorKey: 'player_name',
       header: 'Player',
@@ -201,12 +189,29 @@ export default function NBAPlayerRankingsTable({ data, seasonDisplay }: NBAPlaye
 
   // ── Full column set per tab ──────────────────────────────────────────────
   const columns = useMemo((): ColumnDef<NBAPlayerSeasonStats>[] => {
+    const activeSortKey = sorting[0]?.id;
+    const rankColumn: ColumnDef<NBAPlayerSeasonStats> = {
+      id: 'rank',
+      header: 'Rk',
+      cell: (info) => {
+        const rank = activeSortKey
+          ? metricRanks.get(activeSortKey)?.get(String(info.row.original.id))?.rank
+          : undefined;
+        return (
+          <span className="font-mono font-semibold text-sm text-text-muted">
+            {rank ?? info.row.index + 1}
+          </span>
+        );
+      },
+      enableSorting: false,
+      size: 44,
+    };
     const metricCols =
       activeTab === 'traditional' ? NBA_TRAD_KEYS.map(createMetricColumn)
       : activeTab === 'advanced'  ? NBA_ADV_KEYS.map(createMetricColumn)
                                   : NBA_IMP_KEYS.map(createMetricColumn);
-    return [...baseColumns, ...metricCols];
-  }, [activeTab, metricRanks]);
+    return [rankColumn, ...baseColumns, ...metricCols];
+  }, [activeTab, metricRanks, sorting]);
 
   // ── TanStack table ───────────────────────────────────────────────────────
   const table = useReactTable({

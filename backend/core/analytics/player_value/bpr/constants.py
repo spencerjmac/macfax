@@ -9,11 +9,23 @@ DEVIATIONS FROM THE PUBLIC BPR ARTICLE
 
 1. Multi-year RAPM window
    Article: 4-year rolling window as a single training sample.
-   Macfax:  Seasons 2023-2026 now have ESPN PBP stint data.  Pipeline uses each
-            season independently (rapm_window="single_season").
-            Extension points exist in datasets.py / pipeline.py for multi-season
-            pooling; see TODO comments marked MULTI-YEAR.
-   Impact:  Higher variance than pooled multi-year RAPM, offset by stronger priors.
+   Macfax:  Multi-year pooled RAPM is supported via the --rapm-years flag.  When
+            multiple season years are provided, observations are pooled into a
+            single design matrix and coefficients are estimated at the
+            (player_id, season_year) level — the same player across different
+            seasons receives independent coefficients, not one pooled coefficient
+            across all seasons (v1.3.1, datasets.py / rapm.py / pipeline.py).
+            Only the target season's (highest-year) coefficients and possession
+            totals are written back to PlayerSeasonStats; earlier seasons
+            contribute estimation power only.
+            Single-season mode (rapm_window="single_season") remains the default
+            production path.
+   Impact:  Single-season runs have higher variance than pooled multi-year RAPM,
+            partially offset by stronger box-score priors.  Multi-year pooling
+            reduces noise for returning players.  Macfax's implementation still
+            differs from the EvanMiya rolling-window framework in prior sources,
+            prior blending strategy, and Box BPR training targets (baseline RAPM
+            rather than a true multi-season coefficient history).
 
 2. Possession-level observations
    Article: True possession-by-possession design matrix (who's on floor each play).
@@ -68,15 +80,23 @@ DEVIATIONS FROM THE PUBLIC BPR ARTICLE
 
 8. Model version
    Article: Private versioning.
-   Macfax:  BPR_MODEL_VERSION = "1.2" adds: baseline RAPM target storage
-            (eliminates cross-season recursive contamination), separate off/def
-            prior SD tuning, BPR source provenance fields (obpr_source,
-            dbpr_source, bpr_source), box-only held-out WMSE reference, and
-            improved validation truthfulness.
+   Macfax:  BPR_MODEL_VERSION = "1.3" adds:
+            v1.2: baseline RAPM target storage (eliminates cross-season recursive
+              contamination), separate off/def prior SD tuning, BPR source provenance
+              fields (obpr_source, dbpr_source, bpr_source), box-only held-out WMSE
+              reference, and improved validation truthfulness.
+            v1.3: collinear defensive feature pruning (reb100 and stl_blk100 removed),
+              separate Box BPR alpha grids (stronger regularization for defense),
+              multi-year RAPM implementation (player-season-keyed design matrix,
+              rolling window via rapm_years, target-season-only writes — v1.3.1),
+              prior-history signals (prior-season baseline RAPM blended into prior mean
+              with PRIOR_HISTORY_BLEND weight), component influence diagnostics,
+              ranking sanity validation (strict_bpr / full_two_sided / box_bpr views),
+              bpr_mode API filter, baseline_obpr/dbpr and source fields in serializer.
 """
 
 # ── Model version ─────────────────────────────────────────────────────────────
-BPR_MODEL_VERSION = "1.2"
+BPR_MODEL_VERSION = "1.3"
 
 # ── Possession estimation (Kubatko formula) ───────────────────────────────────
 # Possessions ≈ FGA + 0.44×FTA + TOV − ORB
@@ -121,6 +141,14 @@ PRIOR_SD_DEFAULT_DEF = 3.0   # pts/100 poss for defensive coefficient (defense i
 # These are BASE values; the actual SD used = base × cv-tuned PRIOR_SD_SCALE.
 PRIOR_SD_BOX_OFF = 3.0
 PRIOR_SD_BOX_DEF = 2.5
+
+# Prior-history blending weight (v1.3).
+# For returning players with a stored prior-season baseline RAPM, the prior mean
+# is blended: prior = (1 - α) * box_bpr + α * prior_season_baseline_rapm.
+# α = 0 → use box BPR only; α = 1 → use prior RAPM only.
+# A small α (0.20) gently anchors the prior to actual observed performance
+# without over-correcting when box features disagree.
+PRIOR_HISTORY_BLEND = 0.20
 
 # ── Prior SD global scale factor (tuned by CV) ────────────────────────────────
 # A multiplier s applied uniformly to all per-player SDs before building the
@@ -169,7 +197,12 @@ BOX_BPR_OOF_FOLDS = 5
 # Once fit_ncaa_box_bpr runs successfully, the DB artifact supersedes these.
 
 # ── Box BPR regularization ────────────────────────────────────────────────────
-BOX_BPR_ALPHAS = [0.01, 0.05, 0.1, 0.5, 1.0, 5.0, 10.0, 50.0]
+# Separate alpha grids for off and def (v1.3): defense benefits from stronger
+# regularization because defensive box stats are noisier predictors of on-court DBPR.
+BOX_BPR_ALPHAS_OFF = [0.01, 0.05, 0.1, 0.5, 1.0, 5.0, 10.0, 50.0]
+BOX_BPR_ALPHAS_DEF = [0.1, 0.5, 1.0, 5.0, 10.0, 50.0, 100.0, 200.0]
+# Backward-compat alias (used outside the box_bpr module)
+BOX_BPR_ALPHAS = BOX_BPR_ALPHAS_OFF
 BOX_BPR_CV_FOLDS = 5
 
 # ── BPR output bounds (for sanity-checking, not hard caps) ───────────────────

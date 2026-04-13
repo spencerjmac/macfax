@@ -24,17 +24,19 @@ per 100 defensive possessions for DBPR):
     ft_rate      — FTA / FGA  (ability to draw fouls)
     ast_tov_ratio — AST / max(TOV, 0.1)  (playmaking efficiency)
 
-  Defensive (10):
+  Defensive (8):
     stl100       — steals
     blk100       — blocks
     dreb100      — defensive rebounds
     pf100        — personal fouls (negative weight expected)
     min_share    — minutes share
-    reb100       — total rebounds per 100 def poss (rebounding role breadth)
-    stl_blk100   — (steals + blocks) per 100 def poss (active-defense combined)
     fg3a_share   — 3PA / FGA  (position/role proxy: guards vs bigs)
     oreb_share   — OREB / max(total REB, 0.01)  (rebounding-role indicator)
     pf_per_min   — PF per 40 min  (complementary foul-rate angle)
+
+  Pruned from v1.2 (v1.3 collinearity fix):
+    reb100       — removed; collinear with dreb100 + oreb_share
+    stl_blk100   — removed; exact linear combination of stl100 + blk100
 
 Leakage prevention:
   When >= MIN_PRIOR_TRAINING_SAMPLES prior-season RAPM records exist,
@@ -57,7 +59,8 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 
 from core.analytics.player_value.bpr.constants import (
-    BOX_BPR_ALPHAS,
+    BOX_BPR_ALPHAS_OFF,
+    BOX_BPR_ALPHAS_DEF,
     BOX_BPR_CV_FOLDS,
     BOX_BPR_OOF_FOLDS,
     MIN_MPG_BOX_BPR,
@@ -75,7 +78,7 @@ OFF_FEATURES = [
 ]
 DEF_FEATURES = [
     "stl100", "blk100", "dreb100", "pf100", "min_share",
-    "reb100", "stl_blk100", "fg3a_share", "oreb_share", "pf_per_min",
+    "fg3a_share", "oreb_share", "pf_per_min",
 ]
 
 
@@ -154,9 +157,7 @@ def extract_box_features(
             per100(dreb_pg, gp, def_poss),
             per100(pf_pg,   gp, def_poss),
             min_share,
-            # New features
-            per100(total_reb_pg,         gp, def_poss),                      # reb100: total rebounding
-            per100(stl_pg + blk_pg,      gp, def_poss),                      # stl_blk100: active defense combined
+            # (v1.3: reb100 and stl_blk100 removed — collinear with existing features)
             fg3a_pg / max(fga_pg, 0.01),                                      # fg3a_share: position proxy
             oreb_pg / max(total_reb_pg, 0.01),                               # oreb_share: rebounding-role indicator
             pf_pg * (40.0 / max(mpg, 1.0)),                                  # pf_per_min: foul rate per 40 min
@@ -229,8 +230,8 @@ def train_box_bpr(
     def_Xarr = np.array(def_X, dtype=np.float64)
     def_yarr = np.array(def_y, dtype=np.float64)
 
-    off_pipe = _build_pipeline(BOX_BPR_ALPHAS, BOX_BPR_CV_FOLDS)
-    def_pipe = _build_pipeline(BOX_BPR_ALPHAS, BOX_BPR_CV_FOLDS)
+    off_pipe = _build_pipeline(BOX_BPR_ALPHAS_OFF, BOX_BPR_CV_FOLDS)
+    def_pipe = _build_pipeline(BOX_BPR_ALPHAS_DEF, BOX_BPR_CV_FOLDS)
 
     off_pipe.fit(off_Xarr, off_yarr)
     def_pipe.fit(def_Xarr, def_yarr)
@@ -380,8 +381,8 @@ def out_of_fold_box_bpr(
         def_X = np.array([box_features[pid]["def"] for pid in train_pids])
         def_y = np.array([rapm_dbpr[pid] for pid in train_pids])
 
-        off_pipe = _build_pipeline(BOX_BPR_ALPHAS, BOX_BPR_CV_FOLDS)
-        def_pipe = _build_pipeline(BOX_BPR_ALPHAS, BOX_BPR_CV_FOLDS)
+        off_pipe = _build_pipeline(BOX_BPR_ALPHAS_OFF, BOX_BPR_CV_FOLDS)
+        def_pipe = _build_pipeline(BOX_BPR_ALPHAS_DEF, BOX_BPR_CV_FOLDS)
         off_pipe.fit(off_X, off_y)
         def_pipe.fit(def_X, def_y)
 
@@ -398,8 +399,8 @@ def out_of_fold_box_bpr(
     all_def_X = np.array([box_features[pid]["def"] for pid in rapm_pids])
     all_def_y = np.array([rapm_dbpr[pid] for pid in rapm_pids])
 
-    final_off_pipe = _build_pipeline(BOX_BPR_ALPHAS, BOX_BPR_CV_FOLDS)
-    final_def_pipe = _build_pipeline(BOX_BPR_ALPHAS, BOX_BPR_CV_FOLDS)
+    final_off_pipe = _build_pipeline(BOX_BPR_ALPHAS_OFF, BOX_BPR_CV_FOLDS)
+    final_def_pipe = _build_pipeline(BOX_BPR_ALPHAS_DEF, BOX_BPR_CV_FOLDS)
     final_off_pipe.fit(all_off_X, all_off_y)
     final_def_pipe.fit(all_def_X, all_def_y)
 
@@ -458,8 +459,8 @@ def train_box_bpr_prior_seasons(
     """
     n_train = len(train_off_y)
 
-    off_pipe = _build_pipeline(BOX_BPR_ALPHAS, BOX_BPR_CV_FOLDS)
-    def_pipe = _build_pipeline(BOX_BPR_ALPHAS, BOX_BPR_CV_FOLDS)
+    off_pipe = _build_pipeline(BOX_BPR_ALPHAS_OFF, BOX_BPR_CV_FOLDS)
+    def_pipe = _build_pipeline(BOX_BPR_ALPHAS_DEF, BOX_BPR_CV_FOLDS)
     off_pipe.fit(train_off_X, train_off_y)
     def_pipe.fit(train_def_X, train_def_y)
 
