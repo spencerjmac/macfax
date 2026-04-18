@@ -5,6 +5,7 @@ import { TeamSeason, NCAAPlayerSeasonStats } from '@/types';
 import { TeamRanks, ChecklistItem, CinderellaIndexResult } from '@/lib/rankings';
 import { StatCard, MetricCard, FactorCardWithRanks } from './StatCards';
 import ChampionChecklistCard from './ChampionChecklistCard';
+import Link from 'next/link';
 import { api } from '@/lib/api';
 import clsx from 'clsx';
 
@@ -81,6 +82,14 @@ export default function TeamPageTabs({ team, ranks, checklist, cinderella }: Tea
               {tab.label}
             </button>
           ))}
+          {/* Roster Outlook — navigates to a separate page */}
+          <Link
+            href={`/outlook/${team.teamId}`}
+            className="px-6 py-3 font-medium transition-colors border-b-2 border-transparent text-text-muted hover:text-text-primary flex items-center gap-1"
+          >
+            Outlook
+            <span className="text-xs text-brand font-semibold ml-0.5">↗</span>
+          </Link>
         </div>
       </div>
       

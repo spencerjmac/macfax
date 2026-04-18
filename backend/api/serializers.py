@@ -17,6 +17,7 @@ from core.models import (
     DataProcessingJob,
     PipelineConfig,
     PlayerSeasonStats,
+    PlaceholderArchetype,
 )
 from .checklist import compute_national_champion_checklist, compute_season_context
 
@@ -1523,3 +1524,35 @@ class PlayerSeasonStatsSerializer(serializers.ModelSerializer):
 
     def get_team_name(self, obj):
         return obj.team.name if obj.team else ""
+
+
+class PlaceholderArchetypeSerializer(serializers.ModelSerializer):
+    """
+    Read-only serializer for PlaceholderArchetype.
+    Returns all fields needed by the scenario editor.
+    """
+
+    class Meta:
+        model = PlaceholderArchetype
+        fields = [
+            "key",
+            "display_name",
+            "conf_group",
+            "role_bucket",
+            "quality_tier",
+            "projected_obpr",
+            "projected_dbpr",
+            "projected_bpr",
+            "minutes_share",
+            "mpg",
+            "uncertainty",
+            "efg_pct",
+            "fg3_pct",
+            "ts_pct",
+            "ast_to",
+            "oreb_pg",
+            "dreb_pg",
+            "tov",
+            "sample_n",
+            "source_season_year",
+        ]
