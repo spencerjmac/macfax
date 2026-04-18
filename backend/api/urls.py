@@ -23,6 +23,7 @@ from .cinderella_views import CinderellaView
 from .bracket_views import BracketView
 from .viz_builder_views import VizStatsView, VizScatterView
 from .auth_views import csrf, login_view, logout_view, me
+from .outlook_views import RosterOutlookView, ScenarioProjectionView, PlayerSearchView, PlaceholderListView
 
 router = DefaultRouter()
 router.register(r"seasons", SeasonViewSet, basename="season")
@@ -48,4 +49,9 @@ urlpatterns = [
     path("pipeline-config/", PipelineConfigView.as_view(), name="pipeline-config"),
     path("team/<slug:slug>/players/", TeamRosterView.as_view(), name="team-roster"),
     path("players/", LeaguePlayersView.as_view(), name="league-players"),
+    # Phase 7: Roster Outlook (specific paths must precede the slug catch-all)
+    path("outlook/scenario/", ScenarioProjectionView.as_view(), name="roster-outlook-scenario"),
+    path("outlook/player-search/", PlayerSearchView.as_view(), name="roster-outlook-player-search"),
+    path("outlook/placeholders/", PlaceholderListView.as_view(), name="roster-outlook-placeholders"),
+    path("outlook/<slug:slug>/", RosterOutlookView.as_view(), name="roster-outlook"),
 ]

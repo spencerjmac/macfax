@@ -12,6 +12,14 @@ import type {
   VizScatterData,
   NCAAPlayerSeasonStats,
 } from '@/types';
+import type {
+  RosterOutlookData,
+  ScenarioRequest,
+  ScenarioProjectionResult,
+  OutlookPlayer,
+  PlayerSearchResult,
+  PlaceholderListResponse,
+} from '@/types/outlook';
 
 type QueryParams = Record<string, string | number | boolean | undefined | null>;
 
@@ -166,6 +174,50 @@ export const api = {
   }): Promise<NCAAPlayerSeasonStats[]> {
     return fetchJson<NCAAPlayerSeasonStats[]>(
       buildUrl('/players/', params)
+    );
+  },
+
+  // ── Phase 7: Roster Outlook ──────────────────────────────────────────────
+
+  async getRosterOutlook(slug: string, season?: number): Promise<RosterOutlookData> {
+    return fetchJson<RosterOutlookData>(
+      buildUrl(`/outlook/${slug}/`, { season })
+    );
+  },
+
+  async getScenarioProjection(body: ScenarioRequest): Promise<ScenarioProjectionResult> {
+    const url = buildUrl('/outlook/scenario/');
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      cache: 'no-store',
+    });
+    const text = await res.text();
+    if (!res.ok) {
+      throw new Error(parseErrorMessage(res.status, text) || `Scenario request failed (${res.status})`);
+    }
+    try {
+      return JSON.parse(text) as ScenarioProjectionResult;
+    } catch {
+      throw new Error('Invalid JSON in scenario response');
+    }
+  },
+
+  async searchPlayers(q: string, season?: number): Promise<PlayerSearchResult[]> {
+    if (q.trim().length < 2) return [];
+    return fetchJson<PlayerSearchResult[]>(
+      buildUrl('/outlook/player-search/', { q: q.trim(), season })
+    );
+  },
+
+  async getPlaceholderArchetypes(params?: {
+    role?: string;
+    tier?: string;
+    conf_group?: string;
+  }): Promise<PlaceholderListResponse> {
+    return fetchJson<PlaceholderListResponse>(
+      buildUrl('/outlook/placeholders/', params)
     );
   },
 };
