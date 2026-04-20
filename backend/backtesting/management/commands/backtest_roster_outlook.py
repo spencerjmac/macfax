@@ -1,32 +1,37 @@
 """
 backtest_roster_outlook — Evaluate the roster outlook model against historical outcomes.
 
-Runs 6-model ablation ladder over all available historical season pairs
+Runs 8-model ablation ladder over all available historical season pairs
 (source year Y → actual year Y+1) and produces CSV, JSON, and Markdown reports.
 
 Usage:
     python manage.py backtest_roster_outlook
     python manage.py backtest_roster_outlook --start 2023 --end 2025
-    python manage.py backtest_roster_outlook --models A B C D
+    python manage.py backtest_roster_outlook --models A B C D G H
     python manage.py backtest_roster_outlook --output-dir /tmp/backtest
     python manage.py backtest_roster_outlook --dry-run
     python manage.py backtest_roster_outlook --no-subgroups
+    python manage.py backtest_roster_outlook --sweep-blend
+    python manage.py backtest_roster_outlook --blend-weight 0.25
 
 Available models:
     A  — Prior-year adj_em (simplest baseline)
     B  — Equal-minutes talent average (no mpg weighting)
     C  — Minutes-weighted talent  (no continuity/fit)
-    D  — Minutes-weighted talent + continuity adjustment  [recommended]
+    D  — Minutes-weighted talent + continuity adjustment  [recommended roster-only]
     E  — Minutes-weighted talent + continuity + fit  (fit=0 if no historical data)
     F  — Direct-returner-bump counterfactual (returner ×1.05, no continuity formula)
+    G  — Blend: (1-w)·D + w·prior_adj_em (shared weight)
+    H  — Blend: split w_off/w_def on adj_o and adj_d separately
 
 Leakage guarantee:
     Target-year TeamSeasonRatings are loaded AFTER all predictions are made and
     are only ever used for computing prediction errors. No target-year data
-    flows back into any model input.
+    flows back into any model input. Prior-year signal for G/H comes from
+    source-year (Y) TeamSeasonRatings — never from Y+1.
 
 Typical runtime:
-    3 season pairs × ~330 teams × 6 models  ≈  5-30 seconds
+    3 season pairs × ~330 teams × 8 models  ≈  5-30 seconds
     (dominated by DB queries; use --start/--end to narrow scope)
 """
 
@@ -37,7 +42,7 @@ import time
 
 from django.core.management.base import BaseCommand, CommandError
 
-from backtesting.roster_outlook.ablation import AblationResult, run_all_models, ALL_MODELS
+from backtesting.roster_outlook.ablation import AblationResult, run_all_models, ALL_MODELS, sweep_blend_weights
 from backtesting.roster_outlook.data_loader import BacktestPair, available_source_years, load_backtest_pair
 from backtesting.roster_outlook.report import generate_reports
 
@@ -110,6 +115,26 @@ class Command(BaseCommand):
             metavar="GP",
             help="Minimum games played to qualify a player for inclusion (default: 5).",
         )
+        parser.add_argument(
+            "--sweep-blend",
+            action="store_true",
+            help=(
+                "After running the backtest, sweep candidate prior-year blend weights "
+                "for Model G and print a calibration table. "
+                "Does not change PRIOR_BLEND_WEIGHT_G — update the constant manually "
+                "after reviewing results."
+            ),
+        )
+        parser.add_argument(
+            "--blend-weight",
+            type=float,
+            default=None,
+            metavar="W",
+            help=(
+                "Override the default PRIOR_BLEND_WEIGHT_G / H_OFF / H_DEF blend weight "
+                "for this run only (0.0–1.0). Useful for one-off experiments."
+            ),
+        )
 
     def handle(self, *args, **options):
         t0 = time.perf_counter()
@@ -120,6 +145,20 @@ class Command(BaseCommand):
         include_subgroups = not options["no_subgroups"]
         min_mpg = options["min_mpg"]
         min_gp = options["min_gp"]
+        do_sweep = options.get("sweep_blend", False)
+        blend_weight_override = options.get("blend_weight")  # float or None
+
+        # Apply blend-weight override for this run
+        if blend_weight_override is not None:
+            import backtesting.roster_outlook.ablation as _abl
+            _abl.PRIOR_BLEND_WEIGHT_G = blend_weight_override
+            _abl.PRIOR_BLEND_WEIGHT_H_OFF = blend_weight_override
+            _abl.PRIOR_BLEND_WEIGHT_H_DEF = blend_weight_override
+            self.stdout.write(
+                self.style.WARNING(
+                    f"  [override] Blend weight set to {blend_weight_override:.2f} for this run."
+                )
+            )
 
         # ── Determine which source years to run ────────────────────────────
         available = available_source_years()
@@ -208,7 +247,9 @@ class Command(BaseCommand):
 
         # ── Print per-season summary ───────────────────────────────────────
         self._print_performance_summary(all_pairs, models, fit_capable_source_years)
-
+        # ── Blend weight sweep (optional) ─────────────────────────────────
+        if do_sweep:
+            self._print_blend_sweep(all_pairs)
         # ── Write outputs ─────────────────────────────────────────────────
         if not dry_run:
             paths = generate_reports(
@@ -230,6 +271,43 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS("  Done."))
 
     # ── Internal helpers ───────────────────────────────────────────────────────
+
+    def _print_blend_sweep(
+        self,
+        all_pairs: list[tuple[AblationResult, BacktestPair]],
+    ) -> None:
+        """Sweep prior-year blend weights for Model G and print calibration table."""
+        from backtesting.roster_outlook.ablation import BLEND_WEIGHT_CANDIDATES
+
+        self.stdout.write("")
+        self.stdout.write(self.style.MIGRATE_HEADING("  Blend Weight Sweep (Model G anchor=D)"))
+        self.stdout.write(
+            f"  {'Weight':>7} {'N':>5} {'RMSE':>7} {'MAE':>7} {'Bias':>7} {'R²':>7} {'ρ':>7}"
+        )
+        self.stdout.write("  " + "-" * 58)
+
+        results = sweep_blend_weights(all_pairs, weights=BLEND_WEIGHT_CANDIDATES, anchor_model="D")
+        best = min(results, key=lambda r: r["mae"]) if results else None
+
+        for row in results:
+            marker = "  ←  best MAE" if row == best else ""
+            rho = f"{row['spearman_rho']:.3f}" if row["spearman_rho"] is not None else "  —"
+            self.stdout.write(
+                f"  {row['weight']:>7.2f} {row['n']:>5} {row['rmse']:>7.3f} {row['mae']:>7.3f} "
+                f"{row['bias']:>+7.3f} {row['r_squared']:>7.3f} {rho:>7}{marker}"
+            )
+
+        if best:
+            self.stdout.write("")
+            self.stdout.write(
+                f"  Best MAE at w = {best['weight']:.2f} "
+                f"(RMSE {best['rmse']:.3f}, MAE {best['mae']:.3f})"
+            )
+            self.stdout.write(
+                f"  → Update PRIOR_BLEND_WEIGHT_G = {best['weight']:.2f} "
+                f"in ablation.py to apply permanently."
+            )
+        self.stdout.write("")
 
     def _print_performance_summary(
         self,
@@ -274,7 +352,7 @@ class Command(BaseCommand):
 
         _print_table("Performance Summary (adj_em, all seasons)")
 
-        if fit_capable_source_years and "D" in models and "E" in models:
+        if fit_capable_source_years and any(m in models for m in ("D", "E", "G", "H")):
             fc_label = (
                 f"Fit-Capable Window (source years with TeamRosterFit: "
                 f"{sorted(fit_capable_source_years)})"

@@ -1277,15 +1277,16 @@ class TestFitUsedTracking(unittest.TestCase):
         self.assertIsNotNone(pred_d)
         self.assertFalse(pred_d.fit_used)
 
-    def test_model_e_with_fit_differs_from_d(self):
+    def test_model_e_with_fit_always_equals_d(self):
         """
-        When fit actually adjusts the rating (non-50 adjusted_off/def_fit),
-        Model E prediction must differ from Model D.
+        Phase 9e: FIT_TO_RATING_OFF/DEF = 0.0 in production, so Model E always
+        produces the same mean prediction as Model D regardless of fit scores.
+        The fit layer is zeroed; E is retained as an ablation variant only.
         """
         from backtesting.roster_outlook.ablation import run_all_models
         from core.analytics.player_value.team_projection.engine import RosterFitInput
 
-        # Strong non-neutral fit scores → should produce a real adjustment
+        # Strong non-neutral fit scores — would have differed pre-Phase-9e
         strong_fit = RosterFitInput(
             offensive_fit_score=60.0,
             defensive_fit_score=60.0,
@@ -1301,9 +1302,9 @@ class TestFitUsedTracking(unittest.TestCase):
         pred_e = result.get("duke", "E")
         self.assertIsNotNone(pred_d)
         self.assertIsNotNone(pred_e)
-        # When fit_adj is non-zero, E must not equal D
-        self.assertNotAlmostEqual(pred_e.pred_adj_em, pred_d.pred_adj_em, places=4,
-                                   msg="Model E should differ from D when TeamRosterFit provides signal")
+        # FIT_TO_RATING = 0 → E ≡ D regardless of fit scores (Phase 9e)
+        self.assertAlmostEqual(pred_e.pred_adj_em, pred_d.pred_adj_em, places=6,
+                               msg="Model E must equal D when FIT_TO_RATING = 0 (Phase 9e)")
 
     def test_model_e_without_fit_equals_d(self):
         """
@@ -1512,8 +1513,330 @@ class TestFitUsedTracking(unittest.TestCase):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# TestBackfillRosterFitCommand — DB integration tests for backfill command
+# TestBlendedModels — DB-free unit tests for Phase 9d Models G and H
 # ═══════════════════════════════════════════════════════════════════════════════
+
+class TestBlendedModels(unittest.TestCase):
+    """
+    DB-free tests for Phase 9d: prior-year blend models G and H.
+
+    Validates:
+      - w=0 reproduces Model D exactly
+      - w=1 reproduces prior-year actual adj_em/o/d
+      - Model H: pred_adj_em == pred_adj_o - pred_adj_d (identity invariant)
+      - Missing source_outcome falls back to Model D
+      - blend_weight and prior_year_adj_em diagnostic fields are set
+      - Blend value is a convex combination (monotone in weight)
+      - sweep_blend_weights() returns all candidate weights
+    """
+
+    def _make_pair(self, team_slug: str = "duke", include_prior: bool = True):
+        from backtesting.roster_outlook.data_loader import (
+            BacktestPair, TeamPlayerPool, ActualOutcome, PlayerRow,
+        )
+        players = [
+            PlayerRow(1, team_slug, 2.0, -1.0, 1.0, 30, 30, "returner", 2.0),
+            PlayerRow(2, team_slug, 1.0, -0.5, 0.5, 20, 30, "returner", 1.5),
+            PlayerRow(3, team_slug, 0.5, -0.2, 0.3, 10, 20, "newcomer", 0.5),
+        ]
+        source_out = (
+            ActualOutcome(team_slug, adj_o=112.0, adj_d=102.0, adj_em=10.0)
+            if include_prior else None
+        )
+        source_outcomes = {team_slug: source_out} if include_prior else {}
+        return BacktestPair(
+            source_year=2023,
+            target_year=2024,
+            team_pools={team_slug: TeamPlayerPool(team_slug, 2023, players)},
+            actual_outcomes={team_slug: ActualOutcome(team_slug, adj_o=115.0, adj_d=100.0, adj_em=15.0)},
+            source_outcomes=source_outcomes,
+            d1_avg_o=105.0,
+            d1_avg_d=105.0,
+        )
+
+    def _get_d_and_g(self, pair, blend_weight):
+        """Run models D and G, return (d_pred, g_pred)."""
+        from backtesting.roster_outlook.ablation import run_all_models
+        from unittest.mock import patch
+        with patch("backtesting.roster_outlook.ablation._load_roster_fit", return_value=None):
+            result = run_all_models(pair, models=["D", "G"])
+        d = result.get("duke", "D")
+        g = result.get("duke", "G")
+        return d, g
+
+    # ── blend identity tests ────────────────────────────────────────────────
+
+    def test_weight_zero_reproduces_D_adj_em(self):
+        """Model G with w=0 should equal Model D's adj_em exactly."""
+        from backtesting.roster_outlook.ablation import _model_g, TeamPrediction
+        d_pred = TeamPrediction("duke", "D", pred_adj_o=108.0, pred_adj_d=104.0, pred_adj_em=4.0)
+        from backtesting.roster_outlook.data_loader import ActualOutcome
+        src = ActualOutcome("duke", adj_o=112.0, adj_d=102.0, adj_em=10.0)
+
+        g = _model_g("duke", src, d_pred, blend_weight=0.0)
+        self.assertAlmostEqual(g.pred_adj_em, d_pred.pred_adj_em, places=6)
+        self.assertAlmostEqual(g.pred_adj_o, d_pred.pred_adj_o, places=6)
+        self.assertAlmostEqual(g.pred_adj_d, d_pred.pred_adj_d, places=6)
+
+    def test_weight_one_reproduces_prior_year(self):
+        """Model G with w=1 should equal prior-year adj_o/d/em exactly."""
+        from backtesting.roster_outlook.ablation import _model_g, TeamPrediction
+        from backtesting.roster_outlook.data_loader import ActualOutcome
+        d_pred = TeamPrediction("duke", "D", pred_adj_o=108.0, pred_adj_d=104.0, pred_adj_em=4.0)
+        src = ActualOutcome("duke", adj_o=112.0, adj_d=102.0, adj_em=10.0)
+
+        g = _model_g("duke", src, d_pred, blend_weight=1.0)
+        self.assertAlmostEqual(g.pred_adj_o, src.adj_o, places=6)
+        self.assertAlmostEqual(g.pred_adj_d, src.adj_d, places=6)
+        self.assertAlmostEqual(g.pred_adj_em, src.adj_em, places=6)
+
+    def test_model_g_is_convex_combination(self):
+        """Blended adj_em must be between D and prior-year adj_em for w in (0, 1)."""
+        from backtesting.roster_outlook.ablation import _model_g, TeamPrediction
+        from backtesting.roster_outlook.data_loader import ActualOutcome
+        d_pred = TeamPrediction("duke", "D", pred_adj_o=108.0, pred_adj_d=104.0, pred_adj_em=4.0)
+        src = ActualOutcome("duke", adj_o=112.0, adj_d=102.0, adj_em=10.0)
+
+        for w in [0.1, 0.3, 0.5, 0.7, 0.9]:
+            g = _model_g("duke", src, d_pred, blend_weight=w)
+            lo = min(d_pred.pred_adj_em, src.adj_em)
+            hi = max(d_pred.pred_adj_em, src.adj_em)
+            self.assertGreaterEqual(g.pred_adj_em, lo - 1e-9)
+            self.assertLessEqual(g.pred_adj_em, hi + 1e-9)
+
+    def test_model_h_adj_em_equals_o_minus_d(self):
+        """Model H: pred_adj_em == pred_adj_o - pred_adj_d must hold exactly."""
+        from backtesting.roster_outlook.ablation import _model_h, TeamPrediction
+        from backtesting.roster_outlook.data_loader import ActualOutcome
+        d_pred = TeamPrediction("duke", "D", pred_adj_o=108.0, pred_adj_d=104.0, pred_adj_em=4.0)
+        src = ActualOutcome("duke", adj_o=112.0, adj_d=102.0, adj_em=10.0)
+
+        # Equal weights → same as G
+        h_equal = _model_h("duke", src, d_pred, blend_weight_off=0.30, blend_weight_def=0.30)
+        self.assertAlmostEqual(
+            h_equal.pred_adj_em, h_equal.pred_adj_o - h_equal.pred_adj_d, places=9
+        )
+
+        # Asymmetric weights
+        h_asym = _model_h("duke", src, d_pred, blend_weight_off=0.20, blend_weight_def=0.40)
+        self.assertAlmostEqual(
+            h_asym.pred_adj_em, h_asym.pred_adj_o - h_asym.pred_adj_d, places=9
+        )
+
+    def test_missing_source_outcome_falls_back_to_D(self):
+        """When source_outcome is None, G and H should return Model D's values."""
+        from backtesting.roster_outlook.ablation import _model_g, _model_h, TeamPrediction
+        d_pred = TeamPrediction("duke", "D", pred_adj_o=108.0, pred_adj_d=104.0, pred_adj_em=4.0)
+
+        g = _model_g("duke", None, d_pred, blend_weight=0.30)
+        self.assertAlmostEqual(g.pred_adj_em, d_pred.pred_adj_em, places=6)
+
+        h = _model_h("duke", None, d_pred, blend_weight_off=0.30, blend_weight_def=0.30)
+        self.assertAlmostEqual(h.pred_adj_em, d_pred.pred_adj_em, places=6)
+
+    def test_blend_weight_diagnostic_field_set(self):
+        """TeamPrediction.blend_weight should be set to the applied weight."""
+        from backtesting.roster_outlook.ablation import _model_g, TeamPrediction
+        from backtesting.roster_outlook.data_loader import ActualOutcome
+        d_pred = TeamPrediction("duke", "D", pred_adj_o=108.0, pred_adj_d=104.0, pred_adj_em=4.0)
+        src = ActualOutcome("duke", adj_o=112.0, adj_d=102.0, adj_em=10.0)
+
+        g = _model_g("duke", src, d_pred, blend_weight=0.25)
+        self.assertAlmostEqual(g.blend_weight, 0.25, places=9)
+
+    def test_prior_year_adj_em_diagnostic_field_set(self):
+        """TeamPrediction.prior_year_adj_em should be set to source_outcome.adj_em."""
+        from backtesting.roster_outlook.ablation import _model_g, TeamPrediction
+        from backtesting.roster_outlook.data_loader import ActualOutcome
+        d_pred = TeamPrediction("duke", "D", pred_adj_o=108.0, pred_adj_d=104.0, pred_adj_em=4.0)
+        src = ActualOutcome("duke", adj_o=112.0, adj_d=102.0, adj_em=10.0)
+
+        g = _model_g("duke", src, d_pred, blend_weight=0.30)
+        self.assertAlmostEqual(g.prior_year_adj_em, src.adj_em, places=9)
+
+    def test_model_h_equal_weights_matches_g(self):
+        """When w_off == w_def == w, H must produce same adj_em/o/d as G."""
+        from backtesting.roster_outlook.ablation import _model_g, _model_h, TeamPrediction
+        from backtesting.roster_outlook.data_loader import ActualOutcome
+        d_pred = TeamPrediction("duke", "D", pred_adj_o=108.0, pred_adj_d=104.0, pred_adj_em=4.0)
+        src = ActualOutcome("duke", adj_o=112.0, adj_d=102.0, adj_em=10.0)
+        w = 0.30
+
+        g = _model_g("duke", src, d_pred, blend_weight=w)
+        h = _model_h("duke", src, d_pred, blend_weight_off=w, blend_weight_def=w)
+
+        self.assertAlmostEqual(g.pred_adj_o, h.pred_adj_o, places=9)
+        self.assertAlmostEqual(g.pred_adj_d, h.pred_adj_d, places=9)
+        self.assertAlmostEqual(g.pred_adj_em, h.pred_adj_em, places=9)
+
+    def test_model_h_asymmetric_differs_from_g(self):
+        """When w_off ≠ w_def, Model H must differ from Model G (different adj_em)."""
+        from backtesting.roster_outlook.ablation import _model_g, _model_h, TeamPrediction
+        from backtesting.roster_outlook.data_loader import ActualOutcome
+        d_pred = TeamPrediction("duke", "D", pred_adj_o=108.0, pred_adj_d=104.0, pred_adj_em=4.0)
+        src = ActualOutcome("duke", adj_o=112.0, adj_d=102.0, adj_em=10.0)
+
+        g = _model_g("duke", src, d_pred, blend_weight=0.30)
+        h = _model_h("duke", src, d_pred, blend_weight_off=0.10, blend_weight_def=0.50)
+        self.assertNotAlmostEqual(g.pred_adj_em, h.pred_adj_em, places=4)
+
+    def test_run_all_models_includes_g_and_h(self):
+        """run_all_models with models=['D','G','H'] returns G and H predictions."""
+        from backtesting.roster_outlook.ablation import run_all_models
+        from unittest.mock import patch
+        pair = self._make_pair()
+
+        with patch("backtesting.roster_outlook.ablation._load_roster_fit", return_value=None):
+            result = run_all_models(pair, models=["D", "G", "H"])
+
+        pred_g = result.get("duke", "G")
+        pred_h = result.get("duke", "H")
+        self.assertIsNotNone(pred_g, "Model G missing from run_all_models result")
+        self.assertIsNotNone(pred_h, "Model H missing from run_all_models result")
+        self.assertEqual(pred_g.model_name, "G")
+        self.assertEqual(pred_h.model_name, "H")
+
+    def test_d_computed_implicitly_for_g(self):
+        """When only G is requested (not D), D is computed internally as anchor."""
+        from backtesting.roster_outlook.ablation import run_all_models
+        from unittest.mock import patch
+        pair = self._make_pair()
+
+        with patch("backtesting.roster_outlook.ablation._load_roster_fit", return_value=None):
+            result = run_all_models(pair, models=["G"])
+
+        pred_g = result.get("duke", "G")
+        pred_d = result.get("duke", "D")
+        self.assertIsNotNone(pred_g, "Model G missing")
+        # D should not appear in output since it wasn't requested
+        self.assertIsNone(pred_d, "Model D should not appear when only G requested")
+
+    def test_g_missing_when_no_prior_outcome(self):
+        """When source_outcomes is empty, G falls back to D values."""
+        from backtesting.roster_outlook.ablation import run_all_models
+        from unittest.mock import patch
+        pair = self._make_pair(include_prior=False)
+
+        with patch("backtesting.roster_outlook.ablation._load_roster_fit", return_value=None):
+            result = run_all_models(pair, models=["D", "G"])
+
+        pred_d = result.get("duke", "D")
+        pred_g = result.get("duke", "G")
+        self.assertIsNotNone(pred_d)
+        self.assertIsNotNone(pred_g)
+        # With no source_outcome, G should equal D
+        self.assertAlmostEqual(pred_g.pred_adj_em, pred_d.pred_adj_em, places=6)
+
+    # ── sweep_blend_weights tests ───────────────────────────────────────────
+
+    def test_sweep_returns_all_candidates(self):
+        """sweep_blend_weights() returns one row per candidate weight."""
+        from backtesting.roster_outlook.ablation import (
+            sweep_blend_weights, BLEND_WEIGHT_CANDIDATES, run_all_models,
+        )
+        from unittest.mock import patch
+        pair = self._make_pair()
+
+        with patch("backtesting.roster_outlook.ablation._load_roster_fit", return_value=None):
+            ablation_result = run_all_models(pair, models=["D"])
+
+        results = sweep_blend_weights([(ablation_result, pair)])
+        self.assertEqual(len(results), len(BLEND_WEIGHT_CANDIDATES))
+        returned_weights = [r["weight"] for r in results]
+        for w in BLEND_WEIGHT_CANDIDATES:
+            self.assertIn(w, returned_weights)
+
+    def test_sweep_w0_rmse_matches_d_rmse(self):
+        """Weight=0 in sweep should reproduce Model D's RMSE exactly."""
+        import math
+        from backtesting.roster_outlook.ablation import sweep_blend_weights, run_all_models
+        from unittest.mock import patch
+        pair = self._make_pair()
+
+        with patch("backtesting.roster_outlook.ablation._load_roster_fit", return_value=None):
+            ablation_result = run_all_models(pair, models=["D"])
+
+        results = sweep_blend_weights([(ablation_result, pair)], weights=[0.0, 0.30])
+        w0_row = next(r for r in results if r["weight"] == 0.0)
+
+        # Compute D's RMSE manually
+        d_pred = ablation_result.get("duke", "D")
+        actual_em = pair.actual_outcomes["duke"].adj_em
+        expected_rmse = math.sqrt((d_pred.pred_adj_em - actual_em) ** 2)
+        self.assertAlmostEqual(w0_row["rmse"], expected_rmse, places=3)
+
+    def test_sweep_result_fields_present(self):
+        """Each sweep row must have weight, n, rmse, mae, bias, r_squared, spearman_rho."""
+        from backtesting.roster_outlook.ablation import sweep_blend_weights, run_all_models
+        from unittest.mock import patch
+        pair = self._make_pair()
+
+        with patch("backtesting.roster_outlook.ablation._load_roster_fit", return_value=None):
+            ablation_result = run_all_models(pair, models=["D"])
+
+        results = sweep_blend_weights([(ablation_result, pair)], weights=[0.20])
+        self.assertEqual(len(results), 1)
+        row = results[0]
+        for key in ("weight", "n", "rmse", "mae", "bias", "r_squared"):
+            self.assertIn(key, row, msg=f"Missing key: {key}")
+
+    # ── CSV/JSON G/H diagnostic fields ──────────────────────────────────────
+
+    def test_g_blend_fields_in_csv(self):
+        """blend_weight and prior_year_adj_em should appear in CSV for Model G."""
+        import csv
+        import tempfile
+        from backtesting.roster_outlook.ablation import AblationResult, TeamPrediction
+        from backtesting.roster_outlook.data_loader import (
+            BacktestPair, TeamPlayerPool, PlayerRow, ActualOutcome,
+        )
+        from backtesting.roster_outlook.report import generate_reports
+
+        players = [
+            PlayerRow(1, "duke", 2.0, -1.0, 1.0, 30, 30, "returner", 2.0),
+            PlayerRow(2, "duke", 1.0, -0.5, 0.5, 20, 30, "returner", 1.5),
+            PlayerRow(3, "duke", 0.5, -0.2, 0.3, 10, 20, "newcomer", 0.5),
+        ]
+        pair = BacktestPair(
+            source_year=2023, target_year=2024,
+            team_pools={"duke": TeamPlayerPool("duke", 2023, players)},
+            actual_outcomes={"duke": ActualOutcome("duke", adj_o=115.0, adj_d=100.0, adj_em=15.0)},
+            source_outcomes={"duke": ActualOutcome("duke", adj_o=112.0, adj_d=102.0, adj_em=10.0)},
+            d1_avg_o=105.0, d1_avg_d=105.0,
+        )
+        ablation_result = AblationResult(
+            source_year=2023, target_year=2024,
+            predictions={
+                "duke": {
+                    "G": TeamPrediction(
+                        "duke", "G",
+                        pred_adj_o=108.6, pred_adj_d=103.4, pred_adj_em=5.2,
+                        blend_weight=0.30, prior_year_adj_em=10.0,
+                    ),
+                }
+            },
+            models=["G"],
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            paths = generate_reports(
+                [(ablation_result, pair)],
+                output_dir=tmpdir,
+                include_subgroups=False,
+                model_order=["G"],
+            )
+            with open(paths["csv"]) as fh:
+                rows = list(csv.DictReader(fh))
+
+        self.assertEqual(len(rows), 1)
+        row = rows[0]
+        self.assertIn("blend_weight", row)
+        self.assertIn("prior_year_adj_em", row)
+        self.assertEqual(row["blend_weight"], "0.3")
+        self.assertEqual(row["prior_year_adj_em"], "10.0")
+
+
+
 
 try:
     from django.test import TestCase as DjTestCase
@@ -1608,6 +1931,273 @@ try:
 
 except ImportError:
     pass  # Django not configured in this test run
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# TestFitCalibration — pure unit tests for fit_calibration.py (Phase 9e)
+# No Django or DB required — tests scaling math and config structure only.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TestFitCalibration(unittest.TestCase):
+    """Phase 9e: fit recalibration unit tests (DB-free)."""
+
+    def _make_roster_fit(
+        self,
+        adj_off: float = 50.0,
+        adj_def: float = 50.0,
+        off_score: float = 50.0,
+        def_score: float = 50.0,
+    ):
+        from core.analytics.player_value.team_projection.engine import RosterFitInput
+
+        return RosterFitInput(
+            offensive_fit_score=off_score,
+            defensive_fit_score=def_score,
+            adjusted_off_fit=adj_off,
+            adjusted_def_fit=adj_def,
+            has_team_style_data=True,
+        )
+
+    # ── Standard config list checks ──────────────────────────────────────────
+
+    def test_standard_configs_count(self):
+        """STANDARD_FIT_CONFIGS contains exactly 15 variants."""
+        from backtesting.roster_outlook.fit_calibration import STANDARD_FIT_CONFIGS
+
+        self.assertEqual(len(STANDARD_FIT_CONFIGS), 15)
+
+    def test_standard_config_labels_unique(self):
+        """All STANDARD_FIT_CONFIGS labels are unique."""
+        from backtesting.roster_outlook.fit_calibration import STANDARD_FIT_CONFIGS
+
+        labels = [c.label for c in STANDARD_FIT_CONFIGS]
+        self.assertEqual(len(labels), len(set(labels)), "Duplicate labels in STANDARD_FIT_CONFIGS")
+
+    def test_zero_fit_config_has_zero_shrink(self):
+        """'zero_fit' config has shrink=0 on both axes and neutral=50."""
+        from backtesting.roster_outlook.fit_calibration import STANDARD_FIT_CONFIGS
+
+        z = next(c for c in STANDARD_FIT_CONFIGS if c.label == "zero_fit")
+        self.assertEqual(z.shrink_off, 0.0)
+        self.assertEqual(z.shrink_def, 0.0)
+        self.assertEqual(z.neutral_off, 50.0)
+        self.assertEqual(z.neutral_def, 50.0)
+
+    def test_e_current_config_has_full_shrink_and_neutral_50(self):
+        """'E_current' config has shrink=1.0 on both axes and neutral=50 (production)."""
+        from backtesting.roster_outlook.fit_calibration import STANDARD_FIT_CONFIGS
+
+        e = next(c for c in STANDARD_FIT_CONFIGS if c.label == "E_current")
+        self.assertEqual(e.shrink_off, 1.0)
+        self.assertEqual(e.shrink_def, 1.0)
+        self.assertEqual(e.neutral_off, 50.0)
+        self.assertEqual(e.neutral_def, 50.0)
+        self.assertTrue(e.use_phase4)
+
+    def test_recentered_config_uses_empirical_neutrals(self):
+        """'recentered' config has neutral_off=EMPIRICAL_NEUTRAL_OFF and shrink=1."""
+        from backtesting.roster_outlook.fit_calibration import (
+            EMPIRICAL_NEUTRAL_DEF,
+            EMPIRICAL_NEUTRAL_OFF,
+            STANDARD_FIT_CONFIGS,
+        )
+
+        r = next(c for c in STANDARD_FIT_CONFIGS if c.label == "recentered")
+        self.assertEqual(r.neutral_off, EMPIRICAL_NEUTRAL_OFF)
+        self.assertEqual(r.neutral_def, EMPIRICAL_NEUTRAL_DEF)
+        self.assertEqual(r.shrink_off, 1.0)
+        self.assertEqual(r.shrink_def, 1.0)
+
+    def test_phase3_config_does_not_use_phase4(self):
+        """'phase3_full' config has use_phase4=False."""
+        from backtesting.roster_outlook.fit_calibration import STANDARD_FIT_CONFIGS
+
+        p3 = next(c for c in STANDARD_FIT_CONFIGS if c.label == "phase3_full")
+        self.assertFalse(p3.use_phase4)
+
+    # ── _scale_roster_fit formula tests ──────────────────────────────────────
+
+    def test_shrink_zero_produces_50_on_both_axes(self):
+        """shrink=0 on both axes → adjusted_*_fit = 50 (zero engine adjustment)."""
+        from backtesting.roster_outlook.fit_calibration import FitCalibConfig, _scale_roster_fit
+
+        config = FitCalibConfig("zero", shrink_off=0.0, shrink_def=0.0)
+        rf = self._make_roster_fit(adj_off=30.0, adj_def=70.0)
+        scaled = _scale_roster_fit(rf, config)
+        self.assertAlmostEqual(scaled.adjusted_off_fit, 50.0)
+        self.assertAlmostEqual(scaled.adjusted_def_fit, 50.0)
+
+    def test_shrink_one_neutral_50_preserves_phase4_scores(self):
+        """shrink=1.0, neutral=50 → scaled = source_score (current production)."""
+        from backtesting.roster_outlook.fit_calibration import FitCalibConfig, _scale_roster_fit
+
+        config = FitCalibConfig("full", shrink_off=1.0, shrink_def=1.0)
+        rf = self._make_roster_fit(adj_off=45.7, adj_def=49.1)
+        scaled = _scale_roster_fit(rf, config)
+        self.assertAlmostEqual(scaled.adjusted_off_fit, 45.7)
+        self.assertAlmostEqual(scaled.adjusted_def_fit, 49.1)
+
+    def test_shrink_half_halves_deviation_from_neutral_50(self):
+        """shrink=0.5, neutral=50 → deviation from 50 is halved on each axis."""
+        from backtesting.roster_outlook.fit_calibration import FitCalibConfig, _scale_roster_fit
+
+        config = FitCalibConfig("half", shrink_off=0.5, shrink_def=0.5)
+        rf = self._make_roster_fit(adj_off=40.0, adj_def=60.0)
+        scaled = _scale_roster_fit(rf, config)
+        # scaled_off = 50 + 0.5 × (40 − 50) = 45
+        # scaled_def = 50 + 0.5 × (60 − 50) = 55
+        self.assertAlmostEqual(scaled.adjusted_off_fit, 45.0)
+        self.assertAlmostEqual(scaled.adjusted_def_fit, 55.0)
+
+    def test_recentering_maps_empirical_mean_to_50(self):
+        """
+        Recentered config: input at empirical neutral → adjusted_*_fit = 50.
+
+        This ensures the engine sees 50 (its zero-reference) at the historical
+        mean score, eliminating the systematic negative bias.
+        """
+        from backtesting.roster_outlook.fit_calibration import (
+            EMPIRICAL_NEUTRAL_DEF,
+            EMPIRICAL_NEUTRAL_OFF,
+            FitCalibConfig,
+            _scale_roster_fit,
+        )
+
+        config = FitCalibConfig(
+            "recentered",
+            shrink_off=1.0,
+            shrink_def=1.0,
+            neutral_off=EMPIRICAL_NEUTRAL_OFF,
+            neutral_def=EMPIRICAL_NEUTRAL_DEF,
+        )
+        rf = self._make_roster_fit(
+            adj_off=EMPIRICAL_NEUTRAL_OFF,
+            adj_def=EMPIRICAL_NEUTRAL_DEF,
+        )
+        scaled = _scale_roster_fit(rf, config)
+        # scaled = 50 + 1 × (neutral − neutral) = 50
+        self.assertAlmostEqual(scaled.adjusted_off_fit, 50.0, places=5)
+        self.assertAlmostEqual(scaled.adjusted_def_fit, 50.0, places=5)
+
+    def test_use_phase3_sources_raw_scores_not_phase4(self):
+        """use_phase4=False → source scores are Phase 3 raw (off/def_score), not adjusted."""
+        from backtesting.roster_outlook.fit_calibration import FitCalibConfig, _scale_roster_fit
+
+        config = FitCalibConfig("phase3", shrink_off=1.0, shrink_def=1.0, use_phase4=False)
+        rf = self._make_roster_fit(adj_off=60.0, adj_def=60.0, off_score=45.0, def_score=52.0)
+        scaled = _scale_roster_fit(rf, config)
+        # scaled = 50 + 1 × (phase3 − 50): off = 50+(45-50)=45; def = 50+(52-50)=52
+        self.assertAlmostEqual(scaled.adjusted_off_fit, 45.0)
+        self.assertAlmostEqual(scaled.adjusted_def_fit, 52.0)
+
+    def test_off_only_zeroes_defensive_axis(self):
+        """shrink_def=0 → adjusted_def_fit = 50 (zero defensive engine adjustment)."""
+        from backtesting.roster_outlook.fit_calibration import FitCalibConfig, _scale_roster_fit
+
+        config = FitCalibConfig("off_only", shrink_off=1.0, shrink_def=0.0)
+        rf = self._make_roster_fit(adj_off=40.0, adj_def=55.0)
+        scaled = _scale_roster_fit(rf, config)
+        self.assertAlmostEqual(scaled.adjusted_off_fit, 40.0)   # unchanged
+        self.assertAlmostEqual(scaled.adjusted_def_fit, 50.0)   # zeroed to neutral
+
+    def test_def_only_zeroes_offensive_axis(self):
+        """shrink_off=0 → adjusted_off_fit = 50 (zero offensive engine adjustment)."""
+        from backtesting.roster_outlook.fit_calibration import FitCalibConfig, _scale_roster_fit
+
+        config = FitCalibConfig("def_only", shrink_off=0.0, shrink_def=1.0)
+        rf = self._make_roster_fit(adj_off=40.0, adj_def=55.0)
+        scaled = _scale_roster_fit(rf, config)
+        self.assertAlmostEqual(scaled.adjusted_off_fit, 50.0)   # zeroed to neutral
+        self.assertAlmostEqual(scaled.adjusted_def_fit, 55.0)   # unchanged
+
+    def test_raw_phase3_fields_always_preserved(self):
+        """offensive_fit_score and defensive_fit_score are never modified."""
+        from backtesting.roster_outlook.fit_calibration import FitCalibConfig, _scale_roster_fit
+
+        config = FitCalibConfig("any", shrink_off=0.5, shrink_def=0.5)
+        rf = self._make_roster_fit(
+            adj_off=45.0, adj_def=52.0,
+            off_score=41.0, def_score=49.0,
+        )
+        scaled = _scale_roster_fit(rf, config)
+        self.assertAlmostEqual(scaled.offensive_fit_score, 41.0)
+        self.assertAlmostEqual(scaled.defensive_fit_score, 49.0)
+
+    def test_shrink_monotone_decreasing_below_neutral(self):
+        """Input below neutral: scaled decreases monotonically as shrink increases."""
+        from backtesting.roster_outlook.fit_calibration import FitCalibConfig, _scale_roster_fit
+
+        rf = self._make_roster_fit(adj_off=40.0, adj_def=40.0)
+        shrinks = [0.0, 0.25, 0.50, 0.75, 1.00]
+        offs = [
+            _scale_roster_fit(rf, FitCalibConfig(f"s{s}", shrink_off=s, shrink_def=s)).adjusted_off_fit
+            for s in shrinks
+        ]
+        # scaled = 50 + s*(40-50) = 50, 47.5, 45, 42.5, 40 — strictly decreasing
+        for i in range(len(offs) - 1):
+            self.assertGreater(offs[i], offs[i + 1], f"monotone failed at index {i}")
+
+    def test_shrink_monotone_increasing_above_neutral(self):
+        """Input above neutral: scaled increases monotonically as shrink increases."""
+        from backtesting.roster_outlook.fit_calibration import FitCalibConfig, _scale_roster_fit
+
+        rf = self._make_roster_fit(adj_off=60.0, adj_def=60.0)
+        shrinks = [0.0, 0.25, 0.50, 0.75, 1.00]
+        offs = [
+            _scale_roster_fit(rf, FitCalibConfig(f"s{s}", shrink_off=s, shrink_def=s)).adjusted_off_fit
+            for s in shrinks
+        ]
+        # scaled = 50 + s*(60-50) = 50, 52.5, 55, 57.5, 60 — strictly increasing
+        for i in range(len(offs) - 1):
+            self.assertLess(offs[i], offs[i + 1], f"monotone failed at index {i}")
+
+    def test_recentered_shrink_half_formula(self):
+        """
+        Recentered + shrink=0.5: deviation from empirical neutral is halved,
+        and the empirical neutral still maps to 50 at the engine's reference.
+        """
+        from backtesting.roster_outlook.fit_calibration import (
+            EMPIRICAL_NEUTRAL_OFF,
+            FitCalibConfig,
+            _scale_roster_fit,
+        )
+
+        neutral = EMPIRICAL_NEUTRAL_OFF  # 45.7
+        config = FitCalibConfig(
+            "rc_half",
+            shrink_off=0.5,
+            shrink_def=0.5,
+            neutral_off=neutral,
+            neutral_def=50.0,
+        )
+        # 10 pts below the empirical neutral
+        rf = self._make_roster_fit(adj_off=neutral - 10.0, adj_def=50.0)
+        scaled = _scale_roster_fit(rf, config)
+        # scaled_off = 50 + 0.5 × ((neutral-10) − neutral) = 50 + 0.5×(-10) = 45
+        self.assertAlmostEqual(scaled.adjusted_off_fit, 45.0, places=5)
+        # scaled_def = 50 + 0.5 × (50 − 50) = 50
+        self.assertAlmostEqual(scaled.adjusted_def_fit, 50.0, places=5)
+
+    def test_fit_calib_result_beats_d_properties(self):
+        """FitCalibResult.beats_d_mae and beats_d_rmse reflect delta sign."""
+        from backtesting.roster_outlook.fit_calibration import FitCalibConfig, FitCalibResult
+
+        cfg = FitCalibConfig("test")
+        better = FitCalibResult(
+            config=cfg, label="better", n=100,
+            rmse=5.0, mae=4.0, bias=0.0, r_squared=0.5, spearman_rho=0.7,
+            delta_mae_vs_d=-0.1, delta_rmse_vs_d=-0.05,
+        )
+        self.assertTrue(better.beats_d_mae)
+        self.assertTrue(better.beats_d_rmse)
+
+        worse = FitCalibResult(
+            config=cfg, label="worse", n=100,
+            rmse=5.5, mae=4.5, bias=0.0, r_squared=0.4, spearman_rho=0.65,
+            delta_mae_vs_d=0.1, delta_rmse_vs_d=0.05,
+        )
+        self.assertFalse(worse.beats_d_mae)
+        self.assertFalse(worse.beats_d_rmse)
 
 
 if __name__ == "__main__":
