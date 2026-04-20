@@ -34,7 +34,10 @@ Uses Phase 3+4 adjusted_off_fit / adjusted_def_fit (0-100 scale):
   fit_adjustment_off = FIT_TO_RATING_OFF × (adjusted_off_fit − 50) / 50
   fit_adjustment_def = FIT_TO_RATING_DEF × (adjusted_def_fit − 50) / 50
 
-Caps prevent fit from dominating the roster-talent baseline.
+Phase 9e (April 2026): FIT_TO_RATING_OFF = FIT_TO_RATING_DEF = 0.0.
+No detectable predictive signal found in Phase 9e calibration sweep.
+Mean projections are now Model-D-equivalent.  TeamRosterFit data is
+still loaded for transfer_fit_risk uncertainty (Phase 6b).
 
 COACHING CONTINUITY
 ───────────────────
@@ -101,10 +104,26 @@ MAX_CONTINUITY_ADJ_DEF: float = 2.0   # ±2.0 pts adj_d (defense gains more)
 # ── Fit adjustments ───────────────────────────────────────────────────────────
 # Maximum adjustment from Phase 3+4 roster-fit score (0-100) → pts/100 poss
 # At score=100 → +FIT_TO_RATING bonus; at score=0 → −FIT_TO_RATING penalty
-FIT_TO_RATING_OFF: float = 2.5   # pts/100 poss (offense)
-FIT_TO_RATING_DEF: float = 2.0   # pts/100 poss (defense)
+#
+# Phase 9e calibration (April 2026):
+#   Fit recalibration sweep (N=1081, source years 2023-2025) found that the fit
+#   layer provides no detectable predictive signal.  No configuration — shrinkage,
+#   recentering, offense-only, defense-only, Phase 3 scores, or Phase 4 scores —
+#   improved over Model D (zero fit).  Root cause: adjusted_off_fit is
+#   systematically ~4.3 pts below the nominal neutral of 50 (empirical mean ≈ 45.7),
+#   causing a mean negative bias of −0.21 pts/100 on adj_o.  Zeroing the scaling
+#   constants makes the production engine compute Model-D-equivalent mean predictions
+#   while preserving the TeamRosterFit data for uncertainty (transfer_fit_risk).
+#
+#   Previous values (kept for reference — do not restore without fresh sweep):
+#     FIT_TO_RATING_OFF = 2.5
+#     FIT_TO_RATING_DEF = 2.0
+#     FIT_MAX_ADJ_OFF   = 2.5
+#     FIT_MAX_ADJ_DEF   = 2.0
+FIT_TO_RATING_OFF: float = 0.0   # zeroed: Phase 9e sweep — no detectable signal
+FIT_TO_RATING_DEF: float = 0.0   # zeroed: Phase 9e sweep — no detectable signal
 
-# Hard caps (equal to FIT_TO_RATING by default; adjust if needed)
+# Hard caps (irrelevant when FIT_TO_RATING = 0; retained for forward compatibility)
 FIT_MAX_ADJ_OFF: float = 2.5
 FIT_MAX_ADJ_DEF: float = 2.0
 

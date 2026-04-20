@@ -7,11 +7,11 @@
 | Model | Description | N | RMSE | MAE | Bias | R² | Spearman ρ |
 |-------|-------------|---|------|-----|------|----|-----------|
 | A | Prior-year adj_em (last season as prediction) | 1779 | 7.117 | 5.630 | -0.123 | 0.584 | 0.768 |
-| B | Equal-minutes talent average (unweighted BPR) | 1779 | 10.329 | 8.239 | -0.130 | 0.123 | 0.493 |
 | C | Minutes-weighted talent (actual mpg, no continuity/fit) | 1779 | 9.287 | 7.389 | -0.130 | 0.291 | 0.497 |
 | D | Minutes-weighted talent + continuity adjustment | 1779 | 9.512 | 7.625 | -0.010 | 0.257 | 0.488 |
 | E | Minutes-weighted talent + continuity + fit | 1779 | 9.545 | 7.654 | -0.064 | 0.252 | 0.489 |
-| F | Counterfactual: direct returner BPR bump (+5%) — no continuity formula | 1779 | 9.345 | 7.439 | +0.029 | 0.283 | 0.497 |
+| G | Blend: (1−w)·D_adj_em + w·prior_adj_em (shared weight) | 1779 | 7.079 | 5.589 | -0.112 | 0.588 | 0.763 |
+| H | Blend: split w_off/w_def on adj_o and adj_d separately | 1779 | 7.079 | 5.589 | -0.112 | 0.588 | 0.763 |
 
 ## Paired Model Comparisons (Adjacent Models)
 
@@ -19,24 +19,31 @@
 
 | Comparison | N | Δ RMSE | Δ MAE | MAE % Δ | B Better? | Wilcoxon p |
 |------------|---|--------|-------|---------|-----------|-----------|
-| A→B | 1779 | +3.212 | +2.609 | +46.4% | ✗ | 0.0000 * |
-| B→C | 1779 | -1.043 | -0.851 | -10.3% | ✓ | 0.0000 * |
+| A→C | 1779 | +2.169 | +1.759 | +31.2% | ✗ | 0.0000 * |
 | C→D | 1779 | +0.226 | +0.237 | +3.2% | ✗ | 0.0000 * |
 | D→E | 1779 | +0.033 | +0.029 | +0.4% | ✗ | 0.0000 * |
-| E→F | 1779 | -0.201 | -0.214 | -2.8% | ✓ | 0.0000 * |
+| E→G | 1779 | -2.466 | -2.065 | -27.0% | ✓ | 0.0000 * |
+| G→H | 1779 | +0.000 | +0.000 | +0.0% | ✗ | 1.0000 |
 
 _* p < 0.05_
 
-## Fit-Capable Window: D vs E (Source Years: 2023, 2024, 2025)
+## Fit-Capable Window (Source Years: 2023, 2024, 2025)
 
-These are the source seasons where `TeamRosterFit` was backfilled from real BPR-capable data. Model E should differ from D here (genuine fit adjustment). On all other source years, E ≡ D (no fit data → zero adjustment).
+These are the source seasons where `TeamRosterFit` was backfilled from real BPR-capable data. Model E should differ from D here (genuine fit adjustment). On all other source years, E ≡ D (no fit data → zero adjustment). Models G/H blend D with prior-year actual team strength.
 
 | Model | N | RMSE | MAE | Bias | R² | Spearman ρ |
 |-------|---|------|-----|------|----|-----------|
+| A | 1081 | 7.347 | 5.805 | -0.117 | 0.586 | 0.759 |
 | D | 1081 | 8.885 | 7.030 | -0.110 | 0.395 | 0.663 |
 | E | 1081 | 8.943 | 7.078 | -0.198 | 0.387 | 0.664 |
+| G | 1081 | 7.426 | 5.870 | -0.116 | 0.577 | 0.754 |
+| H | 1081 | 7.426 | 5.870 | -0.116 | 0.577 | 0.754 |
 
 **D→E (fit-capable):** Δ RMSE = +0.058, Δ MAE = +0.047 (+0.7%), E better = ✗, Wilcoxon p = 0.0000 *
+
+**D→G (fit-capable):** Δ RMSE = -1.458, Δ MAE = -1.160 (-16.5%), G better = ✓, Wilcoxon p = 0.0000 *
+
+**D→H (fit-capable):** Δ RMSE = -1.458, Δ MAE = -1.160 (-16.5%), H better = ✓, Wilcoxon p = 0.0000 *
 
 ## Uncertainty Band Coverage (Models D & E)
 
@@ -66,28 +73,6 @@ These are the source seasons where `TeamRosterFit` was backfilled from real BPR-
 | Group | N | RMSE | MAE | R² | Spearman ρ |
 |-------|---|------|-----|----|-----------|
 | unknown | 1779 | 7.117 | 5.630 | 0.584 | 0.768 |
-
-## Model B — Subgroup Metrics
-### Conf Group
-
-| Group | N | RMSE | MAE | R² | Spearman ρ |
-|-------|---|------|-----|----|-----------|
-| unknown | 1779 | 10.329 | 8.239 | 0.123 | 0.493 |
-
-### Strength Bucket
-
-| Group | N | RMSE | MAE | R² | Spearman ρ |
-|-------|---|------|-----|----|-----------|
-| elite | 338 | 14.735 | 12.801 | -2.139 | 0.244 |
-| middle_lower | 631 | 8.007 | 6.309 | -0.289 | 0.034 |
-| middle_upper | 490 | 8.068 | 6.447 | -0.143 | 0.006 |
-| weak | 320 | 11.735 | 9.972 | -1.754 | 0.003 |
-
-### Continuity Tier
-
-| Group | N | RMSE | MAE | R² | Spearman ρ |
-|-------|---|------|-----|----|-----------|
-| unknown | 1779 | 10.329 | 8.239 | 0.123 | 0.493 |
 
 ## Model C — Subgroup Metrics
 ### Conf Group
@@ -163,30 +148,65 @@ These are the source seasons where `TeamRosterFit` was backfilled from real BPR-
 | mid | 596 | 9.028 | 7.117 | 0.310 | 0.573 |
 | unknown | 344 | 10.560 | 8.581 | -0.000 | nan |
 
-## Model F — Subgroup Metrics
+## Model G — Subgroup Metrics
 ### Conf Group
 
 | Group | N | RMSE | MAE | R² | Spearman ρ |
 |-------|---|------|-----|----|-----------|
-| unknown | 1779 | 9.345 | 7.439 | 0.283 | 0.497 |
+| unknown | 1779 | 7.079 | 5.589 | 0.588 | 0.763 |
 
 ### Strength Bucket
 
 | Group | N | RMSE | MAE | R² | Spearman ρ |
 |-------|---|------|-----|----|-----------|
-| elite | 338 | 11.201 | 9.041 | -0.813 | 0.234 |
-| middle_lower | 631 | 8.179 | 6.362 | -0.345 | 0.032 |
-| middle_upper | 490 | 8.513 | 6.817 | -0.273 | -0.003 |
-| weak | 320 | 10.491 | 8.825 | -1.201 | 0.004 |
+| elite | 338 | 6.981 | 5.415 | 0.295 | 0.541 |
+| middle_lower | 631 | 6.835 | 5.359 | 0.061 | 0.282 |
+| middle_upper | 490 | 7.024 | 5.557 | 0.133 | 0.403 |
+| weak | 320 | 7.710 | 6.276 | -0.189 | 0.221 |
 
 ### Continuity Tier
 
 | Group | N | RMSE | MAE | R² | Spearman ρ |
 |-------|---|------|-----|----|-----------|
-| high | 418 | 8.850 | 6.958 | 0.388 | 0.553 |
-| low | 421 | 9.200 | 7.457 | 0.332 | 0.605 |
-| mid | 596 | 9.032 | 7.106 | 0.310 | 0.574 |
-| unknown | 344 | 10.560 | 8.581 | -0.000 | nan |
+| high | 418 | 6.848 | 5.404 | 0.634 | 0.772 |
+| low | 421 | 7.555 | 6.119 | 0.550 | 0.764 |
+| mid | 596 | 7.166 | 5.537 | 0.565 | 0.755 |
+| unknown | 344 | 6.584 | 5.257 | 0.611 | 0.782 |
+
+## Model H — Subgroup Metrics
+### Conf Group
+
+| Group | N | RMSE | MAE | R² | Spearman ρ |
+|-------|---|------|-----|----|-----------|
+| unknown | 1779 | 7.079 | 5.589 | 0.588 | 0.763 |
+
+### Strength Bucket
+
+| Group | N | RMSE | MAE | R² | Spearman ρ |
+|-------|---|------|-----|----|-----------|
+| elite | 338 | 6.981 | 5.415 | 0.295 | 0.541 |
+| middle_lower | 631 | 6.835 | 5.359 | 0.061 | 0.282 |
+| middle_upper | 490 | 7.024 | 5.557 | 0.133 | 0.403 |
+| weak | 320 | 7.710 | 6.276 | -0.189 | 0.221 |
+
+### Continuity Tier
+
+| Group | N | RMSE | MAE | R² | Spearman ρ |
+|-------|---|------|-----|----|-----------|
+| high | 418 | 6.848 | 5.404 | 0.634 | 0.772 |
+| low | 421 | 7.555 | 6.119 | 0.550 | 0.764 |
+| mid | 596 | 7.166 | 5.537 | 0.565 | 0.755 |
+| unknown | 344 | 6.584 | 5.257 | 0.611 | 0.782 |
+
+## Prior-Year Blend Analysis (Models G & H)
+
+Model G blends Model D’s roster projection with the prior-year actual adj_em from source-year `TeamSeasonRatings` (leakage-safe: source-year TSR only). Model H applies independent blend weights to adj_o and adj_d separately.
+
+**Model G weight:** w = 0.90   **Model H weights:** w_off = 0.90, w_def = 0.90
+
+**Blend formula (G):** `pred = (1-w)·D_pred + w·prior_adj`
+
+_Run `backtest_roster_outlook --sweep-blend` to calibrate weights._
 
 ---
 _Generated by `backtest_roster_outlook` management command._

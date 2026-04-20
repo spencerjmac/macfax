@@ -147,6 +147,9 @@ def build_flat_records(
             "base_team_offense": round(pred.base_team_offense, 4) if pred.base_team_offense is not None else None,
             # Fit flag (Model E only: True when TeamRosterFit existed for source_year)
             "fit_used": pred.fit_used if pred.model_name == "E" else None,
+            # Phase 9d: blend diagnostics (Models G/H only; None for all others)
+            "blend_weight": round(pred.blend_weight, 4) if pred.blend_weight is not None else None,
+            "prior_year_adj_em": round(pred.prior_year_adj_em, 4) if pred.prior_year_adj_em is not None else None,
             # Subgroups
             **subgroups,
         }
@@ -270,6 +273,18 @@ def generate_reports(
                 err_e = [key_e[k] for k in common]
                 cmp = paired_comparison(err_d, err_e, model_a="D", model_b="E")
                 fc_window["D_vs_E_paired"] = cmp.as_dict() if cmp else None
+        # G and H paired vs D in fit-capable window
+        for blend_model in ("G", "H"):
+            fc_blend_recs = fit_capable_recs.get(blend_model, [])
+            if fc_d_recs and fc_blend_recs:
+                key_d = {(r["team_slug"], r["source_year"]): r["error_adj_em"] for r in fc_d_recs}
+                key_blend = {(r["team_slug"], r["source_year"]): r["error_adj_em"] for r in fc_blend_recs}
+                common = sorted(set(key_d) & set(key_blend))
+                if len(common) >= 6:
+                    err_d = [key_d[k] for k in common]
+                    err_blend = [key_blend[k] for k in common]
+                    cmp = paired_comparison(err_d, err_blend, model_a="D", model_b=blend_model)
+                    fc_window[f"D_vs_{blend_model}_paired"] = cmp.as_dict() if cmp else None
         summary["fit_capable_window"] = fc_window
 
     for model in model_order:
@@ -336,6 +351,9 @@ _MODEL_DESCRIPTIONS = {
     "D": "Minutes-weighted talent + continuity adjustment",
     "E": "Minutes-weighted talent + continuity + fit",
     "F": "Counterfactual: direct returner BPR bump (+5%) — no continuity formula",
+    # Phase 9d blended models
+    "G": "Blend: (1−w)·D_adj_em + w·prior_adj_em (shared weight)",
+    "H": "Blend: split w_off/w_def on adj_o and adj_d separately",
 }
 
 
@@ -395,25 +413,25 @@ def _write_markdown_report(
         lines.append("_* p < 0.05_")
         lines.append("")
 
-    # ── Fit-capable window: D vs E comparison ───────────────────────────
+    # ── Fit-capable window: D vs E vs G vs H ────────────────────────────
     fc = summary.get("fit_capable_window")
     if fc and fit_capable_source_years:
         fc_years = sorted(fit_capable_source_years)
-        lines.append(f"## Fit-Capable Window: D vs E (Source Years: {', '.join(str(y) for y in fc_years)})")
+        lines.append(f"## Fit-Capable Window (Source Years: {', '.join(str(y) for y in fc_years)})")
         lines.append("")
         lines.append(
             "These are the source seasons where `TeamRosterFit` was backfilled from real BPR-capable data. "
             "Model E should differ from D here (genuine fit adjustment). "
-            "On all other source years, E ≡ D (no fit data → zero adjustment)."
+            "On all other source years, E ≡ D (no fit data → zero adjustment). "
+            "Models G/H blend D with prior-year actual team strength."
         )
         lines.append("")
         lines.append("| Model | N | RMSE | MAE | Bias | R² | Spearman ρ |")
         lines.append("|-------|---|------|-----|------|----|-----------|")
-        for m in ["D", "E"]:
+        for m in [m for m in ["A", "D", "E", "G", "H"] if fc.get(m)]:
             info = fc.get(m)
             if info and info.get("point_metrics"):
                 pm = info["point_metrics"]
-                desc = _MODEL_DESCRIPTIONS.get(m, m)
                 lines.append(
                     f"| {m} | {pm['n']} "
                     f"| {pm['rmse']:.3f} | {pm['mae']:.3f} | {pm['bias']:+.3f} "
@@ -430,6 +448,17 @@ def _write_markdown_report(
                 f"E better = {b_better}, Wilcoxon p = {paired['wilcoxon_p']:.4f}{sig}"
             )
             lines.append("")
+        for blend_model in ("G", "H"):
+            paired_fc = fc.get(f"D_vs_{blend_model}_paired")
+            if paired_fc:
+                b_better = "✓" if paired_fc["delta_mae"] < 0 else "✗"
+                sig = " *" if paired_fc["wilcoxon_p"] < 0.05 else ""
+                lines.append(
+                    f"**D→{blend_model} (fit-capable):** Δ RMSE = {paired_fc['delta_rmse']:+.3f}, "
+                    f"Δ MAE = {paired_fc['delta_mae']:+.3f} ({paired_fc['mae_pct_change']:+.1f}%), "
+                    f"{blend_model} better = {b_better}, Wilcoxon p = {paired_fc['wilcoxon_p']:.4f}{sig}"
+                )
+                lines.append("")
 
     # ── Coverage table (Models D/E with uncertainty bands) ──────────────
     cov_models = [m for m in model_order if summary["models"].get(m, {}).get("coverage")]
@@ -464,6 +493,34 @@ def _write_markdown_report(
                         f"| {pm['mae']:.3f} | {pm['r_squared']:.3f} | {pm['spearman_rho']:.3f} |"
                     )
                 lines.append("")
+
+    # ── Prior-year blend analysis (Models G/H) ──────────────────────────
+    g_info = summary["models"].get("G")
+    h_info = summary["models"].get("H")
+    if g_info or h_info:
+        from .ablation import (
+            PRIOR_BLEND_WEIGHT_G,
+            PRIOR_BLEND_WEIGHT_H_OFF,
+            PRIOR_BLEND_WEIGHT_H_DEF,
+        )
+        lines.append("## Prior-Year Blend Analysis (Models G & H)")
+        lines.append("")
+        lines.append(
+            "Model G blends Model D’s roster projection with the prior-year actual adj_em "
+            "from source-year `TeamSeasonRatings` (leakage-safe: source-year TSR only). "
+            "Model H applies independent blend weights to adj_o and adj_d separately."
+        )
+        lines.append("")
+        lines.append(
+            f"**Model G weight:** w = {PRIOR_BLEND_WEIGHT_G:.2f}   "
+            f"**Model H weights:** w_off = {PRIOR_BLEND_WEIGHT_H_OFF:.2f}, "
+            f"w_def = {PRIOR_BLEND_WEIGHT_H_DEF:.2f}"
+        )
+        lines.append("")
+        lines.append("**Blend formula (G):** `pred = (1-w)·D_pred + w·prior_adj`")
+        lines.append("")
+        lines.append("_Run `backtest_roster_outlook --sweep-blend` to calibrate weights._")
+        lines.append("")
 
     lines.append("---")
     lines.append("_Generated by `backtest_roster_outlook` management command._")
