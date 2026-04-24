@@ -51,8 +51,11 @@ DEVIATIONS FROM THE PUBLIC BPR ARTICLE
 4. Preseason priors
    Article: Separate preseason model using historical player data + recruiting
             rankings + transfer context + minutes projections.
-   Macfax:  Returns Box BPR as prior mean with fixed σ (no recruiting/transfer
-            data). Returns 0.0 with wide σ for true freshmen.
+   Macfax:  Returns Box BPR as prior mean with fixed σ (no transfer data).
+            For players with a PlayerRecruitingProfile, the recruiting tier
+            (star bucket) sets a non-neutral prior mean + tighter σ for
+            freshmen who have no prior college BPR.  Players with no profile
+            and no box BPR fall back to 0.0 with wide σ.
 
 5. Prior standard deviation tuning — joint and separate off/def
    Article: Weight between box priors and RAPM optimized by cross-validation.
@@ -215,3 +218,56 @@ BOX_BPR_CV_FOLDS = 5
 BPR_PLAUSIBLE_RANGE = (-20.0, 20.0)   # Flag, not clamp
 OBPR_PLAUSIBLE_RANGE = (-15.0, 15.0)
 DBPR_PLAUSIBLE_RANGE = (-12.0, 12.0)
+
+
+# ── Recruiting-tier preseason priors (Phase C1) ───────────────────────────────
+# Used when a player has no prior college BPR data (true freshmen, first-year
+# internationals) but has a PlayerRecruitingProfile for their class_year.
+# Values are OBPR/DBPR in pts/100 poss above D1 average expected in year 1.
+#
+# Calibration rationale (approximate empirical targets):
+#   5-star  (top ~50 nationally):  elite NBA prospects; many earn +1.5-3.0 yr-1 OBPR
+#   4-star  (~50-200):             high-end contributors; avg ~+0.5 yr-1 OBPR
+#   3-star  (~200-500):            average college player; ~0.0
+#   2-star  (~500-1000):           below-average starter; slight negative
+#   1-star / unrated:              walk-on/marginal; near current default (0.0, wide SD)
+#
+# Note: Defense is harder to project from recruiting rank alone (lower signal).
+# These are conservative — we widen the SD rather than trust the mean heavily.
+RECRUITING_PRIOR_MEAN_OFF: dict[int, float] = {
+    5: 1.5,   # top-50 national prospect
+    4: 0.5,   # top-200 prospect
+    3: 0.0,   # average recruit
+    2: -0.3,  # below-average recruit
+    1: -0.5,  # fringe / walk-on level
+}
+RECRUITING_PRIOR_MEAN_DEF: dict[int, float] = {
+    5: 0.8,
+    4: 0.3,
+    3: 0.0,
+    2: -0.2,
+    1: -0.3,
+}
+
+# Prior SDs by star tier — higher-star = more informative prior (narrower SD).
+# Still wider than box BPR SDs (recruiting rank << in-season box stats in precision).
+RECRUITING_PRIOR_SD_OFF: dict[int, float] = {
+    5: 2.0,   # narrower: elite recruits are rarely duds
+    4: 2.5,
+    3: 3.0,   # same as PRIOR_SD_BOX_OFF (rough equivalence)
+    2: 3.5,
+    1: 4.0,   # same as PRIOR_SD_DEFAULT_OFF (very uncertain)
+}
+RECRUITING_PRIOR_SD_DEF: dict[int, float] = {
+    5: 1.5,
+    4: 2.0,
+    3: 2.5,   # same as PRIOR_SD_BOX_DEF
+    2: 3.0,   # same as PRIOR_SD_DEFAULT_DEF
+    1: 3.0,
+}
+
+# Fallback tier for unrated recruits (no star data, but profile exists)
+RECRUITING_UNRATED_PRIOR_MEAN_OFF = -0.2
+RECRUITING_UNRATED_PRIOR_MEAN_DEF = -0.1
+RECRUITING_UNRATED_PRIOR_SD_OFF   = PRIOR_SD_DEFAULT_OFF   # 4.0
+RECRUITING_UNRATED_PRIOR_SD_DEF   = PRIOR_SD_DEFAULT_DEF   # 3.0

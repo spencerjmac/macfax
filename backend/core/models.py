@@ -1634,6 +1634,86 @@ class Player(models.Model):
         return self.display_name
 
 
+class PlayerRecruitingProfile(models.Model):
+    """
+    Recruiting / prospect profile for an incoming college player.
+
+    Stores the recruiting tier (star rating + composite score) from external
+    scouting services (247Sports, Rivals, ESPN) for the year a player enrolled
+    in college.  Used by the BPR pipeline to set a non-neutral preseason prior
+    for freshmen who have no prior college BPR data.
+
+    The `class_year` field is the season year the player's first college season
+    began (e.g., class_year=2026 for a player who enrolled in Fall 2025 and
+    played their first season in 2025-26).  This matches PlayerSeasonStats.season.year.
+
+    Only used when a player lacks box BPR data (typically their first college season).
+    Once box BPR predictions are available, the recruiting prior is superseded.
+    """
+    STARS_CHOICES = [(1, "1-star"), (2, "2-star"), (3, "3-star"), (4, "4-star"), (5, "5-star")]
+    SOURCE_CHOICES = [
+        ("247sports", "247Sports"),
+        ("rivals",    "Rivals"),
+        ("espn",      "ESPN"),
+        ("on3",       "On3"),
+        ("manual",    "Manual entry"),
+    ]
+
+    player = models.ForeignKey(
+        Player, on_delete=models.CASCADE, related_name="recruiting_profiles",
+    )
+    class_year = models.IntegerField(
+        help_text="Season year of the player's first college season (matches Season.year).",
+        db_index=True,
+    )
+    stars = models.IntegerField(
+        choices=STARS_CHOICES, null=True, blank=True,
+        help_text="Star rating (1–5). Null for unrated / walk-on prospects.",
+    )
+    national_rank = models.IntegerField(
+        null=True, blank=True,
+        help_text="Overall national recruiting rank (1-based). Lower is better.",
+    )
+    composite_score = models.FloatField(
+        null=True, blank=True,
+        help_text=(
+            "247Sports-style composite score in [0, 1].  "
+            "~1.000 = top recruit; ~0.980+ = 5-star; ~0.950-0.979 = 4-star; "
+            "~0.880-0.949 = 3-star; <0.880 = 2-star or below."
+        ),
+    )
+    position_rank = models.IntegerField(
+        null=True, blank=True,
+        help_text="Rank within the player's position group.",
+    )
+    source = models.CharField(
+        max_length=30, choices=SOURCE_CHOICES, default="manual",
+        help_text="Where the recruiting data originated.",
+    )
+    notes = models.CharField(
+        max_length=200, blank=True, default="",
+        help_text="Free-text notes (e.g. 'consensus 5-star; top-5 national').",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["player", "class_year"], name="unique_player_class_year"
+            )
+        ]
+        indexes = [
+            models.Index(fields=["class_year"]),
+            models.Index(fields=["stars", "class_year"]),
+        ]
+        ordering = ["class_year", "national_rank"]
+
+    def __str__(self) -> str:
+        stars_str = f"{self.stars}★" if self.stars else "unrated"
+        return f"{self.player.display_name} ({stars_str}, class of {self.class_year})"
+
+
 class PlayerGameStats(models.Model):
     """Per-game box score for a single NCAA player from ESPN."""
 

@@ -18,7 +18,7 @@ Phase 1 design notes:
     prior seasons before being refined for Phase 2.
 """
 
-PROJECTION_VERSION = "1.0"
+PROJECTION_VERSION = "1.1"
 
 # ── Talent signal selection ───────────────────────────────────────────────────
 # Phase 1 uses a priority-select strategy rather than a weighted blend:
@@ -116,3 +116,29 @@ MINUTES_SHARE_MAX  = 0.90
 # Approximate possessions per minute (NCAA D1 average tempo).
 # Used to estimate possession counts from MPG when explicit poss data is absent.
 POSS_PER_MINUTE = 1.5
+
+# ── Transfer-specific projection tuning ──────────────────────────────────────
+# Transfers face a system/context change: their RAPM on-off splits were measured
+# in a different team environment than the one they will play in next season.
+# Box BPR captures portable individual skill more independently of team context.
+#
+# Returner path:  RAPM primary, box as fallback only (unchanged).
+# Transfer path:  blend RAPM with box, apply higher shrinkage, dampen trend.
+
+# Talent signal blending for transfers (when both RAPM and box BPR are available).
+# RAPM gets (1 − weight); box_bpr gets weight.
+# 0.35 → 65 % RAPM + 35 % box: leans on RAPM but gives meaningful portable weight.
+# The double-counting concern (obpr already has box prior baked in) is mitigated
+# for transfers because the box prior was fitted at their OLD school — blending it
+# in explicitly gives the portable skill signal a voice in the projection for the
+# NEW context without re-counting the environmental on-off component.
+BOX_BLEND_WEIGHT_TRANSFER = 0.35
+
+# YtY shrinkage: transfers face more environmental uncertainty → regress harder.
+YTY_SHRINK_POSS_OFF_TRANSFER = 750.0   # vs 500 for returners
+YTY_SHRINK_POSS_DEF_TRANSFER = 750.0
+
+# Multi-year trend: prior-season trend was measured in a different system →
+# dampen the contribution for transfers.
+TREND_WEIGHT_OFF_TRANSFER = 0.05   # vs 0.10 for returners
+TREND_WEIGHT_DEF_TRANSFER = 0.04   # vs 0.08 for returners

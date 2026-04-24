@@ -73,7 +73,7 @@ export default async function RankingsPage({ searchParams }: RankingsPageProps) 
 
       {/* Rankings Table / Player Table */}
       {activeTab === 'players' ? (
-        <NCAAPlayerRankingsTable data={players} seasonDisplay={meta.season} />
+        <NCAAPlayerRankingsTable data={players} seasonDisplay={meta.season} selectedSeason={seasonYear} />
       ) : (
         <RankingsTable data={teams} seasons={seasons} selectedSeason={seasonYear} />
       )}

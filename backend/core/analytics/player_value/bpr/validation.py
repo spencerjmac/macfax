@@ -46,6 +46,11 @@ logger = logging.getLogger(__name__)
 _AVG_SKEW_TOLERANCE = 2.0   # high-usage-filtered population skews ~+1 vs all-player average
 _HCA_PLAUSIBLE_RANGE = (0.5, 6.0)  # pts/100 poss; flag if estimated HCA is outside this
 
+# Phase B2: prior SD calibration reference targets and tolerance
+_SD_CALIB_TARGET_R2_OFF = 0.66  # reference R²: box prior should explain ~66% of final OBPR variance
+_SD_CALIB_TARGET_R2_DEF = 0.59  # reference R²: box prior should explain ~59% of final DBPR variance
+_SD_CALIB_R2_TOLERANCE  = 0.12  # warn if |actual R² − target| > this
+
 
 def run_validation(season_year: int, pipeline_summary: Optional[dict] = None) -> dict:
     """
@@ -255,6 +260,9 @@ def run_validation(season_year: int, pipeline_summary: Optional[dict] = None) ->
     # ── 12. Multi-year RAPM metadata audit (v1.3.1) ──────────────────────────
     if pipeline_summary is not None:
         results["multi_year_audit"] = _multi_year_audit(pipeline_summary, records)
+
+    # ── 13. Prior SD calibration audit (Phase B2) ─────────────────────────────
+    results["sd_calibration"] = _sd_calibration_audit(records)
 
     logger.info(f"[BPR Validation] Results: {results}")
     return results
@@ -609,3 +617,208 @@ def _multi_year_audit(pipeline_summary: dict, records: list[dict]) -> dict:
     )
 
     return audit
+
+
+# ── 13. Prior SD calibration audit (Phase B2) ────────────────────────────────
+
+def _sd_calibration_audit(records: list[dict]) -> dict:
+    """
+    Phase B2: Verify that the CV-selected sd_scale is landing near the intended
+    calibration targets.
+
+    Two interlocking metrics:
+
+    1.  R²(box_prior → final_bpr) — what fraction of the final BPR variance is
+        explained by the box prior?  Reference targets: 0.66 (off), 0.59 (def).
+          • R² ≈ target  → prior strength is well calibrated
+          • R² >> target → prior dominates RAPM data  (sd_scale too small)
+          • R² << target → prior has little effect    (sd_scale too large)
+
+    2.  Box-weight fraction (pull fraction) — for each player the empirical
+        weight the box prior received relative to the RAPM baseline:
+            pull_frac = (final_bpr − baseline_bpr) / (box_prior − baseline_bpr)
+          → 0: RAPM dominated, prior had no effect
+          → 1: box prior fully determined the result
+        Population mean/median/p25/p75 reported, plus a "typical player" example
+        at the median possession count.
+
+    Only players with all three fields populated (final, baseline, box) are
+    included.  Players where |box − baseline| < 0.10 are excluded from pull-
+    fraction stats to avoid near-zero denominator noise.
+    """
+    off_full = [
+        r for r in records
+        if r["obpr"] is not None
+        and r["baseline_obpr"] is not None
+        and r["box_obpr"] is not None
+    ]
+    def_full = [
+        r for r in records
+        if r["dbpr"] is not None
+        and r["baseline_dbpr"] is not None
+        and r["box_dbpr"] is not None
+    ]
+
+    if not off_full:
+        return {"note": "Insufficient data for SD calibration audit (need baseline_obpr + box_obpr)"}
+
+    result: dict = {}
+
+    # ── 1. R²(box_prior → final_bpr) ─────────────────────────────────────────
+    for tag, subset, bpr_key, box_key, target in [
+        ("off", off_full, "obpr", "box_obpr", _SD_CALIB_TARGET_R2_OFF),
+        ("def", def_full, "dbpr", "box_dbpr", _SD_CALIB_TARGET_R2_DEF),
+    ]:
+        if not subset:
+            continue
+        final = np.array([r[bpr_key] for r in subset])
+        box   = np.array([r[box_key] for r in subset])
+        # Pearson r² — how much variance in final_bpr is explained by a linear
+        # function of box_prior.  Scale/bias-invariant; this is what the 66/59%
+        # reference targets describe.
+        r_pearson = float(np.corrcoef(box, final)[0, 1])
+        r2_pearson = r_pearson ** 2
+        # Direct-substitution R² — stricter: assumes box = final (no regression
+        # fitting); reveals scale or systematic bias issues.
+        ss_tot = float(np.sum((final - final.mean()) ** 2))
+        ss_res = float(np.sum((final - box) ** 2))
+        r2_direct = 1.0 - ss_res / ss_tot if ss_tot > 0 else 0.0
+
+        in_band = abs(r2_pearson - target) <= _SD_CALIB_R2_TOLERANCE
+        result[f"r2_pearson_{tag}"]      = round(r2_pearson, 4)
+        result[f"r2_direct_{tag}"]       = round(r2_direct, 4)
+        result[f"r2_target_{tag}"]       = target
+        result[f"r2_in_band_{tag}"]      = in_band
+
+        if not in_band:
+            direction = (
+                "over-reliant on box prior (sd_scale may be too small)"
+                if r2_pearson > target + _SD_CALIB_R2_TOLERANCE
+                else "under-using box prior (sd_scale may be too large)"
+            )
+            logger.warning(
+                f"[BPR Validation] SD calibration [{tag.upper()}]: "
+                f"Pearson R²={r2_pearson:.3f} (target={target:.2f} ±{_SD_CALIB_R2_TOLERANCE:.2f}): "
+                f"{direction}"
+            )
+        else:
+            logger.info(
+                f"[BPR Validation] SD calibration [{tag.upper()}]: "
+                f"Pearson R²={r2_pearson:.3f} "
+                f"✓ within band (target={target:.2f} ±{_SD_CALIB_R2_TOLERANCE:.2f})"
+            )
+
+    # ── 2. Box-weight (pull fraction) population stats ────────────────────────
+    def _pull_fracs(
+        subset: list[dict],
+        bpr_key: str,
+        baseline_key: str,
+        box_key: str,
+    ) -> list[tuple[float, float, dict]]:
+        fracs = []
+        for r in subset:
+            gap = (r[box_key] or 0.0) - (r[baseline_key] or 0.0)
+            if abs(gap) >= 0.10:
+                frac = ((r[bpr_key] or 0.0) - (r[baseline_key] or 0.0)) / gap
+                fracs.append((frac, r["off_poss"] or 1.0, r))
+        return fracs
+
+    off_fracs = _pull_fracs(off_full, "obpr", "baseline_obpr", "box_obpr")
+    def_fracs = _pull_fracs(def_full, "dbpr", "baseline_dbpr", "box_dbpr")
+
+    for tag, fracs in [("off", off_fracs), ("def", def_fracs)]:
+        if not fracs:
+            continue
+        vals   = np.array([f[0] for f in fracs])
+        poss   = np.array([f[1] for f in fracs])
+        wmean  = float(np.average(vals, weights=poss))
+        median = float(np.median(vals))
+        p25    = float(np.percentile(vals, 25))
+        p75    = float(np.percentile(vals, 75))
+
+        result[f"box_weight_{tag}"] = {
+            "n_players":      len(fracs),
+            "wmean":          round(wmean, 3),
+            "median":         round(median, 3),
+            "p25":            round(p25, 3),
+            "p75":            round(p75, 3),
+            "interpretation": (
+                f"Average player: {wmean * 100:.0f}% box prior / "
+                f"{(1 - wmean) * 100:.0f}% RAPM data"
+            ),
+        }
+        logger.info(
+            f"[BPR Validation] Box-weight [{tag}]: wmean={wmean:.3f} "
+            f"median={median:.3f} p25={p25:.3f} p75={p75:.3f} "
+            f"→ avg {wmean * 100:.0f}% box / {(1 - wmean) * 100:.0f}% RAPM"
+        )
+
+    # ── 3. Typical player example (player nearest median possession count) ─────
+    if off_fracs:
+        poss_vals = sorted(r["off_poss"] for r in off_full if r["off_poss"])
+        if poss_vals:
+            med_poss = float(np.median(poss_vals))
+            typical  = min(
+                off_full,
+                key=lambda r: abs((r["off_poss"] or 0) - med_poss),
+            )
+            off_gap  = (typical["box_obpr"] or 0.0) - (typical["baseline_obpr"] or 0.0)
+            off_pull = (
+                round(
+                    ((typical["obpr"] or 0.0) - (typical["baseline_obpr"] or 0.0)) / off_gap,
+                    3,
+                )
+                if abs(off_gap) >= 0.10 else None
+            )
+
+            def_pull = None
+            if (
+                typical.get("dbpr") is not None
+                and typical.get("baseline_dbpr") is not None
+                and typical.get("box_dbpr") is not None
+            ):
+                def_gap = (typical["box_dbpr"] or 0.0) - (typical["baseline_dbpr"] or 0.0)
+                if abs(def_gap) >= 0.10:
+                    def_pull = round(
+                        ((typical["dbpr"] or 0.0) - (typical["baseline_dbpr"] or 0.0)) / def_gap,
+                        3,
+                    )
+
+            result["typical_player_example"] = {
+                "name":           typical.get("player__display_name", "?"),
+                "player_id":      typical["player_id"],
+                "off_poss":       round(typical["off_poss"] or 0, 0),
+                "baseline_obpr":  round(typical["baseline_obpr"] or 0.0, 3),
+                "box_obpr":       round(typical["box_obpr"] or 0.0, 3),
+                "final_obpr":     round(typical["obpr"] or 0.0, 3),
+                "box_weight_off": off_pull,
+                "baseline_dbpr":  round(typical.get("baseline_dbpr") or 0.0, 3),
+                "box_dbpr":       round(typical["box_dbpr"] or 0.0, 3) if typical.get("box_dbpr") is not None else None,
+                "final_dbpr":     round(typical["dbpr"] or 0.0, 3) if typical.get("dbpr") is not None else None,
+                "box_weight_def": def_pull,
+                "note": (
+                    f"At {int(typical['off_poss'] or 0)} off-poss: "
+                    f"baseline={typical['baseline_obpr']:.2f}, "
+                    f"box_prior={typical['box_obpr']:.2f}, "
+                    f"final={typical['obpr']:.2f}"
+                    + (
+                        f" → {off_pull * 100:.0f}% box / {(1 - off_pull) * 100:.0f}% RAPM"
+                        if off_pull is not None else ""
+                    )
+                ),
+            }
+            logger.info(
+                "[BPR Validation] Typical player [%s] (%d poss): "
+                "baseline=%.2f box=%.2f final=%.2f%s",
+                typical.get("player__display_name", "?"),
+                int(typical["off_poss"] or 0),
+                typical["baseline_obpr"] or 0.0,
+                typical["box_obpr"] or 0.0,
+                typical["obpr"] or 0.0,
+                (
+                    f" → box weight {off_pull * 100:.0f}%"
+                    if off_pull is not None else " → box≈baseline (gap<0.1)"
+                ),
+            )
+
+    return result

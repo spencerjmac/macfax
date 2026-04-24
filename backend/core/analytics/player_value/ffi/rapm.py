@@ -37,6 +37,7 @@ Solver: same augmented weighted LS as bpr/rapm.py (_solve_augmented reused).
 from __future__ import annotations
 
 import logging
+import random
 from typing import Callable
 
 import numpy as np
@@ -47,6 +48,8 @@ logger = logging.getLogger(__name__)
 
 MIN_OBS_WEIGHT = 1.0   # rows below this weight are dropped from the design matrix
 FFI_RAPM_LAMBDA_DEFAULT = 500.0  # regularization; tunable via CLI
+FFI_CV_FOLDS = 5
+FFI_LAMBDA_CANDIDATES = [1.0, 5.0, 10.0, 25.0, 50.0, 100.0, 250.0, 500.0, 1000.0, 2500.0, 5000.0]
 
 
 # ── Factor target / weight extractors ────────────────────────────────────────
@@ -159,7 +162,7 @@ def build_factor_design_matrix(
 
     n_rows = row_idx
     if n_rows == 0:
-        raise ValueError(f"No valid rows for factor={factor}")
+        return None  # caller handles graceful skip
 
     X = sparse.coo_matrix(
         (vals, (rows, cols)), shape=(n_rows, n_features)
@@ -201,25 +204,112 @@ def _solve_augmented(
     return result[0]
 
 
+# ── Per-factor λ cross-validation ────────────────────────────────────────────
+
+def tune_factor_lambda(
+    dataset: dict,
+    factor: str,
+    seed: int = 42,
+) -> tuple[float, dict]:
+    """
+    5-fold CV on game splits to select λ for one FFI factor.
+
+    Mirrors the approach in bpr/rapm.py cross_validate_lambda.
+    Returns (best_lambda, cv_results_dict).
+    """
+    observations = dataset["observations"]
+    psi = dataset["player_season_index"]
+    n_ps = dataset["n_player_seasons"]
+
+    result_or_none = build_factor_design_matrix(observations, factor, psi, n_ps)
+    if result_or_none is None:
+        return FFI_RAPM_LAMBDA_DEFAULT, {}
+    X, y, w = result_or_none
+    player_col_slice = (2, 2 + 2 * n_ps)
+
+    # Assign observations to folds by game_id
+    game_ids = sorted({obs["game_id"] for obs in observations})
+    rng = random.Random(seed)
+    rng.shuffle(game_ids)
+    game_fold = {gid: i % FFI_CV_FOLDS for i, gid in enumerate(game_ids)}
+
+    # Build per-row fold assignments, skipping rows with weight below threshold.
+    # build_factor_design_matrix produces two rows per obs (home, away), each
+    # gated by MIN_OBS_WEIGHT independently — mirror that logic here.
+    target_fn = _FACTOR_FNS[factor]
+    row_folds: list[int] = []
+    for obs in observations:
+        fold = game_fold[obs["game_id"]]
+        _, w_h, _, w_a = target_fn(obs)
+        if w_h >= MIN_OBS_WEIGHT:
+            row_folds.append(fold)
+        if w_a >= MIN_OBS_WEIGHT:
+            row_folds.append(fold)
+    fold_arr = np.array(row_folds)
+
+    cv_errors: dict[float, list[float]] = {lam: [] for lam in FFI_LAMBDA_CANDIDATES}
+
+    for fold in range(FFI_CV_FOLDS):
+        train_mask = fold_arr != fold
+        test_mask  = fold_arr == fold
+
+        X_train, y_train, w_train = X[train_mask], y[train_mask], w[train_mask]
+        X_test,  y_test,  w_test  = X[test_mask],  y[test_mask],  w[test_mask]
+
+        if w_test.sum() == 0:
+            continue
+
+        for lam in FFI_LAMBDA_CANDIDATES:
+            beta = _solve_augmented(X_train, y_train, w_train, lam, player_col_slice)
+            y_hat = X_test @ beta
+            residuals = y_test - y_hat
+            wmse = float(np.average(residuals ** 2, weights=w_test))
+            cv_errors[lam].append(wmse)
+
+    mean_errors = {lam: float(np.mean(errs)) for lam, errs in cv_errors.items() if errs}
+    best_lambda = min(mean_errors, key=mean_errors.get)
+
+    logger.info(
+        f"FFI CV [{factor}]: best λ={best_lambda:.0f}  "
+        f"(mean WMSE={mean_errors[best_lambda]:.4f})"
+    )
+    return best_lambda, {
+        "lambda_candidates": FFI_LAMBDA_CANDIDATES,
+        "mean_wmse": mean_errors,
+        "best_lambda": best_lambda,
+        "n_folds": FFI_CV_FOLDS,
+    }
+
+
 # ── Single-factor RAPM fit ────────────────────────────────────────────────────
 
 def fit_factor_rapm(
     dataset: dict,
     factor: str,
     lambda_val: float = FFI_RAPM_LAMBDA_DEFAULT,
-) -> dict[str, dict]:
+) -> "dict[str, dict] | None":
     """
     Fit the RAPM for one factor.  Returns per-player (target-season) dicts:
       {player_id: {"off": float, "def": float}}
     where off/def are the raw regression coefficients (before sign flip).
     Sign conventions are applied by the pipeline layer.
+
+    Returns None if there are no valid observations for this factor (e.g.
+    ESPN PBP for pre-2018 seasons does not include box-stat events).
     """
     observations = dataset["observations"]
     psi = dataset["player_season_index"]
     n_ps = dataset["n_player_seasons"]
     target_year = dataset["target_year"]
 
-    X, y, w = build_factor_design_matrix(observations, factor, psi, n_ps)
+    result_or_none = build_factor_design_matrix(observations, factor, psi, n_ps)
+    if result_or_none is None:
+        logger.warning(
+            f"FFI RAPM [{factor}]: no valid rows — factor skipped "
+            f"(ESPN PBP likely missing box-stat events for this season)"
+        )
+        return None
+    X, y, w = result_or_none
     player_col_slice = (2, 2 + 2 * n_ps)
 
     beta = _solve_augmented(X, y, w, lambda_val, player_col_slice)
@@ -256,9 +346,14 @@ FACTOR_SIGNS: dict[str, tuple[int, int]] = {
 def run_all_factors(
     dataset: dict,
     lambda_val: float = FFI_RAPM_LAMBDA_DEFAULT,
+    lambda_per_factor: "dict[str, float] | None" = None,
 ) -> dict[int, dict]:
     """
     Fit all 4 factor RAPMs.
+
+    lambda_per_factor overrides lambda_val on a per-factor basis.
+    If provided, it should be e.g. {"efg": 250.0, "tov": 500.0, ...}.
+    Factors not in lambda_per_factor fall back to lambda_val.
 
     Returns {player_id: {
         "off_efg_impact": ..., "def_efg_impact": ...,
@@ -268,8 +363,20 @@ def run_all_factors(
     }}
     """
     factor_results: dict[str, dict[int, dict]] = {}
+    skipped_factors: list[str] = []
     for factor in ("efg", "tov", "orb", "ftr"):
-        factor_results[factor] = fit_factor_rapm(dataset, factor, lambda_val)
+        lam = (lambda_per_factor or {}).get(factor, lambda_val)
+        result = fit_factor_rapm(dataset, factor, lam)
+        if result is not None:
+            factor_results[factor] = result
+        else:
+            skipped_factors.append(factor)
+    if skipped_factors:
+        logger.warning(
+            f"FFI run_all_factors: {len(skipped_factors)} factor(s) had no data and "
+            f"were skipped: {skipped_factors}. four_factor_impact_index will not be "
+            f"computed for this season."
+        )
 
     all_pids = set()
     for r in factor_results.values():
@@ -279,6 +386,8 @@ def run_all_factors(
     for pid in all_pids:
         d: dict[str, float | None] = {}
         for factor, (osign, dsign) in FACTOR_SIGNS.items():
+            if factor not in factor_results:
+                continue  # factor was skipped (no data for this season)
             coeffs = factor_results[factor].get(pid)
             if coeffs is None:
                 continue
