@@ -38,8 +38,13 @@ from typing import Optional
 from core.analytics.player_value.projection.constants import (
     YTY_SHRINK_POSS_OFF,
     YTY_SHRINK_POSS_DEF,
+    YTY_SHRINK_POSS_OFF_TRANSFER,
+    YTY_SHRINK_POSS_DEF_TRANSFER,
     TREND_WEIGHT_OFF,
     TREND_WEIGHT_DEF,
+    TREND_WEIGHT_OFF_TRANSFER,
+    TREND_WEIGHT_DEF_TRANSFER,
+    BOX_BLEND_WEIGHT_TRANSFER,
     DEV_OFF_NEWCOMER,
     DEV_DEF_NEWCOMER,
     DEV_OFF_SECOND_YEAR,
@@ -110,27 +115,52 @@ def _select_talent_signal(
     dbpr: Optional[float],
     box_obpr: Optional[float],
     box_dbpr: Optional[float],
+    recruitment_type: str = RETURNER,
 ) -> tuple[Optional[float], Optional[float]]:
     """
     Select the best available talent signal for projection.
 
-    RAPM BPR (obpr/dbpr) is the primary signal when available.
-    Box BPR (box_obpr/box_dbpr) is used ONLY as a fallback for players
-    who lack on-court RAPM data.
+    Returner / newcomer path (default):
+      RAPM (obpr/dbpr) is primary; box BPR is used ONLY as a fallback.
+      We do NOT blend for returners because obpr already incorporates
+      box_obpr as a Bayesian prior — blending again would double-count.
 
-    We do NOT blend RAPM and Box BPR.  The final BPR values (obpr/dbpr) are
-    produced by a Bayesian RAPM fitting chain in which box_obpr/box_dbpr
-    acts as the player prior:
-        baseline RAPM → Box BPR prior → final prior-informed RAPM (obpr)
-    Blending obpr with box_obpr again would give the box signal two bites at
-    the apple — double-counting that inflates the box component's influence
-    beyond its intended prior weight.
+    Transfer path:
+      Box BPR represents portable individual skill that travels across team
+      contexts; on-off RAPM was measured in a different system and lineup
+      environment.  When both signals are available, blend them:
+          signal = (1 − BOX_BLEND_WEIGHT) × RAPM + BOX_BLEND_WEIGHT × box
+      The double-counting concern is mitigated for transfers: the box prior
+      was baked into the RAPM at the old school, but we are now projecting
+      the player into a new environment where their portable box skill
+      deserves an independent voice in the signal.
 
-    Selection priority (Phase 1 provisional; backtest before Phase 2):
-      1. RAPM available (obpr + dbpr)  → use as-is (box prior already baked in)
-      2. Only Box available             → use box as standalone signal
-      3. Neither                        → return None (signal=0, max uncertainty)
+    Selection priority (returner / newcomer):
+      1. RAPM (obpr + dbpr)  → use as-is (box prior already baked in)
+      2. Only box available  → use box as standalone signal
+      3. Neither             → return None (signal=0, max uncertainty)
+
+    Selection priority (transfer):
+      1. Both RAPM + box     → blend (BOX_BLEND_WEIGHT_TRANSFER)
+      2. RAPM only           → use RAPM (no box to blend)
+      3. Box only            → use box as standalone signal
+      4. Neither             → return None
     """
+    if recruitment_type == TRANSFER:
+        if (obpr is not None and dbpr is not None
+                and box_obpr is not None and box_dbpr is not None):
+            w = BOX_BLEND_WEIGHT_TRANSFER
+            return (
+                (1.0 - w) * obpr  + w * box_obpr,
+                (1.0 - w) * dbpr  + w * box_dbpr,
+            )
+        if obpr is not None and dbpr is not None:
+            return obpr, dbpr
+        if box_obpr is not None and box_dbpr is not None:
+            return box_obpr, box_dbpr
+        return None, None
+
+    # Returner / newcomer: RAPM primary, box fallback only.
     if obpr is not None and dbpr is not None:
         return obpr, dbpr
     if box_obpr is not None and box_dbpr is not None:
@@ -145,15 +175,25 @@ def _year_to_year_shrinkage(
     signal_def: float,
     poss_off: float,
     poss_def: float,
+    recruitment_type: str = RETURNER,
 ) -> tuple[float, float]:
     """
     Regress the blended talent signal toward the D1 average (0.0).
 
     λ = SHRINK_POSS / (SHRINK_POSS + poss)
     projected = (1 − λ) × signal
+
+    Transfers use higher shrinkage constants (more regression to mean) to
+    account for the system / environment change they are about to undergo.
     """
-    lambda_off = YTY_SHRINK_POSS_OFF / (YTY_SHRINK_POSS_OFF + max(poss_off, 0.0))
-    lambda_def = YTY_SHRINK_POSS_DEF / (YTY_SHRINK_POSS_DEF + max(poss_def, 0.0))
+    if recruitment_type == TRANSFER:
+        shrink_off = YTY_SHRINK_POSS_OFF_TRANSFER
+        shrink_def = YTY_SHRINK_POSS_DEF_TRANSFER
+    else:
+        shrink_off = YTY_SHRINK_POSS_OFF
+        shrink_def = YTY_SHRINK_POSS_DEF
+    lambda_off = shrink_off / (shrink_off + max(poss_off, 0.0))
+    lambda_def = shrink_def / (shrink_def + max(poss_def, 0.0))
     return (1.0 - lambda_off) * signal_off, (1.0 - lambda_def) * signal_def
 
 
@@ -164,17 +204,25 @@ def _trend_adjustment(
     current_dbpr: Optional[float],
     prior_obpr:   Optional[float],
     prior_dbpr:   Optional[float],
+    recruitment_type: str = RETURNER,
 ) -> tuple[float, float]:
     """
     Apply a fraction of the prior→current trend to the projection.
     Returns (off_adj, def_adj) in pts/100 poss.
+
+    Transfers use dampened weights: the prior-season trend was measured in
+    a different program with different teammates and system, making it less
+    informative about future performance in the new context.
     """
     off_adj = def_adj = 0.0
 
+    tw_off = TREND_WEIGHT_OFF_TRANSFER if recruitment_type == TRANSFER else TREND_WEIGHT_OFF
+    tw_def = TREND_WEIGHT_DEF_TRANSFER if recruitment_type == TRANSFER else TREND_WEIGHT_DEF
+
     if current_obpr is not None and prior_obpr is not None:
-        off_adj = TREND_WEIGHT_OFF * (current_obpr - prior_obpr)
+        off_adj = tw_off * (current_obpr - prior_obpr)
     if current_dbpr is not None and prior_dbpr is not None:
-        def_adj = TREND_WEIGHT_DEF * (current_dbpr - prior_dbpr)
+        def_adj = tw_def * (current_dbpr - prior_dbpr)
 
     return off_adj, def_adj
 
@@ -352,14 +400,18 @@ def project_player(
         poss_def = estimated
 
     # ── Step 5 ──────────────────────────────────────────────────────────────
-    proj_off, proj_def = _year_to_year_shrinkage(signal_off, signal_def, poss_off, poss_def)
+    proj_off, proj_def = _year_to_year_shrinkage(
+        signal_off, signal_def, poss_off, poss_def, recruitment_type
+    )
 
     # ── Step 6 ──────────────────────────────────────────────────────────────
     prior_obpr = prior.get("obpr") if prior else None
     prior_dbpr = prior.get("dbpr") if prior else None
     prior_rapm_used = prior_obpr is not None or prior_dbpr is not None
 
-    trend_off, trend_def = _trend_adjustment(obpr, dbpr, prior_obpr, prior_dbpr)
+    trend_off, trend_def = _trend_adjustment(
+        obpr, dbpr, prior_obpr, prior_dbpr, recruitment_type
+    )
     proj_off += trend_off
     proj_def += trend_def
 

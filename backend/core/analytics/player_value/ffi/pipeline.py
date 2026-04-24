@@ -24,7 +24,7 @@ import statistics
 
 from core.constants import FOUR_FACTOR_SCALE, FOUR_FACTOR_WEIGHTS
 from core.analytics.player_value.ffi.datasets import build_ffi_dataset
-from core.analytics.player_value.ffi.rapm import run_all_factors, FFI_RAPM_LAMBDA_DEFAULT
+from core.analytics.player_value.ffi.rapm import run_all_factors, tune_factor_lambda, FFI_RAPM_LAMBDA_DEFAULT
 
 logger = logging.getLogger(__name__)
 
@@ -38,10 +38,18 @@ def _safe_z(val: float, mean: float, std: float) -> float:
 def run_ffi_pipeline(
     season_years: "int | list[int]",
     lambda_val: float = FFI_RAPM_LAMBDA_DEFAULT,
+    auto_tune_lambda: bool = True,
     verbose: bool = True,
 ) -> dict[int, dict]:
     """
     Full FFI pipeline for the given season(s).
+
+    When auto_tune_lambda=True (default), per-factor λ is selected via 5-fold
+    game-split CV independently for each of the 4 factors.  lambda_val is used
+    as the fallback for any factor that has no valid observations.
+
+    Set auto_tune_lambda=False to use lambda_val for all factors (legacy
+    behaviour or when an explicit --lambda CLI flag is passed).
 
     Returns {player_id: {
         # 8 impact components (positive-good)
@@ -60,9 +68,25 @@ def run_ffi_pipeline(
         logger.info("FFI pipeline: building dataset …")
     dataset = build_ffi_dataset(season_years, verbose=verbose)
 
-    if verbose:
-        logger.info(f"FFI pipeline: fitting factor RAPMs (λ={lambda_val}) …")
-    raw_impacts = run_all_factors(dataset, lambda_val=lambda_val)
+    # Phase A3: per-factor λ CV (or fixed fallback)
+    if auto_tune_lambda:
+        if verbose:
+            logger.info("FFI pipeline: tuning λ per factor via 5-fold CV …")
+        lambda_per_factor: dict[str, float] = {}
+        for factor in ("efg", "tov", "orb", "ftr"):
+            best_lam, _ = tune_factor_lambda(dataset, factor)
+            lambda_per_factor[factor] = best_lam
+        if verbose:
+            logger.info(
+                f"FFI pipeline: per-factor λ — "
+                + ", ".join(f"{f}={lambda_per_factor[f]:.0f}" for f in ("efg", "tov", "orb", "ftr"))
+            )
+    else:
+        lambda_per_factor = {f: lambda_val for f in ("efg", "tov", "orb", "ftr")}
+        if verbose:
+            logger.info(f"FFI pipeline: fitting factor RAPMs (λ={lambda_val}) …")
+
+    raw_impacts = run_all_factors(dataset, lambda_val=lambda_val, lambda_per_factor=lambda_per_factor)
 
     poss = dataset["possession_totals_target"]  # {pid: {off, def}}
 

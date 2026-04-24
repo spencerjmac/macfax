@@ -100,6 +100,8 @@ def run_team_projection_pipeline(
     for row in all_player_rows:
         if row["minutes_share_p2"] is None or row["projected_bpr"] is None:
             continue
+        if row["team_id"] is None:
+            continue
         players_by_team[row["team_id"]].append(
             PlayerProjectionInput(
                 player_id=row["player_id"],

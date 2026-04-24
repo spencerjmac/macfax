@@ -112,26 +112,28 @@ def run_bpr_season(
     n_obs            = dataset["n_observations"]
     n_player_seasons = dataset["n_player_seasons"]
     n_target_players = len(dataset["target_season_player_ids"])
-    target_year      = max(_rapm_years)
+    # Use actual seasons after FGA-coverage filtering, not the requested window
+    _effective_years = dataset["season_years"]
+    target_year      = max(_effective_years)
     rapm_window      = dataset["rapm_window"]
     summary["phases"]["dataset"] = {
         "n_observations":      n_obs,
         "n_player_seasons":    n_player_seasons,
         "n_target_players":    n_target_players,
         "rapm_window":         rapm_window,
-        "season_years":        _rapm_years,
+        "season_years":        _effective_years,
         "target_year":         target_year,
         "player_season_keyed": True,
     }
 
     # possession_totals_target is always target-season-only (v1.3.1 datasets.py guarantee)
     _write_poss_totals = dataset["possession_totals_target"]
-    if len(_rapm_years) > 1:
+    if len(_effective_years) > 1:
         logger.info(
             "[BPR] Multi-year RAPM: seasons=%s, target=%s.  "
             "Coefficients are player-season-specific (v1.3.1 — production multi-year RAPM).  "
             "Write operations use target-season possession totals only.",
-            _rapm_years, target_year,
+            _effective_years, target_year,
         )
 
     has_stint_data = n_obs > 0
@@ -208,7 +210,8 @@ def run_bpr_season(
         try:
             if n_prior >= MIN_PRIOR_TRAINING_SAMPLES:
                 logger.info(
-                    f"[BPR] Phase 4a: Training Box BPR on {n_prior} prior-season records"
+                    f"[BPR] Phase 4a: Training Box BPR on {n_prior} pooled records "
+                    f"from seasons {prior_train_data.get('prior_years', [])}"
                 )
                 model_artifacts, box_bpr_preds = train_box_bpr_prior_seasons(
                     train_off_X=prior_train_data["off_X"],
@@ -219,7 +222,10 @@ def run_bpr_season(
                     current_off_poss_map=off_poss_map,
                     current_def_poss_map=def_poss_map,
                 )
-                model_artifacts["training_source"] = f"prior_seasons (n={n_prior})"
+                model_artifacts["training_source"] = (
+                    f"prior_seasons_pooled (n={n_prior}, "
+                    f"years={prior_train_data.get('prior_years', [])})"
+                )
             else:
                 # 4b. Fall back to out-of-fold (same season, but each player's prior
                 #     is trained on OTHER players' RAPM targets only)
@@ -275,10 +281,24 @@ def run_bpr_season(
             f"[BPR] Phase 5: prior-history loaded for {len(prior_history)} returning players"
         )
 
+        # Load recruiting profiles for freshmen in this season (Phase C1)
+        recruiting_priors = _load_recruiting_priors(
+            season_year=season_year,
+            player_ids=dataset["target_season_player_ids"],
+        )
+        n_recruiting = len(recruiting_priors)
+        if n_recruiting:
+            logger.info(
+                f"[BPR] Phase 5: recruiting priors loaded for {n_recruiting} players"
+            )
+        # Only apply recruiting priors for players who have no box BPR data.
+        # Filtering happens inside build_prior_maps (box always takes precedence).
+
         prior_mean_obpr, prior_mean_dbpr, prior_sd_obpr, prior_sd_dbpr = build_prior_maps(
             player_ids=dataset["target_season_player_ids"],
             box_bpr_preds=box_preds_for_prior,
             prior_history=prior_history if prior_history else None,
+            recruiting_priors=recruiting_priors if recruiting_priors else None,
         )
 
         # Convert player_id-keyed priors → (player_id, season_year)-keyed for multi-year safety.
@@ -374,6 +394,7 @@ def run_bpr_season(
             "prior_keying": "player_season",
             "n_target_priors": n_target_priors,
             "n_neutral_non_target_priors": n_neutral_priors,
+            "n_recruiting_priors": n_recruiting,
         }
 
         logger.info("[BPR] Phase 5: Fitting prior-informed RAPM")
@@ -505,7 +526,7 @@ def _load_prior_season_box_data(
     current_season_stats: list[dict],
     current_off_poss_map: dict[int, float],
     current_def_poss_map: dict[int, float],
-    n_prior_seasons: int = 3,
+    n_prior_seasons: int | None = None,
 ) -> dict | None:
     """
     Load box features + CLEAN BASELINE RAPM targets for qualifying players in prior seasons.
@@ -518,17 +539,59 @@ def _load_prior_season_box_data(
     Teacher-student chain guaranteed:
         baseline RAPM → Box BPR prior → final prior-informed RAPM
 
+    Phase A2: n_prior_seasons=None (default) uses ALL available prior seasons with
+    clean baseline RAPM data, giving the Box BPR model the largest possible stable
+    training set.  Pass an integer to restrict to a fixed lookback window.
+
     Returns a dict {off_X, off_y, def_X, def_y, prior_years} (numpy arrays),
     or None if no qualifying prior-season data is found.
     """
     from core.models import PlayerSeasonStats
 
-    prior_years = list(range(season_year - n_prior_seasons, season_year))
-    if not prior_years:
+    if n_prior_seasons is not None:
+        candidate_years = list(range(season_year - n_prior_seasons, season_year))
+    else:
+        # All years before target that have any RAPM data; coverage check follows.
+        candidate_years = None   # resolved below from DB
+
+    # Apply the same FGA-coverage gate used in build_rapm_dataset():
+    # prior years with <50% team_fga coverage have corrupted possession estimates
+    # → their baseline_obpr/baseline_dbpr targets are unreliable → exclude them.
+    MIN_FGA_COVERAGE = 0.50
+    from core.models import PlayerGameStint as _PGS
+    if candidate_years is not None:
+        years_to_check = candidate_years
+    else:
+        # Discover which years have baseline RAPM data at all
+        years_to_check = list(
+            PlayerSeasonStats.objects.filter(
+                season__year__lt=season_year,
+                baseline_obpr__isnull=False,
+            ).values_list("season__year", flat=True).distinct().order_by("season__year")
+        )
+
+    reliable_years: list[int] = []
+    for yr in years_to_check:
+        total = _PGS.objects.filter(game__season_year=yr).count()
+        if total == 0:
+            continue
+        with_fga = _PGS.objects.filter(game__season_year=yr, team_fga__gt=0).count()
+        if (with_fga / total) >= MIN_FGA_COVERAGE:
+            reliable_years.append(yr)
+        else:
+            logger.debug(
+                f"[BPR] Phase A2: Excluding prior year {yr} from Box BPR training "
+                f"(FGA coverage {with_fga/total:.1%} < {MIN_FGA_COVERAGE:.0%} — "
+                f"corrupted possession estimates in baseline RAPM)"
+            )
+
+    if not reliable_years:
         return None
 
+    prior_year_filter = {"season__year__in": reliable_years}
+
     qs = PlayerSeasonStats.objects.filter(
-        season__year__in=prior_years,
+        **prior_year_filter,
         # v1.2: use clean baseline RAPM targets, not final BPR outputs
         baseline_obpr__isnull=False,
         baseline_dbpr__isnull=False,
@@ -539,7 +602,7 @@ def _load_prior_season_box_data(
         gp__gte=MIN_GP_BOX_BPR,
         mpg__gte=MIN_MPG_BOX_BPR,
     ).values(
-        "player_id", "gp", "mpg",
+        "player_id", "season__year", "gp", "mpg",
         "pts", "ast", "tov", "stl", "blk", "pf", "reb",
         "oreb_pg", "dreb_pg",
         "fga_pg", "fg3a_pg", "fta_pg", "ftm_pg",
@@ -553,26 +616,33 @@ def _load_prior_season_box_data(
     if not prior_records:
         return None
 
-    # Build per-player poss maps from stored values
-    prior_off_poss = {r["player_id"]: r["off_poss"] for r in prior_records}
-    prior_def_poss = {r["player_id"]: r["def_poss"] for r in prior_records}
+    prior_years = sorted({r["season__year"] for r in prior_records})
 
-    # Reuse extract_box_features() for consistent feature ordering
-    prior_box_feats = extract_box_features(prior_records, prior_off_poss, prior_def_poss)
-
+    # Process each year independently to avoid player_id collision in poss maps
+    # (the same player across multiple seasons needs per-season features).
     off_X, off_y, def_X, def_y = [], [], [], []
-    for r in prior_records:
-        pid = r["player_id"]
-        if pid not in prior_box_feats:
-            continue
-        feats = prior_box_feats[pid]
-        off_X.append(feats["off"])
-        off_y.append(float(r["baseline_obpr"]))   # v1.2: clean baseline target
-        def_X.append(feats["def"])
-        def_y.append(float(r["baseline_dbpr"]))   # v1.2: clean baseline target
+    for yr in prior_years:
+        yr_records = [r for r in prior_records if r["season__year"] == yr]
+        yr_off_poss = {r["player_id"]: r["off_poss"] for r in yr_records}
+        yr_def_poss = {r["player_id"]: r["def_poss"] for r in yr_records}
+        yr_feats = extract_box_features(yr_records, yr_off_poss, yr_def_poss)
+        for r in yr_records:
+            pid = r["player_id"]
+            if pid not in yr_feats:
+                continue
+            feats = yr_feats[pid]
+            off_X.append(feats["off"])
+            off_y.append(float(r["baseline_obpr"]))   # v1.2: clean baseline target
+            def_X.append(feats["def"])
+            def_y.append(float(r["baseline_dbpr"]))   # v1.2: clean baseline target
 
     if not off_X:
         return None
+
+    logger.info(
+        f"[BPR] Phase A2: Pooled Box BPR training — {len(off_X)} records "
+        f"from {len(prior_years)} prior seasons: {prior_years}"
+    )
 
     return {
         "off_X": np.array(off_X, dtype=np.float64),
@@ -767,6 +837,38 @@ def _load_prior_season_history(
                 "baseline_dbpr": float(row["baseline_dbpr"]),
             }
     return history
+
+
+def _load_recruiting_priors(
+    season_year: int,
+    player_ids: list[int],
+) -> dict[int, dict]:
+    """
+    Load PlayerRecruitingProfile records for players whose first college season
+    is `season_year`.
+
+    Only players in `player_ids` are returned.  The result is used by
+    build_prior_maps() to set non-neutral priors for freshmen who have no
+    prior college BPR data.
+
+    Returns: {player_id: {"stars": int|None, "composite_score": float|None}}
+    """
+    from core.models import PlayerRecruitingProfile
+
+    player_ids_set = set(player_ids)
+    qs = (
+        PlayerRecruitingProfile.objects
+        .filter(class_year=season_year, player_id__in=player_ids_set)
+        .values("player_id", "stars", "composite_score")
+    )
+
+    return {
+        row["player_id"]: {
+            "stars":           row["stars"],
+            "composite_score": row["composite_score"],
+        }
+        for row in qs
+    }
 
 
 def _save_model_artifact(

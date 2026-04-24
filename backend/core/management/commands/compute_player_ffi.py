@@ -79,9 +79,13 @@ class Command(BaseCommand):
         )
         parser.add_argument(
             "--lambda", dest="lambda_val", type=float,
-            default=FFI_RAPM_LAMBDA_DEFAULT,
-            help=f"RAPM regularization strength (default {FFI_RAPM_LAMBDA_DEFAULT}). "
-                 "Higher = more shrinkage toward 0.",
+            default=None,
+            help=f"RAPM regularization strength (default: auto-tune per factor via CV). "
+                 "Providing this value disables per-factor CV and uses a fixed λ for all factors.",
+        )
+        parser.add_argument(
+            "--no-auto-tune", dest="no_auto_tune", action="store_true", default=False,
+            help=f"Disable per-factor λ CV and use the fixed --lambda value (default {FFI_RAPM_LAMBDA_DEFAULT}).",
         )
         parser.add_argument(
             "--validate", action="store_true", default=False,
@@ -91,8 +95,15 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         season_year: int = options["season"]
         rapm_years: list[int] | None = options["rapm_years"]
-        lambda_val: float = options["lambda_val"]
+        lambda_val_opt: float | None = options["lambda_val"]
+        no_auto_tune: bool = options["no_auto_tune"]
         do_validate: bool = options["validate"]
+
+        # Determine whether to auto-tune λ per factor:
+        # - auto-tune ON by default
+        # - disabled if --lambda is explicitly passed or --no-auto-tune is set
+        auto_tune = not no_auto_tune and lambda_val_opt is None
+        lambda_val: float = lambda_val_opt if lambda_val_opt is not None else FFI_RAPM_LAMBDA_DEFAULT
 
         try:
             season = Season.objects.get(year=season_year)
@@ -102,12 +113,17 @@ class Command(BaseCommand):
         years = rapm_years if rapm_years else [season_year]
         self.stdout.write(
             f"Computing Four Factor Impact for season {season_year} "
-            f"(RAPM window: {years}, λ={lambda_val}) …"
+            f"(RAPM window: {years}, λ={'auto-tune' if auto_tune else lambda_val}) …"
         )
 
-        # ── Fit all 4 factor RAPM models ──────────────────────────────────────
+        # ── Fit all 4 factor RAPM models ──────────────────────────────────────────────
         logging.basicConfig(level=logging.INFO)
-        results = run_ffi_pipeline(years, lambda_val=lambda_val, verbose=True)
+        results = run_ffi_pipeline(
+            years,
+            lambda_val=lambda_val,
+            auto_tune_lambda=auto_tune,
+            verbose=True,
+        )
 
         ffii_count = sum(1 for d in results.values() if d.get("four_factor_impact_index") is not None)
         self.stdout.write(

@@ -205,6 +205,49 @@ def build_rapm_dataset(season_years: "int | list[int]", verbose: bool = True) ->
     else:
         years = sorted(set(season_years))
 
+    # ── FGA coverage check — exclude seasons with broken possession estimates ─
+    # ESPN PBP for some seasons (2015–2020 approximately) has team_fga=0.
+    # Without FGA, _est_poss() = 0.44*FTA + TOV - OREB which underestimates
+    # true possessions by ~6x, producing efficiency outliers of 500-5000.
+    # Prior years require ≥50% FGA coverage; the target (latest) year is always
+    # included with a quality warning if coverage is low.
+    MIN_FGA_COVERAGE = 0.50
+    target_year = max(years)
+    valid_years: list[int] = []
+    for yr in sorted(years):
+        total = PlayerGameStint.objects.filter(game__season_year=yr).count()
+        if total == 0:
+            if verbose:
+                logger.warning(f"BPR dataset: season {yr} has no stints — skipped")
+            continue
+        with_fga = PlayerGameStint.objects.filter(game__season_year=yr, team_fga__gt=0).count()
+        coverage = with_fga / total
+        if coverage >= MIN_FGA_COVERAGE:
+            valid_years.append(yr)
+        elif yr == target_year:
+            # Always include the target year so BPR can still be computed,
+            # but warn that results will be unreliable
+            valid_years.append(yr)
+            if verbose:
+                logger.warning(
+                    f"BPR dataset: TARGET year {yr} FGA coverage={coverage:.1%} "
+                    f"(< {MIN_FGA_COVERAGE:.0%}) — BPR results will be unreliable "
+                    f"(ESPN PBP box-stat events incomplete for this season)"
+                )
+        else:
+            if verbose:
+                logger.warning(
+                    f"BPR dataset: prior year {yr} FGA coverage={coverage:.1%} "
+                    f"(< {MIN_FGA_COVERAGE:.0%} threshold) — excluded from RAPM window "
+                    f"(ESPN PBP box-stat events missing for this season)"
+                )
+    if len(valid_years) < len(years):
+        excluded = sorted(set(years) - set(valid_years))
+        if excluded:
+            logger.warning(f"BPR dataset: excluded seasons {excluded} due to low FGA coverage")
+    years = valid_years
+    # ─────────────────────────────────────────────────────────────────────────
+
     games_qs = (
         Game.objects
         .filter(season_year__in=years)

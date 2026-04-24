@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   useReactTable,
   getCoreRowModel,
@@ -27,9 +28,12 @@ import type { NCAAPlayerSeasonStats } from '@/types';
 type TabId = 'traditional' | 'impact' | 'fourfactors';
 type BprMode = 'strict_bpr' | 'full_two_sided' | 'all_players';
 
+const PLAYER_SEASONS = [2020, 2021, 2022, 2023, 2024, 2025, 2026];
+
 interface NCAAPlayerRankingsTableProps {
   data: NCAAPlayerSeasonStats[];
   seasonDisplay?: string;
+  selectedSeason?: number;
 }
 
 // ── Traditional ───────────────────────────────────────────────────────────────
@@ -75,7 +79,8 @@ const BPR_SOURCE_STYLES: Record<string, string> = {
 
 const PAGE_SIZE = 100;
 
-export default function NCAAPlayerRankingsTable({ data, seasonDisplay }: NCAAPlayerRankingsTableProps) {
+export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedSeason }: NCAAPlayerRankingsTableProps) {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabId>('impact');
   const [sorting, setSorting] = useState<SortingState>([{ id: 'bpr', desc: true }]);
   const [globalFilter, setGlobalFilter] = useState('');
@@ -519,6 +524,24 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay }: NCAAPla
             <option value="all">All Conferences</option>
             {conferences.map((c) => (
               <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <select
+            value={selectedSeason ?? ''}
+            onChange={(e) => {
+              const val = e.target.value;
+              router.push(val ? `/rankings?tab=players&season=${val}` : '/rankings?tab=players');
+            }}
+            className="px-3 py-2 bg-ui-surface border border-ui-border rounded-lg text-sm
+                       focus:outline-none focus:ring-2 focus:ring-brand/50"
+          >
+            <option value="">All Seasons</option>
+            {PLAYER_SEASONS.map((yr) => (
+              <option key={yr} value={yr}>
+                {yr - 1}–{String(yr).slice(2)}
+              </option>
             ))}
           </select>
         </div>
