@@ -12,7 +12,7 @@ from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from django.db.models import Q, Subquery, OuterRef
 
-from core.models import (
+from ncaa.models import (
     Season,
     Conference,
     Team,
@@ -67,7 +67,7 @@ class SeasonViewSet(viewsets.ReadOnlyModelViewSet):
     pagination_class = None  # Disable pagination for seasons
 
     def get_queryset(self):
-        from core.models import TeamSeasonRatings
+        from ncaa.models import TeamSeasonRatings
         qs = Season.objects.all()
         if self.request.query_params.get('has_ratings') == 'true':
             seasons_with_ratings = (

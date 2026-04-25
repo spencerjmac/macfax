@@ -52,8 +52,8 @@ def _assign_subgroups(
 
     # Conference group
     try:
-        from core.conf_utils import get_conf_group
-        from core.models import Team
+        from ncaa.conf_utils import get_conf_group
+        from ncaa.models import Team
         team = Team.objects.filter(slug=team_slug).first()
         if team and team.conference:
             groups["conf_group"] = get_conf_group(team.conference.slug)

@@ -152,7 +152,7 @@ def load_backtest_pair(
         BacktestPair ready for ablation.run_all_models().
     """
     # Django models imported here to allow DB-free unit testing of helpers
-    from core.models import PlayerSeasonStats, TeamSeasonRatings, TeamRosterFit
+    from ncaa.models import PlayerSeasonStats, TeamSeasonRatings, TeamRosterFit
 
     target_year = source_year + 1
 
@@ -209,7 +209,7 @@ def load_backtest_pair(
     agg = TeamSeasonRatings.objects.filter(season__year=source_year).aggregate(
         avg_o=Avg("adj_o"), avg_d=Avg("adj_d")
     )
-    from core.analytics.player_value.team_projection.constants import (
+    from ncaa.analytics.player_value.team_projection.constants import (
         FALLBACK_D1_ADJ_O, FALLBACK_D1_ADJ_D,
     )
     d1_avg_o = float(agg["avg_o"] or FALLBACK_D1_ADJ_O)
@@ -291,7 +291,7 @@ def available_source_years() -> list[int]:
     Return source years where backtesting is possible — i.e., there exist
     PlayerSeasonStats for year Y and TeamSeasonRatings for both Y and Y+1.
     """
-    from core.models import PlayerSeasonStats, TeamSeasonRatings
+    from ncaa.models import PlayerSeasonStats, TeamSeasonRatings
     from django.db.models import Count
 
     pss_years = set(

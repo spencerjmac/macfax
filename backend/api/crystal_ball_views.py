@@ -14,7 +14,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import get_object_or_404
 
-from core.models import Season, TeamSeasonRatings, TeamSeasonMetrics
+from ncaa.models import Season, TeamSeasonRatings, TeamSeasonMetrics
 from .trapezoid_views import compute_trapezoid_boundaries, is_inside_trapezoid
 from .serializers import RankingsSerializer
 

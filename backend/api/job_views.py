@@ -54,7 +54,7 @@ class ServerSentEventRenderer(BaseRenderer):
         return data
 
 
-from core.models import DataProcessingJob, Season
+from ncaa.models import DataProcessingJob, Season
 
 from . import job_tasks
 from .serializers import DataProcessingJobSerializer

@@ -11,7 +11,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import get_object_or_404
 
-from core.models import Season, TeamSeasonRatings, NationalAverages
+from ncaa.models import Season, TeamSeasonRatings, NationalAverages
 
 from .bracket_engine import (
     BRACKET_REGIONS,

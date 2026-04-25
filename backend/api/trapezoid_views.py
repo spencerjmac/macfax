@@ -11,7 +11,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import get_object_or_404
 
-from core.models import Season, TeamSeasonRatings, TeamSeasonStats
+from ncaa.models import Season, TeamSeasonRatings, TeamSeasonStats
 from .trapezoid_config import (
     Q_BOT_EM, Q_X_LEFT_TOP, Q_X_RIGHT_TOP,
     Q_X_LEFT_BOT, Q_X_RIGHT_BOT,
@@ -248,7 +248,7 @@ class TrapezoidView(APIView):
         for rating in display_queryset:
             conference_code = serializer.get_conference(rating)
             # Get conference name from code
-            from core.models import Conference as ConfModel
+            from ncaa.models import Conference as ConfModel
             try:
                 conf_obj = ConfModel.objects.get(code=conference_code)
                 conference_name = conf_obj.name
