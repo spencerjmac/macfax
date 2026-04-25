@@ -2,7 +2,7 @@ FROM node:20-alpine AS deps
 WORKDIR /app
 
 COPY web/package*.json ./web/
-RUN cd web && npm ci
+RUN cd web && npm ci --legacy-peer-deps
 
 FROM node:20-alpine AS builder
 WORKDIR /app
