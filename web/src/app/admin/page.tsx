@@ -155,10 +155,10 @@ export default function AdminPage() {
   const MAX_LOG_LINES = 2500;
   const [logLines, setLogLines] = useState<string[]>([]);
   const [streamDisconnected, setStreamDisconnected] = useState(false);
-  const termRef = useRef<HTMLDivElement>(null);
-  const esRef = useRef<EventSource | null>(null);
+
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttemptsRef = useRef(0);
-  const RECONNECT_MAX = 3;
+  const termRef = useRef<HTMLDivElement | null>(null);
   const RECONNECT_DELAY_MS = 2000;
 
   // history
@@ -256,57 +256,48 @@ export default function AdminPage() {
     }
   };
 
-  // ── SSE stream ─────────────────────────────────────────────────────────────
-  // since = line index to resume from (server sends only lines from there; browser sends Last-Event-ID automatically)
-  const openStream = useCallback((jobDbId: number, isReattach = false, since?: number) => {
-    if (esRef.current) {
-      esRef.current.close();
-      esRef.current = null;
+  // ── Polling stream ─────────────────────────────────────────────────────────────
+  const openStream = useCallback((jobDbId: number, isReattach = false) => {
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
     }
     if (isReattach) {
       reconnectAttemptsRef.current = 0;
-      if (since == null || since === 0) setLogLines([]);
     }
     setStreamDisconnected(false);
     setJobStatus('running');
-    const url =
-      since != null && since > 0
-        ? `${API}/api/jobs/${jobDbId}/stream/?since=${since}`
-        : `${API}/api/jobs/${jobDbId}/stream/`;
-    const es = new EventSource(url, { withCredentials: true });
-    esRef.current = es;
 
-    es.onmessage = (evt) => {
-      const data = JSON.parse(evt.data);
-      if (data.type === 'log') {
-        setLogLines((prev) => {
-          const next = [...prev, data.line as string];
-          return next.length > MAX_LOG_LINES ? next.slice(-MAX_LOG_LINES) : next;
-        });
-      } else if (data.type === 'done') {
-        setJobStatus(data.status as string);
-        setRunningJobDbId(null);
-        setStreamDisconnected(false);
-        reconnectAttemptsRef.current = 0;
-        es.close();
-        esRef.current = null;
-        loadJobs();
-      } else if (data.type === 'error') {
+    const pollLogs = async () => {
+      try {
+        const r = await apiFetch(`/api/jobs/${jobDbId}/job_status/`);
+        if (!r.ok) throw new Error('Poll failed');
+        const data = await r.json();
+        
+        if (data.logs) {
+          const lines = data.logs.split('\n');
+          setLogLines((prev) => {
+            return lines.length > MAX_LOG_LINES ? lines.slice(-MAX_LOG_LINES) : lines;
+          });
+        }
+        
+        if (['success', 'failed', 'cancelled'].includes(data.status)) {
+          setJobStatus(data.status);
+          setRunningJobDbId(null);
+          setStreamDisconnected(false);
+          if (pollIntervalRef.current) {
+            clearInterval(pollIntervalRef.current);
+            pollIntervalRef.current = null;
+          }
+          loadJobs();
+        }
+      } catch (err) {
         setStreamDisconnected(true);
       }
     };
 
-    es.onerror = () => {
-      es.close();
-      esRef.current = null;
-      const attempts = reconnectAttemptsRef.current;
-      if (attempts < RECONNECT_MAX) {
-        reconnectAttemptsRef.current = attempts + 1;
-        setTimeout(() => openStream(jobDbId), RECONNECT_DELAY_MS);
-      } else {
-        setStreamDisconnected(true);
-      }
-    };
+    pollLogs(); // Initial fetch
+    pollIntervalRef.current = setInterval(pollLogs, 2000);
   }, []);
 
   // ── Job control ────────────────────────────────────────────────────────────
@@ -500,9 +491,9 @@ export default function AdminPage() {
     });
     if (r.ok) {
       setJobStatus('cancelled');
-      if (esRef.current) {
-        esRef.current.close();
-        esRef.current = null;
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
       }
       setRunningJobDbId(null);
       loadJobs();
@@ -810,7 +801,7 @@ export default function AdminPage() {
               </span>
               <button
                 type="button"
-                onClick={() => openStream(runningJobDbId!, true, logLines.length)}
+                onClick={() => openStream(runningJobDbId!, true)}
                 className="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded text-sm font-medium transition"
               >
                 Reattach

@@ -1,9 +1,9 @@
+/* Import KaTeX CSS for math rendering */
+@import 'katex/dist/katex.min.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* Import KaTeX CSS for math rendering */
-@import 'katex/dist/katex.min.css';
 
 :root {
   --font-inter: 'Inter', system-ui, sans-serif;

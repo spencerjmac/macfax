@@ -18,6 +18,9 @@ const nextConfig = {
     config.resolve.alias['@/'] = srcDir + path.sep
     return config
   },
+  turbopack: {
+    root: path.resolve(__dirname, '..'),
+  },
   // Proxy backend paths to Django.
   // /api/*    — REST API + admin
   // /static/* — WhiteNoise static files (logos, admin CSS/JS)

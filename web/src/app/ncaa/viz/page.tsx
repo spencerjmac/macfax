@@ -19,7 +19,7 @@ export default function VisualizationsPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Trapezoid of Excellence */}
         <Link 
-          href="/viz/trapezoid"
+          href="/ncaa/viz/trapezoid"
           className="block bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow overflow-hidden border-2 border-transparent hover:border-blue-500"
         >
           <div className="p-6">
@@ -47,7 +47,7 @@ export default function VisualizationsPage() {
 
         {/* Efficiency Landscape */}
         <Link 
-          href="/viz/landscape"
+          href="/ncaa/viz/landscape"
           className="block bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow overflow-hidden border-2 border-transparent hover:border-blue-500"
         >
           <div className="p-6">
@@ -75,7 +75,7 @@ export default function VisualizationsPage() {
 
         {/* Viz Builder */}
         <Link 
-          href="/viz/builder"
+          href="/ncaa/viz/builder"
           className="block bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow overflow-hidden border-2 border-transparent hover:border-blue-500"
         >
           <div className="p-6">
@@ -103,7 +103,7 @@ export default function VisualizationsPage() {
 
         {/* Crystal Ball */}
         <Link 
-          href="/viz/crystal-ball"
+          href="/ncaa/viz/crystal-ball"
           className="block bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow overflow-hidden border-2 border-transparent hover:border-blue-500"
         >
           <div className="p-6">
@@ -131,7 +131,7 @@ export default function VisualizationsPage() {
 
         {/* Cinderella Index */}
         <Link
-          href="/viz/cinderella"
+          href="/ncaa/viz/cinderella"
           className="block bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow overflow-hidden border-2 border-transparent hover:border-blue-500"
         >
           <div className="p-6">
@@ -160,7 +160,7 @@ export default function VisualizationsPage() {
 
         {/* Bracket Simulator */}
         <Link
-          href="/viz/bracket"
+          href="/ncaa/viz/bracket"
           className="block bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow overflow-hidden border-2 border-transparent hover:border-blue-500"
         >
           <div className="p-6">
@@ -189,7 +189,7 @@ export default function VisualizationsPage() {
 
         {/* Kill Shot Analysis */}
         <Link 
-          href="/viz/kill-shot"
+          href="/ncaa/viz/kill-shot"
           className="block bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow overflow-hidden border-2 border-transparent hover:border-gray-300 opacity-75"
         >
           <div className="p-6">

@@ -7,24 +7,24 @@ import clsx from 'clsx';
 import SportSwitcher from './SportSwitcher';
 
 const NCAA_NAV = [
-  { href: '/rankings', label: 'Rankings' },
-  { href: '/matchup', label: 'Matchup' },
-  { href: '/viz', label: 'Visualizations' },
-  { href: '/glossary', label: 'Glossary' },
-  { href: '/about', label: 'About' },
+  { href: '/ncaa/rankings', label: 'Rankings' },
+  { href: '/ncaa/matchup', label: 'Matchup' },
+  { href: '/ncaa/viz', label: 'Visualizations' },
+  { href: '/ncaa/glossary', label: 'Glossary' },
 ];
 
 const NBA_NAV = [
   { href: '/nba/rankings', label: 'Rankings' },
   { href: '/nba/viz', label: 'Visualizations' },
   { href: '/nba/model-health', label: 'Model Health' },
-  { href: '/about', label: 'About' },
 ];
 
 export default function Navigation() {
   const pathname = usePathname();
+  const isNCAA = pathname?.startsWith('/ncaa');
   const isNBA = pathname?.startsWith('/nba');
-  const navItems = isNBA ? NBA_NAV : NCAA_NAV;
+  
+  const navItems = isNBA ? NBA_NAV : (isNCAA ? NCAA_NAV : []);
   
   return (
     <nav className="bg-bg text-textOnDark sticky top-0 z-50 border-b-4 border-brand">
@@ -59,28 +59,47 @@ export default function Navigation() {
           </Link>
           
           {/* Nav Links + Sport Switcher */}
-          <div className="hidden md:flex items-center space-x-1">
+          <div className="hidden md:flex items-center gap-1">
             <SportSwitcher />
-            <div className="w-px h-6 bg-gray-700 mx-2" />
-            {navItems.map((item) => {
-              const isActive = pathname === item.href || 
-                (item.href !== '/' && item.href !== '/nba' && pathname?.startsWith(item.href));
-              
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={clsx(
-                    'px-4 py-2 rounded transition-colors font-medium text-lg',
-                    isActive
-                      ? 'bg-brand text-white'
-                      : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                  )}
-                >
-                  {item.label}
-                </Link>
-              );
-            })}
+            
+            {navItems.length > 0 && (
+              <>
+                <div className="w-px h-6 bg-gray-700 mx-6" />
+                {navItems.map((item) => {
+                  const isActive = pathname === item.href || 
+                    (item.href !== '/' && item.href !== '/nba' && item.href !== '/ncaa' && pathname?.startsWith(item.href));
+                  
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={clsx(
+                        'px-4 py-2 rounded transition-colors font-medium text-lg',
+                        isActive
+                          ? 'bg-brand text-white'
+                          : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                      )}
+                    >
+                      {item.label}
+                    </Link>
+                  );
+                })}
+              </>
+            )}
+
+            {/* Global Links */}
+            <div className="w-px h-6 bg-gray-700 mx-6" />
+            <Link
+              href="/about"
+              className={clsx(
+                'px-4 py-2 rounded transition-colors font-medium text-lg',
+                pathname === '/about'
+                  ? 'bg-brand text-white'
+                  : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+              )}
+            >
+              About
+            </Link>
           </div>
           
           {/* Mobile menu button (placeholder) */}

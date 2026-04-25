@@ -18,7 +18,7 @@ export default function HomePage() {
       {/* Feature Cards */}
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
         <Link 
-          href="/rankings" 
+          href="/ncaa/rankings" 
           className="block p-6 bg-ui-card border border-ui-border rounded-lg hover:border-brand transition-colors"
         >
           <BarChart3 className="w-10 h-10 mb-3 text-brand" strokeWidth={1.5} />
@@ -30,7 +30,7 @@ export default function HomePage() {
         </Link>
         
         <Link 
-          href="/matchup" 
+          href="/ncaa/matchup" 
           className="block p-6 bg-ui-card border border-ui-border rounded-lg hover:border-brand transition-colors"
         >
           <Swords className="w-10 h-10 mb-3 text-brand" strokeWidth={1.5} />
@@ -42,7 +42,7 @@ export default function HomePage() {
         </Link>
         
         <Link 
-          href="/viz" 
+          href="/ncaa/viz" 
           className="block p-6 bg-ui-card border border-ui-border rounded-lg hover:border-brand transition-colors"
         >
           <ScatterChart className="w-10 h-10 mb-3 text-brand" strokeWidth={1.5} />
@@ -54,7 +54,7 @@ export default function HomePage() {
         </Link>
         
         <Link 
-          href="/glossary" 
+          href="/ncaa/glossary" 
           className="block p-6 bg-ui-card border border-ui-border rounded-lg hover:border-brand transition-colors"
         >
           <BookOpen className="w-10 h-10 mb-3 text-brand" strokeWidth={1.5} />

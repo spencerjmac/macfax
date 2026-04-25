@@ -78,6 +78,7 @@ export default function NBAEfficiencyLandscape({ data, seasonDisplay }: NBAEffic
       nameGap: 32,
       nameTextStyle: { color: '#6b7280', fontSize: 12 },
       type: 'value',
+      scale: true,
       splitLine: { lineStyle: { color: '#e5e7eb', type: 'dashed' } },
       axisLabel: { color: '#6b7280', fontSize: 11 },
     },
@@ -87,14 +88,10 @@ export default function NBAEfficiencyLandscape({ data, seasonDisplay }: NBAEffic
       nameGap: 52,
       nameTextStyle: { color: '#6b7280', fontSize: 12 },
       type: 'value',
+      scale: true,
       inverse: true, // Lower def rating = better = toward TOP of chart
       splitLine: { lineStyle: { color: '#e5e7eb', type: 'dashed' } },
       axisLabel: { color: '#6b7280', fontSize: 11 },
-    },
-    // League-average crosshairs
-    markLine: {
-      silent: true,
-      lineStyle: { color: '#d1d5db', type: 'dashed' },
     },
     series: [
       {
@@ -106,7 +103,7 @@ export default function NBAEfficiencyLandscape({ data, seasonDisplay }: NBAEffic
         emphasis: { itemStyle: { color: '#1d4ed8', opacity: 1 } },
         label: {
           show: true,
-          formatter: (p: any) => p.data.name,
+          formatter: (p: any) => p.data?.name || '',
           position: 'inside',
           color: '#fff',
           fontSize: 9,
@@ -118,15 +115,8 @@ export default function NBAEfficiencyLandscape({ data, seasonDisplay }: NBAEffic
           label: { show: false },
           lineStyle: { color: '#9ca3af', type: 'dashed', width: 1 },
           data: [
-            { type: 'average', name: 'Avg' },
-            [
-              { coord: [avgAdj.off, 100], symbol: 'none' },
-              { coord: [avgAdj.off, 130], symbol: 'none' },
-            ],
-            [
-              { coord: [100, avgAdj.def], symbol: 'none' },
-              { coord: [130, avgAdj.def], symbol: 'none' },
-            ],
+            { xAxis: avgAdj.off },
+            { yAxis: avgAdj.def },
           ],
         },
       },
@@ -139,7 +129,7 @@ export default function NBAEfficiencyLandscape({ data, seasonDisplay }: NBAEffic
         emphasis: { itemStyle: { color: '#c2410c', opacity: 1 } },
         label: {
           show: true,
-          formatter: (p: any) => p.data.name,
+          formatter: (p: any) => p.data?.name || '',
           position: 'inside',
           color: '#fff',
           fontSize: 9,
