@@ -137,6 +137,7 @@ export default function AdminPage() {
   const [authError, setAuthError] = useState('');
 
   // form
+  const [league, setLeague] = useState<'ncaa' | 'nba'>('ncaa');
   const [season, setSeason] = useState('');
   const [days, setDays] = useState('');
   const [skipIngest, setSkipIngest] = useState(false);
@@ -316,6 +317,7 @@ export default function AdminPage() {
     setJobStatus('pending');
 
     const body: Record<string, unknown> = {
+      league,
       season: parseInt(season),
       skip_ingest: skipIngest,
       iterations,
@@ -628,6 +630,31 @@ export default function AdminPage() {
           </h2>
 
           <div className="space-y-4">
+            {/* League */}
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">League</label>
+              <div className="flex bg-gray-800 rounded p-1">
+                <button
+                  type="button"
+                  onClick={() => setLeague('ncaa')}
+                  className={`flex-1 text-sm py-1 rounded transition ${
+                    league === 'ncaa' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  NCAA
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLeague('nba')}
+                  className={`flex-1 text-sm py-1 rounded transition ${
+                    league === 'nba' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  NBA
+                </button>
+              </div>
+            </div>
+
             {/* Season */}
             <div>
               <label className="block text-xs text-gray-400 mb-1">Season</label>
@@ -647,22 +674,24 @@ export default function AdminPage() {
             </div>
 
             {/* Last N days */}
-            <div>
-              <label className="block text-xs text-gray-400 mb-1">
-                Last N days{' '}
-                <span className="text-gray-600">(blank = full season)</span>
-              </label>
-              <input
-                type="number"
-                value={days}
-                onChange={(e) => setDays(e.target.value)}
-                disabled={isRunning || skipIngest}
-                placeholder="e.g. 3"
-                min="1"
-                max="30"
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500 disabled:opacity-50"
-              />
-            </div>
+            {league === 'ncaa' && (
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">
+                  Last N days{' '}
+                  <span className="text-gray-600">(blank = full season)</span>
+                </label>
+                <input
+                  type="number"
+                  value={days}
+                  onChange={(e) => setDays(e.target.value)}
+                  disabled={isRunning || skipIngest}
+                  placeholder="e.g. 3"
+                  min="1"
+                  max="30"
+                  className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500 disabled:opacity-50"
+                />
+              </div>
+            )}
 
             {/* Skip ingest */}
             <label className="flex items-center gap-2 cursor-pointer">
@@ -680,40 +709,42 @@ export default function AdminPage() {
             </label>
 
             {/* Advanced */}
-            <details className="group">
-              <summary className="text-xs text-gray-500 cursor-pointer hover:text-gray-300 select-none">
-                Advanced options
-              </summary>
-              <div className="mt-3 space-y-3">
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">
-                    Iterations
-                  </label>
-                  <input
-                    type="number"
-                    value={iterations}
-                    onChange={(e) => setIterations(parseInt(e.target.value))}
-                    disabled={isRunning}
-                    min="1"
-                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-sm text-white focus:outline-none focus:border-blue-500 disabled:opacity-50"
-                  />
+            {league === 'ncaa' && (
+              <details className="group">
+                <summary className="text-xs text-gray-500 cursor-pointer hover:text-gray-300 select-none">
+                  Advanced options
+                </summary>
+                <div className="mt-3 space-y-3">
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">
+                      Iterations
+                    </label>
+                    <input
+                      type="number"
+                      value={iterations}
+                      onChange={(e) => setIterations(parseInt(e.target.value))}
+                      disabled={isRunning}
+                      min="1"
+                      className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-sm text-white focus:outline-none focus:border-blue-500 disabled:opacity-50"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">
+                      SOR Trials
+                    </label>
+                    <input
+                      type="number"
+                      value={sorTrials}
+                      onChange={(e) => setSorTrials(parseInt(e.target.value))}
+                      disabled={isRunning}
+                      min="100"
+                      step="1000"
+                      className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-sm text-white focus:outline-none focus:border-blue-500 disabled:opacity-50"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">
-                    SOR Trials
-                  </label>
-                  <input
-                    type="number"
-                    value={sorTrials}
-                    onChange={(e) => setSorTrials(parseInt(e.target.value))}
-                    disabled={isRunning}
-                    min="100"
-                    step="1000"
-                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-sm text-white focus:outline-none focus:border-blue-500 disabled:opacity-50"
-                  />
-                </div>
-              </div>
-            </details>
+              </details>
+            )}
 
             {startError && (
               <p className="text-xs text-yellow-400">{startError}</p>
@@ -757,9 +788,9 @@ export default function AdminPage() {
               <span className="w-3 h-3 rounded-full bg-green-500 opacity-70" />
             </div>
             <span className="text-xs text-gray-500 font-mono">
-              manage.py update_all
+              manage.py update_{league}_all
               {season ? ` --season ${season}` : ''}
-              {days && !skipIngest ? ` --days ${days}` : ''}
+              {league === 'ncaa' && days && !skipIngest ? ` --days ${days}` : ''}
               {skipIngest ? ' --skip-ingest' : ''}
             </span>
             {logLines.length > 0 && (

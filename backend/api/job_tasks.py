@@ -61,24 +61,31 @@ def run_update_all_subprocess(job_db_id: int) -> None:
     iterations = params.get("iterations", 25)
     sor_trials = params.get("sor_trials", 10000)
 
+    cmd_name = "update_nba_all" if job.job_type == "update_nba_all" else "update_ncaa_all"
+
     # Use -u so the child Python runs unbuffered; otherwise stdout is fully buffered
     # when piped (no TTY) and output appears in big chunks instead of in real time.
     cmd = [
         sys.executable,
         "-u",
         str(settings.BASE_DIR / "manage.py"),
-        "update_all",
+        cmd_name,
         "--season",
         str(season_year),
-        "--iterations",
-        str(iterations),
-        "--sor-trials",
-        str(sor_trials),
     ]
+
     if skip_ingest:
         cmd.append("--skip-ingest")
-    if days:
-        cmd.extend(["--days", str(days)])
+
+    if cmd_name == "update_ncaa_all":
+        cmd.extend([
+            "--iterations",
+            str(iterations),
+            "--sor-trials",
+            str(sor_trials),
+        ])
+        if days:
+            cmd.extend(["--days", str(days)])
 
     # Mark running
     job.status = "running"
