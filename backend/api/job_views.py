@@ -117,15 +117,21 @@ class DataProcessingJobViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        league = request.data.get("league", "ncaa").lower()
+        if league not in ["ncaa", "nba"]:
+            return Response(
+                {"error": f"Invalid league: {league}"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
         skip_ingest = bool(request.data.get("skip_ingest", False))
         days = request.data.get("days")
         iterations = int(request.data.get("iterations", 25))
         sor_trials = int(request.data.get("sor_trials", 10000))
 
-        job_id = f"update_all_{season_year}_{uuid.uuid4().hex[:8]}"
+        job_id = f"update_{league}_all_{season_year}_{uuid.uuid4().hex[:8]}"
         job = DataProcessingJob.objects.create(
             job_id=job_id,
-            job_type="update_all",
+            job_type=f"update_{league}_all",
             status="pending",
             season=season,
             parameters={
@@ -133,6 +139,7 @@ class DataProcessingJobViewSet(viewsets.ModelViewSet):
                 "days": days,
                 "iterations": iterations,
                 "sor_trials": sor_trials,
+                "league": league,
             },
             created_by=request.user.username,
         )
