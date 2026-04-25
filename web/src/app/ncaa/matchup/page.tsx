@@ -195,7 +195,7 @@ function MatchupPageInner() {
     params.set('teamA', teamA);
     params.set('teamB', teamB);
     params.set('site', site);
-    router.push(`/matchup?${params.toString()}`);
+    router.push(`/ncaa/matchup?${params.toString()}`);
     
     await loadMatchup(teamA, teamB, site);
   }
