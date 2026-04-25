@@ -111,13 +111,18 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Caching
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/1")
+
 CACHES = {
     'default': {
-        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-        'LOCATION': 'cbb-analytics-cache',
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': REDIS_URL,
         'OPTIONS': {
-            'MAX_ENTRIES': 1000,
-        }
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+            'MAX_ENTRIES': 5000,
+        },
+        'KEY_PREFIX': 'macfax',
+        'TIMEOUT': 300,
     }
 }
 
