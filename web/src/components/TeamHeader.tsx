@@ -15,7 +15,7 @@ export default function TeamHeader({ team, ranks }: TeamHeaderProps) {
     <>
       {/* Back Link */}
       <Link 
-        href="/rankings" 
+        href="/ncaa/rankings" 
         className="inline-flex items-center text-brand hover:text-brand-hover mb-6"
       >
         <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">

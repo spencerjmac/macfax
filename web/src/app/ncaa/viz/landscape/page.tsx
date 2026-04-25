@@ -66,7 +66,7 @@ export default function EfficiencyLandscapePage() {
   }
   
   function handleTeamClick(teamSlug: string) {
-    router.push(`/team/${teamSlug}`);
+    router.push(`/ncaa/team/${teamSlug}`);
   }
   
   return (
