@@ -2608,9 +2608,11 @@ class PlaceholderArchetype(models.Model):
         ("mid_major", "Mid-Major"),
     ]
     QUALITY_TIER_CHOICES = [
-        ("elite",    "Elite (All-American)"),
-        ("starter",  "Starter"),
-        ("rotation", "Rotation"),
+        ("elite",         "Elite (All-American)"),
+        ("all_conference","All-Conference"),
+        ("starter",       "Starter"),
+        ("rotation",      "Rotation"),
+        ("bench",         "Bench"),
     ]
     ROLE_CHOICES = [
         ("G",    "Guard"),

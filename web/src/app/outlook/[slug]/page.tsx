@@ -2,6 +2,7 @@ import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import type { RosterOutlookData } from '@/types/outlook';
 import RosterOutlookPage from '@/components/outlook/RosterOutlookPage';
+import { TeamSearchWidget } from '@/components/outlook/TeamSearchWidget';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -43,14 +44,17 @@ export default async function OutlookPage({ params, searchParams }: OutlookPageP
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Page header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-text-primary">
-          {data.team.name} — Roster Outlook
-        </h1>
-        <p className="text-sm text-text-muted mt-1">
-          Projected {data.season.projected_season_year} preseason outlook ·{' '}
-          Based on {data.season.year} season data
-        </p>
+      <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-bold text-text-primary">
+            {data.team.name} — Roster Outlook
+          </h1>
+          <p className="text-sm text-text-muted mt-1">
+            Projected {data.season.projected_season_year} preseason outlook ·{' '}
+            Based on {data.season.year} season data
+          </p>
+        </div>
+        <TeamSearchWidget currentSlug={params.slug} />
       </div>
 
       <RosterOutlookPage data={data} />
