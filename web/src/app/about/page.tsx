@@ -163,19 +163,19 @@ export default function AboutPage() {
       {/* CTA Links */}
       <section className="flex flex-wrap gap-4">
         <Link
-          href="/rankings"
+          href="/ncaa/rankings"
           className="px-6 py-3 bg-brand text-white rounded-lg hover:bg-brand-hover transition-colors font-medium"
         >
           View Rankings
         </Link>
         <Link
-          href="/matchup"
+          href="/ncaa/matchup"
           className="px-6 py-3 bg-ui-surface border border-ui-border rounded-lg hover:border-brand transition-colors"
         >
           Matchup Tool
         </Link>
         <Link
-          href="/glossary"
+          href="/ncaa/glossary"
           className="px-6 py-3 bg-ui-surface border border-ui-border rounded-lg hover:border-brand transition-colors"
         >
           Metrics Glossary
