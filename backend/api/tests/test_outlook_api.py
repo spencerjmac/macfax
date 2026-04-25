@@ -11,7 +11,7 @@ Covers:
 from django.test import TestCase
 from django.urls import reverse
 
-from core.models import (
+from ncaa.models import (
     Player,
     PlayerSeasonProjection,
     Season,

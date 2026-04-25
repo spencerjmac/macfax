@@ -58,7 +58,7 @@ class Command(BaseCommand):
             run_continuity_sweep,
             DEFAULT_NEUTRAL_CANDIDATES,
         )
-        import core.analytics.player_value.team_projection.constants as const_mod
+        import ncaa.analytics.player_value.team_projection.constants as const_mod
 
         candidates = options["candidates"] or DEFAULT_NEUTRAL_CANDIDATES
         source_years = options["source_years"]

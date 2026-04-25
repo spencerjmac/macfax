@@ -4,7 +4,7 @@ DRF Serializers for CBB Analytics API
 
 from django.db import models
 from rest_framework import serializers
-from core.models import (
+from ncaa.models import (
     Season,
     Conference,
     Team,
@@ -797,7 +797,7 @@ class RankingsSerializer(serializers.Serializer):
 
     def _get_metrics(self, obj):
         """Helper to get TeamSeasonMetrics for this rating (with caching)"""
-        from core.models import TeamSeasonMetrics
+        from ncaa.models import TeamSeasonMetrics
         
         # Cache metrics on the object to avoid multiple queries
         if not hasattr(obj, '_cached_metrics'):
@@ -1205,7 +1205,7 @@ class GameLogSerializer(serializers.ModelSerializer):
     def get_opponent_net_rank(self, obj):
         """Get opponent's NET rank (use rank_adj_em as proxy if net_rank not available)"""
         try:
-            from core.models import TeamSeasonRatings, Season
+            from ncaa.models import TeamSeasonRatings, Season
 
             # Get season from game
             season = Season.objects.get(year=obj.game.season_year)

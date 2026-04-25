@@ -24,7 +24,7 @@ from django.db.models import TextField, Value
 from django.db.models.functions import Coalesce, Concat
 from django.utils import timezone
 
-from core.models import DataProcessingJob
+from ncaa.models import DataProcessingJob
 
 logger = logging.getLogger(__name__)
 

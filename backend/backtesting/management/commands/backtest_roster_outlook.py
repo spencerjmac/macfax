@@ -236,7 +236,7 @@ class Command(BaseCommand):
         # Fit-capable = source years that have real TeamRosterFit rows in the DB
         # (backfilled via `backfill_roster_fit` for BPR-capable seasons).
         try:
-            from core.models import TeamRosterFit
+            from ncaa.models import TeamRosterFit
             fit_capable_source_years = set(
                 TeamRosterFit.objects
                 .values_list("from_season__year", flat=True)

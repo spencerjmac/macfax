@@ -300,7 +300,7 @@ def _model_b(
     Minutes-unweighted average BPR → direct engine formula (no continuity/fit).
     Equal contribution from each qualifying player; tests raw talent signal only.
     """
-    from core.analytics.player_value.team_projection.constants import SLOPE_OFF, SLOPE_DEF
+    from ncaa.analytics.player_value.team_projection.constants import SLOPE_OFF, SLOPE_DEF
 
     n = len(players)
     avg_obpr = sum(p.obpr for p in players) / n
@@ -335,7 +335,7 @@ def _model_c(
     Minutes-weighted BPR → engine translation formula, NO continuity or fit.
     Tests whether minutes weighting improves over equal weight (Model B).
     """
-    from core.analytics.player_value.team_projection.constants import SLOPE_OFF, SLOPE_DEF
+    from ncaa.analytics.player_value.team_projection.constants import SLOPE_OFF, SLOPE_DEF
 
     base_off = sum(p.minutes_share_p2 * p.obpr for p in players)
     base_def = sum(p.minutes_share_p2 * p.dbpr for p in players)
@@ -499,7 +499,7 @@ def _model_f(
             returner_fraction=None,
         )
 
-    from core.analytics.player_value.team_projection.constants import SLOPE_OFF, SLOPE_DEF
+    from ncaa.analytics.player_value.team_projection.constants import SLOPE_OFF, SLOPE_DEF
 
     bumped: list[PlayerRow] = []
     for p in players:
@@ -564,7 +564,7 @@ def _run_engine(
                     loading this via _load_roster_fit() before calling here so
                     that fit_used can be tracked on the returned TeamPrediction.
     """
-    from core.analytics.player_value.team_projection.engine import (
+    from ncaa.analytics.player_value.team_projection.engine import (
         D1Context,
         PlayerProjectionInput,
         project_team,
@@ -597,8 +597,8 @@ def _run_engine(
 def _load_roster_fit(team_slug: str, source_year: int):
     """Load TeamRosterFit for team+year, or return None if unavailable."""
     try:
-        from core.models import TeamRosterFit
-        from core.analytics.player_value.team_projection.engine import RosterFitInput
+        from ncaa.models import TeamRosterFit
+        from ncaa.analytics.player_value.team_projection.engine import RosterFitInput
         fit = TeamRosterFit.objects.filter(
             team__slug=team_slug,
             from_season__year=source_year,

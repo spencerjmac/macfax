@@ -37,7 +37,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "corsheaders",
     # Local apps
-    "core",
+    "ncaa",
     "api",
     "backtesting",
     "nba",
@@ -80,7 +80,7 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 DATABASES = {
     "default": dj_database_url.config(
-        default="postgresql:///cbb_dashboard",
+        default="postgresql:///macfax",
         conn_max_age=600,
     )
 }

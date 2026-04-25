@@ -23,7 +23,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import get_object_or_404
 
-from core.models import Season, TeamSeasonRatings, TeamSeasonMetrics, NationalAverages
+from ncaa.models import Season, TeamSeasonRatings, TeamSeasonMetrics, NationalAverages
 from .serializers import RankingsSerializer
 from .bracket_engine import build_bracket_from_ratings, compute_p_sweet16
 

@@ -6,7 +6,7 @@ Tests API behavior, site toggle, edge cases, and data validation.
 
 from django.test import TestCase, Client
 from django.urls import reverse
-from core.models import (
+from ncaa.models import (
     Season, Conference, Team, TeamSeasonRatings, 
     TeamSeasonStats, NationalAverages, TeamGameStats, Game
 )

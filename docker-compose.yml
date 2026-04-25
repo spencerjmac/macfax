@@ -14,9 +14,9 @@ services:
   db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: cbb_analytics
-      POSTGRES_USER: cbb_user
-      POSTGRES_PASSWORD: cbb_password
+      POSTGRES_DB: macfax
+      POSTGRES_USER: macfax_user
+      POSTGRES_PASSWORD: macfax_password
     networks:
       web:
         aliases:
@@ -24,7 +24,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U cbb_user -d cbb_analytics"]
+      test: ["CMD-SHELL", "pg_isready -U macfax_user -d macfax"]
       interval: 10s
       timeout: 5s
       retries: 5

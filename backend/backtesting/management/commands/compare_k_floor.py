@@ -13,7 +13,7 @@ from datetime import date
 from django.core.management.base import BaseCommand
 from django.db.models import Count
 
-from core.models import Game, NationalAverages, Team, TeamGameStats
+from ncaa.models import Game, NationalAverages, Team, TeamGameStats
 
 ITERATIONS = 75
 CONVERGENCE = 0.001
