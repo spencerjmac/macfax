@@ -400,7 +400,7 @@ function VizBuilderPageInner() {
   function handleChartClick(params: any) {
     if (params.componentType === 'series' && params.seriesType === 'scatter') {
       const point = params.data.point;
-      router.push(`/team/${point.slug}`);
+      router.push(`/ncaa/team/${point.slug}`);
     }
   }
 
