@@ -57,7 +57,7 @@ export default async function RankingsPage({ searchParams }: RankingsPageProps) 
           ].map(({ id, label, icon: Icon }) => (
             <Link
               key={id}
-              href={`/rankings?tab=${id}${seasonParam}`}
+              href={`/ncaa/rankings?tab=${id}${seasonParam}`}
               className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
                 activeTab === id
                   ? 'border-brand text-brand'
