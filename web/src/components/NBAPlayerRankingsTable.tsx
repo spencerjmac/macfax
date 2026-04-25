@@ -7,9 +7,11 @@ import {
   getCoreRowModel,
   getSortedRowModel,
   getFilteredRowModel,
+  getPaginationRowModel,
   ColumnDef,
   flexRender,
   SortingState,
+  PaginationState,
 } from '@tanstack/react-table';
 import clsx from 'clsx';
 import HeaderWithTooltip from './HeaderWithTooltip';
@@ -46,11 +48,14 @@ const PLUS_MINUS_META: PlayerMetricMeta = {
   format: 'number1', better: 'higher', showRank: false, heatmap: true,
 };
 
+const PAGE_SIZE = 100;
+
 export default function NBAPlayerRankingsTable({ data, seasonDisplay }: NBAPlayerRankingsTableProps) {
   const [activeTab, setActiveTab] = useState<TabId>('traditional');
   const [sorting, setSorting] = useState<SortingState>([{ id: 'pts', desc: true }]);
   const [globalFilter, setGlobalFilter] = useState('');
   const [minPoss, setMinPoss] = useState(500);
+  const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: PAGE_SIZE });
 
   const tabs = [
     { id: 'traditional' as TabId, label: 'Traditional' },
@@ -199,7 +204,7 @@ export default function NBAPlayerRankingsTable({ data, seasonDisplay }: NBAPlaye
           : undefined;
         return (
           <span className="font-mono font-semibold text-sm text-text-muted">
-            {rank ?? info.row.index + 1}
+            {rank ?? pagination.pageIndex * PAGE_SIZE + info.row.index + 1}
           </span>
         );
       },
@@ -217,12 +222,20 @@ export default function NBAPlayerRankingsTable({ data, seasonDisplay }: NBAPlaye
   const table = useReactTable({
     data: filtered,
     columns,
-    state: { sorting, globalFilter },
-    onSortingChange: setSorting,
-    onGlobalFilterChange: setGlobalFilter,
+    state: { sorting, globalFilter, pagination },
+    onSortingChange: (updater) => {
+      setSorting(updater);
+      setPagination((p) => ({ ...p, pageIndex: 0 }));
+    },
+    onGlobalFilterChange: (updater) => {
+      setGlobalFilter(updater);
+      setPagination((p) => ({ ...p, pageIndex: 0 }));
+    },
+    onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
   });
 
   return (
@@ -233,7 +246,10 @@ export default function NBAPlayerRankingsTable({ data, seasonDisplay }: NBAPlaye
           <input
             type="text"
             value={globalFilter}
-            onChange={(e) => setGlobalFilter(e.target.value)}
+            onChange={(e) => {
+              setGlobalFilter(e.target.value);
+              setPagination((p) => ({ ...p, pageIndex: 0 }));
+            }}
             placeholder="Search players or teams..."
             className="w-full px-3 py-2 bg-ui-surface border border-ui-border rounded-lg text-sm
                        focus:outline-none focus:ring-2 focus:ring-brand/50"
@@ -242,7 +258,10 @@ export default function NBAPlayerRankingsTable({ data, seasonDisplay }: NBAPlaye
         <div>
           <select
             value={minPoss}
-            onChange={(e) => setMinPoss(Number(e.target.value))}
+            onChange={(e) => {
+              setMinPoss(Number(e.target.value));
+              setPagination((p) => ({ ...p, pageIndex: 0 }));
+            }}
             className="px-3 py-2 bg-ui-surface border border-ui-border rounded-lg text-sm
                        focus:outline-none focus:ring-2 focus:ring-brand/50"
           >
@@ -266,6 +285,7 @@ export default function NBAPlayerRankingsTable({ data, seasonDisplay }: NBAPlaye
               onClick={() => {
                 setActiveTab(tab.id);
                 setSorting(tabDefaultSort[tab.id]);
+                setPagination((p) => ({ ...p, pageIndex: 0 }));
               }}
               className={clsx(
                 'px-4 py-2 text-sm font-medium transition-colors',
@@ -338,6 +358,47 @@ export default function NBAPlayerRankingsTable({ data, seasonDisplay }: NBAPlaye
 
       {table.getFilteredRowModel().rows.length === 0 && (
         <div className="text-center py-8 text-text-muted">No players found. Try adjusting the filters.</div>
+      )}
+
+      {/* ── Pagination ────────────────────────────────────────────────────── */}
+      {table.getPageCount() > 1 && (
+        <div className="flex items-center justify-between text-sm text-text-muted">
+          <span>
+            Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
+            {' · '}
+            {table.getFilteredRowModel().rows.length} players total
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => table.setPageIndex(0)}
+              disabled={!table.getCanPreviousPage()}
+              className="px-2 py-1 rounded border border-ui-border disabled:opacity-40 hover:bg-ui-hover"
+            >
+              «
+            </button>
+            <button
+              onClick={() => table.previousPage()}
+              disabled={!table.getCanPreviousPage()}
+              className="px-3 py-1 rounded border border-ui-border disabled:opacity-40 hover:bg-ui-hover"
+            >
+              ‹ Prev
+            </button>
+            <button
+              onClick={() => table.nextPage()}
+              disabled={!table.getCanNextPage()}
+              className="px-3 py-1 rounded border border-ui-border disabled:opacity-40 hover:bg-ui-hover"
+            >
+              Next ›
+            </button>
+            <button
+              onClick={() => table.setPageIndex(table.getPageCount() - 1)}
+              disabled={!table.getCanNextPage()}
+              className="px-2 py-1 rounded border border-ui-border disabled:opacity-40 hover:bg-ui-hover"
+            >
+              »
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
