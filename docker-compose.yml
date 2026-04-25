@@ -1,4 +1,16 @@
 services:
+  redis:
+    image: redis:7-alpine
+    networks:
+      web:
+        aliases:
+          - macfax_redis
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   db:
     image: postgres:16-alpine
     environment:
@@ -26,6 +38,8 @@ services:
       - .env.docker
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     networks:
       web:

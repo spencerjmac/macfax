@@ -2,6 +2,7 @@
 DRF Views for CBB Analytics API
 """
 
+from django.core.cache import cache
 from django.views.decorators.cache import cache_page
 from django.utils.decorators import method_decorator
 from rest_framework import viewsets, status, generics
@@ -532,6 +533,12 @@ class MatchupViewSet(viewsets.ViewSet):
 
         # Get season
         season_year = request.query_params.get("season")
+
+        # Cache check — key encodes all inputs that affect the result
+        _cache_key = f"matchup:{team_a_slug}:{team_b_slug}:{site}:{season_year or 'current'}"
+        _cached = cache.get(_cache_key)
+        if _cached is not None:
+            return Response(_cached)
         if season_year:
             season = get_object_or_404(Season, year=season_year)
         else:
@@ -875,8 +882,7 @@ class MatchupViewSet(viewsets.ViewSet):
         )
 
         # Build response
-        return Response(
-            {
+        _response_data = {
                 "season": season.display_name,
                 "site": site,
                 "teamA": {
@@ -933,7 +939,8 @@ class MatchupViewSet(viewsets.ViewSet):
                     },
                 },
             }
-        )
+        cache.set(_cache_key, _response_data, 60 * 30)  # 30 min TTL
+        return Response(_response_data)
 
 
 class GameViewSet(viewsets.ReadOnlyModelViewSet):
