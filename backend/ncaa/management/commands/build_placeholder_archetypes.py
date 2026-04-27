@@ -60,6 +60,7 @@ from ncaa.models import PlaceholderArchetype, PlayerSeasonProjection, PlayerSeas
 # --------------------------------------------------------------------------- #
 
 # Elite threshold: top-15% of national starters → computed dynamically.
+# All-Conference threshold: p60–p85 of national starters → computed dynamically.
 _ARCHETYPES: list[tuple[str, str, str, str, str]] = [
     # ── Tier 1: 15 broad baseline archetypes ──────────────────────────────── #
     # key,                      display_name,                    conf_group,   role,   tier
@@ -87,12 +88,42 @@ _ARCHETYPES: list[tuple[str, str, str, str, str]] = [
     ("high_mid_rotation_g",     "High Mid-Major Guard (Reserve)",   "high_mid", "G",    "rotation"),
     ("high_mid_rotation_wing",  "High Mid-Major Wing (Reserve)",    "high_mid", "Wing", "rotation"),
     ("high_mid_rotation_big",   "High Mid-Major Big (Reserve)",     "high_mid", "Big",  "rotation"),
+
+    # ── Tier 3: all_conference archetypes (p60–p85 of national starters) ──── #
+    ("national_allconf_g",       "All-Conference Guard (National)",  "national",  "G",    "all_conference"),
+    ("national_allconf_wing",    "All-Conference Wing (National)",   "national",  "Wing", "all_conference"),
+    ("national_allconf_big",     "All-Conference Big (National)",    "national",  "Big",  "all_conference"),
+    ("power_allconf_g",          "All-Conference Guard (Power)",     "power",     "G",    "all_conference"),
+    ("power_allconf_wing",       "All-Conference Wing (Power)",      "power",     "Wing", "all_conference"),
+    ("power_allconf_big",        "All-Conference Big (Power)",       "power",     "Big",  "all_conference"),
+    ("high_mid_allconf_g",       "All-Conference Guard (High Mid)",  "high_mid",  "G",    "all_conference"),
+    ("high_mid_allconf_wing",    "All-Conference Wing (High Mid)",   "high_mid",  "Wing", "all_conference"),
+    ("high_mid_allconf_big",     "All-Conference Big (High Mid)",    "high_mid",  "Big",  "all_conference"),
+    ("mid_allconf_g",            "All-Conference Guard (Mid-Major)", "mid_major", "G",    "all_conference"),
+    ("mid_allconf_wing",         "All-Conference Wing (Mid-Major)",  "mid_major", "Wing", "all_conference"),
+    ("mid_allconf_big",          "All-Conference Big (Mid-Major)",   "mid_major", "Big",  "all_conference"),
+
+    # ── Tier 4: bench archetypes (below rotation minutes threshold) ───────── #
+    ("national_bench_g",         "Bench Guard (National)",           "national",  "G",    "bench"),
+    ("national_bench_wing",      "Bench Wing (National)",            "national",  "Wing", "bench"),
+    ("national_bench_big",       "Bench Big (National)",             "national",  "Big",  "bench"),
+    ("power_bench_g",            "Bench Guard (Power)",              "power",     "G",    "bench"),
+    ("power_bench_wing",         "Bench Wing (Power)",               "power",     "Wing", "bench"),
+    ("power_bench_big",          "Bench Big (Power)",                "power",     "Big",  "bench"),
+    ("high_mid_bench_g",         "Bench Guard (High Mid)",           "high_mid",  "G",    "bench"),
+    ("high_mid_bench_wing",      "Bench Wing (High Mid)",            "high_mid",  "Wing", "bench"),
+    ("high_mid_bench_big",       "Bench Big (High Mid)",             "high_mid",  "Big",  "bench"),
+    ("mid_bench_g",              "Bench Guard (Mid-Major)",          "mid_major", "G",    "bench"),
+    ("mid_bench_wing",           "Bench Wing (Mid-Major)",           "mid_major", "Wing", "bench"),
+    ("mid_bench_big",            "Bench Big (Mid-Major)",            "mid_major", "Big",  "bench"),
 ]
 
-STARTER_MS_MIN  = 0.375   # minutes_share_p2 ≥ this → starter
-ROTATION_MS_MIN = 0.20    # minutes_share_p2 ≥ this → rotation
-ROTATION_MS_MAX = 0.375   # minutes_share_p2 < this → rotation (upper bound)
-ELITE_BPR_PERCENTILE = 0.85  # Bottom of the elite tier (top 15% nationally)
+STARTER_MS_MIN       = 0.375   # minutes_share_p2 ≥ this → starter
+ROTATION_MS_MIN      = 0.20    # minutes_share_p2 ≥ this → rotation
+ROTATION_MS_MAX      = 0.375   # minutes_share_p2 < this → rotation (upper bound)
+BENCH_MS_MIN         = 0.05    # minutes_share_p2 ≥ this → bench (below rotation)
+ELITE_BPR_PERCENTILE = 0.85    # Bottom of the elite tier (top 15% nationally)
+ALL_CONF_BPR_PERCENTILE = 0.60 # Bottom of all_conference tier (top 40%→15% nationally)
 
 # Tier 1 minimum bucket size — warn but still write if below this.
 MIN_BUCKET_SIZE = 30
@@ -210,11 +241,13 @@ class Command(BaseCommand):
         # using get_conf_detail (fine: power|high_mid|mid_major).
         buckets: dict[str, dict[str, dict[str, list[dict]]]] = {}
         for cg in ("national", "power", "mid_major"):
-            buckets[cg] = {role: {"starter": [], "rotation": [], "all_starters": []}
-                           for role in ("G", "Wing", "Big")}
+            buckets[cg] = {
+                role: {"starter": [], "rotation": [], "bench": [], "all_starters": []}
+                for role in ("G", "Wing", "Big")
+            }
 
         high_mid_buckets: dict[str, dict[str, list[dict]]] = {
-            role: {"starter": [], "rotation": []}
+            role: {"starter": [], "rotation": [], "bench": []}
             for role in ("G", "Wing", "Big")
         }
 
@@ -251,15 +284,24 @@ class Command(BaseCommand):
                 buckets[cg][role]["rotation"].append(record)
                 if cg_detail == "high_mid":
                     high_mid_buckets[role]["rotation"].append(record)
+            elif ms >= BENCH_MS_MIN:
+                buckets[cg][role]["bench"].append(record)
+                buckets["national"][role]["bench"].append(record)
+                if cg_detail == "high_mid":
+                    high_mid_buckets[role]["bench"].append(record)
 
-        # ── 3. Compute elite BPR thresholds (per role) ────────────────────── #
+        # ── 3. Compute elite + all_conference BPR thresholds (per role) ──── #
         elite_thresholds: dict[str, float] = {}
+        all_conf_thresholds: dict[str, float] = {}
         for role in ("G", "Wing", "Big"):
             sorted_bpr = sorted(nat_starter_bpr[role])
             elite_thresholds[role] = _percentile(sorted_bpr, ELITE_BPR_PERCENTILE)
+            all_conf_thresholds[role] = _percentile(sorted_bpr, ALL_CONF_BPR_PERCENTILE)
             self.stdout.write(
                 f"  Elite BPR threshold [{role}]: ≥{elite_thresholds[role]:.3f} "
-                f"(p{ELITE_BPR_PERCENTILE*100:.0f} of {len(sorted_bpr)} national starters)"
+                f"  All-Conf threshold [{role}]: ≥{all_conf_thresholds[role]:.3f} "
+                f"(p{ELITE_BPR_PERCENTILE*100:.0f}/p{ALL_CONF_BPR_PERCENTILE*100:.0f} "
+                f"of {len(sorted_bpr)} national starters)"
             )
 
         # ── 4. Load stat profiles (PlayerSeasonStats for season_year) ─────── #
@@ -277,7 +319,8 @@ class Command(BaseCommand):
         for spec in _ARCHETYPES:
             key, display_name, conf_group, role, tier = spec
             player_records = self._select_bucket(
-                buckets, high_mid_buckets, conf_group, role, tier, elite_thresholds
+                buckets, high_mid_buckets, conf_group, role, tier,
+                elite_thresholds, all_conf_thresholds,
             )
 
             n = len(player_records)
@@ -384,6 +427,7 @@ class Command(BaseCommand):
         role: str,
         tier: str,
         elite_thresholds: dict[str, float],
+        all_conf_thresholds: dict[str, float],
     ) -> list[dict]:
         """Return the list of player records that belong to this archetype bucket."""
         if tier == "elite":
@@ -393,6 +437,37 @@ class Command(BaseCommand):
                 r for r in buckets["national"][role]["all_starters"]
                 if (r["bpr"] or 0.0) >= threshold
             ]
+
+        if tier == "all_conference":
+            # All-Conference: top 40% of each conf_group's starter pool by BPR.
+            # National tier uses the p60–p85 slice of all D1 national starters,
+            # representing the best players below All-American level.
+            # Conf-specific tiers use the top 40% of that conf's starter bucket,
+            # so "All-Conference Power" reflects the best Power starters, etc.
+            if conf_group == "national":
+                lo = all_conf_thresholds[role]
+                hi = elite_thresholds[role]
+                return [
+                    r for r in buckets["national"][role]["all_starters"]
+                    if lo <= (r["bpr"] or 0.0) < hi
+                ]
+            if conf_group == "high_mid":
+                pool = sorted(
+                    high_mid_buckets[role]["starter"],
+                    key=lambda r: r["bpr"] or 0.0, reverse=True,
+                )
+            else:
+                pool = sorted(
+                    buckets[conf_group][role]["starter"],
+                    key=lambda r: r["bpr"] or 0.0, reverse=True,
+                )
+            cutoff = max(1, int(len(pool) * 0.40))
+            return pool[:cutoff]
+
+        if tier == "bench":
+            if conf_group == "high_mid":
+                return high_mid_buckets[role].get("bench", [])
+            return buckets[conf_group][role]["bench"]
 
         if conf_group == "high_mid":
             # Tier 2: uses the fine-grained high_mid bucket (WCC/MWC/A10/Amer)
