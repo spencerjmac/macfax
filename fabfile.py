@@ -135,3 +135,11 @@ def shell(c):
     with _conn() as conn:
         with conn.cd(APP_DIR):
             conn.run(f"{COMPOSE} exec backend bash", pty=True)
+
+
+@task
+def manage(c, cmd):
+    """Run a manage.py command inside the backend container."""
+    with _conn() as conn:
+        with conn.cd(APP_DIR):
+            conn.run(f"{COMPOSE} exec backend python manage.py {cmd}", pty=True)
