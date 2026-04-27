@@ -52,6 +52,11 @@ from core.analytics.player_value.bpr.constants import (
     RECRUITING_UNRATED_PRIOR_MEAN_DEF,
     RECRUITING_UNRATED_PRIOR_SD_OFF,
     RECRUITING_UNRATED_PRIOR_SD_DEF,
+    RECRUITING_RANK_BONUS_OFF,
+    RECRUITING_RANK_BONUS_DEF,
+    RECRUITING_RANK_CUTOFF,
+    RECRUITING_TEAM_ADJM_FACTOR_OFF,
+    RECRUITING_TEAM_ADJM_FACTOR_DEF,
 )
 
 
@@ -60,6 +65,9 @@ def build_prior_maps(
     box_bpr_preds: dict[int, dict],  # player_id → {box_obpr, box_dbpr}  (from box_bpr.predict_box_bpr)
     prior_history: "dict[int, dict] | None" = None,  # player_id → {baseline_obpr, baseline_dbpr}
     recruiting_priors: "dict[int, dict] | None" = None,  # player_id → {stars, composite_score}
+    preseason_preds: "dict[int, dict] | None" = None,  # player_id → {obpr_mean, dbpr_mean, obpr_sd, dbpr_sd}
+    prior_sd_box_off: "float | None" = None,  # R²-derived; falls back to PRIOR_SD_BOX_OFF constant
+    prior_sd_box_def: "float | None" = None,  # R²-derived; falls back to PRIOR_SD_BOX_DEF constant
 ) -> tuple[dict[int, float], dict[int, float], dict[int, float], dict[int, float]]:
     """
     Build prior mean and SD maps for all players in the RAPM design matrix.
@@ -84,15 +92,31 @@ def build_prior_maps(
     prior_sd_obpr:   dict[int, float] = {}
     prior_sd_dbpr:   dict[int, float] = {}
 
+    # Use R²-derived SDs when provided; fall back to constants otherwise.
+    _sd_box_off = prior_sd_box_off if prior_sd_box_off is not None else PRIOR_SD_BOX_OFF
+    _sd_box_def = prior_sd_box_def if prior_sd_box_def is not None else PRIOR_SD_BOX_DEF
+
     _recruiting = recruiting_priors or {}
+    _preseason  = preseason_preds or {}
 
     for pid in player_ids:
         box  = box_bpr_preds.get(pid)
         hist = prior_history.get(pid) if prior_history else None
         rec  = _recruiting.get(pid)
+        pre  = _preseason.get(pid)
 
-        if box is not None:
-            # ── Box BPR prior (primary path — most accurate) ─────────────────
+        if pre is not None:
+            # ── Preseason regression prior (best path) ────────────────────────
+            # Learned Ridge regression combining prior RAPM history, current box
+            # BPR, position, class year, and competition adjustment (transfers).
+            # Prior SD comes from per-group residual variance of the trained model.
+            prior_mean_obpr[pid] = pre["obpr_mean"]
+            prior_mean_dbpr[pid] = pre["dbpr_mean"]
+            prior_sd_obpr[pid]   = pre["obpr_sd"]
+            prior_sd_dbpr[pid]   = pre["dbpr_sd"]
+
+        elif box is not None:
+            # ── Box BPR prior (fallback — no preseason model coverage) ────────
             box_obpr = box["box_obpr"]
             box_dbpr = box["box_dbpr"]
 
@@ -107,15 +131,35 @@ def build_prior_maps(
 
             prior_mean_obpr[pid] = box_obpr
             prior_mean_dbpr[pid] = box_dbpr
-            prior_sd_obpr[pid]   = PRIOR_SD_BOX_OFF
-            prior_sd_dbpr[pid]   = PRIOR_SD_BOX_DEF
+            prior_sd_obpr[pid]   = _sd_box_off
+            prior_sd_dbpr[pid]   = _sd_box_def
 
         elif rec is not None:
             # ── Recruiting-tier prior (Phase C1 — freshmen with no box BPR) ──
-            stars = rec.get("stars")
+            stars         = rec.get("stars")
+            national_rank = rec.get("national_rank")
+            team_adj_em   = float(rec.get("team_adj_em") or 0.0)
+
             if stars is not None and stars in RECRUITING_PRIOR_MEAN_OFF:
-                prior_mean_obpr[pid] = RECRUITING_PRIOR_MEAN_OFF[stars]
-                prior_mean_dbpr[pid] = RECRUITING_PRIOR_MEAN_DEF[stars]
+                base_off = RECRUITING_PRIOR_MEAN_OFF[stars]
+                base_def = RECRUITING_PRIOR_MEAN_DEF[stars]
+
+                # National rank bonus: decays linearly from BONUS_MAX at rank 1
+                # to 0 at RANK_CUTOFF. Only applied for tiers with defined bonus.
+                rank_bonus_off = 0.0
+                rank_bonus_def = 0.0
+                if national_rank is not None and stars in RECRUITING_RANK_BONUS_OFF:
+                    cutoff = RECRUITING_RANK_CUTOFF[stars]
+                    frac = max(0.0, 1.0 - national_rank / cutoff)
+                    rank_bonus_off = RECRUITING_RANK_BONUS_OFF[stars] * frac
+                    rank_bonus_def = RECRUITING_RANK_BONUS_DEF[stars] * frac
+
+                # Team context: strong programs → freshman more likely to contribute
+                team_bonus_off = max(0.0, team_adj_em * RECRUITING_TEAM_ADJM_FACTOR_OFF)
+                team_bonus_def = max(0.0, team_adj_em * RECRUITING_TEAM_ADJM_FACTOR_DEF)
+
+                prior_mean_obpr[pid] = base_off + rank_bonus_off + team_bonus_off
+                prior_mean_dbpr[pid] = base_def + rank_bonus_def + team_bonus_def
                 prior_sd_obpr[pid]   = RECRUITING_PRIOR_SD_OFF[stars]
                 prior_sd_dbpr[pid]   = RECRUITING_PRIOR_SD_DEF[stars]
             else:
