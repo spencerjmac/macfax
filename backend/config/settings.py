@@ -37,7 +37,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "corsheaders",
     # Local apps
-    "core",
+    "ncaa",
     "api",
     "backtesting",
     "nba",
@@ -80,7 +80,7 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 DATABASES = {
     "default": dj_database_url.config(
-        default="postgresql:///cbb_dashboard",
+        default="postgresql:///macfax",
         conn_max_age=600,
     )
 }
@@ -111,13 +111,18 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Caching
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/1")
+
 CACHES = {
     'default': {
-        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-        'LOCATION': 'cbb-analytics-cache',
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': REDIS_URL,
         'OPTIONS': {
-            'MAX_ENTRIES': 1000,
-        }
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+            'MAX_ENTRIES': 5000,
+        },
+        'KEY_PREFIX': 'macfax',
+        'TIMEOUT': 300,
     }
 }
 

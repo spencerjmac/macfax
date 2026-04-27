@@ -22,7 +22,7 @@ from scipy import stats as scipy_stats
 
 from django.core.management.base import BaseCommand
 
-from core.models import Game, NationalAverages, Team, TeamGameStats
+from ncaa.models import Game, NationalAverages, Team, TeamGameStats
 
 # Mirror production constants exactly
 CONVERGENCE = 0.001

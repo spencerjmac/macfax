@@ -532,7 +532,7 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
             value={selectedSeason ?? ''}
             onChange={(e) => {
               const val = e.target.value;
-              router.push(val ? `/rankings?tab=players&season=${val}` : '/rankings?tab=players');
+              router.push(val ? `/ncaa/rankings?tab=players&season=${val}` : '/ncaa/rankings?tab=players');
             }}
             className="px-3 py-2 bg-ui-surface border border-ui-border rounded-lg text-sm
                        focus:outline-none focus:ring-2 focus:ring-brand/50"

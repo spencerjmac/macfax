@@ -32,6 +32,8 @@ dependencies = [
     "tenacity==8.2.3",
     "nba-api>=1.9.0",
     "scikit-learn>=1.8.0",
+    "django-redis>=5.4.0",
+    "redis>=5.0.0",
 ]
 
 [project.optional-dependencies]

@@ -6,7 +6,7 @@ historical champion thresholds.
 """
 
 from typing import Dict, List, Optional, Any
-from core.models import TeamSeasonStats
+from ncaa.models import TeamSeasonStats
 from .trapezoid_views import compute_trapezoid_boundaries, is_inside_trapezoid
 import numpy as np
 
@@ -487,7 +487,7 @@ def _check_wab(team_stats: TeamSeasonStats) -> Dict[str, Any]:
     if wab is None:
         # Fallback to TeamSeasonRatings
         try:
-            from core.models import TeamSeasonRatings
+            from ncaa.models import TeamSeasonRatings
             ratings = TeamSeasonRatings.objects.get(
                 team=team_stats.team,
                 season=team_stats.season

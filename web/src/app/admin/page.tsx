@@ -137,6 +137,9 @@ export default function AdminPage() {
   const [authError, setAuthError] = useState('');
 
   // form
+  const [jobType, setJobType] = useState<
+    'update_ncaa_teams' | 'update_ncaa_players' | 'update_nba_teams' | 'update_nba_players' | null
+  >(null);
   const [season, setSeason] = useState('');
   const [days, setDays] = useState('');
   const [skipIngest, setSkipIngest] = useState(false);
@@ -154,10 +157,10 @@ export default function AdminPage() {
   const MAX_LOG_LINES = 2500;
   const [logLines, setLogLines] = useState<string[]>([]);
   const [streamDisconnected, setStreamDisconnected] = useState(false);
-  const termRef = useRef<HTMLDivElement>(null);
-  const esRef = useRef<EventSource | null>(null);
+
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttemptsRef = useRef(0);
-  const RECONNECT_MAX = 3;
+  const termRef = useRef<HTMLDivElement | null>(null);
   const RECONNECT_DELAY_MS = 2000;
 
   // history
@@ -255,67 +258,60 @@ export default function AdminPage() {
     }
   };
 
-  // ── SSE stream ─────────────────────────────────────────────────────────────
-  // since = line index to resume from (server sends only lines from there; browser sends Last-Event-ID automatically)
-  const openStream = useCallback((jobDbId: number, isReattach = false, since?: number) => {
-    if (esRef.current) {
-      esRef.current.close();
-      esRef.current = null;
+  // ── Polling stream ─────────────────────────────────────────────────────────────
+  const openStream = useCallback((jobDbId: number, isReattach = false) => {
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
     }
     if (isReattach) {
       reconnectAttemptsRef.current = 0;
-      if (since == null || since === 0) setLogLines([]);
     }
     setStreamDisconnected(false);
     setJobStatus('running');
-    const url =
-      since != null && since > 0
-        ? `${API}/api/jobs/${jobDbId}/stream/?since=${since}`
-        : `${API}/api/jobs/${jobDbId}/stream/`;
-    const es = new EventSource(url, { withCredentials: true });
-    esRef.current = es;
 
-    es.onmessage = (evt) => {
-      const data = JSON.parse(evt.data);
-      if (data.type === 'log') {
-        setLogLines((prev) => {
-          const next = [...prev, data.line as string];
-          return next.length > MAX_LOG_LINES ? next.slice(-MAX_LOG_LINES) : next;
-        });
-      } else if (data.type === 'done') {
-        setJobStatus(data.status as string);
-        setRunningJobDbId(null);
-        setStreamDisconnected(false);
-        reconnectAttemptsRef.current = 0;
-        es.close();
-        esRef.current = null;
-        loadJobs();
-      } else if (data.type === 'error') {
+    const pollLogs = async () => {
+      try {
+        const r = await apiFetch(`/api/jobs/${jobDbId}/job_status/`);
+        if (!r.ok) throw new Error('Poll failed');
+        const data = await r.json();
+        
+        if (data.logs) {
+          const lines = data.logs.split('\n');
+          setLogLines((prev) => {
+            return lines.length > MAX_LOG_LINES ? lines.slice(-MAX_LOG_LINES) : lines;
+          });
+        }
+        
+        if (['success', 'failed', 'cancelled'].includes(data.status)) {
+          setJobStatus(data.status);
+          setRunningJobDbId(null);
+          setStreamDisconnected(false);
+          if (pollIntervalRef.current) {
+            clearInterval(pollIntervalRef.current);
+            pollIntervalRef.current = null;
+          }
+          loadJobs();
+        }
+      } catch (err) {
         setStreamDisconnected(true);
       }
     };
 
-    es.onerror = () => {
-      es.close();
-      esRef.current = null;
-      const attempts = reconnectAttemptsRef.current;
-      if (attempts < RECONNECT_MAX) {
-        reconnectAttemptsRef.current = attempts + 1;
-        setTimeout(() => openStream(jobDbId), RECONNECT_DELAY_MS);
-      } else {
-        setStreamDisconnected(true);
-      }
-    };
+    pollLogs(); // Initial fetch
+    pollIntervalRef.current = setInterval(pollLogs, 2000);
   }, []);
 
   // ── Job control ────────────────────────────────────────────────────────────
-  const startJob = async () => {
+  const startJob = async (selectedJobType: string) => {
     setStartError('');
     setSubmitting(true);
     setLogLines([]);
     setJobStatus('pending');
+    setJobType(selectedJobType as typeof jobType);
 
     const body: Record<string, unknown> = {
+      job_type: selectedJobType,
       season: parseInt(season),
       skip_ingest: skipIngest,
       iterations,
@@ -498,9 +494,9 @@ export default function AdminPage() {
     });
     if (r.ok) {
       setJobStatus('cancelled');
-      if (esRef.current) {
-        esRef.current.close();
-        esRef.current = null;
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
       }
       setRunningJobDbId(null);
       loadJobs();
@@ -624,7 +620,7 @@ export default function AdminPage() {
         {/* ── Left panel: controls ─────────────────────────────────────── */}
         <aside className="w-72 flex-shrink-0 border-r border-gray-800 p-5 overflow-y-auto">
           <h2 className="text-sm font-semibold text-gray-300 mb-4 uppercase tracking-wide">
-            Run Update All
+            Pipeline Commands
           </h2>
 
           <div className="space-y-4">
@@ -646,24 +642,6 @@ export default function AdminPage() {
               </select>
             </div>
 
-            {/* Last N days */}
-            <div>
-              <label className="block text-xs text-gray-400 mb-1">
-                Last N days{' '}
-                <span className="text-gray-600">(blank = full season)</span>
-              </label>
-              <input
-                type="number"
-                value={days}
-                onChange={(e) => setDays(e.target.value)}
-                disabled={isRunning || skipIngest}
-                placeholder="e.g. 3"
-                min="1"
-                max="30"
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500 disabled:opacity-50"
-              />
-            </div>
-
             {/* Skip ingest */}
             <label className="flex items-center gap-2 cursor-pointer">
               <input
@@ -679,63 +657,75 @@ export default function AdminPage() {
               <span className="text-sm text-gray-300">Skip game ingestion</span>
             </label>
 
-            {/* Advanced */}
-            <details className="group">
-              <summary className="text-xs text-gray-500 cursor-pointer hover:text-gray-300 select-none">
-                Advanced options
-              </summary>
-              <div className="mt-3 space-y-3">
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">
-                    Iterations
-                  </label>
-                  <input
-                    type="number"
-                    value={iterations}
-                    onChange={(e) => setIterations(parseInt(e.target.value))}
-                    disabled={isRunning}
-                    min="1"
-                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-sm text-white focus:outline-none focus:border-blue-500 disabled:opacity-50"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">
-                    SOR Trials
-                  </label>
-                  <input
-                    type="number"
-                    value={sorTrials}
-                    onChange={(e) => setSorTrials(parseInt(e.target.value))}
-                    disabled={isRunning}
-                    min="100"
-                    step="1000"
-                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-sm text-white focus:outline-none focus:border-blue-500 disabled:opacity-50"
-                  />
-                </div>
-              </div>
-            </details>
-
             {startError && (
               <p className="text-xs text-yellow-400">{startError}</p>
             )}
 
-            {/* Run / Abort */}
-            {isRunning ? (
-              <button
-                onClick={cancelJob}
-                className="w-full bg-red-700 hover:bg-red-600 text-white py-2 rounded text-sm font-medium transition"
-              >
-                Abort Job
-              </button>
-            ) : (
-              <button
-                onClick={startJob}
-                disabled={submitting || !season}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded text-sm font-medium transition disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                {submitting ? 'Starting…' : 'Run Pipeline'}
-              </button>
-            )}
+            {/* NCAA commands */}
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">NCAA</p>
+              <div className="space-y-2">
+                {isRunning && jobType === 'update_ncaa_teams' ? (
+                  <button onClick={cancelJob} className="w-full bg-red-700 hover:bg-red-600 text-white py-2 rounded text-sm font-medium transition">
+                    Abort NCAA Teams
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => startJob('update_ncaa_teams')}
+                    disabled={isRunning || submitting || !season}
+                    className="w-full bg-blue-700 hover:bg-blue-600 text-white py-2 rounded text-sm font-medium transition disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Update NCAA Teams
+                  </button>
+                )}
+                {isRunning && jobType === 'update_ncaa_players' ? (
+                  <button onClick={cancelJob} className="w-full bg-red-700 hover:bg-red-600 text-white py-2 rounded text-sm font-medium transition">
+                    Abort NCAA Players
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => startJob('update_ncaa_players')}
+                    disabled={isRunning || submitting || !season}
+                    className="w-full bg-blue-700 hover:bg-blue-600 text-white py-2 rounded text-sm font-medium transition disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Update NCAA Players
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* NBA commands */}
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">NBA</p>
+              <div className="space-y-2">
+                {isRunning && jobType === 'update_nba_teams' ? (
+                  <button onClick={cancelJob} className="w-full bg-red-700 hover:bg-red-600 text-white py-2 rounded text-sm font-medium transition">
+                    Abort NBA Teams
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => startJob('update_nba_teams')}
+                    disabled={isRunning || submitting || !season}
+                    className="w-full bg-indigo-700 hover:bg-indigo-600 text-white py-2 rounded text-sm font-medium transition disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Update NBA Teams
+                  </button>
+                )}
+                {isRunning && jobType === 'update_nba_players' ? (
+                  <button onClick={cancelJob} className="w-full bg-red-700 hover:bg-red-600 text-white py-2 rounded text-sm font-medium transition">
+                    Abort NBA Players
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => startJob('update_nba_players')}
+                    disabled={isRunning || submitting || !season}
+                    className="w-full bg-indigo-700 hover:bg-indigo-600 text-white py-2 rounded text-sm font-medium transition disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Update NBA Players
+                  </button>
+                )}
+              </div>
+            </div>
 
             {/* Status pill */}
             {jobStatus && (
@@ -757,9 +747,8 @@ export default function AdminPage() {
               <span className="w-3 h-3 rounded-full bg-green-500 opacity-70" />
             </div>
             <span className="text-xs text-gray-500 font-mono">
-              manage.py update_all
+              manage.py {jobType ?? '…'}
               {season ? ` --season ${season}` : ''}
-              {days && !skipIngest ? ` --days ${days}` : ''}
               {skipIngest ? ' --skip-ingest' : ''}
             </span>
             {logLines.length > 0 && (
@@ -779,7 +768,7 @@ export default function AdminPage() {
               </span>
               <button
                 type="button"
-                onClick={() => openStream(runningJobDbId!, true, logLines.length)}
+                onClick={() => openStream(runningJobDbId!, true)}
                 className="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded text-sm font-medium transition"
               >
                 Reattach

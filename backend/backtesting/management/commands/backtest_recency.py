@@ -25,7 +25,7 @@ from scipy import stats as scipy_stats
 
 from django.core.management.base import BaseCommand
 
-from core.models import Game, NationalAverages, Team, TeamGameStats
+from ncaa.models import Game, NationalAverages, Team, TeamGameStats
 
 # ── Fixed constants (same as production / other backtests) ─────────────────
 CONVERGENCE = 0.001

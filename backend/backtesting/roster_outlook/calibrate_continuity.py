@@ -168,7 +168,7 @@ def run_continuity_sweep(
     )
 
     # Current production caps (read from constants module)
-    import core.analytics.player_value.team_projection.constants as const_mod
+    import ncaa.analytics.player_value.team_projection.constants as const_mod
     current_max_off = const_mod.MAX_CONTINUITY_ADJ_OFF
     current_max_def = const_mod.MAX_CONTINUITY_ADJ_DEF
 
@@ -267,8 +267,8 @@ def _evaluate_candidate(
     Patch engine constants, run ablation Models C & D on all pairs, collect metrics.
     Restores original constants after evaluation (even on exception).
     """
-    import core.analytics.player_value.team_projection.engine as engine_mod
-    import core.analytics.player_value.team_projection.constants as const_mod
+    import ncaa.analytics.player_value.team_projection.engine as engine_mod
+    import ncaa.analytics.player_value.team_projection.constants as const_mod
     from backtesting.roster_outlook.ablation import run_all_models
     from backtesting.roster_outlook.metrics import compute_point_metrics
 

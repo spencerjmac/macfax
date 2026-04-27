@@ -159,7 +159,7 @@ def _scale_roster_fit(roster_fit, config: FitCalibConfig):
     (``offensive_fit_score``, ``defensive_fit_score``) are always preserved unchanged
     so that callers can still inspect the original values.
     """
-    from core.analytics.player_value.team_projection.engine import RosterFitInput
+    from ncaa.analytics.player_value.team_projection.engine import RosterFitInput
 
     # Pick source scores based on phase flag
     if config.use_phase4:
@@ -205,8 +205,8 @@ def compute_fit_diagnostics(
         std_fit_adj_off     Std dev of fit_adj_off
         std_fit_adj_def     Std dev of fit_adj_def
     """
-    from core.models import TeamRosterFit
-    from core.analytics.player_value.team_projection.constants import (
+    from ncaa.models import TeamRosterFit
+    from ncaa.analytics.player_value.team_projection.constants import (
         FIT_TO_RATING_OFF,
         FIT_TO_RATING_DEF,
     )

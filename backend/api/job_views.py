@@ -54,7 +54,7 @@ class ServerSentEventRenderer(BaseRenderer):
         return data
 
 
-from core.models import DataProcessingJob, Season
+from ncaa.models import DataProcessingJob, Season
 
 from . import job_tasks
 from .serializers import DataProcessingJobSerializer
@@ -117,15 +117,29 @@ class DataProcessingJobViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        VALID_JOB_TYPES = {
+            "update_ncaa_teams",
+            "update_ncaa_players",
+            "update_nba_teams",
+            "update_nba_players",
+        }
+
+        job_type = request.data.get("job_type", "").lower()
+        if job_type not in VALID_JOB_TYPES:
+            return Response(
+                {"error": f"Invalid job_type. Must be one of: {', '.join(sorted(VALID_JOB_TYPES))}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         skip_ingest = bool(request.data.get("skip_ingest", False))
         days = request.data.get("days")
         iterations = int(request.data.get("iterations", 25))
         sor_trials = int(request.data.get("sor_trials", 10000))
 
-        job_id = f"update_all_{season_year}_{uuid.uuid4().hex[:8]}"
+        job_id = f"{job_type}_{season_year}_{uuid.uuid4().hex[:8]}"
         job = DataProcessingJob.objects.create(
             job_id=job_id,
-            job_type="update_all",
+            job_type=job_type,
             status="pending",
             season=season,
             parameters={
@@ -133,6 +147,7 @@ class DataProcessingJobViewSet(viewsets.ModelViewSet):
                 "days": days,
                 "iterations": iterations,
                 "sor_trials": sor_trials,
+                "job_type": job_type,
             },
             created_by=request.user.username,
         )

@@ -84,7 +84,7 @@ export default function TeamPageTabs({ team, ranks, checklist, cinderella }: Tea
           ))}
           {/* Roster Outlook — navigates to a separate page */}
           <Link
-            href={`/outlook/${team.teamId}`}
+            href={`/ncaa/outlook/${team.teamId}`}
             className="px-6 py-3 font-medium transition-colors border-b-2 border-transparent text-text-muted hover:text-text-primary flex items-center gap-1"
           >
             Outlook
@@ -292,7 +292,7 @@ function CinderellaCard({ team, cin }: { team: TeamSeason; cin: CinderellaIndexR
       </div>
 
       <div className="mt-3 text-right">
-        <a href="/viz/cinderella" className="text-xs text-brand hover:underline">
+        <a href="/ncaa/viz/cinderella" className="text-xs text-brand hover:underline">
           View full Cinderella Index →
         </a>
       </div>
