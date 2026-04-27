@@ -137,7 +137,9 @@ export default function AdminPage() {
   const [authError, setAuthError] = useState('');
 
   // form
-  const [league, setLeague] = useState<'ncaa' | 'nba'>('ncaa');
+  const [jobType, setJobType] = useState<
+    'update_ncaa_teams' | 'update_ncaa_players' | 'update_nba_teams' | 'update_nba_players' | null
+  >(null);
   const [season, setSeason] = useState('');
   const [days, setDays] = useState('');
   const [skipIngest, setSkipIngest] = useState(false);
@@ -301,14 +303,15 @@ export default function AdminPage() {
   }, []);
 
   // ── Job control ────────────────────────────────────────────────────────────
-  const startJob = async () => {
+  const startJob = async (selectedJobType: string) => {
     setStartError('');
     setSubmitting(true);
     setLogLines([]);
     setJobStatus('pending');
+    setJobType(selectedJobType as typeof jobType);
 
     const body: Record<string, unknown> = {
-      league,
+      job_type: selectedJobType,
       season: parseInt(season),
       skip_ingest: skipIngest,
       iterations,
@@ -617,35 +620,10 @@ export default function AdminPage() {
         {/* ── Left panel: controls ─────────────────────────────────────── */}
         <aside className="w-72 flex-shrink-0 border-r border-gray-800 p-5 overflow-y-auto">
           <h2 className="text-sm font-semibold text-gray-300 mb-4 uppercase tracking-wide">
-            Run Update All
+            Pipeline Commands
           </h2>
 
           <div className="space-y-4">
-            {/* League */}
-            <div>
-              <label className="block text-xs text-gray-400 mb-1">League</label>
-              <div className="flex bg-gray-800 rounded p-1">
-                <button
-                  type="button"
-                  onClick={() => setLeague('ncaa')}
-                  className={`flex-1 text-sm py-1 rounded transition ${
-                    league === 'ncaa' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'
-                  }`}
-                >
-                  NCAA
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setLeague('nba')}
-                  className={`flex-1 text-sm py-1 rounded transition ${
-                    league === 'nba' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'
-                  }`}
-                >
-                  NBA
-                </button>
-              </div>
-            </div>
-
             {/* Season */}
             <div>
               <label className="block text-xs text-gray-400 mb-1">Season</label>
@@ -664,26 +642,6 @@ export default function AdminPage() {
               </select>
             </div>
 
-            {/* Last N days */}
-            {league === 'ncaa' && (
-              <div>
-                <label className="block text-xs text-gray-400 mb-1">
-                  Last N days{' '}
-                  <span className="text-gray-600">(blank = full season)</span>
-                </label>
-                <input
-                  type="number"
-                  value={days}
-                  onChange={(e) => setDays(e.target.value)}
-                  disabled={isRunning || skipIngest}
-                  placeholder="e.g. 3"
-                  min="1"
-                  max="30"
-                  className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-sm text-white placeholder-gray-600 focus:outline-none focus:border-blue-500 disabled:opacity-50"
-                />
-              </div>
-            )}
-
             {/* Skip ingest */}
             <label className="flex items-center gap-2 cursor-pointer">
               <input
@@ -699,65 +657,75 @@ export default function AdminPage() {
               <span className="text-sm text-gray-300">Skip game ingestion</span>
             </label>
 
-            {/* Advanced */}
-            {league === 'ncaa' && (
-              <details className="group">
-                <summary className="text-xs text-gray-500 cursor-pointer hover:text-gray-300 select-none">
-                  Advanced options
-                </summary>
-                <div className="mt-3 space-y-3">
-                  <div>
-                    <label className="block text-xs text-gray-400 mb-1">
-                      Iterations
-                    </label>
-                    <input
-                      type="number"
-                      value={iterations}
-                      onChange={(e) => setIterations(parseInt(e.target.value))}
-                      disabled={isRunning}
-                      min="1"
-                      className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-sm text-white focus:outline-none focus:border-blue-500 disabled:opacity-50"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-400 mb-1">
-                      SOR Trials
-                    </label>
-                    <input
-                      type="number"
-                      value={sorTrials}
-                      onChange={(e) => setSorTrials(parseInt(e.target.value))}
-                      disabled={isRunning}
-                      min="100"
-                      step="1000"
-                      className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-sm text-white focus:outline-none focus:border-blue-500 disabled:opacity-50"
-                    />
-                  </div>
-                </div>
-              </details>
-            )}
-
             {startError && (
               <p className="text-xs text-yellow-400">{startError}</p>
             )}
 
-            {/* Run / Abort */}
-            {isRunning ? (
-              <button
-                onClick={cancelJob}
-                className="w-full bg-red-700 hover:bg-red-600 text-white py-2 rounded text-sm font-medium transition"
-              >
-                Abort Job
-              </button>
-            ) : (
-              <button
-                onClick={startJob}
-                disabled={submitting || !season}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded text-sm font-medium transition disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                {submitting ? 'Starting…' : 'Run Pipeline'}
-              </button>
-            )}
+            {/* NCAA commands */}
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">NCAA</p>
+              <div className="space-y-2">
+                {isRunning && jobType === 'update_ncaa_teams' ? (
+                  <button onClick={cancelJob} className="w-full bg-red-700 hover:bg-red-600 text-white py-2 rounded text-sm font-medium transition">
+                    Abort NCAA Teams
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => startJob('update_ncaa_teams')}
+                    disabled={isRunning || submitting || !season}
+                    className="w-full bg-blue-700 hover:bg-blue-600 text-white py-2 rounded text-sm font-medium transition disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Update NCAA Teams
+                  </button>
+                )}
+                {isRunning && jobType === 'update_ncaa_players' ? (
+                  <button onClick={cancelJob} className="w-full bg-red-700 hover:bg-red-600 text-white py-2 rounded text-sm font-medium transition">
+                    Abort NCAA Players
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => startJob('update_ncaa_players')}
+                    disabled={isRunning || submitting || !season}
+                    className="w-full bg-blue-700 hover:bg-blue-600 text-white py-2 rounded text-sm font-medium transition disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Update NCAA Players
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* NBA commands */}
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">NBA</p>
+              <div className="space-y-2">
+                {isRunning && jobType === 'update_nba_teams' ? (
+                  <button onClick={cancelJob} className="w-full bg-red-700 hover:bg-red-600 text-white py-2 rounded text-sm font-medium transition">
+                    Abort NBA Teams
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => startJob('update_nba_teams')}
+                    disabled={isRunning || submitting || !season}
+                    className="w-full bg-indigo-700 hover:bg-indigo-600 text-white py-2 rounded text-sm font-medium transition disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Update NBA Teams
+                  </button>
+                )}
+                {isRunning && jobType === 'update_nba_players' ? (
+                  <button onClick={cancelJob} className="w-full bg-red-700 hover:bg-red-600 text-white py-2 rounded text-sm font-medium transition">
+                    Abort NBA Players
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => startJob('update_nba_players')}
+                    disabled={isRunning || submitting || !season}
+                    className="w-full bg-indigo-700 hover:bg-indigo-600 text-white py-2 rounded text-sm font-medium transition disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Update NBA Players
+                  </button>
+                )}
+              </div>
+            </div>
 
             {/* Status pill */}
             {jobStatus && (
@@ -779,9 +747,8 @@ export default function AdminPage() {
               <span className="w-3 h-3 rounded-full bg-green-500 opacity-70" />
             </div>
             <span className="text-xs text-gray-500 font-mono">
-              manage.py update_{league}_all
+              manage.py {jobType ?? '…'}
               {season ? ` --season ${season}` : ''}
-              {league === 'ncaa' && days && !skipIngest ? ` --days ${days}` : ''}
               {skipIngest ? ' --skip-ingest' : ''}
             </span>
             {logLines.length > 0 && (
