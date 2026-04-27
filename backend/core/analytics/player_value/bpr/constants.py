@@ -96,6 +96,17 @@ DEVIATIONS FROM THE PUBLIC BPR ARTICLE
               with PRIOR_HISTORY_BLEND weight), component influence diagnostics,
               ranking sanity validation (strict_bpr / full_two_sided / box_bpr views),
               bpr_mode API filter, baseline_obpr/dbpr and source fields in serializer.
+
+9. Opponent quality (schedule strength) adjustment in Box BPR
+   Article: uses "average opponent rating faced by each player" as a Box BPR
+            predictor to account for competition level.
+   Macfax:  opp_quality = mean(TeamSeasonRatings.adj_em of all opponents faced
+            by the player's team in the target season). Added to both OFF_FEATURES
+            and DEF_FEATURES in box_bpr.py. Sourced from _build_opponent_quality_map()
+            in pipeline.py via the Game model (status="final" games only).
+            adj_em is zero-sum across D1, so no centering needed.
+   Impact:  Corrects mid-major inflation: equal stats against harder opponents
+            → higher Box BPR. Ridge learns a positive coefficient on opp_quality.
 """
 
 # ── Model version ─────────────────────────────────────────────────────────────
@@ -158,7 +169,7 @@ PRIOR_HISTORY_BLEND = 0.20
 # prior-informed RAPM penalty.  s < 1 → trust box priors more; s > 1 → trust data more.
 # Pipeline tunes BOTH a single joint sd_scale AND separate sd_scale_off/sd_scale_def,
 # using whichever gives lower held-out WMSE.
-PRIOR_SD_SCALE_CANDIDATES = [0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 5.0]
+PRIOR_SD_SCALE_CANDIDATES = [0.35, 0.4, 0.5, 0.6, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0]
 
 # Reference scale evaluated during CV to approximate "box-only" held-out WMSE.
 # At this scale, per-player penalty ≈ λ / (base_SD × 0.01)² → ∞,
@@ -199,6 +210,21 @@ BOX_BPR_OOF_FOLDS = 5
 # These fallback weights are ONLY used if the box model has never been trained.
 # Once fit_ncaa_box_bpr runs successfully, the DB artifact supersedes these.
 
+# ── Preseason model ───────────────────────────────────────────────────────────
+# Ridge regression sub-models (returner + transfer) replace the flat box+history blend.
+# Minimum training pairs required to use the model (else fall back to box+history blend).
+PRESEASON_MIN_PAIRS = 100
+# Ridge alpha grid for cross-validated model selection.
+PRESEASON_ALPHAS = [0.01, 0.1, 1.0, 5.0, 10.0, 50.0, 100.0, 500.0]
+# Fallback prior SDs when preseason model is unavailable (slightly tighter than PRIOR_SD_BOX_*).
+PRESEASON_FALLBACK_SD_RETURNER_OFF = 2.5
+PRESEASON_FALLBACK_SD_RETURNER_DEF = 2.0
+PRESEASON_FALLBACK_SD_TRANSFER_OFF = 3.0
+PRESEASON_FALLBACK_SD_TRANSFER_DEF = 2.5
+# Low-possession uncertainty add-on: players with < this many off-poss get +σ added.
+PRESEASON_LOW_POSS_THRESHOLD = 300
+PRESEASON_LOW_POSS_SD_BONUS  = 0.4
+
 # ── Box BPR regularization ────────────────────────────────────────────────────
 # Separate alpha grids for off and def (v1.3): defense benefits from stronger
 # regularization because defensive box stats are noisier predictors of on-court DBPR.
@@ -235,34 +261,46 @@ DBPR_PLAUSIBLE_RANGE = (-12.0, 12.0)
 # Note: Defense is harder to project from recruiting rank alone (lower signal).
 # These are conservative — we widen the SD rather than trust the mean heavily.
 RECRUITING_PRIOR_MEAN_OFF: dict[int, float] = {
-    5: 1.5,   # top-50 national prospect
-    4: 0.5,   # top-200 prospect
-    3: 0.0,   # average recruit
-    2: -0.3,  # below-average recruit
-    1: -0.5,  # fringe / walk-on level
+    5: 2.5,   # raised from 1.5; empirical 5-star mean outcome ~2.1
+    4: 0.8,   # raised from 0.5
+    3: 0.0,
+    2: -0.3,
+    1: -0.5,
 }
 RECRUITING_PRIOR_MEAN_DEF: dict[int, float] = {
-    5: 0.8,
-    4: 0.3,
+    5: 1.0,   # raised from 0.8
+    4: 0.4,   # raised from 0.3
     3: 0.0,
     2: -0.2,
     1: -0.3,
 }
 
+# National rank continuous bonus applied on top of the star-tier base mean.
+# Decays linearly: bonus = BONUS_MAX × max(0, 1 − national_rank / RANK_CUTOFF)
+# Only applied when national_rank is available; only for 5-star and 4-star tiers.
+RECRUITING_RANK_BONUS_OFF: dict[int, float] = {5: 1.5, 4: 0.5}
+RECRUITING_RANK_BONUS_DEF: dict[int, float] = {5: 0.6, 4: 0.2}
+RECRUITING_RANK_CUTOFF:    dict[int, int]   = {5: 60, 4: 250}
+
+# Destination team adj_em context: strong programs → freshman more likely to contribute.
+# Small positive multiplier; floored at 0 (no penalty for weak programs).
+RECRUITING_TEAM_ADJM_FACTOR_OFF = 0.008   # adj_em=40 → +0.32
+RECRUITING_TEAM_ADJM_FACTOR_DEF = 0.004   # smaller — defense harder to predict from team context
+
 # Prior SDs by star tier — higher-star = more informative prior (narrower SD).
 # Still wider than box BPR SDs (recruiting rank << in-season box stats in precision).
 RECRUITING_PRIOR_SD_OFF: dict[int, float] = {
-    5: 2.0,   # narrower: elite recruits are rarely duds
+    5: 2.0,
     4: 2.5,
-    3: 3.0,   # same as PRIOR_SD_BOX_OFF (rough equivalence)
+    3: 3.0,
     2: 3.5,
-    1: 4.0,   # same as PRIOR_SD_DEFAULT_OFF (very uncertain)
+    1: 4.0,
 }
 RECRUITING_PRIOR_SD_DEF: dict[int, float] = {
     5: 1.5,
     4: 2.0,
-    3: 2.5,   # same as PRIOR_SD_BOX_DEF
-    2: 3.0,   # same as PRIOR_SD_DEFAULT_DEF
+    3: 2.5,
+    2: 3.0,
     1: 3.0,
 }
 

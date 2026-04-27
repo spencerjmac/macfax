@@ -67,8 +67,8 @@ class Command(BaseCommand):
             type=int,
             default=None,
             help=(
-                "Season years to pool for RAPM estimation. Defaults to [--season] "
-                "(single-season mode, the default production path). "
+                "Explicit list of season years to pool for RAPM estimation. "
+                "When provided, --rapm-window is ignored. "
                 "In multi-year mode, observations from all listed seasons are pooled "
                 "into a single design matrix. Coefficients are estimated at the "
                 "player-season level — keyed by (player_id, season_year) — so the "
@@ -78,6 +78,18 @@ class Command(BaseCommand):
                 "totals are written back to PlayerSeasonStats; earlier seasons "
                 "contribute estimation power only. "
                 "Example: --rapm-years 2024 2025 2026"
+            ),
+        )
+        parser.add_argument(
+            "--rapm-window",
+            dest="rapm_window_size",
+            type=int,
+            default=4,
+            help=(
+                "Number of seasons to pool for RAPM estimation (default: 4, matching "
+                "EvanMiya methodology). The window is [season_year - N + 1, season_year]. "
+                "Ignored if --rapm-years is specified explicitly. "
+                "Pass 1 to revert to single-season mode."
             ),
         )
 
@@ -103,6 +115,7 @@ class Command(BaseCommand):
                 skip_prior_rapm=options["skip_prior_rapm"],
                 rapm_lambda_override=options.get("lambda_override"),
                 rapm_years=options.get("rapm_years"),
+                rapm_window_size=options.get("rapm_window_size", 4),
                 verbose=True,
             )
         except Exception as exc:
