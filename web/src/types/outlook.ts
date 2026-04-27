@@ -177,7 +177,7 @@ export interface ScenarioProjectionResult {
 // ── Placeholder archetypes ────────────────────────────────────────────────────
 
 export type ConfGroup = 'national' | 'power' | 'high_mid' | 'mid_major';
-export type QualityTier = 'elite' | 'starter' | 'rotation';
+export type QualityTier = 'elite' | 'all_conference' | 'starter' | 'rotation' | 'bench';
 
 /**
  * Pre-built archetype player built from real cohort medians.

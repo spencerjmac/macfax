@@ -23,6 +23,8 @@ per 100 defensive possessions for DBPR):
     fg3_rate     — 3PA / FGA  (shot-selection profile)
     ft_rate      — FTA / FGA  (ability to draw fouls)
     ast_tov_ratio — AST / max(TOV, 0.1)  (playmaking efficiency)
+    usage_rate   — (FGA + 0.44×FTA + TOV) per 100 poss  (offensive load)
+    ast_rate     — AST100 / max(usage_rate, 1)  (playmaking vs scoring role)
 
   Defensive (8):
     stl100       — steals
@@ -75,10 +77,14 @@ OFF_FEATURES = [
     "fga100", "fg3a100", "fta100",
     "efg_pct", "ts_pct", "min_share",
     "fg3_rate", "ft_rate", "ast_tov_ratio",
+    "opp_quality",   # avg adj_em of opponents faced (schedule strength)
+    "usage_rate",    # (FGA + 0.44*FTA + TOV) per 100 poss — offensive load signal
+    "ast_rate",      # AST100 / usage_rate — playmaking vs scoring role signal
 ]
 DEF_FEATURES = [
     "stl100", "blk100", "dreb100", "pf100", "min_share",
     "fg3a_share", "oreb_share", "pf_per_min",
+    "opp_quality",   # same value, both models
 ]
 
 
@@ -88,13 +94,18 @@ def extract_box_features(
     player_season_stats: list[dict],   # dicts from PlayerSeasonStats.values(...)
     off_poss_map: dict[int, float],    # player_id → total off possessions (from RAPM dataset)
     def_poss_map: dict[int, float],    # player_id → total def possessions
+    opp_quality_map: "dict[int, float] | None" = None,  # team_id → mean opp adj_em
 ) -> dict[int, dict]:
     """
- #   Compute per-100-possession features for each qualified player.
+    Compute per-100-possession features for each qualified player.
+
+    opp_quality_map: team_id → mean adj_em of opponents faced this season.
+        Adjusts for schedule strength. Missing teams default to 0.0 (league avg).
 
     Returns: {player_id: {"off": [feature_values], "def": [feature_values]}}
-  #  Only includes players meeting the minimum qualifier.
+    Only includes players meeting the minimum qualifier.
     """
+    _opp_quality = opp_quality_map or {}
     features: dict[int, dict] = {}
 
     for p in player_season_stats:
@@ -133,21 +144,34 @@ def extract_box_features(
         ts_pct   = p.get("ts_pct", 0.0) or 0.0
         min_share = min(mpg / 40.0, 1.0)
 
+        # team_id from .values() as "team_id"; some legacy paths use "team"
+        team_id = p.get("team_id") or p.get("team")
+        opp_quality = _opp_quality.get(team_id, 0.0) if team_id else 0.0
+
+        fga100  = per100(fga_pg,  gp, off_poss)
+        fta100  = per100(fta_pg,  gp, off_poss)
+        tov100  = per100(tov_pg,  gp, off_poss)
+        ast100  = per100(ast_pg,  gp, off_poss)
+        usage_rate = fga100 + 0.44 * fta100 + tov100
+        ast_rate   = ast100 / max(usage_rate, 1.0)
+
         off_feat = [
             per100(pts_pg,  gp, off_poss),
-            per100(ast_pg,  gp, off_poss),
-            per100(tov_pg,  gp, off_poss),
+            ast100,
+            tov100,
             per100(oreb_pg, gp, off_poss),
-            per100(fga_pg,  gp, off_poss),
+            fga100,
             per100(fg3a_pg, gp, off_poss),
-            per100(fta_pg,  gp, off_poss),
+            fta100,
             efg_pct,
             ts_pct,
             min_share,
-            # New features
             fg3a_pg / max(fga_pg, 0.01),               # fg3_rate: shot-selection profile
             fta_pg  / max(fga_pg, 0.01),               # ft_rate: foul-drawing ability
             ast_pg  / max(tov_pg, 0.1),                # ast_tov_ratio: playmaking efficiency
+            opp_quality,
+            usage_rate,
+            ast_rate,
         ]
 
         total_reb_pg = oreb_pg + dreb_pg
@@ -161,6 +185,7 @@ def extract_box_features(
             fg3a_pg / max(fga_pg, 0.01),                                      # fg3a_share: position proxy
             oreb_pg / max(total_reb_pg, 0.01),                               # oreb_share: rebounding-role indicator
             pf_pg * (40.0 / max(mpg, 1.0)),                                  # pf_per_min: foul rate per 40 min
+            opp_quality,
         ]
 
         features[pid] = {"off": off_feat, "def": def_feat}
@@ -184,9 +209,10 @@ def train_box_bpr(
     def_poss_map: dict[int, float],
     rapm_obpr: dict[int, float],   # player_id → baseline RAPM OBPR targets
     rapm_dbpr: dict[int, float],   # player_id → baseline RAPM DBPR targets
+    opp_quality_map: "dict[int, float] | None" = None,
 ) -> dict:
     """
- #   Train offensive and defensive Box BPR models.
+    Train offensive and defensive Box BPR models.
 
     Returns:
         {
@@ -201,7 +227,10 @@ def train_box_bpr(
           "def_features": list[str]
         }
     """
-    box_features = extract_box_features(player_season_stats, off_poss_map, def_poss_map)
+    box_features = extract_box_features(
+        player_season_stats, off_poss_map, def_poss_map,
+        opp_quality_map=opp_quality_map,
+    )
 
     # Build training arrays — only players who have both box features AND RAPM targets
     off_X, off_y, off_pids = [], [], []
@@ -252,6 +281,106 @@ def train_box_bpr(
     }
 
 
+def compute_prior_sds_from_r2(
+    model_artifacts: dict,
+    rapm_obpr: dict[int, float],
+    rapm_dbpr: dict[int, float],
+    player_season_stats: list[dict],
+    off_poss_map: dict[int, float],
+    def_poss_map: dict[int, float],
+    opp_quality_map: "dict[int, float] | None" = None,
+    precomputed_off_preds: "dict[int, float] | None" = None,
+    precomputed_def_preds: "dict[int, float] | None" = None,
+) -> tuple[float, float]:
+    """
+    Derive prior SDs from the box model's R² against RAPM targets.
+
+    Formula (per EvanMiya's methodology):
+        σ_rapm   = std(baseline_rapm_coefficients)
+        R²       = fraction of σ_rapm² explained by box predictions
+        prior_sd = sqrt(1 - R²) × σ_rapm
+
+    Args:
+        precomputed_off_preds / precomputed_def_preds:
+            When provided (OOF path), skip re-running predict() and use
+            these directly as y_hat.  Keys are player_ids, values are
+            box_obpr / box_dbpr floats.
+
+    Returns:
+        (prior_sd_off, prior_sd_def) in pts/100 poss units.
+    """
+    from ncaa.analytics.player_value.bpr.constants import (
+        PRIOR_SD_BOX_OFF, PRIOR_SD_BOX_DEF,
+    )
+
+    off_pipe = model_artifacts["off_pipeline"]
+    def_pipe = model_artifacts["def_pipeline"]
+
+    if precomputed_off_preds is not None and precomputed_def_preds is not None:
+        # OOF path — use stored out-of-fold predictions directly (truly OOS)
+        off_pids = [pid for pid in precomputed_off_preds if pid in rapm_obpr]
+        def_pids = [pid for pid in precomputed_def_preds if pid in rapm_dbpr]
+
+        if len(off_pids) < 10 or len(def_pids) < 10:
+            logger.warning(
+                f"compute_prior_sds_from_r2 (OOF): too few players "
+                f"(off={len(off_pids)}, def={len(def_pids)}). Falling back to constants."
+            )
+            return PRIOR_SD_BOX_OFF, PRIOR_SD_BOX_DEF
+
+        off_y   = np.array([rapm_obpr[pid] for pid in off_pids])
+        off_hat = np.array([precomputed_off_preds[pid] for pid in off_pids])
+        def_y   = np.array([rapm_dbpr[pid] for pid in def_pids])
+        def_hat = np.array([precomputed_def_preds[pid] for pid in def_pids])
+
+    else:
+        # Prior-season training path — extract features + predict current season
+        box_features = extract_box_features(
+            player_season_stats, off_poss_map, def_poss_map,
+            opp_quality_map=opp_quality_map,
+        )
+
+        off_pids = [pid for pid in box_features if pid in rapm_obpr]
+        def_pids = [pid for pid in box_features if pid in rapm_dbpr]
+
+        if len(off_pids) < 10 or len(def_pids) < 10:
+            logger.warning(
+                f"compute_prior_sds_from_r2: too few players "
+                f"(off={len(off_pids)}, def={len(def_pids)}). Falling back to constants."
+            )
+            return PRIOR_SD_BOX_OFF, PRIOR_SD_BOX_DEF
+
+        off_X   = np.array([box_features[pid]["off"] for pid in off_pids])
+        off_y   = np.array([rapm_obpr[pid] for pid in off_pids])
+        def_X   = np.array([box_features[pid]["def"] for pid in def_pids])
+        def_y   = np.array([rapm_dbpr[pid] for pid in def_pids])
+        off_hat = off_pipe.predict(off_X)
+        def_hat = def_pipe.predict(def_X)
+
+    def _r2_and_sd(y: np.ndarray, y_hat: np.ndarray) -> tuple[float, float]:
+        sigma = float(np.std(y, ddof=1))
+        ss_tot = float(np.sum((y - y.mean()) ** 2))
+        ss_res = float(np.sum((y - y_hat) ** 2))
+        r2 = max(0.0, 1.0 - ss_res / ss_tot) if ss_tot > 0 else 0.0
+        prior_sd = float(np.sqrt(max(1.0 - r2, 0.0)) * sigma)
+        prior_sd = float(np.clip(prior_sd, 0.5, 8.0))
+        return r2, prior_sd
+
+    r2_off, prior_sd_off = _r2_and_sd(off_y, off_hat)
+    r2_def, prior_sd_def = _r2_and_sd(def_y, def_hat)
+
+    sigma_off = float(np.std(off_y, ddof=1))
+    sigma_def = float(np.std(def_y, ddof=1))
+
+    logger.info(
+        f"[BoxBPR] R²-derived prior SDs — "
+        f"off: R²={r2_off:.3f}, σ_rapm={sigma_off:.3f}, prior_sd={prior_sd_off:.3f} | "
+        f"def: R²={r2_def:.3f}, σ_rapm={sigma_def:.3f}, prior_sd={prior_sd_def:.3f}"
+    )
+
+    return prior_sd_off, prior_sd_def
+
+
 # ── Inference (predict Box BPR for all players) ───────────────────────────────
 
 def predict_box_bpr(
@@ -259,6 +388,7 @@ def predict_box_bpr(
     off_poss_map: dict[int, float],
     def_poss_map: dict[int, float],
     model_artifacts: dict,
+    opp_quality_map: "dict[int, float] | None" = None,
 ) -> dict[int, dict]:
     """
     Predict Box BPR for all qualified players using trained pipelines.
@@ -269,7 +399,10 @@ def predict_box_bpr(
     off_pipe = model_artifacts["off_pipeline"]
     def_pipe = model_artifacts["def_pipeline"]
 
-    box_features = extract_box_features(player_season_stats, off_poss_map, def_poss_map)
+    box_features = extract_box_features(
+        player_season_stats, off_poss_map, def_poss_map,
+        opp_quality_map=opp_quality_map,
+    )
 
     preds: dict[int, dict] = {}
     for pid, feats in box_features.items():
@@ -335,6 +468,7 @@ def out_of_fold_box_bpr(
     rapm_dbpr: dict[int, float],
     n_folds: int = BOX_BPR_OOF_FOLDS,
     seed: int = 42,
+    opp_quality_map: "dict[int, float] | None" = None,
 ) -> tuple[dict, dict]:
     """
     Generate leak-free Box BPR predictions via out-of-fold cross-validation.
@@ -352,7 +486,10 @@ def out_of_fold_box_bpr(
     """
     import random
 
-    box_features = extract_box_features(player_season_stats, off_poss_map, def_poss_map)
+    box_features = extract_box_features(
+        player_season_stats, off_poss_map, def_poss_map,
+        opp_quality_map=opp_quality_map,
+    )
 
     rapm_pids     = [pid for pid in box_features if pid in rapm_obpr and pid in rapm_dbpr]
     non_rapm_pids = [pid for pid in box_features if pid not in rapm_obpr or pid not in rapm_dbpr]
@@ -444,6 +581,7 @@ def train_box_bpr_prior_seasons(
     current_season_stats: list[dict],
     current_off_poss_map: dict[int, float],
     current_def_poss_map: dict[int, float],
+    opp_quality_map: "dict[int, float] | None" = None,
 ) -> tuple[dict, dict]:
     """
     Train Box BPR on prior-season data, then predict current-season players.
@@ -475,6 +613,7 @@ def train_box_bpr_prior_seasons(
     box_preds = predict_box_bpr(
         current_season_stats, current_off_poss_map, current_def_poss_map,
         {"off_pipeline": off_pipe, "def_pipeline": def_pipe},
+        opp_quality_map=opp_quality_map,
     )
 
     model_artifacts = {

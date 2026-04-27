@@ -125,6 +125,10 @@ class DataProcessingJob(models.Model):
 
     JOB_TYPE_CHOICES = [
         ("update_all", "Full Data Update"),
+        ("update_ncaa_teams", "NCAA Update Teams"),
+        ("update_ncaa_players", "NCAA Update Players"),
+        ("update_nba_teams", "NBA Update Teams"),
+        ("update_nba_players", "NBA Update Players"),
         ("ingest_gamelogs", "Ingest Game Logs"),
         ("compute_team_metrics", "Compute Team Metrics"),
         ("compute_adjusted_ratings", "Compute Adjusted Ratings"),
