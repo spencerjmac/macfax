@@ -56,9 +56,11 @@ function archetypeToPlayer(a: PlaceholderArchetype): OutlookPlayer {
 }
 
 const TIER_LABELS: Record<string, string> = {
-  elite:    'All-American',
-  starter:  'Starter',
-  rotation: 'Reserve',
+  elite:          'All-American',
+  all_conference: 'All-Conference',
+  starter:        'Starter',
+  rotation:       'Reserve',
+  bench:          'Bench',
 };
 
 const CONF_LABELS: Record<string, string> = {
