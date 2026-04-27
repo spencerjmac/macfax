@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('ncaa', '0048_player_recruiting_profile'),
+        ('core', '0048_player_recruiting_profile'),
     ]
 
     operations = [
