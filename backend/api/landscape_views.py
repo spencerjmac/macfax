@@ -12,7 +12,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import get_object_or_404
 
-from core.models import Season, TeamSeasonRatings
+from ncaa.models import Season, TeamSeasonRatings
 
 
 # Default tier deltas (can be made configurable later)
@@ -108,7 +108,7 @@ class EfficiencyLandscapeView(APIView):
         for rating in all_ratings:
             conference_code = serializer.get_conference(rating)
             # Get conference name from code
-            from core.models import Conference as ConfModel
+            from ncaa.models import Conference as ConfModel
             try:
                 conf_obj = ConfModel.objects.get(code=conference_code)
                 conference_name = conf_obj.name

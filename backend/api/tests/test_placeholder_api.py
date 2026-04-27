@@ -24,13 +24,13 @@ from django.core.management import call_command
 from django.test import TestCase
 from django.urls import reverse
 
-from core.conf_utils import CONF_MAP, HIGH_MID_CONFS, POWER_CONFS, get_conf_detail, get_conf_group
-from core.management.commands.build_placeholder_archetypes import (
+from ncaa.conf_utils import CONF_MAP, HIGH_MID_CONFS, POWER_CONFS, get_conf_detail, get_conf_group
+from ncaa.management.commands.build_placeholder_archetypes import (
     UNC_MAX,
     UNC_MIN,
     _bucket_uncertainty,
 )
-from core.models import (
+from ncaa.models import (
     PlaceholderArchetype,
     Player,
     PlayerSeasonProjection,
@@ -608,7 +608,7 @@ class TestBucketUncertainty(TestCase):
 
     def test_ideal_n_gives_no_sample_penalty(self):
         """At n = UNC_IDEAL_N (100), the n_penalty should be zero."""
-        from core.management.commands.build_placeholder_archetypes import (
+        from ncaa.management.commands.build_placeholder_archetypes import (
             UNC_IDEAL_N, UNC_SAMPLE_WEIGHT, UNC_SPREAD_WEIGHT
         )
         n = UNC_IDEAL_N
@@ -698,7 +698,7 @@ class TestHighMidArchetypes(TestCase):
         if PlayerSeasonProjection.objects.count() == 0:
             self.skipTest("No projection data in test DB.")
 
-        from core.management.commands.build_placeholder_archetypes import MIN_SPECIFIC_BUCKET
+        from ncaa.management.commands.build_placeholder_archetypes import MIN_SPECIFIC_BUCKET
 
         call_command("build_placeholder_archetypes", stdout=io.StringIO())
         for a in PlaceholderArchetype.objects.filter(conf_group="high_mid"):

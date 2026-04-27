@@ -23,7 +23,7 @@ import type {
 
 type QueryParams = Record<string, string | number | boolean | undefined | null>;
 
-const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8000').replace(/\/$/, '');
+const API_BASE_URL = (process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8000').replace(/\/$/, '');
 const API_ROOT = `${API_BASE_URL}/api`;
 
 function buildUrl(path: string, params?: QueryParams): string {

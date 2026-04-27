@@ -198,7 +198,7 @@ export default function RankingsTable({ data, seasons = [], selectedSeason }: Ra
           const team = info.row.original;
           return (
             <Link
-              href={`/team/${team.teamId}`}
+              href={`/ncaa/team/${team.teamId}`}
               className="flex items-center space-x-2 hover:text-brand transition-colors"
             >
               {team.logoUrl ? (
@@ -261,7 +261,7 @@ export default function RankingsTable({ data, seasons = [], selectedSeason }: Ra
           const team = info.row.original;
           return (
             <Link
-              href={`/team/${team.teamId}`}
+              href={`/ncaa/team/${team.teamId}`}
               className="flex items-center space-x-2 hover:text-brand transition-colors"
             >
               {team.logoUrl ? (
@@ -399,7 +399,7 @@ export default function RankingsTable({ data, seasons = [], selectedSeason }: Ra
               value={selectedSeason ?? ''}
               onChange={(e) => {
                 const val = e.target.value;
-                router.push(val ? `/rankings?season=${val}` : '/rankings');
+                router.push(val ? `/ncaa/rankings?season=${val}` : '/ncaa/rankings');
               }}
               className="px-3 py-2 bg-ui-surface border border-ui-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand/50 font-medium"
             >

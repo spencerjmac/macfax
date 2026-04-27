@@ -16,7 +16,7 @@ from rest_framework import status
 from django.shortcuts import get_object_or_404
 from django.core.cache import cache
 
-from core.models import Season, TeamSeasonRatings
+from ncaa.models import Season, TeamSeasonRatings
 from .stat_catalog import get_stat_catalog, get_stat_metadata, is_valid_stat_key, get_stats_by_group
 
 

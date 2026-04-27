@@ -699,7 +699,7 @@ try:
         def test_adjacent_tsr_exists_for_each(self):
             """For every source year Y returned, TSR must exist for Y+1."""
             from backtesting.roster_outlook.data_loader import available_source_years
-            from core.models import TeamSeasonRatings
+            from ncaa.models import TeamSeasonRatings
             years = available_source_years()
             tsr_years = set(
                 TeamSeasonRatings.objects.values_list("season__year", flat=True).distinct()
@@ -1013,7 +1013,7 @@ class TestContinuityFormula(unittest.TestCase):
             returner_share: Minutes share going to 'returner' players.
             total_share:    Total minutes share (default 5.0 = full team).
         """
-        from core.analytics.player_value.team_projection.engine import PlayerProjectionInput
+        from ncaa.analytics.player_value.team_projection.engine import PlayerProjectionInput
 
         newcomer_share = total_share - returner_share
         players = []
@@ -1040,7 +1040,7 @@ class TestContinuityFormula(unittest.TestCase):
         return players
 
     def _get_constants(self):
-        from core.analytics.player_value.team_projection.constants import (
+        from ncaa.analytics.player_value.team_projection.constants import (
             CONTINUITY_NEUTRAL_FRACTION,
             MAX_CONTINUITY_ADJ_OFF,
             MAX_CONTINUITY_ADJ_DEF,
@@ -1052,7 +1052,7 @@ class TestContinuityFormula(unittest.TestCase):
         When the blended returner fraction equals CONTINUITY_NEUTRAL_FRACTION,
         the continuity adjustment should be (near) zero.
         """
-        from core.analytics.player_value.team_projection.engine import _compute_continuity
+        from ncaa.analytics.player_value.team_projection.engine import _compute_continuity
 
         neutral, _, _ = self._get_constants()
         # Set returner_share so minutes fraction = neutral (BPR blend will also ≈ neutral
@@ -1066,7 +1066,7 @@ class TestContinuityFormula(unittest.TestCase):
 
     def test_continuity_positive_above_neutral(self):
         """Returner fraction well above neutral → positive continuity adj."""
-        from core.analytics.player_value.team_projection.engine import _compute_continuity
+        from ncaa.analytics.player_value.team_projection.engine import _compute_continuity
 
         neutral, _, _ = self._get_constants()
         # Use 90% returner share (well above any reasonable neutral)
@@ -1079,7 +1079,7 @@ class TestContinuityFormula(unittest.TestCase):
 
     def test_continuity_negative_below_neutral(self):
         """Returner fraction well below neutral → negative continuity adj."""
-        from core.analytics.player_value.team_projection.engine import _compute_continuity
+        from ncaa.analytics.player_value.team_projection.engine import _compute_continuity
 
         # Use 100% newcomers (0% returners — well below any reasonable neutral)
         players = self._make_inputs(returner_share=0.0, total_share=5.0)
@@ -1091,7 +1091,7 @@ class TestContinuityFormula(unittest.TestCase):
 
     def test_continuity_bounded_by_caps(self):
         """Continuity adjustment cannot exceed MAX_CONTINUITY_ADJ constants."""
-        from core.analytics.player_value.team_projection.engine import _compute_continuity
+        from ncaa.analytics.player_value.team_projection.engine import _compute_continuity
 
         _, max_off, max_def = self._get_constants()
 
@@ -1113,7 +1113,7 @@ class TestContinuityFormula(unittest.TestCase):
 
     def test_adj_em_identity_with_continuity(self):
         """projected_adj_em must equal projected_adj_o − projected_adj_d (always)."""
-        from core.analytics.player_value.team_projection.engine import (
+        from ncaa.analytics.player_value.team_projection.engine import (
             project_team, PlayerProjectionInput, D1Context
         )
 
@@ -1153,7 +1153,7 @@ class TestContinuityProductionConstants(unittest.TestCase):
         pairs by ingesting 2021+2022 historical gamelogs, and 0.50 minimizes combined
         bias across the 4-pair window — D_bias = +0.036, AvgRetFrac = 0.518 ≈ 0.50.)
         """
-        from core.analytics.player_value.team_projection.constants import (
+        from ncaa.analytics.player_value.team_projection.constants import (
             CONTINUITY_NEUTRAL_FRACTION,
         )
         self.assertAlmostEqual(
@@ -1171,7 +1171,7 @@ class TestContinuityProductionConstants(unittest.TestCase):
         change the amplitude (the structural backtest limitation means cap calibration
         would require forward-looking roster data).
         """
-        from core.analytics.player_value.team_projection.constants import (
+        from ncaa.analytics.player_value.team_projection.constants import (
             MAX_CONTINUITY_ADJ_OFF,
             MAX_CONTINUITY_ADJ_DEF,
         )
@@ -1239,7 +1239,7 @@ class TestFitUsedTracking(unittest.TestCase):
     def test_model_e_fit_used_true_when_roster_fit_exists(self):
         """Model E sets fit_used=True when _load_roster_fit returns a RosterFitInput."""
         from backtesting.roster_outlook.ablation import run_all_models
-        from core.analytics.player_value.team_projection.engine import RosterFitInput
+        from ncaa.analytics.player_value.team_projection.engine import RosterFitInput
 
         fake_fit = RosterFitInput(
             offensive_fit_score=52.0,
@@ -1259,7 +1259,7 @@ class TestFitUsedTracking(unittest.TestCase):
     def test_model_d_never_has_fit_used_true(self):
         """Model D always has fit_used=False — it calls _run_engine with roster_fit=None."""
         from backtesting.roster_outlook.ablation import run_all_models
-        from core.analytics.player_value.team_projection.engine import RosterFitInput
+        from ncaa.analytics.player_value.team_projection.engine import RosterFitInput
 
         fake_fit = RosterFitInput(
             offensive_fit_score=60.0,
@@ -1284,7 +1284,7 @@ class TestFitUsedTracking(unittest.TestCase):
         The fit layer is zeroed; E is retained as an ablation variant only.
         """
         from backtesting.roster_outlook.ablation import run_all_models
-        from core.analytics.player_value.team_projection.engine import RosterFitInput
+        from ncaa.analytics.player_value.team_projection.engine import RosterFitInput
 
         # Strong non-neutral fit scores — would have differed pre-Phase-9e
         strong_fit = RosterFitInput(
@@ -1849,28 +1849,28 @@ try:
 
         def test_bpr_capable_seasons_returns_sorted_list(self):
             """bpr_capable_seasons() should return a sorted list of ints."""
-            from core.management.commands.backfill_roster_fit import bpr_capable_seasons
+            from ncaa.management.commands.backfill_roster_fit import bpr_capable_seasons
             result = bpr_capable_seasons()
             self.assertIsInstance(result, list)
             self.assertEqual(result, sorted(result))
 
         def test_bpr_capable_seasons_not_empty(self):
             """At least one BPR-capable season should be found if PlayerGameStints exist in DB."""
-            from core.models import PlayerGameStint
+            from ncaa.models import PlayerGameStint
             if not PlayerGameStint.objects.exists():
                 self.skipTest(
                     "No PlayerGameStint rows in test DB — skipping. "
                     "Populate the live DB and run with --keepdb against real data."
                 )
-            from core.management.commands.backfill_roster_fit import bpr_capable_seasons
+            from ncaa.management.commands.backfill_roster_fit import bpr_capable_seasons
             result = bpr_capable_seasons()
             self.assertGreater(len(result), 0,
                                msg="No PlayerGameStint rows found; BPR-capable detection broken")
 
         def test_bpr_capable_seasons_all_have_stints(self):
             """Every year returned by bpr_capable_seasons() must have PlayerGameStint rows."""
-            from core.management.commands.backfill_roster_fit import bpr_capable_seasons
-            from core.models import PlayerGameStint
+            from ncaa.management.commands.backfill_roster_fit import bpr_capable_seasons
+            from ncaa.models import PlayerGameStint
             for yr in bpr_capable_seasons():
                 count = PlayerGameStint.objects.filter(game__season_year=yr).count()
                 self.assertGreater(count, 0,
@@ -1881,7 +1881,7 @@ try:
             After running backfill_roster_fit --seasons 2023 2024 2025, each season
             should have TeamRosterFit rows with non-null adjusted_off_fit (Phase 4 ran).
             """
-            from core.models import TeamRosterFit
+            from ncaa.models import TeamRosterFit
             for yr in [2023, 2024, 2025]:
                 n_total = TeamRosterFit.objects.filter(from_season__year=yr).count()
                 if n_total == 0:
@@ -1916,7 +1916,7 @@ try:
             from io import StringIO
             from django.core.management import call_command
             from django.core.management.base import CommandError
-            from core.management.commands.backfill_roster_fit import bpr_capable_seasons
+            from ncaa.management.commands.backfill_roster_fit import bpr_capable_seasons
             # 2021 and 2022 have no PlayerGameStint → not BPR capable
             capable = set(bpr_capable_seasons())
             non_capable = [yr for yr in [2021, 2022] if yr not in capable]
@@ -1948,7 +1948,7 @@ class TestFitCalibration(unittest.TestCase):
         off_score: float = 50.0,
         def_score: float = 50.0,
     ):
-        from core.analytics.player_value.team_projection.engine import RosterFitInput
+        from ncaa.analytics.player_value.team_projection.engine import RosterFitInput
 
         return RosterFitInput(
             offensive_fit_score=off_score,

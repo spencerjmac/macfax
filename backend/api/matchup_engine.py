@@ -767,7 +767,7 @@ def compute_wab_for_team(
     
     for game_stat in team_games:
         # Get opponent ratings
-        from core.models import TeamSeasonRatings
+        from ncaa.models import TeamSeasonRatings
         try:
             opp_ratings = TeamSeasonRatings.objects.get(
                 team=game_stat.opponent,
@@ -779,7 +779,7 @@ def compute_wab_for_team(
         
         # Determine result (1 if won, 0 if lost)
         try:
-            from core.models import TeamGameStats
+            from ncaa.models import TeamGameStats
             opp_stat = TeamGameStats.objects.get(
                 game=game_stat.game,
                 team=game_stat.opponent

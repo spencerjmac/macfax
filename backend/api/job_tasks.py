@@ -24,7 +24,7 @@ from django.db.models import TextField, Value
 from django.db.models.functions import Coalesce, Concat
 from django.utils import timezone
 
-from core.models import DataProcessingJob
+from ncaa.models import DataProcessingJob
 
 logger = logging.getLogger(__name__)
 
@@ -61,24 +61,47 @@ def run_update_all_subprocess(job_db_id: int) -> None:
     iterations = params.get("iterations", 25)
     sor_trials = params.get("sor_trials", 10000)
 
-    # Use -u so the child Python runs unbuffered; otherwise stdout is fully buffered
-    # when piped (no TTY) and output appears in big chunks instead of in real time.
+    # Map job_type → management command name
+    CMD_MAP = {
+        "update_ncaa_teams":   "update_ncaa_teams",
+        "update_ncaa_players": "update_ncaa_players",
+        "update_nba_teams":    "update_nba_teams",
+        "update_nba_players":  "update_nba_players",
+        "update_nba_all":      "update_nba_all",
+    }
+    cmd_name = CMD_MAP.get(job.job_type, "update_ncaa_all")
+
+    # Commands that support --skip-ingest
+    SUPPORTS_SKIP_INGEST = {
+        "update_ncaa_teams", "update_ncaa_players",
+        "update_nba_teams",  "update_nba_players",
+        "update_nba_all",    "update_ncaa_all",
+    }
+    # Commands that support NCAA-specific --iterations / --sor-trials / --days
+    SUPPORTS_NCAA_OPTS = {"update_ncaa_all", "update_ncaa_teams"}
+
+    # Use -u so the child Python runs unbuffered
     cmd = [
         sys.executable,
         "-u",
         str(settings.BASE_DIR / "manage.py"),
-        "update_all",
+        cmd_name,
         "--season",
         str(season_year),
-        "--iterations",
-        str(iterations),
-        "--sor-trials",
-        str(sor_trials),
     ]
-    if skip_ingest:
+
+    if skip_ingest and cmd_name in SUPPORTS_SKIP_INGEST:
         cmd.append("--skip-ingest")
-    if days:
-        cmd.extend(["--days", str(days)])
+
+    if cmd_name in SUPPORTS_NCAA_OPTS:
+        cmd.extend([
+            "--iterations",
+            str(iterations),
+            "--sor-trials",
+            str(sor_trials),
+        ])
+        if days:
+            cmd.extend(["--days", str(days)])
 
     # Mark running
     job.status = "running"

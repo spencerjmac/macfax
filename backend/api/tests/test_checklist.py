@@ -3,7 +3,7 @@ Unit tests for National Champion Checklist logic
 """
 
 from django.test import TestCase
-from core.models import Season, Conference, Team, TeamSeasonStats
+from ncaa.models import Season, Conference, Team, TeamSeasonStats
 from api.checklist import (
     compute_national_champion_checklist,
     compute_season_context,

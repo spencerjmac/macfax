@@ -18,7 +18,7 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from core.models import (
+from ncaa.models import (
     NationalAverages,
     PlayerSeasonProjection,
     PlaceholderArchetype,
@@ -28,14 +28,14 @@ from core.models import (
     TeamSeasonProjection,
     TeamSeasonRatings,
 )
-from core.analytics.player_value.team_projection.engine import (
+from ncaa.analytics.player_value.team_projection.engine import (
     D1Context,
     PlayerProjectionInput,
     RosterFitInput,
     compute_team_base_aggregates,
     project_team,
 )
-from core.analytics.player_value.team_projection.constants import (
+from ncaa.analytics.player_value.team_projection.constants import (
     FALLBACK_D1_ADJ_D,
     FALLBACK_D1_ADJ_O,
 )
