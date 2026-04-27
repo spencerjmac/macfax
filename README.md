@@ -1,6 +1,6 @@
 # College Basketball Analytics Dashboard
 
-A full-stack web application for advanced college basketball analytics, serving live game data and KenPom-style adjusted efficiency ratings via a self-hosted Docker deployment.
+A full-stack web application for advanced college basketball analytics, serving live game data and KenPom-style adjusted efficiency ratings for NCAA Division I and NBA via a self-hosted Docker deployment.
 
 **Production:** [macfax.usu.edu](https://macfax.usu.edu)
 
@@ -9,20 +9,21 @@ A full-stack web application for advanced college basketball analytics, serving 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────┐
-│  Docker (macfax_web network)                         │
-│                                                      │
-│  ┌──────────────┐    ┌──────────────┐    ┌────────┐ │
-│  │  Next.js 14  │───▶│  Django 5    │───▶│ Postgres│ │
-│  │  :7000       │    │  :7001       │    │  :5432  │ │
-│  │  (web)       │    │  (backend)   │    │  (db)   │ │
-│  └──────────────┘    └──────────────┘    └────────┘ │
-└─────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────┐
+│  Docker (macfax_web network)                                   │
+│                                                                 │
+│  ┌──────────────┐    ┌──────────────┐    ┌────────┐  ┌──────┐ │
+│  │  Next.js 14  │───▶│  Django 5    │───▶│ Postgres│  │Redis │ │
+│  │  :7000       │    │  :7001       │    │  :5432  │  │:6379 │ │
+│  │  (web)       │    │  (backend)   │    │  (db)   │  │(cache)│ │
+│  └──────────────┘    └──────────────┘    └────────┘  └──────┘ │
+└───────────────────────────────────────────────────────────────┘
 ```
 
 - **Web** (`/web`) — Next.js 14, TypeScript, Tailwind CSS. Fetches all data from the Django REST API at runtime; no static data files.
-- **Backend** (`/backend`) — Django 5 REST API. Ingests game data from the NCAA API, computes adjusted efficiency ratings, serves team/game/rankings data.
+- **Backend** (`/backend`) — Django 5 REST API. Ingests game data from NCAA and NBA APIs, computes adjusted efficiency ratings, serves team/game/rankings data.
 - **Database** — PostgreSQL 16 (Docker) / local dev uses `.env.local` settings.
+- **Cache** — Redis for caching API responses and improving performance.
 - **Static files** — Served by WhiteNoise on the Django backend at `/static/`. Team logos live in `backend/static/logos/` and are proxied through Next.js at `/static/logos/`.
 
 ---
@@ -49,10 +50,10 @@ cd web && npm run dev
 
 ## Data Pipeline
 
-Data flows entirely from the NCAA API through the Django backend. There are no CSV files or static data builds.
+Data flows from both NCAA and NBA APIs through the Django backend. There are no CSV files or static data builds.
 
 ```
-NCAA Stats API
+NCAAA Stats API / NBA API
     └── ingest_gamelogs          # fetch game results + box scores
         └── compute_team_metrics # aggregate raw four-factor stats
             └── compute_national_averages
@@ -153,6 +154,7 @@ Django admin: `/admin/`
 | Frontend | Next.js 14, React 18, TypeScript, Tailwind CSS |
 | Backend | Django 5.0.1, Django REST Framework |
 | Database | PostgreSQL 16 |
+| Cache | Redis |
 | Static files | WhiteNoise 6.6 |
 | Team matching | rapidfuzz |
 | Containerization | Docker, Docker Compose |
