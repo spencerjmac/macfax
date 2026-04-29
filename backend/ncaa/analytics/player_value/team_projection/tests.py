@@ -1507,3 +1507,76 @@ class TestPhase6TransferFitRisk(TestCase):
         band_xfr = result_xfr.projected_adj_em_high - result_xfr.projected_adj_em_low
         band_ret = result_ret.projected_adj_em_high - result_ret.projected_adj_em_low
         self.assertGreater(band_xfr, band_ret)
+
+
+# ── Task 3 (Phase 1.1): Newcomer double-count fix ────────────────────────────
+
+class TestNewcomerUncertaintyNoDoubleCount(TestCase):
+    """
+    Verify that reducing UNCERTAINTY_NEWCOMER_WEIGHT from 0.20 to 0.05 fixes
+    the double-counting of newcomer uncertainty.
+
+    The primary signal path (UNCERTAINTY_PLAYER_SIGNAL_WEIGHT × per-player
+    projection_uncertainty) already captures high newcomer uncertainty through
+    their individual 0.80 uncertainty score.  The categorical NEWCOMER_WEIGHT
+    is now a small residual for systemic factors only.
+    """
+
+    def test_newcomer_uncertainty_bounded(self):
+        """
+        Full-newcomer team with per-player uncertainty=0.80 should have
+        team uncertainty ≤ theoretical max = BASE + PLAYER_SIGNAL*0.80
+        + NEWCOMER_WEIGHT*1.0 + CONTINUITY_WEIGHT*1.0.
+        """
+        # All newcomers: returner_frac=0, newcomer_frac=1, weighted_player_unc=0.80
+        u = _compute_uncertainty(
+            returner_frac=0.0,
+            newcomer_frac=1.0,
+            roster_fit=_fit(has_style=True),
+            weighted_player_uncertainty=0.80,
+        )
+        theoretical_max = (
+            UNCERTAINTY_BASE
+            + UNCERTAINTY_PLAYER_SIGNAL_WEIGHT * 0.80
+            + UNCERTAINTY_NEWCOMER_WEIGHT * 1.0
+            + UNCERTAINTY_CONTINUITY_WEIGHT * 1.0
+        )
+        self.assertLessEqual(u, theoretical_max + 1e-6)
+        # With new 0.05 weight: max ≈ 0.20 + 0.24 + 0.05 + 0.10 = 0.59
+        # Regression guard: previous value of 0.20 would give ≈ 0.74
+        self.assertLess(u, 0.70)
+
+    def test_newcomer_higher_than_returner_via_player_signal(self):
+        """
+        All-newcomer (uncertainty=0.80) must have higher team uncertainty than
+        all-returner (uncertainty=0.40).  The difference should be larger than
+        UNCERTAINTY_PLAYER_SIGNAL_WEIGHT × (0.80 − 0.40) alone, since the
+        newcomer_frac and continuity terms also increase.
+        """
+        u_returner = _compute_uncertainty(
+            returner_frac=1.0,
+            newcomer_frac=0.0,
+            roster_fit=_fit(has_style=True),
+            weighted_player_uncertainty=0.40,
+        )
+        u_newcomer = _compute_uncertainty(
+            returner_frac=0.0,
+            newcomer_frac=1.0,
+            roster_fit=_fit(has_style=True),
+            weighted_player_uncertainty=0.80,
+        )
+        self.assertGreater(u_newcomer, u_returner)
+
+        # Player signal term alone accounts for a meaningful fraction of delta
+        player_signal_delta = UNCERTAINTY_PLAYER_SIGNAL_WEIGHT * (0.80 - 0.40)  # 0.12
+        actual_delta = u_newcomer - u_returner
+        self.assertGreater(actual_delta, player_signal_delta * 0.5)
+
+    def test_newcomer_categorical_term_is_small_relative_to_player_signal(self):
+        """
+        UNCERTAINTY_NEWCOMER_WEIGHT × 1.0 should be < UNCERTAINTY_PLAYER_SIGNAL_WEIGHT × 0.80.
+        This ensures the categorical term is secondary, not dominant.
+        """
+        categorical_contribution = UNCERTAINTY_NEWCOMER_WEIGHT * 1.0
+        player_signal_contribution = UNCERTAINTY_PLAYER_SIGNAL_WEIGHT * 0.80
+        self.assertLess(categorical_contribution, player_signal_contribution)

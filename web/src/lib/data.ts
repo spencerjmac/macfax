@@ -166,7 +166,7 @@ export async function getTeamWithContext(slug: string): Promise<
     }
   | null
 > {
-  if (isBuildPhase()) return null;
+  if (isBuildPhase() || !slug) return null;
   const apiData = await fetchRankingsFromApi();
   const teams = apiData.teams;
   const team = teams.find((t) => t.teamId === slug || t.teamName?.toLowerCase() === slug.toLowerCase());

@@ -11,9 +11,9 @@ Centering ensures an average-talent team projects to the D1 average rating:
   projected_adj_o = D1_avg_adj_o + SLOPE_OFF × (base_off − league_mean_base_off)
   projected_adj_d = D1_avg_adj_d − SLOPE_DEF × (base_def − league_mean_base_def)
 
-SLOPE_OFF ~1.40 and SLOPE_DEF ~1.55 account for BPR shrinkage and team-system
-amplification. Empirically calibrated from 2026 D1 data (Duke cross-check:
-base_off≈13.3 → adj_o delta≈18.6; base_def≈9.35 → adj_d delta≈15.45).
+SLOPE_OFF ~0.73 and SLOPE_DEF ~0.66 from BT-4 OLS regression (Sprint 2).
+Pre-2021 data excluded — BPR scale inconsistency (player RMSE 34–117 vs 3–5 for 2021+).
+N=1779 team pairs (2021–2025), R²=0.436 (off) / 0.378 (def).
 
 CONTINUITY
 ──────────
@@ -57,8 +57,10 @@ to compute national / offense / defense rank ranges.
 # ── Translation slopes ────────────────────────────────────────────────────────
 # BPR (pts/100 poss above D1 avg, weighted by min share) → adj rating delta.
 # Formula: projected_adj_o = D1_avg + SLOPE_OFF × (base_off − league_mean_off)
-SLOPE_OFF: float = 1.40
-SLOPE_DEF: float = 1.55
+# Updated 1.40 → 0.73 by BT-4 OLS (Sprint 2, 2021–2025 only). R²=0.436, N=1779 pairs.
+SLOPE_OFF: float = 0.73
+# Updated 1.55 → 0.66 by BT-4 OLS (Sprint 2, 2021–2025 only). R²=0.378, N=1779 pairs.
+SLOPE_DEF: float = 0.66
 
 # D1 average fallback — used if NationalAverages record is missing
 FALLBACK_D1_ADJ_O: float = 108.06
@@ -188,7 +190,14 @@ UNCERTAINTY_BASE: float = 0.20
 
 # Additive drivers for team_projection_uncertainty
 UNCERTAINTY_PLAYER_SIGNAL_WEIGHT: float = 0.30   # minutes-weighted avg player uncertainty × this
-UNCERTAINTY_NEWCOMER_WEIGHT: float = 0.20    # newcomer_fraction × this (reduced: player signal now carries this)
+# Reduced from 0.20 → 0.05 (Sprint 1, Phase 1.1 fix).
+# Newcomer high projection_uncertainty (≈0.80) already flows through
+# UNCERTAINTY_PLAYER_SIGNAL_WEIGHT = 0.30, contributing ~+0.24 per
+# full-minutes newcomer. The original 0.20 weight double-counted the
+# same signal. 0.05 retains a small categorical residual for systemic
+# uncertainty (team chemistry, system installation) not captured by
+# individual player uncertainty alone.
+UNCERTAINTY_NEWCOMER_WEIGHT: float = 0.05
 UNCERTAINTY_CONTINUITY_WEIGHT: float = 0.10  # (1 − returner_fraction) × this
 UNCERTAINTY_NO_STYLE_DATA: float = 0.05      # if has_team_style_data == False
 
