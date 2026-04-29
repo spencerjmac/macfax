@@ -80,8 +80,12 @@ SENIOR_SEASON_THRESHOLD = 3   # n_prior_seasons >= this → apply senior adjustm
 # Positive adj_delta (came from stronger program) → slight upward correction
 # Negative adj_delta (came from weaker program) → slight downward correction
 # Weight is small because BPR already partially accounts for schedule strength.
-TRANSFER_COMP_WEIGHT_OFF = 0.03
-TRANSFER_COMP_WEIGHT_DEF = 0.03
+# Updated 0.03 → 0.04 by BT-2 sweep (Sprint 2).
+# Validated on 10 source→target pairs, 2141 transfers. RMSE Δ=-0.0010 (marginal).
+# NOTE: sweep showed nearly flat RMSE across all weights (0.01–0.20) — adj has minimal
+# predictive signal. 0.04 is the empirical winner by a small margin.
+TRANSFER_COMP_WEIGHT_OFF = 0.04
+TRANSFER_COMP_WEIGHT_DEF = 0.04
 
 # ── Projection uncertainty (0 = low uncertainty, 1 = high) ───────────────────
 # Base uncertainty before sample-size adjustment.
@@ -142,3 +146,74 @@ YTY_SHRINK_POSS_DEF_TRANSFER = 750.0
 # dampen the contribution for transfers.
 TREND_WEIGHT_OFF_TRANSFER = 0.05   # vs 0.10 for returners
 TREND_WEIGHT_DEF_TRANSFER = 0.04   # vs 0.08 for returners
+
+# ── Newcomer BPR priors from recruiting rank (Phase 1.1) ─────────────────────
+# All values are Phase 1.1 PROVISIONAL — must be validated against
+# BT-1 (player RMSE backtest) and BT-5 (holdout calibration) before Phase 2.
+#
+# USE_RECRUITING_PRIOR: master toggle. False disables entirely for A/B testing.
+USE_RECRUITING_PRIOR: bool = True
+
+# NEWCOMER_RANK_PRIORS: list in descending priority order (first match wins).
+# 'max_rank' is the inclusive upper bound for national_rank (lower = better).
+# Tiers:
+#   top-10:   consensus blue-chip; historically ~+2 BPR production
+#   top-30:   likely starter-level talent; high upside
+#   top-60:   solid contributor; rotation-to-starter range
+#   top-100:  fringe high-major; D1-average projection appropriate
+#   top-200:  mid-major caliber; D1-average or slightly below
+#   >200:     walk-on/low-priority; slight negative adjustment
+NEWCOMER_RANK_PRIORS: list = [
+    {"max_rank":  10, "obpr_prior": +2.2, "dbpr_prior": +0.7, "uncertainty_override": 0.65},
+    {"max_rank":  30, "obpr_prior": +1.4, "dbpr_prior": +0.5, "uncertainty_override": 0.68},
+    {"max_rank":  60, "obpr_prior": +0.8, "dbpr_prior": +0.3, "uncertainty_override": 0.73},
+    {"max_rank": 100, "obpr_prior": +0.4, "dbpr_prior": +0.1, "uncertainty_override": 0.76},
+    {"max_rank": 200, "obpr_prior": +0.0, "dbpr_prior": +0.0, "uncertainty_override": 0.80},
+    # no max_rank → catch-all for rank > 200
+    {"obpr_prior": -0.2, "dbpr_prior": -0.1, "uncertainty_override": 0.82},
+]
+
+# NEWCOMER_STARS_PRIORS: fallback when national_rank is None but stars exist.
+# Keyed by integer star rating (1–5). Phase 1.1 provisional.
+NEWCOMER_STARS_PRIORS: dict = {
+    5: {"obpr_prior": +1.0, "dbpr_prior": +0.4, "uncertainty_override": 0.70},
+    4: {"obpr_prior": +0.3, "dbpr_prior": +0.1, "uncertainty_override": 0.77},
+    3: {"obpr_prior": -0.1, "dbpr_prior":  0.0, "uncertainty_override": 0.81},
+    2: {"obpr_prior": -0.2, "dbpr_prior": -0.1, "uncertainty_override": 0.82},
+    1: {"obpr_prior": -0.2, "dbpr_prior": -0.1, "uncertainty_override": 0.82},
+}
+
+# ── Position-stratified development adjustments (Phase 1.2 — BT-3 validated) ──
+# Source years: [2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025], N observations: 20136
+# Low-confidence cells (n < 20) retain the current flat constant value.
+# Set USE_STRATIFIED_DEV_ADJUSTMENTS = False to revert to flat constants.
+
+USE_STRATIFIED_DEV_ADJUSTMENTS: bool = True
+
+# Newcomer development adjustments (offense)
+DEV_OFF_NEWCOMER_G: float = 0.6  # n=4045, high
+DEV_OFF_NEWCOMER_WING: float = 0.6  # n=2085, high
+DEV_OFF_NEWCOMER_BIG: float = 0.6  # n=716, high
+# Newcomer development adjustments (defense)
+DEV_DEF_NEWCOMER_G: float = 0.6  # n=4045
+DEV_DEF_NEWCOMER_WING: float = 0.6  # n=2085
+DEV_DEF_NEWCOMER_BIG: float = 0.6  # n=716
+
+# Second year development adjustments (offense)
+DEV_OFF_SECOND_YEAR_G: float = 0.4  # n=3823, high
+DEV_OFF_SECOND_YEAR_WING: float = 0.4  # n=1866, high
+DEV_OFF_SECOND_YEAR_BIG: float = 0.4  # n=957, high
+# Second year development adjustments (defense)
+DEV_DEF_SECOND_YEAR_G: float = 0.4  # n=3823
+DEV_DEF_SECOND_YEAR_WING: float = 0.4  # n=1866
+DEV_DEF_SECOND_YEAR_BIG: float = 0.4  # n=957
+
+# Senior+ development adjustments (offense)
+DEV_OFF_SENIOR_G: float = 0.1  # n=1131, high
+DEV_OFF_SENIOR_WING: float = 0.1  # n=491, high
+DEV_OFF_SENIOR_BIG: float = 0.1  # n=302, high
+# Senior+ development adjustments (defense)
+DEV_DEF_SENIOR_G: float = 0.1  # n=1131
+DEV_DEF_SENIOR_WING: float = 0.1  # n=491
+DEV_DEF_SENIOR_BIG: float = 0.1  # n=302
+

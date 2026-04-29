@@ -96,6 +96,20 @@ DEVIATIONS FROM THE PUBLIC BPR ARTICLE
               with PRIOR_HISTORY_BLEND weight), component influence diagnostics,
               ranking sanity validation (strict_bpr / full_two_sided / box_bpr views),
               bpr_mode API filter, baseline_obpr/dbpr and source fields in serializer.
+            v1.4: on-court efficiency features added to Box BPR (on_court_adj_em to
+              both OFF and DEF feature sets; on_court_tov_edge and on_court_reb_edge
+              added to DEF). Preseason model training window extended from 2 to 4 years.
+              These changes improve Box BPR R² (especially defensive), giving tighter
+              and more accurate priors — particularly for intangible players whose
+              on-court impact exceeds their raw box stats.
+            v1.5: two fixes to close gap vs EvanMiya's published ratings.
+              (1) on-off delta replaces raw on_court_adj_em in Box BPR: feature is now
+              on_court_adj_em − team_adj_em, removing team-quality bias so role players
+              on elite teams (Duke, Iowa State) are no longer inflated.
+              (2) Separate BOX_TRAINING_RAPM_LAMBDA (100) for Box BPR training targets:
+              a second, less-regularised RAPM fit generates the baseline_obpr/dbpr stored
+              in DB and used as Box BPR training labels. Less shrinkage → targets span
+              10-15 range → Box BPR learns correct scale → top player priors reach 12-14.
 
 9. Opponent quality (schedule strength) adjustment in Box BPR
    Article: uses "average opponent rating faced by each player" as a Box BPR
@@ -110,7 +124,7 @@ DEVIATIONS FROM THE PUBLIC BPR ARTICLE
 """
 
 # ── Model version ─────────────────────────────────────────────────────────────
-BPR_MODEL_VERSION = "1.3"
+BPR_MODEL_VERSION = "1.5"
 
 # ── Possession estimation (Kubatko formula) ───────────────────────────────────
 # Possessions ≈ FGA + 0.44×FTA + TOV − ORB
@@ -143,6 +157,14 @@ HCA_PTS_PER_100 = 3.0
 # Lower λ = less shrinkage (trusts data more); higher λ = more shrinkage (trusts prior more)
 RAPM_LAMBDA_CANDIDATES = [1.0, 5.0, 10.0, 25.0, 50.0, 100.0, 250.0, 500.0, 1000.0, 2500.0, 5000.0]
 RAPM_CV_FOLDS = 5
+
+# Lambda for the secondary RAPM fit whose coefficients become Box BPR training targets.
+# LOWER than the production CV lambda (~1000) so elite player coefficients are less
+# shrunk and span the 10-15 range — Box BPR then learns to predict in that range,
+# breaking the recursive attenuation chain that compresses final BPR values.
+# The production RAPM (CV-selected lambda) is unaffected; only baseline_obpr/dbpr
+# written to DB for future Box BPR training use this lambda.
+BOX_TRAINING_RAPM_LAMBDA = 500.0
 
 # ── Prior standard deviations ────────────────────────────────────────────────
 # Used when Box BPR is unavailable (e.g., new players) or as initial fallback.
