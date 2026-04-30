@@ -1,7 +1,7 @@
 """
 Fabric deployment tasks for Macfax.
 
-Server  : sands.usu.edu
+Server  : sands.usu.edu:42222
 User    : macfax (SSH key auth)
 App dir : /opt/macfax
 
@@ -23,13 +23,14 @@ from fabric import Connection, task
 
 HOST = "sands.usu.edu"
 USER = "macfax"
+PORT = 42222
 APP_DIR = "/opt/macfax"
 COMPOSE = "docker compose"
 
 
 def _conn():
     """Return a Connection to the production server."""
-    return Connection(host=HOST, user=USER)
+    return Connection(host=HOST, user=USER, port=PORT)
 
 
 # ---------------------------------------------------------------------------
