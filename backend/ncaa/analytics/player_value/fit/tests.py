@@ -17,6 +17,7 @@ All tests are stateless — no DB access required.
 
 from __future__ import annotations
 
+import unittest
 from unittest import TestCase
 
 from ncaa.analytics.player_value.fit.archetypes import (
@@ -38,6 +39,9 @@ from ncaa.analytics.player_value.fit.constants import (
     WEAK_DEFENDER_DBPR_MAX, BALL_STOPPER_TOV_THRESHOLD,
     BALL_STOPPER_AST_MAX, NON_SHOOTING_BIG_FG3A_MAX,
     OFF_REBOUNDER_THRESHOLD, PRESSURE_DRIVER_FTA_THRESHOLD,
+    # Recruit-class tag constants (Sprint 4)
+    TAG_RECRUIT_ELITE, TAG_RECRUIT_HIGH, TAG_RECRUIT_MID, TAG_RECRUIT_LOW,
+    TAG_STARS_HIGH, TAG_STARS_MID, TAG_JUCO,
 )
 from ncaa.analytics.player_value.fit.offense import (
     score_offensive_fit,
@@ -856,3 +860,74 @@ class TestBuildSeasonRefs(TestCase):
         for attr in ("fg3a_pg", "ast_pg", "tov_pg", "blk_pg", "stl_pg"):
             _, std = getattr(refs, attr)
             self.assertGreater(std, 0.0, f"{attr} std ≤ 0")
+
+
+# ── Recruit-class archetype tags (Sprint 4) ───────────────────────────────────
+
+class TestRecruitClassTags(unittest.TestCase):
+    """Pure-function tests for recruit-class tag emission in tag_archetypes()."""
+
+    def _inp(self, **kwargs) -> PlayerFitInput:
+        return PlayerFitInput(player_id=1, **kwargs)
+
+    def test_recruit_elite_tag_fires(self):
+        tags = tag_archetypes(self._inp(national_rank=15))
+        self.assertIn(TAG_RECRUIT_ELITE, tags)
+        self.assertNotIn(TAG_RECRUIT_HIGH, tags)
+
+    def test_recruit_high_tag_fires(self):
+        tags = tag_archetypes(self._inp(national_rank=75))
+        self.assertIn(TAG_RECRUIT_HIGH, tags)
+        self.assertNotIn(TAG_RECRUIT_ELITE, tags)
+
+    def test_recruit_mid_tag_fires(self):
+        tags = tag_archetypes(self._inp(national_rank=150))
+        self.assertIn(TAG_RECRUIT_MID, tags)
+
+    def test_recruit_low_tag_fires(self):
+        tags = tag_archetypes(self._inp(national_rank=250))
+        self.assertIn(TAG_RECRUIT_LOW, tags)
+        self.assertNotIn(TAG_RECRUIT_ELITE, tags)
+        self.assertNotIn(TAG_RECRUIT_HIGH, tags)
+        self.assertNotIn(TAG_RECRUIT_MID, tags)
+
+    def test_stars_high_fires_when_no_rank(self):
+        tags = tag_archetypes(self._inp(national_rank=None, recruit_stars=5))
+        self.assertIn(TAG_STARS_HIGH, tags)
+        self.assertNotIn(TAG_RECRUIT_ELITE, tags)  # rank was None → no rank tag
+
+    def test_rank_takes_priority_over_stars(self):
+        # national_rank=25 fires RECRUIT_ELITE; stars=3 must NOT fire TAG_STARS_MID
+        tags = tag_archetypes(self._inp(national_rank=25, recruit_stars=3))
+        self.assertIn(TAG_RECRUIT_ELITE, tags)
+        self.assertNotIn(TAG_STARS_MID, tags)
+
+    def test_juco_tag_fires(self):
+        tags = tag_archetypes(self._inp(is_juco_transfer=True))
+        self.assertIn(TAG_JUCO, tags)
+
+    def test_juco_plus_rank_both_fire(self):
+        tags = tag_archetypes(self._inp(is_juco_transfer=True, national_rank=80))
+        self.assertIn(TAG_JUCO, tags)
+        self.assertIn(TAG_RECRUIT_HIGH, tags)
+
+    def test_no_recruiting_data_no_recruit_tags(self):
+        tags = tag_archetypes(self._inp())  # all defaults: rank=None, stars=None, juco=False
+        self.assertFalse(any(t.startswith("recruit_") for t in tags))
+        self.assertNotIn(TAG_JUCO, tags)
+        self.assertNotIn(TAG_STARS_HIGH, tags)
+        self.assertNotIn(TAG_STARS_MID, tags)
+
+    def test_existing_tags_unaffected(self):
+        # spacer and recruit_elite should both fire
+        tags = tag_archetypes(self._inp(fg3a_pg=4.0, national_rank=20, role_bucket="G"))
+        self.assertIn("spacer", tags)
+        self.assertIn(TAG_RECRUIT_ELITE, tags)
+
+    def test_playerfit_default_fields_dont_break_existing_code(self):
+        # All new Sprint 4 fields have defaults — no existing construction site breaks
+        inp = PlayerFitInput(player_id=99, player_name="test")
+        self.assertIsNone(inp.national_rank)
+        self.assertIsNone(inp.recruit_stars)
+        self.assertFalse(inp.is_juco_transfer)
+        self.assertIsNone(inp.conf_group)

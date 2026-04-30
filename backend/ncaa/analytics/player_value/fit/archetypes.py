@@ -58,6 +58,12 @@ from ncaa.analytics.player_value.fit.constants import (
     FOUL_PRONE_THRESHOLD,
     WEAK_DEFENDER_DBPR_MAX,
     SWITCHABLE_WING_ROLE,
+    # Recruit-class tag constants (Sprint 4)
+    TAG_RECRUIT_ELITE, TAG_RECRUIT_HIGH, TAG_RECRUIT_MID, TAG_RECRUIT_LOW,
+    TAG_RECRUIT_UNRATED, TAG_STARS_HIGH, TAG_STARS_MID, TAG_JUCO,
+    RECRUIT_ELITE_RANK_THRESHOLD, RECRUIT_HIGH_RANK_THRESHOLD,
+    RECRUIT_MID_RANK_THRESHOLD, RECRUIT_STARS_HIGH_THRESHOLD,
+    RECRUIT_STARS_MID_THRESHOLD,
     # D1 reference values
     REF_FG3A_PG, REF_AST_PG, REF_TOV_PG, REF_BLK_PG, REF_STL_PG,
     REF_PF_PG, REF_OREB_PG, REF_DREB_PG, REF_FTA_PG,
@@ -134,6 +140,16 @@ class PlayerFitInput:
 
     # Derived archetype tags (populated by tag_archetypes)
     archetypes: set = field(default_factory=set)
+
+    # Recruiting profile (Sprint 4 — optional; None = not set).
+    # Populated from PlayerRecruitingProfile for DB players, or from ManualPlayerSpec
+    # for scenario players. None when data is unavailable.
+    national_rank:    Optional[int]  = None
+    recruit_stars:    Optional[int]  = None   # named recruit_stars to avoid 'stars' clash
+    is_juco_transfer: bool           = False
+    # Conference group for bucket-relative weak defender threshold (Sprint 4).
+    # Set by fit/service.py from team slug → get_conf_detail(). None in scenario context.
+    conf_group:       Optional[str]  = None   # "power" | "high_mid" | "mid_major" | None
 
 
 # ── Season-relative reference values ─────────────────────────────────────────
@@ -343,5 +359,35 @@ def tag_archetypes(inp: PlayerFitInput) -> set[str]:
     if (inp.projected_dbpr is not None
             and inp.projected_dbpr <= WEAK_DEFENDER_DBPR_MAX):
         tags.add("weak_defender")
+
+    # ── Recruit-class tags (Sprint 4) ─────────────────────────────────────
+    # Additive — do not replace or affect any existing tags above.
+    # Only fire when recruiting data is explicitly set on this PlayerFitInput.
+
+    # JUCO fires regardless of rank/stars
+    if inp.is_juco_transfer:
+        tags.add(TAG_JUCO)
+
+    # Rank takes priority over stars when both are present
+    if inp.national_rank is not None:
+        if inp.national_rank <= RECRUIT_ELITE_RANK_THRESHOLD:
+            tags.add(TAG_RECRUIT_ELITE)
+        elif inp.national_rank <= RECRUIT_HIGH_RANK_THRESHOLD:
+            tags.add(TAG_RECRUIT_HIGH)
+        elif inp.national_rank <= RECRUIT_MID_RANK_THRESHOLD:
+            tags.add(TAG_RECRUIT_MID)
+        else:
+            tags.add(TAG_RECRUIT_LOW)
+    elif inp.recruit_stars is not None:
+        if inp.recruit_stars >= RECRUIT_STARS_HIGH_THRESHOLD:
+            tags.add(TAG_STARS_HIGH)
+        elif inp.recruit_stars >= RECRUIT_STARS_MID_THRESHOLD:
+            tags.add(TAG_STARS_MID)
+        # Stars below 3 with no rank: no tag (insufficient signal to surface in UI)
+
+    # NOTE: TAG_RECRUIT_UNRATED is NOT set here. PlayerFitInput has no recruitment_type
+    # field, so we cannot distinguish newcomers from returners/transfers in this function.
+    # Set TAG_RECRUIT_UNRATED externally (in the service or scenario layer) when
+    # recruitment_type='newcomer' AND national_rank is None AND recruit_stars is None.
 
     return tags

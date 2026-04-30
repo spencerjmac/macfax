@@ -217,3 +217,11 @@ DEV_DEF_SENIOR_G: float = 0.1  # n=1131
 DEV_DEF_SENIOR_WING: float = 0.1  # n=491
 DEV_DEF_SENIOR_BIG: float = 0.1  # n=302
 
+# ── JUCO transfer adjustments (Phase 1.3) ────────────────────────────────────
+# Added in Sprint 3 — ManualPlayerSpec resolver.
+# JUCOs have actual college production data (unlike HS freshmen), so their
+# BPR prior is slightly higher and their uncertainty is lower at the same rank.
+# Phase 1.3 provisional; pending BT-5 validation.
+JUCO_BPR_BOOST: float = 0.15         # added to rank-lookup obpr_prior for JUCOs
+JUCO_UNCERTAINTY_FACTOR: float = 0.90  # multiplied against base uncertainty
+
