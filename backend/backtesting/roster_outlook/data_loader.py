@@ -250,6 +250,20 @@ def load_backtest_pair(
         if pid not in prior_team_by_player:
             prior_team_by_player[pid] = slug
 
+    # ── Multi-season team history for grad-transfer detection (Phase 1.2) ────
+    # Single .distinct() query — NOT N+1. Only loaded when prior data exists
+    # so we can meaningfully apply the three-season rule.
+    player_full_history: dict[int, set[str]] = defaultdict(set)
+    if prior_year_has_data:
+        all_pids = {r["player_id"] for r in source_rows}
+        for hr in PlayerSeasonStats.objects.filter(
+            player_id__in=all_pids,
+            season__year__lt=source_year,
+        ).values("player_id", "team__slug").distinct():
+            slug = hr["team__slug"] or ""
+            if slug:
+                player_full_history[hr["player_id"]].add(slug)
+
     # ── Group players by team, derive recruitment type, normalize minutes ──
     by_team: dict[str, list[dict]] = defaultdict(list)
     for row in source_rows:
@@ -259,7 +273,10 @@ def load_backtest_pair(
 
     team_pools: dict[str, TeamPlayerPool] = {}
     for team_slug, rows in by_team.items():
-        players = _build_player_rows(rows, team_slug, prior_team_by_player)
+        players = _build_player_rows(
+            rows, team_slug, prior_team_by_player,
+            player_full_history=player_full_history if prior_year_has_data else None,
+        )
         if players:
             team_pools[team_slug] = TeamPlayerPool(
                 team_slug=team_slug,
@@ -312,6 +329,7 @@ def _build_player_rows(
     rows: list[dict],
     team_slug: str,
     prior_team_by_player: dict[int, str],
+    player_full_history: Optional[dict[int, set[str]]] = None,
 ) -> list[PlayerRow]:
     """
     Convert raw PSS dicts to PlayerRow objects with recruitment_type and
@@ -320,6 +338,14 @@ def _build_player_rows(
     Filters out rows with null BPR fields (only box stats, no RAPM) by
     using 0.0 for both obpr and dbpr in that case, since we're using
     actual realized stats as a proxy.
+
+    Args:
+        rows:                 Raw PSS value-dicts for this team.
+        team_slug:            This team's slug.
+        prior_team_by_player: {player_id: prior_team_slug} from source_year-1.
+        player_full_history:  {player_id: {slug, ...}} across all prior seasons.
+                              When provided, enables grad-transfer-return detection
+                              (rule 3: prior != current BUT current in history).
     """
     if not rows:
         return []
@@ -336,7 +362,10 @@ def _build_player_rows(
         dbpr = float(row["dbpr"] or 0.0)
         bpr = float(row["bpr"] or (obpr + dbpr))
 
-        recruitment_type = _derive_recruitment_type(pid, team_slug, prior_team_by_player)
+        recruitment_type = _derive_recruitment_type(
+            pid, team_slug, prior_team_by_player,
+            player_full_history=player_full_history,
+        )
         minutes_share_p2 = (mpg / total_mpg) * MINUTES_SHARE_SCALE
 
         players.append(PlayerRow(
@@ -358,12 +387,20 @@ def _derive_recruitment_type(
     player_id: int,
     current_team_slug: str,
     prior_team_by_player: dict[int, str],
+    player_full_history: Optional[dict[int, set[str]]] = None,
 ) -> str:
     """
     Classify how a player arrived at their source-year team vs the prior year.
 
     Returns 'returner', 'transfer', or 'newcomer' — same semantics as
-    pipeline.py / engine.py classify_recruitment_type().
+    pipeline.py classify_recruitment_type().
+
+    Rules in priority order:
+      1. No prior slug (no prior season OR non-D1 prior team) → newcomer
+      2. prior_slug == current_team_slug → returner
+      3. prior_slug != current AND current in player_full_history → returner
+         (grad-transfer returning to original school)
+      4. prior_slug != current → transfer
 
     Note: players whose prior-year team had no slug (non-D1 schools) are
     treated as newcomers, not transfers — consistent with pipeline.py behavior
@@ -376,4 +413,8 @@ def _derive_recruitment_type(
         return "newcomer"
     if prior_slug == current_team_slug:
         return "returner"
+    # Rule 3: prior team differs, but current team in broader history
+    if player_full_history is not None:
+        if current_team_slug in player_full_history.get(player_id, set()):
+            return "returner"  # grad-transfer return
     return "transfer"

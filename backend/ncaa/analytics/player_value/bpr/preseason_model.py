@@ -328,11 +328,10 @@ def train_preseason_models(season_year: int) -> dict:
     Returns: dict with model objects, scalers, residual SDs, and training metadata.
     Returns empty dict if training data is insufficient.
     """
-    # Use 3 prior seasons as training targets: T-3, T-2, T-1
-    prior_years = list(range(season_year - 2, season_year + 1))  # e.g. [2024, 2025, 2026] for 2026
-    # But we predict T using (T-1 features + T box), so training years T where we have T-1 data:
-    # We want T ∈ {season_year-2, season_year-1} and predict current season (season_year)
-    training_target_years = list(range(season_year - 2, season_year))  # [2024, 2025] for 2026
+    # Use up to 4 prior target years for training: e.g. [2022, 2023, 2024, 2025] for 2026.
+    # Each T uses (T-1 features + T box) → T baseline targets; no target-year leakage.
+    # Data builders gate on baseline_obpr__isnull=False so years without clean data are skipped.
+    training_target_years = list(range(season_year - 4, season_year))  # e.g. [2022, 2023, 2024, 2025]
 
     if len(training_target_years) < 1:
         logger.warning("[Preseason] Not enough prior seasons to train preseason model.")

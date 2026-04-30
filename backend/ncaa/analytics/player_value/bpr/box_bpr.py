@@ -77,14 +77,18 @@ OFF_FEATURES = [
     "fga100", "fg3a100", "fta100",
     "efg_pct", "ts_pct", "min_share",
     "fg3_rate", "ft_rate", "ast_tov_ratio",
-    "opp_quality",   # avg adj_em of opponents faced (schedule strength)
-    "usage_rate",    # (FGA + 0.44*FTA + TOV) per 100 poss — offensive load signal
-    "ast_rate",      # AST100 / usage_rate — playmaking vs scoring role signal
+    "opp_quality",      # avg adj_em of opponents faced (schedule strength)
+    "usage_rate",       # (FGA + 0.44*FTA + TOV) per 100 poss — offensive load signal
+    "ast_rate",         # AST100 / usage_rate — playmaking vs scoring role signal
+    "on_off_adj_em_delta",  # on_court_adj_em − team_adj_em: individual net impact above team baseline
 ]
 DEF_FEATURES = [
     "stl100", "blk100", "dreb100", "pf100", "min_share",
     "fg3a_share", "oreb_share", "pf_per_min",
-    "opp_quality",   # same value, both models
+    "opp_quality",          # same value, both models
+    "on_off_adj_em_delta",  # on-off delta: removes team-quality component from on-court adj_em
+    "on_court_tov_edge",    # turnover forcing edge when on court
+    "on_court_reb_edge",    # rebounding edge when on court
 ]
 
 
@@ -94,18 +98,23 @@ def extract_box_features(
     player_season_stats: list[dict],   # dicts from PlayerSeasonStats.values(...)
     off_poss_map: dict[int, float],    # player_id → total off possessions (from RAPM dataset)
     def_poss_map: dict[int, float],    # player_id → total def possessions
-    opp_quality_map: "dict[int, float] | None" = None,  # team_id → mean opp adj_em
+    opp_quality_map: "dict[int, float] | None" = None,   # team_id → mean opp adj_em
+    team_adj_em_map: "dict[int, float] | None" = None,   # team_id → team season adj_em
 ) -> dict[int, dict]:
     """
     Compute per-100-possession features for each qualified player.
 
     opp_quality_map: team_id → mean adj_em of opponents faced this season.
         Adjusts for schedule strength. Missing teams default to 0.0 (league avg).
+    team_adj_em_map: team_id → the team's own season adj_em.
+        Used to compute on-off delta = on_court_adj_em − team_adj_em,
+        removing team-quality bias from the on-court signal.
 
     Returns: {player_id: {"off": [feature_values], "def": [feature_values]}}
     Only includes players meeting the minimum qualifier.
     """
-    _opp_quality = opp_quality_map or {}
+    _opp_quality    = opp_quality_map or {}
+    _team_adj_em    = team_adj_em_map or {}
     features: dict[int, dict] = {}
 
     for p in player_season_stats:
@@ -148,6 +157,27 @@ def extract_box_features(
         team_id = p.get("team_id") or p.get("team")
         opp_quality = _opp_quality.get(team_id, 0.0) if team_id else 0.0
 
+        # On-off delta: individual impact above team baseline.
+        # Raw on_court_adj_em is a team metric (players on elite teams all look good).
+        # Subtracting team adj_em isolates the player's marginal contribution.
+        #
+        # Guards against noise:
+        #   1. NULL on_court_adj_em → delta = 0.0 exactly (not 0 - team_em = -team_em,
+        #      which would wrongly penalise players on good teams with missing data).
+        #   2. Possession dampening: scale = min((poss/2000)^1.5, 1) — steeper curve
+        #      so low/mid-poss players contribute less signal.
+        #   3. Hard cap ±6 — prevents single lucky mid-major stint from dominating.
+        _on_ct_adj_em_raw = p.get("on_court_adj_em")
+        on_ct_tov_edge = float(p.get("on_court_tov_edge") or 0.0)
+        on_ct_reb_edge = float(p.get("on_court_reb_edge") or 0.0)
+        if _on_ct_adj_em_raw is not None:
+            team_em    = _team_adj_em.get(team_id, 0.0) if team_id else 0.0
+            _raw_delta = float(_on_ct_adj_em_raw) - team_em
+            _poss_scale = min((off_poss / 2000.0) ** 1.5, 1.0)
+            on_off_delta = max(min(_raw_delta * _poss_scale, 6.0), -6.0)
+        else:
+            on_off_delta = 0.0  # no on-court data → neutral, no signal
+
         fga100  = per100(fga_pg,  gp, off_poss)
         fta100  = per100(fta_pg,  gp, off_poss)
         tov100  = per100(tov_pg,  gp, off_poss)
@@ -172,6 +202,7 @@ def extract_box_features(
             opp_quality,
             usage_rate,
             ast_rate,
+            on_off_delta,
         ]
 
         total_reb_pg = oreb_pg + dreb_pg
@@ -186,6 +217,9 @@ def extract_box_features(
             oreb_pg / max(total_reb_pg, 0.01),                               # oreb_share: rebounding-role indicator
             pf_pg * (40.0 / max(mpg, 1.0)),                                  # pf_per_min: foul rate per 40 min
             opp_quality,
+            on_off_delta,
+            on_ct_tov_edge,
+            on_ct_reb_edge,
         ]
 
         features[pid] = {"off": off_feat, "def": def_feat}
@@ -289,6 +323,7 @@ def compute_prior_sds_from_r2(
     off_poss_map: dict[int, float],
     def_poss_map: dict[int, float],
     opp_quality_map: "dict[int, float] | None" = None,
+    team_adj_em_map: "dict[int, float] | None" = None,
     precomputed_off_preds: "dict[int, float] | None" = None,
     precomputed_def_preds: "dict[int, float] | None" = None,
 ) -> tuple[float, float]:
@@ -338,6 +373,7 @@ def compute_prior_sds_from_r2(
         box_features = extract_box_features(
             player_season_stats, off_poss_map, def_poss_map,
             opp_quality_map=opp_quality_map,
+            team_adj_em_map=team_adj_em_map,
         )
 
         off_pids = [pid for pid in box_features if pid in rapm_obpr]
@@ -389,6 +425,7 @@ def predict_box_bpr(
     def_poss_map: dict[int, float],
     model_artifacts: dict,
     opp_quality_map: "dict[int, float] | None" = None,
+    team_adj_em_map: "dict[int, float] | None" = None,
 ) -> dict[int, dict]:
     """
     Predict Box BPR for all qualified players using trained pipelines.
@@ -402,6 +439,7 @@ def predict_box_bpr(
     box_features = extract_box_features(
         player_season_stats, off_poss_map, def_poss_map,
         opp_quality_map=opp_quality_map,
+        team_adj_em_map=team_adj_em_map,
     )
 
     preds: dict[int, dict] = {}
@@ -469,6 +507,7 @@ def out_of_fold_box_bpr(
     n_folds: int = BOX_BPR_OOF_FOLDS,
     seed: int = 42,
     opp_quality_map: "dict[int, float] | None" = None,
+    team_adj_em_map: "dict[int, float] | None" = None,
 ) -> tuple[dict, dict]:
     """
     Generate leak-free Box BPR predictions via out-of-fold cross-validation.
@@ -489,6 +528,7 @@ def out_of_fold_box_bpr(
     box_features = extract_box_features(
         player_season_stats, off_poss_map, def_poss_map,
         opp_quality_map=opp_quality_map,
+        team_adj_em_map=team_adj_em_map,
     )
 
     rapm_pids     = [pid for pid in box_features if pid in rapm_obpr and pid in rapm_dbpr]
@@ -582,6 +622,7 @@ def train_box_bpr_prior_seasons(
     current_off_poss_map: dict[int, float],
     current_def_poss_map: dict[int, float],
     opp_quality_map: "dict[int, float] | None" = None,
+    team_adj_em_map: "dict[int, float] | None" = None,
 ) -> tuple[dict, dict]:
     """
     Train Box BPR on prior-season data, then predict current-season players.
@@ -614,6 +655,7 @@ def train_box_bpr_prior_seasons(
         current_season_stats, current_off_poss_map, current_def_poss_map,
         {"off_pipeline": off_pipe, "def_pipeline": def_pipe},
         opp_quality_map=opp_quality_map,
+        team_adj_em_map=team_adj_em_map,
     )
 
     model_artifacts = {

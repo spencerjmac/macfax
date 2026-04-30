@@ -37,8 +37,57 @@ from typing import Optional
 
 from ncaa.analytics.player_value.projection.constants import PROJECTION_VERSION
 from ncaa.analytics.player_value.projection.engine import project_player
+from ncaa.analytics.player_value.minutes.role_buckets import classify_role_bucket
 
 logger = logging.getLogger(__name__)
+
+
+def classify_recruitment_type(
+    player_id: int,
+    current_team_id: Optional[int],
+    prior_canonical_row: Optional[dict],
+    player_team_history: dict,
+) -> tuple[str, str]:
+    """
+    Classify how a player arrived at their current team.
+
+    Extends the basic two-season lookup in engine.py with a third rule that
+    detects grad-transfers who are returning to a school they attended before
+    their most recent prior season.
+
+    Rules in priority order:
+      1. No prior canonical row          → ('newcomer', 'no_prior_season')
+      2. prior_team == current_team      → ('returner', 'same_team_prior')
+      3. prior_team != current_team AND current_team_id in player's full
+         team history (earlier seasons)  → ('returner', 'grad_transfer_return')
+      4. prior_team != current_team      → ('transfer', 'different_team_prior')
+
+    Args:
+        player_id:           Player's DB primary key.
+        current_team_id:     team_id for the canonical row in from_season.
+        prior_canonical_row: Canonical PSS dict for prior season, or None.
+        player_team_history: {player_id: set[team_id]} built from ALL prior
+                             seasons before from_season (not just the last one).
+
+    Returns:
+        (recruitment_type, classification_reason) tuple.
+    """
+    if prior_canonical_row is None:
+        return "newcomer", "no_prior_season"
+
+    prior_team_id = prior_canonical_row.get("team_id")
+    if prior_team_id is None or current_team_id is None:
+        return "returner", "same_team_prior"  # conservative default
+
+    if prior_team_id == current_team_id:
+        return "returner", "same_team_prior"
+
+    # Rule 3: current school appears in player's broader team history
+    history: set = player_team_history.get(player_id, set())
+    if current_team_id in history:
+        return "returner", "grad_transfer_return"
+
+    return "transfer", "different_team_prior"
 
 
 def _pick_canonical_row(rows: list[dict]) -> dict:
@@ -123,6 +172,12 @@ def run_projection_pipeline(
             "def_poss",
             "mpg",
             "gp",
+            # Box stats for role_bucket classification (Phase 1.2 BT-3)
+            "blk",
+            "reb",
+            "ast",
+            "fg3a_pg",
+            "player__position",
         )
     )
 
@@ -228,6 +283,48 @@ def run_projection_pipeline(
         .values_list("player_id", "n")
     )
 
+    # ── Load full team history for grad-transfer detection (Phase 1.2) ──────────
+    # Single .distinct() query — NOT an N+1 loop.
+    # Builds {player_id: {team_id, ...}} across ALL seasons before season_year.
+    _prior_history_rows = PlayerSeasonStats.objects.filter(
+        player_id__in={r["player_id"] for r in canonical_current},
+        season__year__lt=season_year,
+    ).values("player_id", "team_id").distinct()
+
+    player_team_history: dict[int, set] = defaultdict(set)
+    for _hr in _prior_history_rows:
+        if _hr["team_id"]:
+            player_team_history[_hr["player_id"]].add(_hr["team_id"])
+
+    # ── Load recruiting profiles for newcomer BPR priors (Phase 1.1) ─────────
+    from ncaa.models import PlayerRecruitingProfile
+
+    # Only players with no prior-season data will be classified as newcomers.
+    newcomer_pids = {
+        row["player_id"]
+        for row in canonical_current
+        if row["player_id"] not in canonical_prior
+    }
+    recruiting_by_player: dict[int, dict] = {}
+    if newcomer_pids:
+        for profile in PlayerRecruitingProfile.objects.filter(
+            player_id__in=newcomer_pids,
+            class_year=season_year,
+        ).values("player_id", "national_rank", "stars", "composite_score"):
+            recruiting_by_player[profile["player_id"]] = {
+                "national_rank":   profile["national_rank"],
+                "stars":           profile["stars"],
+                "composite_score": profile["composite_score"],
+            }
+
+    if verbose:
+        logger.info(
+            "[Projection] Season %d: %d newcomer candidates, %d have recruiting profiles.",
+            season_year,
+            len(newcomer_pids),
+            len(recruiting_by_player),
+        )
+
     # ── Run projections ────────────────────────────────────────────────────
     projections: list[dict] = []
     for row in canonical_current:
@@ -243,12 +340,32 @@ def run_projection_pipeline(
             else None
         )
 
+        rtype, reason = classify_recruitment_type(
+            player_id=pid,
+            current_team_id=team_id,
+            prior_canonical_row=prior,
+            player_team_history=player_team_history,
+        )
+        logger.debug("[Projection] player_id=%d → %s (%s)", pid, rtype, reason)
+
+        role_bucket = classify_role_bucket(
+            position=row.get("player__position") or "",
+            blk_pg=float(row.get("blk") or 0.0),
+            reb_pg=float(row.get("reb") or 0.0),
+            ast_pg=float(row.get("ast") or 0.0),
+            fg3a_pg=float(row.get("fg3a_pg") or 0.0),
+        )
+
         result = project_player(
             current=row,
             prior=prior,
             current_team_adj_em=current_em,
             prior_team_adj_em=prior_em,
             n_prior_seasons=n_prior,
+            recruiting_profile=recruiting_by_player.get(pid),
+            role_bucket=role_bucket,
+            recruitment_type_override=rtype,
+            classification_reason=reason,
         )
 
         projections.append(
@@ -286,6 +403,8 @@ def run_projection_pipeline(
         "projection_uncertainty",
         "n_prior_seasons",
         "prior_rapm_used",
+        "recruiting_prior_used",
+        "classification_reason",
         "projected_season_year",
         "projection_version",
         # computed_at is auto_now, handled by Django on save
@@ -309,6 +428,8 @@ def run_projection_pipeline(
                     projection_uncertainty=p["projection_uncertainty"],
                     n_prior_seasons=p["n_prior_seasons"],
                     prior_rapm_used=p["prior_rapm_used"],
+                    recruiting_prior_used=p["recruiting_prior_used"],
+                    classification_reason=p.get("classification_reason", ""),
                     projection_version=p["projection_version"],
                 )
             )
@@ -334,10 +455,22 @@ def run_projection_pipeline(
     # ── Summary ───────────────────────────────────────────────────────────────
     type_counts: dict[str, int] = defaultdict(int)
     n_with_prior_rapm = 0
+    n_with_recruiting_prior = 0
+    n_grad_transfer_return = 0
     for p in projections:
         type_counts[p["recruitment_type"]] += 1
         if p.get("prior_rapm_used"):
             n_with_prior_rapm += 1
+        if p.get("recruiting_prior_used"):
+            n_with_recruiting_prior += 1
+        if p.get("classification_reason") == "grad_transfer_return":
+            n_grad_transfer_return += 1
+
+    if verbose and n_grad_transfer_return > 0:
+        logger.info(
+            "[Projection] Grad-transfer returns detected: %d players reclassified transfer → returner.",
+            n_grad_transfer_return,
+        )
 
     summary = {
         "season_year":                season_year,
@@ -349,16 +482,19 @@ def run_projection_pipeline(
         "n_updated":                  n_updated,
         "recruitment_type_breakdown": dict(type_counts),
         "n_with_prior_rapm":          n_with_prior_rapm,
+        "n_with_recruiting_prior":    n_with_recruiting_prior,
+        "n_grad_transfer_return":     n_grad_transfer_return,
         "projection_version":         PROJECTION_VERSION,
     }
 
     if verbose:
         logger.info(
-            "[Projection] Done: %d created, %d updated. Split-season players: %d. Types: %s",
+            "[Projection] Done: %d created, %d updated. Split-season: %d. Types: %s. Recruiting priors: %d.",
             n_created,
             n_updated,
             n_split_season,
             dict(type_counts),
+            n_with_recruiting_prior,
         )
 
     return summary

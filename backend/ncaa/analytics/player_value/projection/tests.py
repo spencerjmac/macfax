@@ -17,10 +17,15 @@ from ncaa.analytics.player_value.projection.engine import (
     _year_to_year_shrinkage,
     _trend_adjustment,
     _development_adjustment,
+    _get_stratified_dev_adjustment,
     _transfer_competition_adjustment,
     _compute_uncertainty,
     _compute_minutes_share,
+    get_recruiting_prior,
     project_player,
+)
+from ncaa.analytics.player_value.projection.pipeline import (
+    classify_recruitment_type as pipeline_classify_recruitment_type,
 )
 from ncaa.analytics.player_value.projection.constants import (
     UNCERTAINTY_BASE,
@@ -29,6 +34,13 @@ from ncaa.analytics.player_value.projection.constants import (
     MINUTES_SHARE_MIN,
     MINUTES_SHARE_MAX,
     PROJECTION_VERSION,
+    NEWCOMER_RANK_PRIORS,
+    NEWCOMER_STARS_PRIORS,
+    USE_RECRUITING_PRIOR,
+    USE_STRATIFIED_DEV_ADJUSTMENTS,
+    DEV_OFF_NEWCOMER_BIG,
+    DEV_OFF_NEWCOMER_G,
+    DEV_OFF_NEWCOMER_WING,
 )
 from ncaa.analytics.player_value.projection.pipeline import _pick_canonical_row
 
@@ -488,6 +500,240 @@ class TestPickCanonicalRow(unittest.TestCase):
             _pick_canonical_row([row_a, row_b])["team_id"],
             _pick_canonical_row([row_b, row_a])["team_id"],
         )
+
+
+# ── get_recruiting_prior (Phase 1.1) ─────────────────────────────────────────
+
+class TestGetRecruitingPrior(unittest.TestCase):
+    """Pure-function tests — no DB access required."""
+
+    def test_rank_5_returns_top10_tier(self):
+        result = get_recruiting_prior(national_rank=5, stars=5)
+        self.assertAlmostEqual(result["obpr_prior"], 2.2)
+        self.assertAlmostEqual(result["dbpr_prior"], 0.7)
+        self.assertAlmostEqual(result["uncertainty_override"], 0.65)
+
+    def test_rank_takes_priority_over_stars(self):
+        # rank=150 → max_rank=200 tier (obpr=0.0), NOT the 4-star tier (obpr=0.3)
+        result = get_recruiting_prior(national_rank=150, stars=4)
+        self.assertAlmostEqual(result["obpr_prior"], 0.0)
+        self.assertAlmostEqual(result["uncertainty_override"], 0.80)
+
+    def test_stars_fallback_when_rank_none(self):
+        result = get_recruiting_prior(national_rank=None, stars=4)
+        self.assertAlmostEqual(result["obpr_prior"], 0.3)
+        self.assertAlmostEqual(result["dbpr_prior"], 0.1)
+        self.assertAlmostEqual(result["uncertainty_override"], 0.77)
+
+    def test_both_none_returns_default(self):
+        result = get_recruiting_prior(national_rank=None, stars=None)
+        self.assertAlmostEqual(result["obpr_prior"], 0.0)
+        self.assertAlmostEqual(result["dbpr_prior"], 0.0)
+        self.assertAlmostEqual(result["uncertainty_override"], 0.80)
+
+    def test_rank_over_200_catchall(self):
+        result = get_recruiting_prior(national_rank=250, stars=None)
+        self.assertAlmostEqual(result["obpr_prior"], -0.2)
+        self.assertAlmostEqual(result["dbpr_prior"], -0.1)
+        self.assertAlmostEqual(result["uncertainty_override"], 0.82)
+
+    def test_rank_30_boundary(self):
+        # rank=30 should match the top-30 tier (max_rank=30, inclusive)
+        result = get_recruiting_prior(national_rank=30, stars=None)
+        self.assertAlmostEqual(result["obpr_prior"], 1.4)
+
+    def test_rank_31_falls_to_next_tier(self):
+        result = get_recruiting_prior(national_rank=31, stars=None)
+        self.assertAlmostEqual(result["obpr_prior"], 0.8)
+
+
+# ── project_player: recruiting prior integration ──────────────────────────────
+
+def _make_newcomer(player_id=5, team_id=10):
+    """Minimal newcomer dict — no RAPM, no box BPR, no possessions."""
+    return {
+        "player_id": player_id,
+        "team_id": team_id,
+        "season_id": 1,
+        "obpr": None, "dbpr": None,
+        "box_obpr": None, "box_dbpr": None,
+        "off_poss": 0.0, "def_poss": 0.0,
+        "mpg": 0.0, "gp": 0,
+    }
+
+
+class TestProjectPlayerRecruitingPrior(unittest.TestCase):
+
+    def test_top10_recruit_projects_positive_bpr(self):
+        current = _make_newcomer()
+        profile = {"national_rank": 5, "stars": 5, "composite_score": 0.9998}
+        result = project_player(current, None, None, None, 0, recruiting_profile=profile)
+        self.assertEqual(result["recruitment_type"], NEWCOMER)
+        self.assertGreater(result["projected_obpr"], 0.0)
+        self.assertGreater(result["projected_bpr"], 0.0)
+        self.assertTrue(result["recruiting_prior_used"])
+
+    def test_top10_recruit_uncertainty_lower_than_default_newcomer(self):
+        current = _make_newcomer()
+        profile = {"national_rank": 5, "stars": 5, "composite_score": 0.9998}
+        result = project_player(current, None, None, None, 0, recruiting_profile=profile)
+        default_unc = UNCERTAINTY_BASE["newcomer"]  # 0.80
+        self.assertLess(result["projection_uncertainty"], default_unc)
+
+    def test_returner_ignores_recruiting_profile(self):
+        """A returner must produce the same result regardless of recruiting_profile."""
+        current = _make_current(team_id=42)
+        prior   = {"team_id": 42, "obpr": 2.0, "dbpr": -1.0}
+        profile = {"national_rank": 5, "stars": 5, "composite_score": 0.9998}
+        result_without = project_player(current, prior, None, None, 1)
+        result_with    = project_player(current, prior, None, None, 1, recruiting_profile=profile)
+        self.assertEqual(result_without["projected_obpr"], result_with["projected_obpr"])
+        self.assertEqual(result_without["projected_dbpr"], result_with["projected_dbpr"])
+        self.assertFalse(result_with["recruiting_prior_used"])
+
+    def test_no_profile_returns_false_flag(self):
+        current = _make_newcomer()
+        result = project_player(current, None, None, None, 0)
+        self.assertFalse(result["recruiting_prior_used"])
+
+    def test_recruiting_prior_used_key_always_present(self):
+        current = _make_current()
+        prior   = {"team_id": 10, "obpr": 2.0, "dbpr": -1.0}
+        result = project_player(current, prior, 8.0, 8.0, 1)
+        self.assertIn("recruiting_prior_used", result)
+
+    def test_bpr_consistency_with_recruiting_prior(self):
+        """projected_bpr == projected_obpr + projected_dbpr even with recruiting prior."""
+        current = _make_newcomer()
+        profile = {"national_rank": 5, "stars": 5, "composite_score": 0.9998}
+        result = project_player(current, None, None, None, 0, recruiting_profile=profile)
+        expected = round(result["projected_obpr"] + result["projected_dbpr"], 4)
+        self.assertAlmostEqual(result["projected_bpr"], expected, places=3)
+
+
+# ── _get_stratified_dev_adjustment (Phase 1.2 BT-3) ──────────────────────────
+
+class TestStratifiedDevAdjustment(unittest.TestCase):
+    """Tests for position-stratified development constants (Task 2)."""
+
+    def test_newcomer_big_uses_big_constant(self):
+        off, def_ = _get_stratified_dev_adjustment(0, NEWCOMER, "Big")
+        self.assertAlmostEqual(off, DEV_OFF_NEWCOMER_BIG)
+
+    def test_newcomer_guard_uses_guard_constant(self):
+        off, def_ = _get_stratified_dev_adjustment(0, NEWCOMER, "G")
+        self.assertAlmostEqual(off, DEV_OFF_NEWCOMER_G)
+
+    def test_newcomer_wing_uses_wing_constant(self):
+        off, def_ = _get_stratified_dev_adjustment(0, NEWCOMER, "Wing")
+        self.assertAlmostEqual(off, DEV_OFF_NEWCOMER_WING)
+
+    def test_third_year_returns_zero(self):
+        # n_prior=2 → third_year → no BT-3 constant defined → (0.0, 0.0)
+        off, def_ = _get_stratified_dev_adjustment(2, RETURNER, "G")
+        self.assertAlmostEqual(off, 0.0)
+        self.assertAlmostEqual(def_, 0.0)
+
+    def test_unknown_bucket_returns_zero(self):
+        off, def_ = _get_stratified_dev_adjustment(0, NEWCOMER, "Unknown")
+        self.assertAlmostEqual(off, 0.0)
+
+    def test_stratified_flag_false_falls_back_to_flat(self):
+        """project_player with USE_STRATIFIED_DEV_ADJUSTMENTS=False uses flat constants."""
+        import ncaa.analytics.player_value.projection.engine as eng
+        orig = eng.USE_STRATIFIED_DEV_ADJUSTMENTS
+        try:
+            eng.USE_STRATIFIED_DEV_ADJUSTMENTS = False
+            current = _make_newcomer()
+            result = project_player(current, None, None, None, 0, role_bucket="Big")
+            # With flag off, flat DEV_OFF_NEWCOMER (+0.20) applies
+            # With flag on, DEV_OFF_NEWCOMER_BIG (+0.60) applies
+            # The projected_obpr with flat should be lower than with stratified
+            eng.USE_STRATIFIED_DEV_ADJUSTMENTS = True
+            result_strat = project_player(current, None, None, None, 0, role_bucket="Big")
+            # Stratified big newcomer constant > flat newcomer constant
+            self.assertGreater(result_strat["projected_obpr"], result["projected_obpr"])
+        finally:
+            eng.USE_STRATIFIED_DEV_ADJUSTMENTS = orig
+
+
+# ── pipeline.classify_recruitment_type (Phase 1.2 Task 3) ───────────────────
+
+class TestPipelineClassifyRecruitmentType(unittest.TestCase):
+    """Tests for the grad-transfer-aware classifier in pipeline.py (Task 3)."""
+
+    def test_newcomer_no_prior_row(self):
+        rtype, reason = pipeline_classify_recruitment_type(
+            player_id=1, current_team_id=10,
+            prior_canonical_row=None,
+            player_team_history={},
+        )
+        self.assertEqual(rtype, "newcomer")
+        self.assertEqual(reason, "no_prior_season")
+
+    def test_returner_same_team(self):
+        prior = {"team_id": 10}
+        rtype, reason = pipeline_classify_recruitment_type(
+            player_id=1, current_team_id=10,
+            prior_canonical_row=prior,
+            player_team_history={1: {10}},
+        )
+        self.assertEqual(rtype, "returner")
+        self.assertEqual(reason, "same_team_prior")
+
+    def test_transfer_different_team_no_history(self):
+        prior = {"team_id": 20}
+        rtype, reason = pipeline_classify_recruitment_type(
+            player_id=1, current_team_id=10,
+            prior_canonical_row=prior,
+            player_team_history={1: {20}},  # only ever at team 20 before
+        )
+        self.assertEqual(rtype, "transfer")
+        self.assertEqual(reason, "different_team_prior")
+
+    def test_grad_transfer_return_detected(self):
+        # Player was at team 10 (original school), then team 20, now back at team 10
+        prior = {"team_id": 20}
+        rtype, reason = pipeline_classify_recruitment_type(
+            player_id=1, current_team_id=10,
+            prior_canonical_row=prior,
+            player_team_history={1: {10, 20}},  # was at BOTH 10 and 20 before
+        )
+        self.assertEqual(rtype, "returner")
+        self.assertEqual(reason, "grad_transfer_return")
+
+    def test_grad_transfer_only_one_prior_school(self):
+        # Player was ONLY at team 20 before. Current team 10 not in history.
+        prior = {"team_id": 20}
+        rtype, reason = pipeline_classify_recruitment_type(
+            player_id=1, current_team_id=10,
+            prior_canonical_row=prior,
+            player_team_history={1: {20}},
+        )
+        self.assertEqual(rtype, "transfer")
+        self.assertEqual(reason, "different_team_prior")
+
+    def test_classification_reason_in_project_player_result(self):
+        """project_player must return classification_reason key."""
+        current = _make_current()
+        prior   = {"team_id": 10, "obpr": 2.0, "dbpr": -1.0}
+        result = project_player(
+            current, prior, None, None, 1,
+            recruitment_type_override="returner",
+            classification_reason="same_team_prior",
+        )
+        self.assertIn("classification_reason", result)
+        self.assertEqual(result["classification_reason"], "same_team_prior")
+
+    def test_recruitment_type_override_respected(self):
+        """Override forces classification regardless of prior row team."""
+        current = _make_current(team_id=10)
+        prior   = {"team_id": 99, "obpr": 2.0, "dbpr": -1.0}  # different team → normally transfer
+        result = project_player(
+            current, prior, None, None, 1,
+            recruitment_type_override="returner",
+        )
+        self.assertEqual(result["recruitment_type"], "returner")
 
 
 if __name__ == "__main__":

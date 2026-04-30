@@ -8,8 +8,8 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 interface OutlookPageProps {
-  params: { slug: string };
-  searchParams: { season?: string };
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ season?: string }>;
 }
 
 async function fetchOutlook(slug: string, season?: string): Promise<RosterOutlookData | null> {
@@ -28,7 +28,8 @@ async function fetchOutlook(slug: string, season?: string): Promise<RosterOutloo
 }
 
 export async function generateMetadata({ params }: OutlookPageProps): Promise<Metadata> {
-  const data = await fetchOutlook(params.slug);
+  const { slug } = await params;
+  const data = await fetchOutlook(slug);
   if (!data) return { title: 'Roster Outlook | macfax' };
   return {
     title: `${data.team.name} Roster Outlook ${data.season.projected_season_year} | macfax`,
@@ -37,7 +38,9 @@ export async function generateMetadata({ params }: OutlookPageProps): Promise<Me
 }
 
 export default async function OutlookPage({ params, searchParams }: OutlookPageProps) {
-  const data = await fetchOutlook(params.slug, searchParams.season);
+  const { slug } = await params;
+  const { season } = await searchParams;
+  const data = await fetchOutlook(slug, season);
 
   if (!data) notFound();
 
@@ -54,7 +57,7 @@ export default async function OutlookPage({ params, searchParams }: OutlookPageP
             Based on {data.season.year} season data
           </p>
         </div>
-        <TeamSearchWidget currentSlug={params.slug} />
+        <TeamSearchWidget currentSlug={slug} />
       </div>
 
       <RosterOutlookPage data={data} />
