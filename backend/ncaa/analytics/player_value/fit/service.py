@@ -126,6 +126,8 @@ def _build_season_refs(stats_list: list[dict]) -> SeasonRefs:
 def _build_player_fit_input(
     proj: dict,
     stats: Optional[dict],
+    recruiting_profile: Optional[dict] = None,
+    conf_group: Optional[str] = None,
 ) -> PlayerFitInput:
     """
     Build one PlayerFitInput from a PlayerSeasonProjection + optional stats dict.
@@ -181,6 +183,11 @@ def _build_player_fit_input(
         on_court_adj_d=s.get("on_court_adj_d"),
         on_court_off_poss=s.get("on_court_off_poss"),
         on_court_def_poss=s.get("on_court_def_poss"),
+        # Recruiting profile (Sprint 4)
+        national_rank=recruiting_profile["national_rank"] if recruiting_profile else None,
+        recruit_stars=recruiting_profile["stars"] if recruiting_profile else None,
+        is_juco_transfer=False,  # JUCO status not derivable from existing DB data
+        conf_group=conf_group,
     )
 
 
@@ -256,6 +263,26 @@ def run_fit_pipeline(
 
     player_ids = [p["player_id"] for p in projections]
 
+    # ── Load team slugs for conference group derivation (Sprint 4) ────────
+    from ncaa.models import PlayerRecruitingProfile, Team
+    from ncaa.conf_utils import get_conf_detail
+
+    all_team_ids = {p["team_id"] for p in projections if p.get("team_id")}
+    team_slug_map: dict[int, str] = dict(
+        Team.objects.filter(id__in=all_team_ids).values_list("id", "slug")
+    )
+
+    # ── Load recruiting profiles for newcomers in this season ─────────────
+    # class_year == season_year: this is their first college season.
+    # is_juco_transfer cannot be reliably set for DB players (no existing flag).
+    recruiting_profiles: dict[int, dict] = {
+        rp["player_id"]: rp
+        for rp in PlayerRecruitingProfile.objects.filter(
+            class_year=season_year,
+            player_id__in=player_ids,
+        ).values("player_id", "national_rank", "stars")
+    }
+
     # ── Load from_season stats (best row per player by possession count) ──
     stats_raw = list(
         PlayerSeasonStats.objects
@@ -307,8 +334,16 @@ def run_fit_pipeline(
         if team_id is None:
             continue
 
+        team_slug = team_slug_map.get(team_id, "")
+        team_conf_group = get_conf_detail(team_slug)
+
         players = [
-            _build_player_fit_input(proj, stats_by_player.get(proj["player_id"]))
+            _build_player_fit_input(
+                proj,
+                stats_by_player.get(proj["player_id"]),
+                recruiting_profile=recruiting_profiles.get(proj["player_id"]),
+                conf_group=team_conf_group,
+            )
             for proj in team_projs
         ]
 

@@ -63,6 +63,19 @@ from ncaa.analytics.player_value.projection.constants import (
     MINUTES_SHARE_MAX,
     POSS_PER_MINUTE,
     PROJECTION_VERSION,
+    USE_RECRUITING_PRIOR,
+    NEWCOMER_RANK_PRIORS,
+    NEWCOMER_STARS_PRIORS,
+    USE_STRATIFIED_DEV_ADJUSTMENTS,
+    DEV_OFF_NEWCOMER_G,    DEV_DEF_NEWCOMER_G,
+    DEV_OFF_NEWCOMER_WING, DEV_DEF_NEWCOMER_WING,
+    DEV_OFF_NEWCOMER_BIG,  DEV_DEF_NEWCOMER_BIG,
+    DEV_OFF_SECOND_YEAR_G,    DEV_DEF_SECOND_YEAR_G,
+    DEV_OFF_SECOND_YEAR_WING, DEV_DEF_SECOND_YEAR_WING,
+    DEV_OFF_SECOND_YEAR_BIG,  DEV_DEF_SECOND_YEAR_BIG,
+    DEV_OFF_SENIOR_G,    DEV_DEF_SENIOR_G,
+    DEV_OFF_SENIOR_WING, DEV_DEF_SENIOR_WING,
+    DEV_OFF_SENIOR_BIG,  DEV_DEF_SENIOR_BIG,
 )
 
 logger = logging.getLogger(__name__)
@@ -229,6 +242,51 @@ def _trend_adjustment(
 
 # ── Step 7: Development / aging ───────────────────────────────────────────────
 
+_STRATIFIED_DEV_LOOKUP: dict[tuple[str, str], tuple[float, float]] = {
+    # (stage, bucket) → (off_adj, def_adj)
+    ("newcomer",     "G"):    (DEV_OFF_NEWCOMER_G,       DEV_DEF_NEWCOMER_G),
+    ("newcomer",     "Wing"): (DEV_OFF_NEWCOMER_WING,    DEV_DEF_NEWCOMER_WING),
+    ("newcomer",     "Big"):  (DEV_OFF_NEWCOMER_BIG,     DEV_DEF_NEWCOMER_BIG),
+    ("second_year",  "G"):    (DEV_OFF_SECOND_YEAR_G,    DEV_DEF_SECOND_YEAR_G),
+    ("second_year",  "Wing"): (DEV_OFF_SECOND_YEAR_WING, DEV_DEF_SECOND_YEAR_WING),
+    ("second_year",  "Big"):  (DEV_OFF_SECOND_YEAR_BIG,  DEV_DEF_SECOND_YEAR_BIG),
+    ("senior_plus",  "G"):    (DEV_OFF_SENIOR_G,         DEV_DEF_SENIOR_G),
+    ("senior_plus",  "Wing"): (DEV_OFF_SENIOR_WING,      DEV_DEF_SENIOR_WING),
+    ("senior_plus",  "Big"):  (DEV_OFF_SENIOR_BIG,       DEV_DEF_SENIOR_BIG),
+}
+
+
+def _get_stratified_dev_adjustment(
+    n_prior_seasons: int,
+    recruitment_type: str,
+    role_bucket: str,
+) -> tuple[float, float]:
+    """
+    Return (off_adj, def_adj) using BT-3 position-stratified constants.
+
+    Activated when USE_STRATIFIED_DEV_ADJUSTMENTS = True and role_bucket is known.
+    Falls through to (0.0, 0.0) for third_year stage (no BT-3 adjustment).
+
+    Args:
+        n_prior_seasons:  Prior college seasons before from_season.
+        recruitment_type: "returner", "transfer", or "newcomer".
+        role_bucket:      "G", "Wing", or "Big" from classify_role_bucket().
+
+    Returns:
+        (off_adj, def_adj) in pts/100 poss. Phase 1.2 BT-3 validated.
+    """
+    if recruitment_type == NEWCOMER or n_prior_seasons == 0:
+        stage = "newcomer"
+    elif n_prior_seasons == 1:
+        stage = "second_year"
+    elif n_prior_seasons >= SENIOR_SEASON_THRESHOLD:
+        stage = "senior_plus"
+    else:
+        return 0.0, 0.0   # third_year — no BT-3 adjustment defined
+
+    return _STRATIFIED_DEV_LOOKUP.get((stage, role_bucket), (0.0, 0.0))
+
+
 def _development_adjustment(
     n_prior_seasons: int,
     recruitment_type: str,
@@ -333,6 +391,41 @@ def _compute_minutes_share(
     return max(MINUTES_SHARE_MIN, min(MINUTES_SHARE_MAX, base + MINUTES_BPR_WEIGHT * projected_bpr))
 
 
+# ── Recruiting prior lookup (Phase 1.1) ──────────────────────────────────────
+
+def get_recruiting_prior(
+    national_rank: Optional[int],
+    stars: Optional[int],
+) -> dict:
+    """
+    Look up newcomer BPR prior from recruiting ranking data.
+
+    Priority order:
+      1. national_rank — checked first against NEWCOMER_RANK_PRIORS (most precise).
+         Iterates tiers top-to-bottom; uses the first tier where
+         national_rank <= tier['max_rank'], or the catch-all if none match.
+      2. stars — fallback when national_rank is None; looks up NEWCOMER_STARS_PRIORS.
+      3. If both are None: returns neutral newcomer defaults (0.0, 0.0, 0.80).
+
+    Returns:
+        dict with keys:
+            obpr_prior          (float) — offensive BPR starting point
+            dbpr_prior          (float) — defensive BPR starting point
+            uncertainty_override (float) — replaces UNCERTAINTY_BASE['newcomer']
+
+    All values are Phase 1.1 provisional pending BT-5 validation.
+    This function is pure: no DB access, no side effects.
+    """
+    if national_rank is not None:
+        for tier in NEWCOMER_RANK_PRIORS:
+            if "max_rank" not in tier or national_rank <= tier["max_rank"]:
+                return tier
+    if stars is not None:
+        _default = {"obpr_prior": -0.2, "dbpr_prior": -0.1, "uncertainty_override": 0.82}
+        return NEWCOMER_STARS_PRIORS.get(stars, _default)
+    return {"obpr_prior": 0.0, "dbpr_prior": 0.0, "uncertainty_override": 0.80}
+
+
 # ── Main entry point ──────────────────────────────────────────────────────────
 
 def project_player(
@@ -341,6 +434,10 @@ def project_player(
     current_team_adj_em: Optional[float],
     prior_team_adj_em:   Optional[float],
     n_prior_seasons:     int,
+    recruiting_profile:       Optional[dict] = None,
+    role_bucket:              Optional[str]  = None,
+    recruitment_type_override: Optional[str] = None,
+    classification_reason:    str            = "",
 ) -> dict:
     """
     Compute a baseline next-season projection for a single player.
@@ -350,30 +447,63 @@ def project_player(
     destination-team context for the NEXT season belong in Phase 2.
 
     Args:
-        current:             Canonical PlayerSeasonStats field dict for from_season
-                             (one row per player, chosen by most possessions).
-        prior:               Canonical PlayerSeasonStats dict for the immediately
-                             prior season, or None if none in DB.
-        current_team_adj_em: TeamSeasonRatings.adj_em for the player's canonical
-                             team in from_season.
-        prior_team_adj_em:   TeamSeasonRatings.adj_em for the player's canonical
-                             prior team in the prior season (used only for transfers
-                             to correct the retrospective competition-level gap).
-        n_prior_seasons:     Distinct college seasons before from_season in DB.
+        current:              Canonical PlayerSeasonStats field dict for from_season
+                              (one row per player, chosen by most possessions).
+        prior:                Canonical PlayerSeasonStats dict for the immediately
+                              prior season, or None if none in DB.
+        current_team_adj_em:  TeamSeasonRatings.adj_em for the player's canonical
+                              team in from_season.
+        prior_team_adj_em:    TeamSeasonRatings.adj_em for the player's canonical
+                              prior team in the prior season (used only for transfers
+                              to correct the retrospective competition-level gap).
+        n_prior_seasons:      Distinct college seasons before from_season in DB.
+        recruiting_profile:   Optional dict with keys national_rank (int|None),
+                              stars (int|None), composite_score (float|None).
+                              Only applied when recruitment_type == 'newcomer'
+                              and USE_RECRUITING_PRIOR is True.
+        role_bucket:          "G", "Wing", or "Big" from classify_role_bucket().
+                              When provided and USE_STRATIFIED_DEV_ADJUSTMENTS is True,
+                              selects position-stratified development constants.
+        recruitment_type_override: When set, bypasses Step 1 classification and uses
+                              this value directly. Used by pipeline.py to inject the
+                              more sophisticated grad-transfer-aware classifier.
+        classification_reason: Short provenance string logged alongside the result.
 
     Returns:
         dict with keys: projected_obpr, projected_dbpr, projected_bpr,
         projected_minutes_share, projection_uncertainty, recruitment_type,
-        n_prior_seasons, prior_rapm_used, projection_version.
+        n_prior_seasons, prior_rapm_used, recruiting_prior_used,
+        classification_reason, projection_version.
     """
     current_team_id = current.get("team_id")
 
     # ── Step 1 ──────────────────────────────────────────────────────────────
-    recruitment_type = classify_recruitment_type(
-        player_id=current.get("player_id"),
-        current_team_id=current_team_id,
-        prior_season_row=prior,
-    )
+    if recruitment_type_override is not None:
+        recruitment_type = recruitment_type_override
+    else:
+        recruitment_type = classify_recruitment_type(
+            player_id=current.get("player_id"),
+            current_team_id=current_team_id,
+            prior_season_row=prior,
+        )
+
+    # ── Step 1b: recruiting prior for newcomers (Phase 1.1) ─────────────────
+    # For newcomers with no college data, substitute a rank-based BPR prior
+    # instead of the default 0.0/0.0. Returners and transfers ignore this.
+    _rec_prior_used = False
+    _newcomer_uncertainty_override = None
+    if recruitment_type == NEWCOMER and USE_RECRUITING_PRIOR and recruiting_profile:
+        rec_prior = get_recruiting_prior(
+            recruiting_profile.get("national_rank"),
+            recruiting_profile.get("stars"),
+        )
+        _rec_prior_signal_off = rec_prior["obpr_prior"]
+        _rec_prior_signal_def = rec_prior["dbpr_prior"]
+        _newcomer_uncertainty_override = rec_prior["uncertainty_override"]
+        _rec_prior_used = True
+    else:
+        _rec_prior_signal_off = None
+        _rec_prior_signal_def = None
 
     # ── Step 2 ──────────────────────────────────────────────────────────────
     obpr     = current.get("obpr")
@@ -400,9 +530,21 @@ def project_player(
         poss_def = estimated
 
     # ── Step 5 ──────────────────────────────────────────────────────────────
-    proj_off, proj_def = _year_to_year_shrinkage(
-        signal_off, signal_def, poss_off, poss_def, recruitment_type
-    )
+    if _rec_prior_used:
+        # Shrink toward the recruiting prior rather than toward 0 (D1 mean).
+        # Standard formula shrinks to 0: proj = (1-λ)*signal.
+        # Bayesian form: proj = prior + (1-λ)*(signal - prior).
+        # At 0 poss (λ=1): proj = prior. At large poss (λ→0): proj → signal.
+        shrink_off = YTY_SHRINK_POSS_OFF
+        shrink_def = YTY_SHRINK_POSS_DEF
+        lam_off = shrink_off / (shrink_off + max(poss_off, 0.0))
+        lam_def = shrink_def / (shrink_def + max(poss_def, 0.0))
+        proj_off = _rec_prior_signal_off + (1.0 - lam_off) * (signal_off - _rec_prior_signal_off)
+        proj_def = _rec_prior_signal_def + (1.0 - lam_def) * (signal_def - _rec_prior_signal_def)
+    else:
+        proj_off, proj_def = _year_to_year_shrinkage(
+            signal_off, signal_def, poss_off, poss_def, recruitment_type
+        )
 
     # ── Step 6 ──────────────────────────────────────────────────────────────
     prior_obpr = prior.get("obpr") if prior else None
@@ -416,7 +558,12 @@ def project_player(
     proj_def += trend_def
 
     # ── Step 7 ──────────────────────────────────────────────────────────────
-    dev_off, dev_def = _development_adjustment(n_prior_seasons, recruitment_type)
+    if USE_STRATIFIED_DEV_ADJUSTMENTS and role_bucket:
+        dev_off, dev_def = _get_stratified_dev_adjustment(
+            n_prior_seasons, recruitment_type, role_bucket
+        )
+    else:
+        dev_off, dev_def = _development_adjustment(n_prior_seasons, recruitment_type)
     proj_off += dev_off
     proj_def += dev_def
 
@@ -432,6 +579,8 @@ def project_player(
 
     # ── Step 9 ──────────────────────────────────────────────────────────────
     uncertainty = _compute_uncertainty(recruitment_type, poss_off, poss_def, has_rapm)
+    if _newcomer_uncertainty_override is not None:
+        uncertainty = min(1.0, max(0.0, _newcomer_uncertainty_override))
 
     # ── Step 10 ─────────────────────────────────────────────────────────────
     minutes_share = _compute_minutes_share(recruitment_type, mpg, gp, proj_bpr)
@@ -445,5 +594,7 @@ def project_player(
         "recruitment_type":        recruitment_type,
         "n_prior_seasons":         n_prior_seasons,
         "prior_rapm_used":         prior_rapm_used,
+        "recruiting_prior_used":   _rec_prior_used,
+        "classification_reason":   classification_reason,
         "projection_version":      PROJECTION_VERSION,
     }

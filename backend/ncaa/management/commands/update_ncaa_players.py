@@ -21,7 +21,7 @@ from django.utils import timezone
 
 from ncaa.management.commands._pipeline_base import BasePipelineCommand
 
-TOTAL_STEPS = 6
+TOTAL_STEPS = 11
 
 
 class Command(BasePipelineCommand):
@@ -131,6 +131,46 @@ class Command(BasePipelineCommand):
             steps,
             fatal=False,
             label=f"[6/{TOTAL_STEPS}]",
+        )
+        self._run_step(
+            "Compute player projections (Phase 1)",
+            "compute_player_projections",
+            {"season": season_year},
+            steps,
+            fatal=False,
+            label=f"[7/{TOTAL_STEPS}]",
+        )
+        self._run_step(
+            "Compute player minutes (Phase 2)",
+            "compute_player_minutes",
+            {"season": season_year},
+            steps,
+            fatal=False,
+            label=f"[8/{TOTAL_STEPS}]",
+        )
+        self._run_step(
+            "Compute roster fit (Phase 3+4)",
+            "compute_roster_fit",
+            {"season": season_year},
+            steps,
+            fatal=False,
+            label=f"[9/{TOTAL_STEPS}]",
+        )
+        self._run_step(
+            "Compute team projections (Phase 5)",
+            "compute_team_projections",
+            {"season": season_year},
+            steps,
+            fatal=False,
+            label=f"[10/{TOTAL_STEPS}]",
+        )
+        self._run_step(
+            "Build placeholder archetypes",
+            "build_placeholder_archetypes",
+            {"season": season_year},
+            steps,
+            fatal=False,
+            label=f"[11/{TOTAL_STEPS}]",
         )
 
         end_time = timezone.now()

@@ -55,6 +55,7 @@ from ncaa.analytics.player_value.bpr.constants import (
     BPR_SOURCE_BOX,
     BPR_SOURCE_MIXED,
     BPR_SOURCE_PARTIAL,
+    BOX_TRAINING_RAPM_LAMBDA,
 )
 from ncaa.analytics.player_value.bpr.datasets import build_rapm_dataset
 from ncaa.analytics.player_value.bpr.rapm import (
@@ -180,15 +181,32 @@ def run_bpr_season(
             "cv_metrics": baseline_rapm.get("cv_metrics"),
         }
 
-        # Phase 2b: Write baseline RAPM targets to DB before any prior-informed fit.
-        # Extract only target-season coefficients before writing.
-        logger.info("[BPR] Phase 2b: Writing baseline RAPM targets to DB")
-        _baseline_obpr_target = extract_target_season(baseline_rapm["obpr"], target_year)
-        _baseline_dbpr_target = extract_target_season(baseline_rapm["dbpr"], target_year)
+        # Phase 2b: Fit a lower-lambda RAPM for Box BPR training targets.
+        # The production baseline RAPM (lambda=CV~1000) shrinks elite coefficients too
+        # heavily → Box BPR learns a compressed scale → recursive attenuation.
+        # Using BOX_TRAINING_RAPM_LAMBDA (100) gives wider-spread targets so Box BPR
+        # can learn the 10-14+ range. Production RAPM (Phase 5) is unaffected.
+        logger.info(
+            f"[BPR] Phase 2b: Fitting Box BPR training RAPM (λ={BOX_TRAINING_RAPM_LAMBDA})"
+        )
+        box_training_rapm = fit_baseline_rapm(
+            observations=dataset["observations"],
+            player_season_index=dataset["player_season_index"],
+            n_player_seasons=n_player_seasons,
+            run_cv=False,
+            lambda_override=BOX_TRAINING_RAPM_LAMBDA,
+        )
+        _box_training_obpr = extract_target_season(box_training_rapm["obpr"], target_year)
+        _box_training_dbpr = extract_target_season(box_training_rapm["dbpr"], target_year)
+        summary["phases"]["box_training_rapm"] = {"lambda": BOX_TRAINING_RAPM_LAMBDA}
+
+        # Phase 2c: Write Box BPR training targets (from lower-lambda fit) to DB.
+        # Future seasons' Box BPR will train on these wider-range values.
+        logger.info("[BPR] Phase 2c: Writing Box BPR training targets to DB")
         n_baseline_written = _write_baseline_rapm(
             season_year=season_year,
-            baseline_obpr=_baseline_obpr_target,
-            baseline_dbpr=_baseline_dbpr_target,
+            baseline_obpr=_box_training_obpr,
+            baseline_dbpr=_box_training_dbpr,
             off_poss_map=_write_poss_totals,
             def_poss_map=_write_poss_totals,
         )
@@ -205,11 +223,15 @@ def run_bpr_season(
         "fga_pg", "fg3a_pg", "fta_pg", "ftm_pg",
         "efg_pct", "ts_pct",
         "on_court_secs_pg",
+        "on_court_adj_em",
+        "on_court_tov_edge",
+        "on_court_reb_edge",
     )
     player_season_stats = list(pss_qs)
     summary["phases"]["player_season_stats"] = {"n_records": len(player_season_stats)}
 
-    opp_quality_map = _build_opponent_quality_map(season_year)
+    opp_quality_map  = _build_opponent_quality_map(season_year)
+    team_adj_em_map  = _build_team_adj_em_map(season_year)
     logger.info(f"[BPR] Phase 3: opponent quality map built for {len(opp_quality_map)} teams")
 
     # ── Phase 4: Box BPR — leak-free training ─────────────────────────────────
@@ -233,8 +255,8 @@ def run_bpr_season(
         prior_train_data = None
         if len(_rapm_years) > 1 and baseline_rapm is not None:
             prior_train_data = _load_box_bpr_training_from_multi_year_rapm(
-                baseline_rapm_obpr=baseline_rapm["obpr"],
-                baseline_rapm_dbpr=baseline_rapm["dbpr"],
+                baseline_rapm_obpr=box_training_rapm["obpr"],
+                baseline_rapm_dbpr=box_training_rapm["dbpr"],
                 target_year=target_year,
                 current_season_stats=player_season_stats,
                 current_off_poss_map=off_poss_map,
@@ -268,6 +290,7 @@ def run_bpr_season(
                     current_off_poss_map=off_poss_map,
                     current_def_poss_map=def_poss_map,
                     opp_quality_map=opp_quality_map,
+                    team_adj_em_map=team_adj_em_map,
                 )
                 src_type = prior_train_data.get("training_source_type", "db_baseline")
                 model_artifacts["training_source"] = (
@@ -285,9 +308,10 @@ def run_bpr_season(
                     player_season_stats=player_season_stats,
                     off_poss_map=off_poss_map,
                     def_poss_map=def_poss_map,
-                    rapm_obpr=_baseline_obpr_target,
-                    rapm_dbpr=_baseline_dbpr_target,
+                    rapm_obpr=_box_training_obpr,
+                    rapm_dbpr=_box_training_dbpr,
                     opp_quality_map=opp_quality_map,
+                    team_adj_em_map=team_adj_em_map,
                 )
                 model_artifacts["training_source"] = "out_of_fold"
 
@@ -316,8 +340,9 @@ def run_bpr_season(
     r2_prior_sd_def: float = PRIOR_SD_BOX_DEF
 
     if model_artifacts is not None and baseline_rapm is not None:
-        target_obpr = extract_target_season(baseline_rapm["obpr"], target_year)
-        target_dbpr = extract_target_season(baseline_rapm["dbpr"], target_year)
+        # R² is measured against the box-training RAPM targets (same targets Box BPR trained on)
+        target_obpr = _box_training_obpr
+        target_dbpr = _box_training_dbpr
 
         if model_artifacts.get("training_method") == "out_of_fold":
             # OOF path: use stored OOF predictions directly — truly out-of-sample
@@ -339,6 +364,7 @@ def run_bpr_season(
                 off_poss_map=off_poss_map,
                 def_poss_map=def_poss_map,
                 opp_quality_map=opp_quality_map,
+                team_adj_em_map=team_adj_em_map,
                 precomputed_off_preds=oof_obpr,
                 precomputed_def_preds=oof_dbpr,
             )
@@ -352,6 +378,7 @@ def run_bpr_season(
                 off_poss_map=off_poss_map,
                 def_poss_map=def_poss_map,
                 opp_quality_map=opp_quality_map,
+                team_adj_em_map=team_adj_em_map,
             )
 
         summary["phases"]["box_bpr"]["r2_prior_sd_off"] = round(r2_prior_sd_off, 4)
@@ -701,6 +728,26 @@ def _build_opponent_quality_map(season_year: int) -> dict[int, float]:
     return result
 
 
+def _build_team_adj_em_map(season_year: int) -> dict[int, float]:
+    """
+    Build team_id → season adj_em for each team.
+
+    Used to compute the on-off delta = on_court_adj_em − team_adj_em,
+    which removes team-quality bias from the on-court signal so that
+    role players on elite teams don't receive inflated Box BPR priors.
+
+    Missing teams → 0.0 (league average, neutral).
+    """
+    from ncaa.models import TeamSeasonRatings
+
+    return {
+        r["team_id"]: r["adj_em"]
+        for r in TeamSeasonRatings.objects.filter(
+            season__year=season_year,
+        ).values("team_id", "adj_em")
+    }
+
+
 def _load_prior_season_box_data(
     season_year: int,
     current_season_stats: list[dict],
@@ -788,6 +835,9 @@ def _load_prior_season_box_data(
         "fga_pg", "fg3a_pg", "fta_pg", "ftm_pg",
         "efg_pct", "ts_pct",
         "on_court_secs_pg",
+        "on_court_adj_em",
+        "on_court_tov_edge",
+        "on_court_reb_edge",
         "baseline_obpr", "baseline_dbpr",  # v1.2: clean targets
         "off_poss", "def_poss",
     )
@@ -806,10 +856,12 @@ def _load_prior_season_box_data(
         yr_records = [r for r in prior_records if r["season__year"] == yr]
         yr_off_poss = {r["player_id"]: r["off_poss"] for r in yr_records}
         yr_def_poss = {r["player_id"]: r["def_poss"] for r in yr_records}
-        yr_opp_quality = _build_opponent_quality_map(yr)
+        yr_opp_quality  = _build_opponent_quality_map(yr)
+        yr_team_adj_em  = _build_team_adj_em_map(yr)
         yr_feats = extract_box_features(
             yr_records, yr_off_poss, yr_def_poss,
             opp_quality_map=yr_opp_quality,
+            team_adj_em_map=yr_team_adj_em,
         )
         for r in yr_records:
             pid = r["player_id"]
@@ -922,6 +974,9 @@ def _load_box_bpr_training_from_multi_year_rapm(
             "fga_pg", "fg3a_pg", "fta_pg", "ftm_pg",
             "efg_pct", "ts_pct",
             "on_court_secs_pg",
+            "on_court_adj_em",
+            "on_court_tov_edge",
+            "on_court_reb_edge",
             "off_poss", "def_poss",
         )
     )
@@ -937,10 +992,12 @@ def _load_box_bpr_training_from_multi_year_rapm(
         yr_records = [r for r in prior_records if r["season__year"] == yr]
         yr_off_poss = {r["player_id"]: r["off_poss"] for r in yr_records}
         yr_def_poss = {r["player_id"]: r["def_poss"] for r in yr_records}
-        yr_opp_quality = _build_opponent_quality_map(yr)
+        yr_opp_quality  = _build_opponent_quality_map(yr)
+        yr_team_adj_em  = _build_team_adj_em_map(yr)
         yr_feats = extract_box_features(
             yr_records, yr_off_poss, yr_def_poss,
             opp_quality_map=yr_opp_quality,
+            team_adj_em_map=yr_team_adj_em,
         )
         for r in yr_records:
             pid = r["player_id"]

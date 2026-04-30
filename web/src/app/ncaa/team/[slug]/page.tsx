@@ -9,22 +9,21 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 interface TeamPageProps {
-  params: {
-    slug: string;
-  };
+  params: Promise<{ slug: string }>;
 }
 
 export async function generateMetadata({ params }: TeamPageProps): Promise<Metadata> {
-  const teamData = await getTeamWithContext(params.slug);
-  
+  const { slug } = await params;
+  const teamData = await getTeamWithContext(slug);
+
   if (!teamData) {
     return {
       title: 'Team Not Found | macfax',
     };
   }
-  
+
   const { team } = teamData;
-  
+
   return {
     title: `${team.teamName} - ${team.season} | macfax`,
     description: `Advanced analytics and statistics for ${team.teamName} ${team.season} season. Efficiency metrics, four factors, and predictive analysis.`,
@@ -32,7 +31,8 @@ export async function generateMetadata({ params }: TeamPageProps): Promise<Metad
 }
 
 export default async function TeamPage({ params }: TeamPageProps) {
-  const teamData = await getTeamWithContext(params.slug);
+  const { slug } = await params;
+  const teamData = await getTeamWithContext(slug);
   
   if (!teamData) {
     notFound();

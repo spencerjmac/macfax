@@ -411,6 +411,19 @@ class PlayerSeasonProjection(models.Model):
         default=False,
         help_text="Whether prior-season RAPM (obpr/dbpr) was available and incorporated",
     )
+    recruiting_prior_used = models.BooleanField(
+        default=False,
+        help_text="True when a PlayerRecruitingProfile was used to set the newcomer BPR prior.",
+    )
+    classification_reason = models.CharField(
+        max_length=60,
+        blank=True,
+        default="",
+        help_text=(
+            "How recruitment_type was determined: "
+            "no_prior_season | same_team_prior | grad_transfer_return | different_team_prior"
+        ),
+    )
     projection_version = models.CharField(
         max_length=20,
         default="1.0",
