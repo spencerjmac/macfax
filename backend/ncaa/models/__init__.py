@@ -40,6 +40,8 @@ from .players import (
     PlaceholderArchetype,
 )
 
+from .scenarios import ScenarioSnapshot
+
 __all__ = [
     # base
     "Season",
@@ -69,4 +71,6 @@ __all__ = [
     "PlayerGameStint",
     "BPRModelArtifact",
     "PlaceholderArchetype",
+    # scenarios
+    "ScenarioSnapshot",
 ]

@@ -24,6 +24,7 @@ from .bracket_views import BracketView
 from .viz_builder_views import VizStatsView, VizScatterView
 from .auth_views import csrf, login_view, logout_view, me
 from .outlook_views import RosterOutlookView, ScenarioProjectionView, PlayerSearchView, PlaceholderListView
+from .scenario_views import ScenarioComputeView, ScenarioSaveView, ScenarioDetailView, ScenarioListView
 
 router = DefaultRouter()
 router.register(r"seasons", SeasonViewSet, basename="season")
@@ -54,4 +55,9 @@ urlpatterns = [
     path("outlook/player-search/", PlayerSearchView.as_view(), name="roster-outlook-player-search"),
     path("outlook/placeholders/", PlaceholderListView.as_view(), name="roster-outlook-placeholders"),
     path("outlook/<slug:slug>/", RosterOutlookView.as_view(), name="roster-outlook"),
+    # Sprint 3: Scenario layer (richer than /outlook/scenario/)
+    path("scenarios/compute/",    ScenarioComputeView.as_view(),  name="scenario-compute"),
+    path("scenarios/save/",       ScenarioSaveView.as_view(),     name="scenario-save"),
+    path("scenarios/<int:pk>/",   ScenarioDetailView.as_view(),   name="scenario-detail"),
+    path("scenarios/",            ScenarioListView.as_view(),     name="scenario-list"),
 ]

@@ -193,3 +193,25 @@ DEF_WEIGHT = 0.50
 # ── Diagnostic labels ─────────────────────────────────────────────────────────
 # How many strengths/weaknesses to surface per side in diagnostics output.
 N_DIAGNOSTIC_ITEMS = 3
+
+# ── Recruit-class archetype tags (Sprint 4) ──────────────────────────────────
+# Tag name string constants emitted by tag_archetypes() when PlayerFitInput
+# has national_rank, recruit_stars, or is_juco_transfer set.
+# All rank thresholds are Phase 4 provisional.
+
+RECRUIT_ELITE_RANK_THRESHOLD  = 30    # national_rank <= 30  → TAG_RECRUIT_ELITE
+RECRUIT_HIGH_RANK_THRESHOLD   = 100   # national_rank 31–100 → TAG_RECRUIT_HIGH
+RECRUIT_MID_RANK_THRESHOLD    = 200   # national_rank 101–200 → TAG_RECRUIT_MID
+# national_rank > 200 → TAG_RECRUIT_LOW (when rank is explicitly set)
+
+RECRUIT_STARS_HIGH_THRESHOLD  = 4    # stars >= 4 → TAG_STARS_HIGH (rank takes priority)
+RECRUIT_STARS_MID_THRESHOLD   = 3    # stars == 3 → TAG_STARS_MID
+
+TAG_RECRUIT_ELITE   = "recruit_elite"   # Top-30 national recruit
+TAG_RECRUIT_HIGH    = "recruit_high"    # Top-100
+TAG_RECRUIT_MID     = "recruit_mid"     # Top-200
+TAG_RECRUIT_LOW     = "recruit_low"     # Ranked but outside top-200
+TAG_RECRUIT_UNRATED = "recruit_unrated" # Newcomer with no rank/stars (set externally)
+TAG_STARS_HIGH      = "stars_high"      # 4–5 stars, no rank
+TAG_STARS_MID       = "stars_mid"       # 3 stars, no rank
+TAG_JUCO            = "juco_transfer"   # JUCO transfer (from ManualPlayerSpec.is_juco)
