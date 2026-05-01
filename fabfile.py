@@ -43,7 +43,7 @@ def pull(c):
     with _conn() as conn:
         with conn.cd(APP_DIR):
             print("── git pull ──────────────────────────────")
-            conn.run("git pull", pty=True)
+            conn.run("git fetch origin && git reset --hard origin/main", pty=True)
 
 
 @task
@@ -74,7 +74,7 @@ def deploy(c):
     with _conn() as conn:
         with conn.cd(APP_DIR):
             print("── git pull ──────────────────────────────")
-            conn.run("git pull", pty=True)
+            conn.run("git fetch origin && git reset --hard origin/main", pty=True)
 
             print("── docker compose build ──────────────────")
             conn.run(f"{COMPOSE} build", pty=True)
