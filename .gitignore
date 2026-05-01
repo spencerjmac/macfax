@@ -81,3 +81,4 @@ backend/core/management/commands/backtest_importance.py
 backend/core/management/commands/backtest_recency.py
 
 lightbulb.py
+macfax.dump
