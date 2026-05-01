@@ -480,7 +480,7 @@ def write_bt10_constants(result: ThresholdRecommendations, constants_path: str) 
         r = recs_by_name.get(name)
         n_note = f"n={r.n_players_in_bucket}, {r.confidence}" if r else "legacy"
         v = _val(name, fallback)
-        lines.append(f"{name}: float = {v}  [{n_note}]")
+        lines.append(f"{name}: float = {v}  # [{n_note}]")
     lines.append("WEAK_DEFENDER_DBPR_DEFAULT: float = -1.0  # fallback when conf_group unknown")
     lines.append("")
 

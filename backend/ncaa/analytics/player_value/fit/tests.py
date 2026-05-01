@@ -39,6 +39,10 @@ from ncaa.analytics.player_value.fit.constants import (
     WEAK_DEFENDER_DBPR_MAX, BALL_STOPPER_TOV_THRESHOLD,
     BALL_STOPPER_AST_MAX, NON_SHOOTING_BIG_FG3A_MAX,
     OFF_REBOUNDER_THRESHOLD, PRESSURE_DRIVER_FTA_THRESHOLD,
+    # Bucket-relative thresholds (Sprint 4)
+    SPACER_FG3A_WING, SPACER_FG3A_G, SPACER_FG3A_BIG,
+    DISRUPTOR_STL_WING, DISRUPTOR_STL_G,
+    RIM_PROTECTOR_BLK_BIG,
     # Recruit-class tag constants (Sprint 4)
     TAG_RECRUIT_ELITE, TAG_RECRUIT_HIGH, TAG_RECRUIT_MID, TAG_RECRUIT_LOW,
     TAG_STARS_HIGH, TAG_STARS_MID, TAG_JUCO,
@@ -237,7 +241,8 @@ class TestTagArchetypes(TestCase):
         self.assertIn("spacer", tags)
 
     def test_not_spacer_below_threshold(self):
-        p = _make_player(fg3a_pg=SPACER_FG3A_THRESHOLD - 0.1)
+        # Use Wing bucket (default) + bucket-relative Wing threshold
+        p = _make_player(fg3a_pg=SPACER_FG3A_WING - 0.01, role_bucket="Wing")
         tags = tag_archetypes(p)
         self.assertNotIn("spacer", tags)
 
@@ -282,9 +287,12 @@ class TestTagArchetypes(TestCase):
         self.assertIn("weak_defender", tag_archetypes(p))
 
     def test_average_player_has_no_extreme_tags(self):
+        # With bucket-relative thresholds, avg Wings (fg3a=2.44, stl=0.70) correctly
+        # fire spacer + disruptor — those are no longer "extreme" at calibrated levels.
+        # Check only tags that should never fire at D1-average stats.
         p = _make_player()
         tags = tag_archetypes(p)
-        for extreme in ("spacer", "primary_creator", "rim_protector",
+        for extreme in ("primary_creator", "rim_protector",
                         "ball_stopper", "weak_defender", "foul_prone"):
             self.assertNotIn(extreme, tags)
 
@@ -301,15 +309,17 @@ class TestOffensiveFitAverage(TestCase):
 
     def test_all_subcomponents_near_50(self):
         # role_balance and shooting may dip below 40 for a pure-Wing average roster
-        # (no Bigs triggers size_coverage penalty; no spacers hurts shooting).
-        # We verify the subcomponents that don't depend on roster composition.
+        # (no Bigs triggers size_coverage penalty).
+        # creation_fit is penalized by no_primary_creator (-15) and no_secondary_creator (-8)
+        # even for avg Wings (ast_pg=1.46 < 2.5 threshold) → floor of ~25 is expected.
         for field in (
-            "creation_fit", "ball_security_fit",
-            "finishing_fit", "pressure_fit", "off_rebounding_fit",
+            "ball_security_fit", "finishing_fit", "pressure_fit", "off_rebounding_fit",
         ):
             val = getattr(self.result, field)
             self.assertGreater(val, 30, f"{field} too low: {val}")
             self.assertLess(val, 70, f"{field} too high: {val}")
+        # creation_fit is structurally penalized for avg-AST Wings; just verify it's positive
+        self.assertGreater(self.result.creation_fit, 15, "creation_fit below expected minimum")
 
     def test_offensive_fit_score_near_50(self):
         self.assertGreater(self.result.offensive_fit_score, 30)
@@ -343,11 +353,12 @@ class TestOffensiveShooting(TestCase):
     """Distribution-aware shooting fit tests."""
 
     def _shooting_roster(self, n_spacers: int, fg3a: float = 4.5) -> list[PlayerFitInput]:
-        """Create a roster where n_spacers have high fg3a and the rest are avg."""
+        """Create a roster where n_spacers have high fg3a and the rest are below threshold."""
         players = []
         share = 5.0 / 10
+        non_spacer_fg3a = SPACER_FG3A_WING * 0.5  # well below Wing bucket threshold
         for i in range(10):
-            a = fg3a if i < n_spacers else 1.0
+            a = fg3a if i < n_spacers else non_spacer_fg3a
             players.append(_make_player(
                 player_id=i, fg3a_pg=a, minutes_share=share, rotation_rank=i + 1,
             ))

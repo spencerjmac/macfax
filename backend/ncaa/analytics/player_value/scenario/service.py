@@ -102,6 +102,7 @@ class ScenarioPlayerResult:
     stars: Optional[int]
     is_juco: bool
     archetypes: list[str]
+    competition_warning: Optional[str] = None
 
 
 @dataclass
@@ -395,8 +396,10 @@ def compute_scenario(request: ScenarioRosterRequest) -> ScenarioResult:
     )
 
     # ── Step 1: Load context ──────────────────────────────────────────────────
+    from ncaa.conf_utils import get_conf_detail
     season = Season.objects.get(year=request.season_year)
     team   = Team.objects.get(id=request.team_id)
+    target_conf_group = get_conf_detail(team.slug)
     d1_context = _get_d1_context_for_scenario(season)
     placeholder_lookup = load_placeholder_lookup(request.season_year)
 
@@ -438,6 +441,7 @@ def compute_scenario(request: ScenarioRosterRequest) -> ScenarioResult:
             resolved.append(r)
 
         elif slot.slot_type == "manual_player" and slot.manual_spec is not None:
+            slot.manual_spec.conf_group = target_conf_group
             r = resolve_manual_player(slot.manual_spec, placeholder_lookup, synthetic_counter)
             synthetic_counter -= 1
             resolved.append(r)
@@ -579,6 +583,7 @@ def compute_scenario(request: ScenarioRosterRequest) -> ScenarioResult:
             stars=r.stars,
             is_juco=r.is_juco,
             archetypes=archetypes_list,
+            competition_warning=r.competition_warning,
         ))
 
     # Sort by rotation_rank

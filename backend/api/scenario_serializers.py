@@ -84,6 +84,7 @@ class ScenarioPlayerResultSerializer(serializers.Serializer):
     stars                = serializers.IntegerField(allow_null=True)
     is_juco              = serializers.BooleanField()
     archetypes           = serializers.ListField(child=serializers.CharField())
+    competition_warning  = serializers.CharField(allow_null=True, allow_blank=True, required=False)
 
 
 class ScenarioResultSerializer(serializers.Serializer):

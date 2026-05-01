@@ -18,6 +18,11 @@ from ncaa.analytics.player_value.scenario.manual_player import (
     SOURCE_TIER_PLACEHOLDER,
     SOURCE_TIER_DEFAULT,
     SOURCE_TIER_JUCO,
+    WARN_CUSTOM_BPR,
+    WARN_JUCO,
+    WARN_MID_MAJOR_IN_POWER,
+    WARN_HIGH_MID_IN_POWER,
+    WARN_UNRATED_NEWCOMER,
     resolve_manual_player,
     resolve_db_player,
 )
@@ -48,6 +53,28 @@ _PLACEHOLDER_LOOKUP = {
         "fg3a_pg": 0.5,
         "conf_group": "power",
         "role_bucket": "Big",
+        "quality_tier": "starter",
+    },
+    "mid_major_starter_g": {
+        "projected_obpr": 1.0,
+        "projected_dbpr": 0.4,
+        "projected_bpr": 1.4,
+        "uncertainty": 0.50,
+        "display_name": "Mid-Major Guard (Starter)",
+        "fg3a_pg": 2.5,
+        "conf_group": "mid_major",
+        "role_bucket": "G",
+        "quality_tier": "starter",
+    },
+    "high_mid_starter_g": {
+        "projected_obpr": 1.2,
+        "projected_dbpr": 0.5,
+        "projected_bpr": 1.7,
+        "uncertainty": 0.48,
+        "display_name": "High Mid-Major Guard (Starter)",
+        "fg3a_pg": 2.8,
+        "conf_group": "high_mid",
+        "role_bucket": "G",
         "quality_tier": "starter",
     },
 }
@@ -233,6 +260,70 @@ class TestBprConsistency(unittest.TestCase):
         spec = _spec(national_rank=20)
         result = resolve_manual_player(spec, {}, -1)
         self.assertAlmostEqual(result.projected_bpr, result.projected_obpr + result.projected_dbpr, places=3)
+
+
+class TestCompetitionWarnings(unittest.TestCase):
+    """Sprint 4 Task 3 — competition_warning field on ScenarioPlayerResolved."""
+
+    def test_bpr_override_sets_custom_bpr_warning(self):
+        spec = _spec(projected_obpr=2.0, projected_dbpr=1.0)
+        result = resolve_manual_player(spec, {}, -1)
+        self.assertEqual(result.competition_warning, WARN_CUSTOM_BPR)
+
+    def test_juco_rank_lookup_sets_juco_warning(self):
+        spec = _spec(national_rank=50, is_juco=True)
+        result = resolve_manual_player(spec, {}, -1)
+        self.assertEqual(result.competition_warning, WARN_JUCO)
+
+    def test_non_juco_rank_lookup_has_no_warning(self):
+        spec = _spec(national_rank=50)
+        result = resolve_manual_player(spec, {}, -1)
+        self.assertIsNone(result.competition_warning)
+
+    def test_mid_major_placeholder_on_power_team_warns(self):
+        spec = ManualPlayerSpec(
+            display_name="Transfer",
+            position="G",
+            recruitment_type="transfer",
+            placeholder_key="mid_major_starter_g",
+            conf_group="power",
+        )
+        result = resolve_manual_player(spec, _PLACEHOLDER_LOOKUP, -1)
+        self.assertEqual(result.competition_warning, WARN_MID_MAJOR_IN_POWER)
+
+    def test_high_mid_placeholder_on_power_team_warns(self):
+        spec = ManualPlayerSpec(
+            display_name="Transfer",
+            position="G",
+            recruitment_type="transfer",
+            placeholder_key="high_mid_starter_g",
+            conf_group="power",
+        )
+        result = resolve_manual_player(spec, _PLACEHOLDER_LOOKUP, -1)
+        self.assertEqual(result.competition_warning, WARN_HIGH_MID_IN_POWER)
+
+    def test_unrated_newcomer_flat_default_warns(self):
+        # No rank, no stars, no placeholder → flat default with WARN_UNRATED_NEWCOMER
+        spec = ManualPlayerSpec(
+            display_name="Walk-on",
+            position="G",
+            recruitment_type="newcomer",
+            conf_group="power",
+        )
+        result = resolve_manual_player(spec, {}, -1)
+        self.assertEqual(result.competition_warning, WARN_UNRATED_NEWCOMER)
+
+    def test_db_player_has_no_warning(self):
+        proj = {
+            "id": 1, "player_id": 10, "player_name": "DB Player",
+            "projected_obpr": 2.0, "projected_dbpr": 1.0, "projected_bpr": 3.0,
+            "projection_uncertainty": 0.4, "recruitment_type": "returner",
+            "n_prior_seasons": 2,
+        }
+        stats = {"mpg": 25.0, "gp": 28, "off_poss": 500.0, "def_poss": 500.0,
+                 "ast": 2.0, "blk": 0.1, "reb": 3.5, "fg3a_pg": 2.0}
+        result = resolve_db_player(proj, stats, "G")
+        self.assertIsNone(result.competition_warning)
 
 
 if __name__ == "__main__":

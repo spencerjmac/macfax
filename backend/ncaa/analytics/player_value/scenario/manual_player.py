@@ -39,6 +39,22 @@ SOURCE_TIER_DEFAULT      = "default"
 SOURCE_TIER_JUCO         = "juco"
 SOURCE_TIER_DB           = "db"              # existing DB player (no badge)
 
+# ── Competition warnings (Sprint 4) ──────────────────────────────────────────
+WARN_MID_MAJOR_IN_POWER = (
+    "Mid-major BPR — performance measured in weaker competition. "
+    "May be inflated vs. power conference opponents."
+)
+WARN_HIGH_MID_IN_POWER  = "High mid-major BPR — slight competition gap vs. power conference."
+WARN_JUCO               = (
+    "JUCO transfer — college production adjusted for competition level. "
+    "Higher uncertainty than D1 transfers."
+)
+WARN_CUSTOM_BPR         = "Manually entered BPR — this is a user estimate, not a model projection."
+WARN_UNRATED_NEWCOMER   = (
+    "Unrated newcomer — no recruiting data available. "
+    "Projection is based on position defaults only."
+)
+
 _DISPLAY_LABELS: dict[str, str] = {
     SOURCE_TIER_BPR_OVERRIDE: "Custom BPR",
     SOURCE_TIER_RANK_ELITE:   "5★ / Top-30",
@@ -165,6 +181,9 @@ class ScenarioPlayerResolved:
     stars:           Optional[int]
     is_juco:         bool
 
+    # Competition context warning surfaced to the UI (Sprint 4)
+    competition_warning: Optional[str] = None
+
 
 # ── Pure helpers ──────────────────────────────────────────────────────────────
 
@@ -196,6 +215,7 @@ def _make_resolved(
     display_label: str,
     resolution_method: str,
     placeholder_key: Optional[str] = None,
+    competition_warning: Optional[str] = None,
 ) -> ScenarioPlayerResolved:
     """Construct ScenarioPlayerResolved from a ManualPlayerSpec and resolved values."""
     box = _get_default_box_stats(spec.position)
@@ -226,10 +246,20 @@ def _make_resolved(
         national_rank=spec.national_rank,
         stars=spec.stars,
         is_juco=spec.is_juco,
+        competition_warning=competition_warning,
     )
 
 
 # ── Main resolver ─────────────────────────────────────────────────────────────
+
+def _competition_warning_for_arch(arch_conf_group: str, target_conf_group: str) -> Optional[str]:
+    """Return competition warning when a mid/high-mid archetype is placed on a power team."""
+    if arch_conf_group == "mid_major" and target_conf_group in ("power", "national"):
+        return WARN_MID_MAJOR_IN_POWER
+    if arch_conf_group == "high_mid" and target_conf_group == "power":
+        return WARN_HIGH_MID_IN_POWER
+    return None
+
 
 def resolve_manual_player(
     spec: ManualPlayerSpec,
@@ -262,6 +292,7 @@ def resolve_manual_player(
             source_tier=SOURCE_TIER_BPR_OVERRIDE,
             display_label=_DISPLAY_LABELS[SOURCE_TIER_BPR_OVERRIDE],
             resolution_method="bpr_override",
+            competition_warning=WARN_CUSTOM_BPR,
         )
 
     # ── Priority 2: Rank lookup (newcomers and JUCOs only) ───────────────────
@@ -290,12 +321,16 @@ def resolve_manual_player(
             source_tier=tier,
             display_label=label,
             resolution_method="rank_lookup",
+            competition_warning=WARN_JUCO if spec.is_juco else None,
         )
 
     # ── Priority 3: Explicit placeholder key ─────────────────────────────────
     if spec.placeholder_key and spec.placeholder_key in placeholder_lookup:
         arch = placeholder_lookup[spec.placeholder_key]
         box  = _get_default_box_stats(spec.position)
+        comp_warn = _competition_warning_for_arch(
+            str(arch.get("conf_group") or ""), spec.conf_group
+        )
         return ScenarioPlayerResolved(
             player_id=synthetic_id_counter,
             display_name=spec.display_name,
@@ -323,6 +358,7 @@ def resolve_manual_player(
             national_rank=spec.national_rank,
             stars=spec.stars,
             is_juco=spec.is_juco,
+            competition_warning=comp_warn,
         )
 
     # ── Priority 4: Default fallback ─────────────────────────────────────────
@@ -342,6 +378,9 @@ def resolve_manual_player(
     if best_key:
         arch = placeholder_lookup[best_key]
         box  = _get_default_box_stats(spec.position)
+        comp_warn = _competition_warning_for_arch(
+            str(arch.get("conf_group") or ""), spec.conf_group
+        )
         return ScenarioPlayerResolved(
             player_id=synthetic_id_counter,
             display_name=spec.display_name,
@@ -370,10 +409,18 @@ def resolve_manual_player(
             national_rank=spec.national_rank,
             stars=spec.stars,
             is_juco=spec.is_juco,
+            competition_warning=comp_warn,
         )
 
     # Flat defaults — no matching placeholder
     unc = UNCERTAINTY_BASE.get(spec.recruitment_type, 0.80)
+    flat_warn = (
+        WARN_UNRATED_NEWCOMER
+        if (spec.recruitment_type == "newcomer"
+            and spec.national_rank is None
+            and spec.stars is None)
+        else None
+    )
     return _make_resolved(
         spec, synthetic_id_counter,
         projected_obpr=0.0,
@@ -382,6 +429,7 @@ def resolve_manual_player(
         source_tier=SOURCE_TIER_DEFAULT,
         display_label=_DISPLAY_LABELS[SOURCE_TIER_DEFAULT],
         resolution_method="default",
+        competition_warning=flat_warn,
     )
 
 
@@ -432,4 +480,5 @@ def resolve_db_player(
         national_rank=None,
         stars=None,
         is_juco=False,
+        competition_warning=None,
     )

@@ -215,3 +215,32 @@ TAG_RECRUIT_UNRATED = "recruit_unrated" # Newcomer with no rank/stars (set exter
 TAG_STARS_HIGH      = "stars_high"      # 4–5 stars, no rank
 TAG_STARS_MID       = "stars_mid"       # 3 stars, no rank
 TAG_JUCO            = "juco_transfer"   # JUCO transfer (from ManualPlayerSpec.is_juco)
+
+# ── Role-bucket-relative thresholds (Sprint 4 — BT-10 validated, 2026-05-01) ──────
+# These REPLACE the single-value thresholds above when USE_BUCKET_THRESHOLDS=True.
+# Legacy single-value thresholds are retained for backward compatibility.
+# Run `python manage.py run_bt10` to regenerate these values from fresh data.
+
+USE_BUCKET_THRESHOLDS: bool = True
+
+# Rim protector — Big p50 blk/game; Guards/Wings keep legacy 0.70
+RIM_PROTECTOR_BLK_G: float = 0.7  # Guards: keep legacy (rim protection rarely applies)  [n=22266, high]
+RIM_PROTECTOR_BLK_WING: float = 0.7  # Wings: keep legacy  [n=11815, high]
+RIM_PROTECTOR_BLK_BIG: float = 0.9  # Bigs: p50 blk/game  [n=4414, high]
+
+# Disruptor — per-bucket p70 stl/game
+DISRUPTOR_STL_G: float = 0.86  # Guard p70  [n=22266, high]
+DISRUPTOR_STL_WING: float = 0.48  # Wing p70  [n=11815, high]
+DISRUPTOR_STL_BIG: float = 1.0  # Keep league-wide for Bigs  [n=4414, high]
+
+# Spacer — per-bucket p60 fg3a/game
+SPACER_FG3A_G: float = 2.29  # G p60 fg3a/game  [n=22266, high]
+SPACER_FG3A_WING: float = 1.0  # WING p60 fg3a/game  [n=11815, high]
+SPACER_FG3A_BIG: float = 0.52  # BIG p60 fg3a/game  [n=4414, high]
+
+# Weak defender — per-conf-group p25 projected_dbpr (bottom 25%)
+WEAK_DEFENDER_DBPR_POWER: float = 0.38  # [n=6456, high]
+WEAK_DEFENDER_DBPR_HIGH_MID: float = 0.22  # [n=4078, high]
+WEAK_DEFENDER_DBPR_MID_MAJOR: float = 0.31  # [n=27961, high]
+WEAK_DEFENDER_DBPR_DEFAULT: float = -1.0  # fallback when conf_group unknown
+

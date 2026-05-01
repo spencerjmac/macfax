@@ -90,6 +90,17 @@ export default function Navigation() {
             {/* Global Links */}
             <div className="w-px h-6 bg-gray-700 mx-6" />
             <Link
+              href="/methodology"
+              className={clsx(
+                'px-4 py-2 rounded transition-colors font-medium text-lg',
+                pathname?.startsWith('/methodology')
+                  ? 'bg-brand text-white'
+                  : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+              )}
+            >
+              Methodology
+            </Link>
+            <Link
               href="/about"
               className={clsx(
                 'px-4 py-2 rounded transition-colors font-medium text-lg',

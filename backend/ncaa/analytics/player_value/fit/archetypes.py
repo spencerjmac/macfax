@@ -58,6 +58,13 @@ from ncaa.analytics.player_value.fit.constants import (
     FOUL_PRONE_THRESHOLD,
     WEAK_DEFENDER_DBPR_MAX,
     SWITCHABLE_WING_ROLE,
+    # Bucket-relative thresholds (Sprint 4 — BT-10 validated)
+    USE_BUCKET_THRESHOLDS,
+    RIM_PROTECTOR_BLK_G, RIM_PROTECTOR_BLK_WING, RIM_PROTECTOR_BLK_BIG,
+    DISRUPTOR_STL_G, DISRUPTOR_STL_WING, DISRUPTOR_STL_BIG,
+    SPACER_FG3A_G, SPACER_FG3A_WING, SPACER_FG3A_BIG,
+    WEAK_DEFENDER_DBPR_POWER, WEAK_DEFENDER_DBPR_HIGH_MID,
+    WEAK_DEFENDER_DBPR_MID_MAJOR, WEAK_DEFENDER_DBPR_DEFAULT,
     # Recruit-class tag constants (Sprint 4)
     TAG_RECRUIT_ELITE, TAG_RECRUIT_HIGH, TAG_RECRUIT_MID, TAG_RECRUIT_LOW,
     TAG_RECRUIT_UNRATED, TAG_STARS_HIGH, TAG_STARS_MID, TAG_JUCO,
@@ -314,8 +321,30 @@ def tag_archetypes(inp: PlayerFitInput) -> set[str]:
     is_big  = (inp.role_bucket == "Big")
     is_wing = (inp.role_bucket == "Wing")
 
+    # ── Resolve active thresholds (bucket-relative or legacy) ────────────
+    if USE_BUCKET_THRESHOLDS:
+        _blk_thresh = {"Big": RIM_PROTECTOR_BLK_BIG, "Wing": RIM_PROTECTOR_BLK_WING}.get(
+            inp.role_bucket, RIM_PROTECTOR_BLK_G
+        )
+        _stl_thresh = {"G": DISRUPTOR_STL_G, "Wing": DISRUPTOR_STL_WING}.get(
+            inp.role_bucket, DISRUPTOR_STL_BIG
+        )
+        _spacer_thresh = {"G": SPACER_FG3A_G, "Wing": SPACER_FG3A_WING, "Big": SPACER_FG3A_BIG}.get(
+            inp.role_bucket, SPACER_FG3A_G
+        )
+        _weak_def_thresh = {
+            "power": WEAK_DEFENDER_DBPR_POWER,
+            "high_mid": WEAK_DEFENDER_DBPR_HIGH_MID,
+            "mid_major": WEAK_DEFENDER_DBPR_MID_MAJOR,
+        }.get(inp.conf_group or "", WEAK_DEFENDER_DBPR_DEFAULT)
+    else:
+        _blk_thresh      = RIM_PROTECTOR_BLK_THRESHOLD
+        _stl_thresh      = DISRUPTOR_STL_THRESHOLD
+        _spacer_thresh   = SPACER_FG3A_THRESHOLD
+        _weak_def_thresh = WEAK_DEFENDER_DBPR_MAX
+
     # ── Offensive archetypes ─────────────────────────────────────────────
-    if inp.fg3a_pg >= SPACER_FG3A_THRESHOLD:
+    if inp.fg3a_pg >= _spacer_thresh:
         tags.add("spacer")
 
     if inp.efg_pct is not None and inp.efg_pct >= SHOOTER_EFG_THRESHOLD:
@@ -342,22 +371,22 @@ def tag_archetypes(inp: PlayerFitInput) -> set[str]:
         tags.add("non_shooting_big")
 
     # ── Defensive archetypes ─────────────────────────────────────────────
-    if inp.blk_pg >= RIM_PROTECTOR_BLK_THRESHOLD:
+    if inp.blk_pg >= _blk_thresh:
         tags.add("rim_protector")
 
-    if inp.stl_pg >= DISRUPTOR_STL_THRESHOLD:
+    if inp.stl_pg >= _stl_thresh:
         tags.add("disruptor")
 
     if inp.pf_pg >= FOUL_PRONE_THRESHOLD:
         tags.add("foul_prone")
 
     # Switchable wing: wing position + disruptor-level steals
-    if is_wing and inp.stl_pg >= DISRUPTOR_STL_THRESHOLD:
+    if is_wing and inp.stl_pg >= _stl_thresh:
         tags.add("switchable_wing")
 
-    # Weak defender: projected_dbpr well below average
+    # Weak defender: projected_dbpr well below average (conf-group relative)
     if (inp.projected_dbpr is not None
-            and inp.projected_dbpr <= WEAK_DEFENDER_DBPR_MAX):
+            and inp.projected_dbpr <= _weak_def_thresh):
         tags.add("weak_defender")
 
     # ── Recruit-class tags (Sprint 4) ─────────────────────────────────────
