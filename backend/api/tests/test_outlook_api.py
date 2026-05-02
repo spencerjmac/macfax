@@ -20,7 +20,7 @@ from ncaa.models import (
     TeamSeasonProjection,
     TeamSeasonRatings,
 )
-from api.outlook_views import _fit_grade
+from api.outlook_views import _fit_grade, _approx_rank_in_distribution, _rank_display
 
 
 # ── Fixture helpers ─────────────────────────────────────────────────────────
@@ -553,3 +553,132 @@ class PlayerSearchViewTests(TestCase):
         # Without explicit season, uses default (most recent with projections)
         res = self._get("Alex")
         self.assertEqual(res.status_code, 200)
+
+
+# ── Task 1 (Sprint 5): Rank range surfacing tests ────────────────────────────
+
+
+class RankDisplayHelperTests(TestCase):
+    """Unit tests for _rank_display() helper (no DB needed)."""
+
+    def test_typical_range(self):
+        self.assertEqual(_rank_display(15, 5, 35), "15 (5–35)")
+
+    def test_none_rank_returns_unranked(self):
+        self.assertEqual(_rank_display(None, None, None), "Unranked")
+
+    def test_identical_low_and_high_returns_bare_rank(self):
+        self.assertEqual(_rank_display(10, 10, 10), "10")
+
+    def test_none_range_bounds_returns_bare_rank(self):
+        self.assertEqual(_rank_display(5, None, None), "5")
+
+
+class ApproxRankRangeTests(TestCase):
+    """Tests for _approx_rank_in_distribution() returning rank_low / rank_high."""
+
+    def setUp(self):
+        self.season = _make_season(2025)
+        self.team = _make_team("test-rank-team", "Test Rank Team")
+        # Create 5 teams with known adj_em values
+        for i, em in enumerate([20.0, 15.0, 10.0, 5.0, 0.0]):
+            t = Team.objects.create(slug=f"team-{i}", name=f"Team {i}")
+            _make_team_projection(t, self.season, adj_o=110 + em / 2, adj_d=110 - em / 2)
+
+    def test_returns_rank_range_keys(self):
+        info = _approx_rank_in_distribution(self.season, 12.0, uncertainty=0.3)
+        self.assertIn("national_rank_range_low", info)
+        self.assertIn("national_rank_range_high", info)
+        self.assertIn("approx_national_rank", info)
+
+    def test_rank_low_lte_rank_lte_high(self):
+        info = _approx_rank_in_distribution(self.season, 12.0, uncertainty=0.3)
+        low  = info["national_rank_range_low"]
+        rank = info["approx_national_rank"]
+        high = info["national_rank_range_high"]
+        self.assertLessEqual(low, rank)
+        self.assertLessEqual(rank, high)
+
+    def test_rank_range_clamped_to_1(self):
+        # Best team in the distribution should have rank_low = 1
+        info = _approx_rank_in_distribution(self.season, 25.0, uncertainty=0.5)
+        self.assertGreaterEqual(info["national_rank_range_low"], 1)
+
+
+class BaselineProjectionRankRangeTests(TestCase):
+    """Test that GET /api/outlook/<slug>/ includes all 9 rank fields + rank_display."""
+
+    def setUp(self):
+        self.season = _make_season(2025)
+        self.team = _make_team("baseline-rank-test", "Baseline Rank Team")
+        _make_ratings(self.team, self.season)
+        p = _make_player(99)
+        _make_player_projection(p, self.team, self.season, rank=1)
+        self.proj = _make_team_projection(self.team, self.season)
+        _make_roster_fit(self.team, self.season)
+
+    def test_baseline_includes_all_rank_range_fields(self):
+        res = self.client.get(f"/api/outlook/baseline-rank-test/")
+        self.assertEqual(res.status_code, 200)
+        proj = res.json()["projection"]
+        for field in [
+            "projected_national_rank", "national_rank_range_low", "national_rank_range_high",
+            "rank_display",
+            "projected_offense_rank", "offense_rank_range_low", "offense_rank_range_high",
+            "off_rank_display",
+            "projected_defense_rank", "defense_rank_range_low", "defense_rank_range_high",
+            "def_rank_display",
+        ]:
+            self.assertIn(field, proj, f"Missing field: {field}")
+
+    def test_rank_display_format(self):
+        res = self.client.get("/api/outlook/baseline-rank-test/")
+        proj = res.json()["projection"]
+        rank_display = proj["rank_display"]
+        self.assertIsInstance(rank_display, str)
+        self.assertGreater(len(rank_display), 0)
+
+
+class ScenarioProjectionRankRangeTests(TestCase):
+    """Test that POST /api/outlook/scenario/ includes rank range fields."""
+
+    def setUp(self):
+        self.season = _make_season(2025)
+        self.team = _make_team("scenrank", "ScenRank Team")
+        _make_ratings(self.team, self.season)
+        _make_team_projection(self.team, self.season)
+        _make_roster_fit(self.team, self.season)
+
+    def _post(self, body):
+        return self.client.post(
+            "/api/outlook/scenario/",
+            data=body,
+            content_type="application/json",
+        )
+
+    def _valid_body(self, n_players=3):
+        players = [
+            {
+                "player_id": i, "player_name": f"P{i}",
+                "projected_obpr": 2.0, "projected_dbpr": 1.0, "projected_bpr": 3.0,
+                "minutes_share": 5.0 / n_players,
+                "recruitment_type": "returner", "projection_uncertainty": 0.3,
+            }
+            for i in range(n_players)
+        ]
+        return {"from_season_year": 2025, "team_slug": "scenrank", "players": players}
+
+    def test_rank_range_fields_in_response(self):
+        data = self._post(self._valid_body()).json()
+        self.assertIn("national_rank_range_low",  data)
+        self.assertIn("national_rank_range_high", data)
+        self.assertIn("rank_display", data)
+
+    def test_rank_low_lte_rank_lte_high(self):
+        data = self._post(self._valid_body()).json()
+        low  = data["national_rank_range_low"]
+        rank = data["approx_national_rank"]
+        high = data["national_rank_range_high"]
+        if low is not None and high is not None:
+            self.assertLessEqual(low, rank)
+            self.assertLessEqual(rank, high)

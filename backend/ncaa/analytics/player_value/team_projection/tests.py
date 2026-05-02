@@ -34,6 +34,7 @@ from __future__ import annotations
 from unittest import TestCase
 
 from ncaa.analytics.player_value.team_projection.constants import (
+    COACHING_UNCERTAINTY_ADD,
     CONTINUITY_BPR_BLEND_WEIGHT,
     CONTINUITY_BPR_REPLACEMENT_FLOOR,
     CONTINUITY_NEUTRAL_FRACTION,
@@ -1580,3 +1581,78 @@ class TestNewcomerUncertaintyNoDoubleCount(TestCase):
         categorical_contribution = UNCERTAINTY_NEWCOMER_WEIGHT * 1.0
         player_signal_contribution = UNCERTAINTY_PLAYER_SIGNAL_WEIGHT * 0.80
         self.assertLess(categorical_contribution, player_signal_contribution)
+
+
+# ── Sprint 5, Task 4: First-year coach coaching uncertainty tests ─────────────
+
+
+def _typical_roster(n: int = 8) -> list[PlayerProjectionInput]:
+    """Return a balanced roster suitable for first-year-coach tests."""
+    players = []
+    for i in range(n):
+        players.append(_player(
+            player_id=i + 1,
+            obpr=1.0 + i * 0.1,
+            dbpr=0.5,
+            min_share=5.0 / n,
+            recruitment_type="returner" if i < n // 2 else "transfer",
+            uncertainty=0.35,
+        ))
+    return players
+
+
+class TestFirstYearCoachUncertainty(TestCase):
+    """Sprint 5 Task 4: is_first_year_coach should widen uncertainty band only."""
+
+    def test_first_year_coach_increases_uncertainty(self):
+        players = _typical_roster()
+        ctx = _ctx()
+        fit = _fit()
+
+        r_without = project_team(players, fit, ctx, is_first_year_coach=False)
+        r_with    = project_team(players, fit, ctx, is_first_year_coach=True)
+
+        self.assertGreater(r_with.team_projection_uncertainty,
+                           r_without.team_projection_uncertainty)
+        delta = r_with.team_projection_uncertainty - r_without.team_projection_uncertainty
+        self.assertAlmostEqual(delta, COACHING_UNCERTAINTY_ADD, places=3)
+
+    def test_first_year_coach_does_not_shift_mean(self):
+        players = _typical_roster()
+        ctx = _ctx()
+        fit = _fit()
+
+        r_without = project_team(players, fit, ctx, is_first_year_coach=False)
+        r_with    = project_team(players, fit, ctx, is_first_year_coach=True)
+
+        self.assertAlmostEqual(r_with.projected_adj_em, r_without.projected_adj_em, places=6)
+        self.assertAlmostEqual(r_with.projected_adj_o,  r_without.projected_adj_o,  places=6)
+        self.assertAlmostEqual(r_with.projected_adj_d,  r_without.projected_adj_d,  places=6)
+
+    def test_hook_disabled_no_coaching_effect(self):
+        import ncaa.analytics.player_value.team_projection.engine as eng
+        original = eng.COACHING_CONTINUITY_HOOK_ENABLED
+        eng.COACHING_CONTINUITY_HOOK_ENABLED = False
+        try:
+            players = _typical_roster()
+            ctx = _ctx()
+            fit = _fit()
+            r1 = project_team(players, fit, ctx, is_first_year_coach=False)
+            r2 = project_team(players, fit, ctx, is_first_year_coach=True)
+            self.assertAlmostEqual(r1.team_projection_uncertainty,
+                                   r2.team_projection_uncertainty, places=6)
+        finally:
+            eng.COACHING_CONTINUITY_HOOK_ENABLED = original
+
+    def test_is_first_year_coach_stored_in_result(self):
+        players = _typical_roster()
+        ctx = _ctx()
+        fit = _fit()
+
+        r_without = project_team(players, fit, ctx, is_first_year_coach=False)
+        r_with    = project_team(players, fit, ctx, is_first_year_coach=True)
+
+        self.assertFalse(r_without.is_first_year_coach)
+        self.assertTrue(r_with.is_first_year_coach)
+        self.assertAlmostEqual(r_with.coaching_uncertainty_add, COACHING_UNCERTAINTY_ADD, places=6)
+        self.assertAlmostEqual(r_without.coaching_uncertainty_add, 0.0, places=6)

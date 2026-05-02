@@ -101,6 +101,15 @@ class ScenarioResultSerializer(serializers.Serializer):
     projected_national_rank   = serializers.IntegerField(allow_null=True)
     national_rank_range_low   = serializers.IntegerField(allow_null=True)
     national_rank_range_high  = serializers.IntegerField(allow_null=True)
+    rank_display              = serializers.CharField()
+    projected_offense_rank    = serializers.IntegerField(allow_null=True)
+    offense_rank_range_low    = serializers.IntegerField(allow_null=True)
+    offense_rank_range_high   = serializers.IntegerField(allow_null=True)
+    off_rank_display          = serializers.CharField()
+    projected_defense_rank    = serializers.IntegerField(allow_null=True)
+    defense_rank_range_low    = serializers.IntegerField(allow_null=True)
+    defense_rank_range_high   = serializers.IntegerField(allow_null=True)
+    def_rank_display          = serializers.CharField()
     team_projection_uncertainty = serializers.FloatField()
     continuity_score     = serializers.FloatField()
     transfer_dependence_score = serializers.FloatField()
@@ -121,6 +130,7 @@ class ScenarioResultSerializer(serializers.Serializer):
     has_mpg_overrides    = serializers.BooleanField()
     computed_at          = serializers.CharField()
 
+    is_first_year_coach  = serializers.BooleanField(required=False, default=False)
     baseline_adj_em      = serializers.FloatField(allow_null=True, required=False)
     adj_em_delta         = serializers.FloatField(allow_null=True, required=False)
 

@@ -151,9 +151,18 @@ CONTINUITY_BPR_BLEND_WEIGHT: float = 0.40        # 40 % BPR share, 60 % minutes
 CONTINUITY_BPR_REPLACEMENT_FLOOR: float = -5.0   # pts/100 poss; shift floor
 
 # ── Coaching continuity ───────────────────────────────────────────────────────
-# No coach data available. Toggle to True once coach identity is trackable.
-COACHING_CONTINUITY_HOOK_ENABLED: bool = False
-COACHING_CONTINUITY_MAX_ADJ: float = 1.0  # reserved (pts/100 poss)
+# Phase 5 implementation (Sprint 5). Mean adjustment (coaching_continuity_adjustment)
+# remains 0.0 — only uncertainty is affected. Add mean adjustment in a future sprint
+# once historical data on first-year coach adj_em impact is available.
+COACHING_CONTINUITY_HOOK_ENABLED: bool = True
+COACHING_CONTINUITY_MAX_ADJ: float = 1.0  # reserved for future mean adjustment (pts/100 poss)
+
+# Uncertainty addition for first-year coaches.
+# First-year coaches show higher game-to-game variance due to system installation,
+# roster trust-building, and in-game adjustment uncertainty.
+# Does NOT shift the mean projection — only widens the confidence band.
+COACHING_UNCERTAINTY_ADD: float = 0.08   # adds 0.08 to team_projection_uncertainty
+                                          # when is_first_year_coach=True
 
 # ── Phase 6b: Transfer fit-dependent outcome spread ───────────────────────────
 # A transfer-heavy roster is not inherently worse — but one where transfers land

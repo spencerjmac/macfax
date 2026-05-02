@@ -13,6 +13,8 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 from .constants import (
+    COACHING_CONTINUITY_HOOK_ENABLED,
+    COACHING_UNCERTAINTY_ADD,
     CONTINUITY_BPR_BLEND_WEIGHT,
     CONTINUITY_BPR_REPLACEMENT_FLOOR,
     CONTINUITY_NEUTRAL_FRACTION,
@@ -153,6 +155,10 @@ class TeamProjectionResult:
     # signal — does NOT shift base_team_offense / defense or mean ratings.
     transfer_fit_risk_score: float = 0.0    # 0-1; feeds TRANSFER_FIT_RISK_WEIGHT into uncertainty
 
+    # ─ Coaching (Sprint 5) ──────────────────────────────────────────────────
+    is_first_year_coach: bool = False          # from TeamSeasonStats
+    coaching_uncertainty_add: float = 0.0     # COACHING_UNCERTAINTY_ADD when is_first_year_coach
+
     # ─ Diagnostics ──────────────────────────────────────────────────────────
     projection_summary: dict = field(default_factory=dict)
     driver_breakdown: list[dict] = field(default_factory=list)
@@ -165,6 +171,7 @@ def project_team(
     players: list[PlayerProjectionInput],
     roster_fit: Optional[RosterFitInput],
     d1_context: D1Context,
+    is_first_year_coach: bool = False,
 ) -> TeamProjectionResult:
     """
     Project a team's season performance from Phase 1/2/3/4 inputs.
@@ -195,8 +202,13 @@ def project_team(
     # 3. Fit adjustments from Phase 3+4
     fit_adj_off, fit_adj_def = _compute_fit_adjustments(roster_fit)
 
-    # 4. Coaching (always 0 — no coach data available)
-    coaching_adj = 0.0
+    # 4. Coaching continuity (mean: always 0; uncertainty: +COACHING_UNCERTAINTY_ADD for first-year)
+    coaching_adj = 0.0   # mean adjustment reserved for future sprint
+    coaching_uncertainty_add = (
+        COACHING_UNCERTAINTY_ADD
+        if COACHING_CONTINUITY_HOOK_ENABLED and is_first_year_coach
+        else 0.0
+    )
 
     # 5. Translate base aggregates to projected ratings (centered on D1 avg)
     raw_adj_o = d1_context.avg_adj_o + SLOPE_OFF * (base_off - d1_context.league_mean_base_off)
@@ -231,6 +243,7 @@ def project_team(
         weighted_player_unc,
         continuity_value_score=cont.continuity_value_score,
         transfer_fit_risk=transfer_fit_risk,
+        coaching_uncertainty_add=coaching_uncertainty_add,
     )
     sigma_pts = _uncertainty_to_sigma(uncertainty)
 
@@ -251,6 +264,8 @@ def project_team(
         fit_adjustment_off=fit_adj_off,
         fit_adjustment_def=fit_adj_def,
         coaching_continuity_adjustment=coaching_adj,
+        is_first_year_coach=is_first_year_coach,
+        coaching_uncertainty_add=coaching_uncertainty_add,
         projected_adj_o=projected_adj_o,
         projected_adj_d=projected_adj_d,
         projected_adj_em=projected_adj_em,
@@ -466,6 +481,7 @@ def _compute_uncertainty(
     weighted_player_uncertainty: float = 0.5,
     continuity_value_score: Optional[float] = None,
     transfer_fit_risk: float = 0.0,
+    coaching_uncertainty_add: float = 0.0,
 ) -> float:
     """
     Compute team_projection_uncertainty ∈ [UNCERTAINTY_MIN, UNCERTAINTY_MAX].
@@ -513,6 +529,9 @@ def _compute_uncertainty(
     # Missing team-style data
     if roster_fit is None or not roster_fit.has_team_style_data:
         uncertainty += UNCERTAINTY_NO_STYLE_DATA
+
+    # Coaching: first-year coach adds outcome variance (Sprint 5)
+    uncertainty += coaching_uncertainty_add
 
     return max(UNCERTAINTY_MIN, min(UNCERTAINTY_MAX, uncertainty))
 

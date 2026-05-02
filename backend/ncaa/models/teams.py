@@ -303,6 +303,16 @@ class TeamSeasonStats(models.Model):
     has_cbb_analytics = models.BooleanField(default=False)
     has_evan_miya = models.BooleanField(default=False)
 
+    # ==================== Coaching ====================
+    is_first_year_coach = models.BooleanField(
+        default=False,
+        help_text=(
+            "True when the head coach is in their first season with this program. "
+            "Set manually each season via python manage.py set_coach_flags --season YEAR. "
+            "Used to add uncertainty to team projections for high-variance coaching transitions."
+        ),
+    )
+
     last_updated = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

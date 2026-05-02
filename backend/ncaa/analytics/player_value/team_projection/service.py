@@ -156,12 +156,25 @@ def run_team_projection_pipeline(
 
     log.info("Loaded %d TeamRosterFit records", len(fit_by_team))
 
+    # ── Load first-year coach flags (Sprint 5) ─────────────────────────────────
+    from ncaa.models import TeamSeasonStats
+    first_year_coach_teams: set[int] = set(
+        TeamSeasonStats.objects
+        .filter(season__year=season_year, is_first_year_coach=True)
+        .values_list("team_id", flat=True)
+    )
+    if first_year_coach_teams:
+        log.info("First-year coach flags set for %d teams", len(first_year_coach_teams))
+
     # ── PASS 2: project each team ─────────────────────────────────────────────
     team_results: list[tuple[int, TeamProjectionResult]] = []
 
     for team_id, players in players_by_team.items():
         roster_fit = fit_by_team.get(team_id)  # None if no fit computed yet
-        result = project_team(players, roster_fit, d1_context)
+        result = project_team(
+            players, roster_fit, d1_context,
+            is_first_year_coach=(team_id in first_year_coach_teams),
+        )
         team_results.append((team_id, result))
 
     log.info("Engine ran for %d teams", len(team_results))

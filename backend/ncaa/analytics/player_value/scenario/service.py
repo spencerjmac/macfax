@@ -43,6 +43,7 @@ from ncaa.analytics.player_value.team_projection.engine import (
     PlayerProjectionInput,
     RosterFitInput,
     project_team,
+    _uncertainty_to_sigma,
 )
 from ncaa.analytics.player_value.team_projection.constants import (
     FALLBACK_D1_ADJ_O,
@@ -125,6 +126,15 @@ class ScenarioResult:
     projected_national_rank: Optional[int]
     national_rank_range_low: Optional[int]
     national_rank_range_high: Optional[int]
+    rank_display: str
+    projected_offense_rank: Optional[int]
+    offense_rank_range_low: Optional[int]
+    offense_rank_range_high: Optional[int]
+    off_rank_display: str
+    projected_defense_rank: Optional[int]
+    defense_rank_range_low: Optional[int]
+    defense_rank_range_high: Optional[int]
+    def_rank_display: str
     team_projection_uncertainty: float
     continuity_score: float
     transfer_dependence_score: float
@@ -146,6 +156,9 @@ class ScenarioResult:
     n_db_players: int
     has_mpg_overrides: bool
     computed_at: str
+
+    # Coaching flag (Sprint 5)
+    is_first_year_coach: bool = False
 
     # Baseline comparison (optional)
     baseline_adj_em: Optional[float] = None
@@ -246,21 +259,85 @@ def _get_d1_context_for_scenario(season) -> D1Context:
     )
 
 
-def _approx_rank(season, scenario_em: float) -> dict:
-    """Approximate national rank by counting teams projected better than scenario_em."""
+def _fmt_rank_display(rank, rank_low, rank_high) -> str:
+    """Format rank as '15 (5–35)', 'Unranked', or '15' when range is a single point."""
+    if rank is None:
+        return "Unranked"
+    if rank_low is None or rank_high is None or rank_low == rank_high:
+        return str(rank)
+    return f"{rank} ({rank_low}–{rank_high})"
+
+
+def _approx_rank(season, scenario_em: float, uncertainty: float = 0.0) -> dict:
+    """Approximate national rank by counting teams projected better than scenario_em.
+
+    rank_range uses uncertainty-based sigma bands (±2σ on adj_em) rather than a fixed ±15.
+    """
     from ncaa.models import TeamSeasonProjection
 
     existing = list(
         TeamSeasonProjection.objects.filter(from_season=season)
         .values_list("projected_adj_em", flat=True)
     )
-    rank = sum(1 for em in existing if em > scenario_em) + 1
     n = len(existing)
+    rank = sum(1 for em in existing if em > scenario_em) + 1
+    sigma_pts = _uncertainty_to_sigma(uncertainty)
+    rank_low  = max(1, sum(1 for em in existing if em > scenario_em + 2 * sigma_pts) + 1)
+    rank_high = min(n + 1, sum(1 for em in existing if em > scenario_em - 2 * sigma_pts) + 1)
     return {
         "approx_rank": rank,
         "n_teams": n,
-        "rank_range_low": max(1, rank - 15),
-        "rank_range_high": min(n + 1, rank + 15),
+        "rank_range_low": rank_low,
+        "rank_range_high": rank_high,
+    }
+
+
+def _approx_offense_defense_ranks(
+    season,
+    adj_o: float,
+    adj_d: float,
+    uncertainty: float = 0.0,
+) -> dict:
+    """Approximate offense and defense ranks against the stored distribution.
+
+    Offense: higher adj_o = better (lower rank number).
+    Defense: lower adj_d = better (lower rank number).
+    Returns: off_rank, off_rank_low, off_rank_high, def_rank, def_rank_low, def_rank_high
+    """
+    from ncaa.models import TeamSeasonProjection
+
+    rows = list(
+        TeamSeasonProjection.objects.filter(from_season=season)
+        .values_list("projected_adj_o", "projected_adj_d")
+    )
+    if not rows:
+        return {
+            "off_rank": None, "off_rank_low": None, "off_rank_high": None,
+            "def_rank": None, "def_rank_low": None, "def_rank_high": None,
+        }
+
+    existing_os = [r[0] for r in rows]
+    existing_ds = [r[1] for r in rows]
+    n = len(rows)
+    sigma_pts = _uncertainty_to_sigma(uncertainty)
+
+    # Offense: higher is better
+    off_rank      = sum(1 for o in existing_os if o > adj_o) + 1
+    off_rank_low  = max(1, sum(1 for o in existing_os if o > adj_o + sigma_pts) + 1)
+    off_rank_high = min(n + 1, sum(1 for o in existing_os if o > adj_o - sigma_pts) + 1)
+
+    # Defense: lower is better (fewer pts allowed)
+    def_rank      = sum(1 for d in existing_ds if d < adj_d) + 1
+    def_rank_low  = max(1, sum(1 for d in existing_ds if d < adj_d - sigma_pts) + 1)
+    def_rank_high = min(n + 1, sum(1 for d in existing_ds if d < adj_d + sigma_pts) + 1)
+
+    return {
+        "off_rank": off_rank,
+        "off_rank_low": off_rank_low,
+        "off_rank_high": off_rank_high,
+        "def_rank": def_rank,
+        "def_rank_low": def_rank_low,
+        "def_rank_high": def_rank_high,
     }
 
 
@@ -397,11 +474,19 @@ def compute_scenario(request: ScenarioRosterRequest) -> ScenarioResult:
 
     # ── Step 1: Load context ──────────────────────────────────────────────────
     from ncaa.conf_utils import get_conf_detail
+    from ncaa.models import TeamSeasonStats as _TeamSeasonStats
     season = Season.objects.get(year=request.season_year)
     team   = Team.objects.get(id=request.team_id)
     target_conf_group = get_conf_detail(team.slug)
     d1_context = _get_d1_context_for_scenario(season)
     placeholder_lookup = load_placeholder_lookup(request.season_year)
+
+    # Load first-year coach flag for this team/season
+    first_year_coach = _TeamSeasonStats.objects.filter(
+        team_id=request.team_id,
+        season__year=request.season_year,
+        is_first_year_coach=True,
+    ).exists()
 
     # ── Step 2: Resolve slots ─────────────────────────────────────────────────
     resolved: list[ScenarioPlayerResolved] = []
@@ -548,7 +633,8 @@ def compute_scenario(request: ScenarioRosterRequest) -> ScenarioResult:
         has_team_style_data=False,
     )
 
-    team_result = project_team(engine_inputs, roster_fit_input, d1_context)
+    team_result = project_team(engine_inputs, roster_fit_input, d1_context,
+                               is_first_year_coach=first_year_coach)
 
     # ── Step 6: Build per-player results with archetypes ─────────────────────
     fit_by_pid = {fi.player_id: fi for fi in fit_inputs}
@@ -589,8 +675,12 @@ def compute_scenario(request: ScenarioRosterRequest) -> ScenarioResult:
     # Sort by rotation_rank
     player_results.sort(key=lambda p: p.rotation_rank)
 
-    # ── Step 7: Approximate rank ──────────────────────────────────────────────
-    rank_info = _approx_rank(season, team_result.projected_adj_em)
+    # ── Step 7: Approximate rank (national + offense + defense) ──────────────
+    uncertainty = team_result.team_projection_uncertainty
+    rank_info = _approx_rank(season, team_result.projected_adj_em, uncertainty)
+    od_ranks  = _approx_offense_defense_ranks(
+        season, team_result.projected_adj_o, team_result.projected_adj_d, uncertainty
+    )
 
     # ── Step 8: Baseline comparison (optional) ────────────────────────────────
     baseline_adj_em: Optional[float] = None
@@ -621,6 +711,27 @@ def compute_scenario(request: ScenarioRosterRequest) -> ScenarioResult:
         projected_national_rank=rank_info["approx_rank"],
         national_rank_range_low=rank_info["rank_range_low"],
         national_rank_range_high=rank_info["rank_range_high"],
+        rank_display=_fmt_rank_display(
+            rank_info["approx_rank"],
+            rank_info["rank_range_low"],
+            rank_info["rank_range_high"],
+        ),
+        projected_offense_rank=od_ranks["off_rank"],
+        offense_rank_range_low=od_ranks["off_rank_low"],
+        offense_rank_range_high=od_ranks["off_rank_high"],
+        off_rank_display=_fmt_rank_display(
+            od_ranks["off_rank"],
+            od_ranks["off_rank_low"],
+            od_ranks["off_rank_high"],
+        ),
+        projected_defense_rank=od_ranks["def_rank"],
+        defense_rank_range_low=od_ranks["def_rank_low"],
+        defense_rank_range_high=od_ranks["def_rank_high"],
+        def_rank_display=_fmt_rank_display(
+            od_ranks["def_rank"],
+            od_ranks["def_rank_low"],
+            od_ranks["def_rank_high"],
+        ),
         team_projection_uncertainty=round(team_result.team_projection_uncertainty, 4),
         continuity_score=round(team_result.continuity_score, 2),
         transfer_dependence_score=round(team_result.transfer_dependence_score, 2),
@@ -643,4 +754,5 @@ def compute_scenario(request: ScenarioRosterRequest) -> ScenarioResult:
         computed_at=datetime.now(tz=timezone.utc).isoformat(),
         baseline_adj_em=baseline_adj_em,
         adj_em_delta=adj_em_delta,
+        is_first_year_coach=team_result.is_first_year_coach,
     )

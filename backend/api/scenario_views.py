@@ -122,7 +122,41 @@ class ScenarioComputeView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-        return Response(_result_to_dict(result), status=status.HTTP_200_OK)
+        # Staleness check on the baseline data this scenario is built from
+        from django.db.models import Max
+        from ncaa.models import PlayerSeasonProjection, TeamRosterFit, TeamSeasonProjection, Season as SeasonModel
+        from ncaa.analytics.staleness import check_staleness
+
+        try:
+            season_obj = SeasonModel.objects.get(year=vd["season_year"])
+            psp_agg = PlayerSeasonProjection.objects.filter(
+                team_id=vd["team_id"], from_season=season_obj
+            ).aggregate(latest=Max("computed_at"))
+            psp_computed_at = psp_agg["latest"]
+
+            trf_computed_at = None
+            try:
+                trf_obj = TeamRosterFit.objects.get(team_id=vd["team_id"], from_season=season_obj)
+                trf_computed_at = trf_obj.computed_at
+            except TeamRosterFit.DoesNotExist:
+                pass
+
+            data_staleness_warnings = [
+                {
+                    "severity": w.severity,
+                    "upstream_phase": w.upstream_phase,
+                    "downstream_phase": w.downstream_phase,
+                    "delta_seconds": w.delta_seconds,
+                    "message": w.message,
+                }
+                for w in check_staleness(vd["season_year"], vd["team_id"], psp_computed_at, trf_computed_at, None)
+            ]
+        except Exception:
+            data_staleness_warnings = []
+
+        response_data = _result_to_dict(result)
+        response_data["data_staleness_warnings"] = data_staleness_warnings
+        return Response(response_data, status=status.HTTP_200_OK)
 
 
 class ScenarioSaveView(APIView):

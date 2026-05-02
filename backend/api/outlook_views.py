@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import logging
 
-from django.db.models import Avg, Q
+from django.db.models import Avg, Max, Q
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.response import Response
@@ -28,12 +28,14 @@ from ncaa.models import (
     TeamSeasonProjection,
     TeamSeasonRatings,
 )
+from ncaa.analytics.staleness import check_staleness
 from ncaa.analytics.player_value.team_projection.engine import (
     D1Context,
     PlayerProjectionInput,
     RosterFitInput,
     compute_team_base_aggregates,
     project_team,
+    _uncertainty_to_sigma,
 )
 from ncaa.analytics.player_value.team_projection.constants import (
     FALLBACK_D1_ADJ_D,
@@ -116,17 +118,43 @@ def _get_d1_context(season: Season) -> D1Context:
     )
 
 
-def _approx_rank_in_distribution(season: Season, scenario_em: float) -> dict:
+def _approx_rank_in_distribution(
+    season: Season,
+    scenario_em: float,
+    uncertainty: float = 0.0,
+) -> dict:
     """
     Approximate national rank for a scenario projection by counting existing
     TeamSeasonProjection rows better than the scenario value.
+
+    Returns rank, plus uncertainty-based rank_low (best-case) and rank_high (worst-case).
+    rank_low  = rank if scenario team performed at scenario_em + 2*sigma
+    rank_high = rank if scenario team performed at scenario_em - 2*sigma
     """
     existing_ems = list(
         TeamSeasonProjection.objects.filter(from_season=season)
         .values_list("projected_adj_em", flat=True)
     )
+    n = len(existing_ems)
     rank = sum(1 for em in existing_ems if em > scenario_em) + 1
-    return {"approx_national_rank": rank, "n_teams_in_pool": len(existing_ems)}
+    sigma_pts = _uncertainty_to_sigma(uncertainty)
+    rank_low  = max(1, sum(1 for em in existing_ems if em > scenario_em + 2 * sigma_pts) + 1)
+    rank_high = min(n + 1, sum(1 for em in existing_ems if em > scenario_em - 2 * sigma_pts) + 1)
+    return {
+        "approx_national_rank": rank,
+        "n_teams_in_pool": n,
+        "national_rank_range_low": rank_low,
+        "national_rank_range_high": rank_high,
+    }
+
+
+def _rank_display(rank, rank_low, rank_high) -> str:
+    """Format rank as '15 (5–35)' or 'Unranked' or just '15' when range is a single value."""
+    if rank is None:
+        return "Unranked"
+    if rank_low is None or rank_high is None or rank_low == rank_high:
+        return str(rank)
+    return f"{rank} ({rank_low}–{rank_high})"
 
 
 def _serialize_player_projection(row: PlayerSeasonProjection) -> dict:
@@ -163,12 +191,27 @@ def _serialize_projection(proj: TeamSeasonProjection) -> dict:
         "projected_national_rank": proj.projected_national_rank,
         "national_rank_range_low": proj.national_rank_range_low,
         "national_rank_range_high": proj.national_rank_range_high,
+        "rank_display": _rank_display(
+            proj.projected_national_rank,
+            proj.national_rank_range_low,
+            proj.national_rank_range_high,
+        ),
         "projected_offense_rank": proj.projected_offense_rank,
         "offense_rank_range_low": proj.offense_rank_range_low,
         "offense_rank_range_high": proj.offense_rank_range_high,
+        "off_rank_display": _rank_display(
+            proj.projected_offense_rank,
+            proj.offense_rank_range_low,
+            proj.offense_rank_range_high,
+        ),
         "projected_defense_rank": proj.projected_defense_rank,
         "defense_rank_range_low": proj.defense_rank_range_low,
         "defense_rank_range_high": proj.defense_rank_range_high,
+        "def_rank_display": _rank_display(
+            proj.projected_defense_rank,
+            proj.defense_rank_range_low,
+            proj.defense_rank_range_high,
+        ),
         "team_projection_uncertainty": proj.team_projection_uncertainty,
         "returner_minutes_fraction": proj.returner_minutes_fraction,
         "continuity_score": proj.continuity_score,
@@ -242,6 +285,31 @@ class RosterOutlookView(APIView):
         except TeamRosterFit.DoesNotExist:
             fit_data = None
 
+        # --- Staleness check (3 targeted queries) ---
+        psp_agg = PlayerSeasonProjection.objects.filter(
+            team=team, from_season=season
+        ).aggregate(latest=Max("computed_at"))
+        psp_computed_at = psp_agg["latest"]
+
+        try:
+            trf_obj = TeamRosterFit.objects.get(team=team, from_season=season)
+            trf_computed_at = trf_obj.computed_at
+        except TeamRosterFit.DoesNotExist:
+            trf_computed_at = None
+
+        tsp_computed_at = proj.computed_at
+
+        staleness_warnings = [
+            {
+                "severity": w.severity,
+                "upstream_phase": w.upstream_phase,
+                "downstream_phase": w.downstream_phase,
+                "delta_seconds": w.delta_seconds,
+                "message": w.message,
+            }
+            for w in check_staleness(season.year, team.id, psp_computed_at, trf_computed_at, tsp_computed_at)
+        ]
+
         return Response({
             "team": {
                 "id": team.id,
@@ -257,6 +325,7 @@ class RosterOutlookView(APIView):
             "projection": _serialize_projection(proj),
             "players": players,
             "fit": fit_data,
+            "staleness_warnings": staleness_warnings,
         })
 
 
@@ -370,8 +439,18 @@ class ScenarioProjectionView(APIView):
         # --- Run engine ---
         result = project_team(engine_inputs, roster_fit, d1_context)
 
-        # --- Approximate rank ---
-        rank_info = _approx_rank_in_distribution(season, result.projected_adj_em)
+        # --- Approximate rank (uncertainty-aware range) ---
+        rank_info = _approx_rank_in_distribution(
+            season, result.projected_adj_em, result.team_projection_uncertainty
+        )
+        approx_rank = rank_info["approx_national_rank"]
+        rank_low    = rank_info["national_rank_range_low"]
+        rank_high   = rank_info["national_rank_range_high"]
+
+        if rank_low == rank_high:
+            rank_display = str(approx_rank)
+        else:
+            rank_display = f"{approx_rank} ({rank_low}–{rank_high})"
 
         return Response({
             "projected_adj_o": round(result.projected_adj_o, 3),
@@ -383,10 +462,11 @@ class ScenarioProjectionView(APIView):
             "projected_adj_d_high": round(result.projected_adj_d_high, 3),
             "projected_adj_em_low": round(result.projected_adj_em_low, 3),
             "projected_adj_em_high": round(result.projected_adj_em_high, 3),
-            "approx_national_rank": rank_info["approx_national_rank"],
+            "approx_national_rank": approx_rank,
             "n_teams_in_pool": rank_info["n_teams_in_pool"],
-            "national_rank_range_low": result.national_rank_range_low,
-            "national_rank_range_high": result.national_rank_range_high,
+            "national_rank_range_low": rank_low,
+            "national_rank_range_high": rank_high,
+            "rank_display": rank_display,
             "team_projection_uncertainty": round(result.team_projection_uncertainty, 4),
             "returner_minutes_fraction": round(result.returner_minutes_fraction, 4),
             "continuity_score": round(result.continuity_score, 2),
