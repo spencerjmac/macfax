@@ -6,10 +6,10 @@ import type { Team } from '@/types';
 import { api } from '@/lib/api';
 
 interface TeamSearchWidgetProps {
-  currentSlug: string;
+  currentSlug?: string;
 }
 
-export function TeamSearchWidget({ currentSlug }: TeamSearchWidgetProps) {
+export function TeamSearchWidget({ currentSlug = '' }: TeamSearchWidgetProps) {
   const router = useRouter();
   const [teams, setTeams] = useState<Team[]>([]);
   const [query, setQuery] = useState('');
@@ -40,7 +40,7 @@ export function TeamSearchWidget({ currentSlug }: TeamSearchWidgetProps) {
   function handleSelect(team: Team) {
     setOpen(false);
     setQuery('');
-    router.push(`/outlook/${team.slug}`);
+    router.push(`/ncaa/outlook/${team.slug}`);
   }
 
   return (
@@ -51,8 +51,8 @@ export function TeamSearchWidget({ currentSlug }: TeamSearchWidgetProps) {
         value={query}
         onChange={e => { setQuery(e.target.value); setOpen(true); }}
         onFocus={() => setOpen(true)}
-        placeholder="Switch team…"
-        className="w-48 px-3 py-1.5 rounded-lg border border-ui-border text-sm text-text-primary placeholder-text-muted bg-ui-surface focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-brand"
+        placeholder={currentSlug ? 'Switch team…' : 'Search for a team…'}
+        className={`px-3 py-1.5 rounded-lg border border-ui-border text-sm text-text-primary placeholder-text-muted bg-ui-surface focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-brand ${currentSlug ? 'w-48' : 'w-72'}`}
       />
       {open && filtered.length > 0 && (
         <div className="absolute left-0 top-full mt-1 w-64 bg-white rounded-lg border border-ui-border shadow-lg z-50 overflow-hidden">

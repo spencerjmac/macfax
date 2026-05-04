@@ -9,6 +9,7 @@ import SportSwitcher from './SportSwitcher';
 const NCAA_NAV = [
   { href: '/ncaa/rankings', label: 'Rankings' },
   { href: '/ncaa/matchup', label: 'Matchup' },
+  { href: '/ncaa/outlook', label: 'Outlook' },
   { href: '/ncaa/viz', label: 'Visualizations' },
   { href: '/ncaa/glossary', label: 'Glossary' },
 ];
