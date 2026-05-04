@@ -9,6 +9,7 @@ import unittest
 from dataclasses import dataclass, field
 
 from backtesting.roster_outlook.bt10_threshold_calibration import (
+    DbprRow,
     PlayerThresholdRow,
     ThresholdDataset,
     compute_bucket_percentiles,
@@ -35,25 +36,43 @@ def _row(player_id, role_bucket, conf_group, blk_pg=0.0, stl_pg=0.0, fg3a_pg=0.0
 
 
 def _synthetic_dataset():
-    """50 Bigs, 50 Guards, 50 Wings with known stat distributions."""
+    """50 Bigs, 50 Guards, 50 Wings with known stat distributions.
+
+    projected_dbpr uses mixed-sign values (range -24.0 to +25.0) to validate
+    that percentile computation works correctly for realistic data. All-positive
+    values would let the test pass with the old broken behaviour (p25 positive).
+    """
     players = []
     pid = 1
-    # Bigs: blk_pg = 0.1, 0.2, …, 5.0 (evenly spaced), stl=0.5, fg3a=0.1
+    # Bigs: blk_pg = 0.1–5.0, mixed-sign dbpr (-24 to +25)
     for i in range(1, 51):
         players.append(_row(pid, "Big", "power", blk_pg=i * 0.1, stl_pg=0.5, fg3a_pg=0.1,
-                            projected_dbpr=float(i)))
+                            projected_dbpr=float(i) - 25.0))
         pid += 1
-    # Guards: stl_pg = 0.1–5.0, fg3a_pg = 0.1–5.0, blk=0.1
+    # Guards: stl_pg/fg3a_pg = 0.1–5.0, mixed-sign dbpr
     for i in range(1, 51):
         players.append(_row(pid, "G", "power", blk_pg=0.1, stl_pg=i * 0.1, fg3a_pg=i * 0.1,
-                            projected_dbpr=float(i)))
+                            projected_dbpr=float(i) - 25.0))
         pid += 1
-    # Wings: stl_pg = 0.1–5.0, fg3a_pg = 0.1–5.0, blk=0.1, conf=mid_major
+    # Wings: stl_pg/fg3a_pg = 0.1–5.0, mixed-sign dbpr, conf=mid_major
     for i in range(1, 51):
         players.append(_row(pid, "Wing", "mid_major", blk_pg=0.1, stl_pg=i * 0.1,
-                            fg3a_pg=i * 0.1, projected_dbpr=float(i)))
+                            fg3a_pg=i * 0.1, projected_dbpr=float(i) - 25.0))
         pid += 1
-    return ThresholdDataset(players=players, source_years=[2024], n_players=len(players))
+    # dbpr_rows: unfiltered pool mirrors the players dbpr distribution
+    dbpr_rows = [
+        DbprRow(conf_group="power",    projected_dbpr=float(i) - 25.0, source_year=2024)
+        for i in range(1, 101)   # 100 power players, dbpr -24 to +75
+    ] + [
+        DbprRow(conf_group="mid_major", projected_dbpr=float(i) - 25.0, source_year=2024)
+        for i in range(1, 51)    # 50 mid_major players
+    ]
+    return ThresholdDataset(
+        players=players,
+        source_years=[2024],
+        n_players=len(players),
+        dbpr_rows=dbpr_rows,
+    )
 
 
 class TestComputeBucketPercentiles(unittest.TestCase):
@@ -130,6 +149,67 @@ class TestRecommendThresholds(unittest.TestCase):
         for rec in self.result.recommendations:
             self.assertIn(rec.confidence, ("high", "medium", "low"),
                           f"{rec.threshold_name} has invalid confidence: {rec.confidence}")
+
+
+class TestWeakDefenderDbprIsNegative(unittest.TestCase):
+    """Regression: WEAK_DEFENDER_DBPR thresholds must be negative."""
+
+    def test_weak_defender_dbpr_power_is_negative(self):
+        """p5 of unfiltered dbpr for power conf should be negative."""
+        # 50 players with dbpr ranging -25.0 to +24.0 (realistic spread)
+        dbpr_rows = [
+            DbprRow(conf_group="power", projected_dbpr=float(i) - 25.0, source_year=2024)
+            for i in range(50)
+        ]
+        dataset = ThresholdDataset(
+            players=[],   # blk/stl/fg3a from filtered pool — empty for this test
+            source_years=[2024],
+            n_players=0,
+            dbpr_rows=dbpr_rows,
+        )
+        percs = compute_bucket_percentiles(dataset)
+        p5 = percs.by_conf_group["power"]["projected_dbpr_p5"]
+        self.assertLess(p5, 0.0, "p5 of unfiltered dbpr should be negative — weak defenders project below 0")
+
+    def test_weak_defender_recommendation_is_negative(self):
+        """recommended_value for WEAK_DEFENDER_DBPR_POWER should be negative."""
+        dbpr_rows = [
+            DbprRow(conf_group="power", projected_dbpr=float(i) - 25.0, source_year=2024)
+            for i in range(50)
+        ]
+        dataset = ThresholdDataset(
+            players=[], source_years=[2024], n_players=0, dbpr_rows=dbpr_rows
+        )
+        percs = compute_bucket_percentiles(dataset)
+        result = recommend_thresholds(percs)
+        recs = {r.threshold_name: r for r in result.recommendations}
+        rec = recs.get("WEAK_DEFENDER_DBPR_POWER")
+        self.assertIsNotNone(rec)
+        self.assertLess(
+            rec.recommended_value, 0.0,
+            "WEAK_DEFENDER_DBPR_POWER recommended_value must be negative — "
+            "using p25 instead of p5 was the bug that produced +0.38"
+        )
+
+    def test_dbpr_rows_field_used_over_filtered_players(self):
+        """compute_bucket_percentiles uses dbpr_rows (not players) when available."""
+        # All players have positive dbpr (simulating rotation-only filtered pool)
+        # All dbpr_rows have negative dbpr (simulating unfiltered pool)
+        players = [
+            _row(i, "G", "power", projected_dbpr=1.0)
+            for i in range(50)
+        ]
+        dbpr_rows = [
+            DbprRow(conf_group="power", projected_dbpr=-1.0, source_year=2024)
+            for _ in range(50)
+        ]
+        dataset = ThresholdDataset(
+            players=players, source_years=[2024], n_players=50, dbpr_rows=dbpr_rows
+        )
+        percs = compute_bucket_percentiles(dataset)
+        # Should use dbpr_rows (all -1.0) not players (all +1.0)
+        p50 = percs.by_conf_group["power"]["projected_dbpr_p50"]
+        self.assertAlmostEqual(p50, -1.0, places=1, msg="Should use dbpr_rows, not filtered players")
 
 
 if __name__ == "__main__":

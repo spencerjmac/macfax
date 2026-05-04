@@ -200,14 +200,16 @@ class TestDefaultFallback(unittest.TestCase):
         self.assertAlmostEqual(result.projected_dbpr, 0.0)
 
     def test_default_auto_matches_placeholder(self):
-        """Auto-match by conf_group + role_bucket + quality_tier."""
+        """Priority 4 auto-match: conf_group + role_bucket + quality_tier finds power_starter_g."""
         spec = _spec(
             position="G", conf_group="power", quality_tier="starter",
             recruitment_type="newcomer",
         )
         result = resolve_manual_player(spec, _PLACEHOLDER_LOOKUP, -1)
-        # Should match power_starter_g
+        # Auto-match succeeded → placeholder_key set, values from power_starter_g
         self.assertEqual(result.resolution_method, "default")
+        self.assertEqual(result.placeholder_key, "power_starter_g",
+            "auto-match should set placeholder_key — if None, auto-match failed and obpr would be 0.0")
         self.assertAlmostEqual(result.projected_obpr, 1.5)
 
 

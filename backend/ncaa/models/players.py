@@ -664,6 +664,8 @@ class PlaceholderArchetype(models.Model):
     dreb_pg  = models.FloatField(null=True, blank=True)
     tov      = models.FloatField(null=True, blank=True,
                                  help_text="Median turnovers per game")
+    fg3a_pg  = models.FloatField(null=True, blank=True,
+                                 help_text="Median 3-point attempts per game")
 
     # Provenance
     sample_n = models.IntegerField(help_text="Number of real players in source bucket")

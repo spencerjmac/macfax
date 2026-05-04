@@ -216,7 +216,9 @@ TAG_STARS_HIGH      = "stars_high"      # 4–5 stars, no rank
 TAG_STARS_MID       = "stars_mid"       # 3 stars, no rank
 TAG_JUCO            = "juco_transfer"   # JUCO transfer (from ManualPlayerSpec.is_juco)
 
-# ── Role-bucket-relative thresholds (Sprint 4 — BT-10 validated, 2026-05-01) ──────
+
+
+# ── Role-bucket-relative thresholds (Sprint 4 — BT-10 validated, 2026-05-04) ──────
 # These REPLACE the single-value thresholds above when USE_BUCKET_THRESHOLDS=True.
 # Legacy single-value thresholds are retained for backward compatibility.
 # Run `python manage.py run_bt10` to regenerate these values from fresh data.
@@ -238,9 +240,9 @@ SPACER_FG3A_G: float = 2.29  # G p60 fg3a/game  [n=22266, high]
 SPACER_FG3A_WING: float = 1.0  # WING p60 fg3a/game  [n=11815, high]
 SPACER_FG3A_BIG: float = 0.52  # BIG p60 fg3a/game  [n=4414, high]
 
-# Weak defender — per-conf-group p25 projected_dbpr (bottom 25%)
-WEAK_DEFENDER_DBPR_POWER: float = 0.38  # [n=6456, high]
-WEAK_DEFENDER_DBPR_HIGH_MID: float = 0.22  # [n=4078, high]
-WEAK_DEFENDER_DBPR_MID_MAJOR: float = 0.31  # [n=27961, high]
+# Weak defender — per-conf-group p5 projected_dbpr (unfiltered pool, bottom 5%)
+WEAK_DEFENDER_DBPR_POWER: float = -1.11  # [n=6628, high]
+WEAK_DEFENDER_DBPR_HIGH_MID: float = -1.19  # [n=4189, high]
+WEAK_DEFENDER_DBPR_MID_MAJOR: float = -1.1  # [n=28640, high]
 WEAK_DEFENDER_DBPR_DEFAULT: float = -1.0  # fallback when conf_group unknown
 

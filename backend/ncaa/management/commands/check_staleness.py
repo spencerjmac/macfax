@@ -15,7 +15,7 @@ Usage:
 from django.core.management.base import BaseCommand
 from django.db.models import Max
 
-from ncaa.models import PlayerSeasonProjection, TeamRosterFit, TeamSeasonProjection
+from ncaa.models import PlayerRecruitingProfile, PlayerSeasonProjection, TeamRosterFit, TeamSeasonProjection
 from ncaa.analytics.staleness import check_team_staleness_bulk, StalenessWarning
 
 
@@ -35,6 +35,17 @@ class Command(BaseCommand):
         errors_only = options["errors_only"]
 
         self.stdout.write(f"\nStaleness check — season {season_year}")
+
+        # ── Recruiting profile currency check ─────────────────────────────────
+        rec_count = PlayerRecruitingProfile.objects.filter(class_year=season_year).count()
+        if rec_count == 0:
+            self.stdout.write(self.style.WARNING(
+                f"\n  ⚠ No PlayerRecruitingProfile rows for class_year={season_year}. "
+                f"Newcomers will project at flat BPR=0. "
+                f"Run: python manage.py import_recruiting --file <csv> --class-year {season_year}"
+            ))
+        else:
+            self.stdout.write(f"  Recruiting profiles: {rec_count} for class_year={season_year} ✓")
 
         # ── 3 bulk queries (not one per team) ────────────────────────────────
         psp_qs = PlayerSeasonProjection.objects.filter(from_season__year=season_year)

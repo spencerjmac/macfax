@@ -283,6 +283,7 @@ class RosterOutlookView(APIView):
             fit = TeamRosterFit.objects.get(team=team, from_season=season)
             fit_data = _serialize_fit(fit)
         except TeamRosterFit.DoesNotExist:
+            fit = None
             fit_data = None
 
         # --- Staleness check (3 targeted queries) ---
@@ -291,11 +292,7 @@ class RosterOutlookView(APIView):
         ).aggregate(latest=Max("computed_at"))
         psp_computed_at = psp_agg["latest"]
 
-        try:
-            trf_obj = TeamRosterFit.objects.get(team=team, from_season=season)
-            trf_computed_at = trf_obj.computed_at
-        except TeamRosterFit.DoesNotExist:
-            trf_computed_at = None
+        trf_computed_at = fit.computed_at if fit is not None else None
 
         tsp_computed_at = proj.computed_at
 

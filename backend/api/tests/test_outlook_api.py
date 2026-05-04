@@ -316,6 +316,16 @@ class RosterOutlookViewTests(TestCase):
         data = self._get().json()
         self.assertIsNone(data["fit"])
 
+    def test_staleness_warnings_in_response(self):
+        data = self._get().json()
+        self.assertIn("staleness_warnings", data)
+        self.assertIsInstance(data["staleness_warnings"], list)
+
+    def test_staleness_warnings_empty_when_fresh(self):
+        # All rows created at same time in test DB → no staleness
+        data = self._get().json()
+        self.assertEqual(data["staleness_warnings"], [])
+
 
 # ── Integration tests: RosterOutlookView URL ordering ───────────────────────
 

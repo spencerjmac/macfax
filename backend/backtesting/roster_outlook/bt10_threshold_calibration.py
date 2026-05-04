@@ -7,7 +7,7 @@ and per-conference-group percentiles, and recommends replacement thresholds for:
   • RIM_PROTECTOR_BLK_THRESHOLD  → per-bucket Big p50
   • DISRUPTOR_STL_THRESHOLD      → per-bucket Guard/Wing p70
   • SPACER_FG3A_THRESHOLD        → per-bucket p60
-  • WEAK_DEFENDER_DBPR_MAX       → per-conf-group p25 projected_dbpr
+  • WEAK_DEFENDER_DBPR_MAX       → per-conf-group p5 projected_dbpr (unfiltered pool)
 
 Problems addressed:
   A. Rim protector under-detection: league-wide 0.70 blk threshold too high for Bigs.
@@ -69,10 +69,24 @@ class PlayerThresholdRow:
 
 
 @dataclass
+class DbprRow:
+    """Unfiltered per-player dbpr data point — no minutes threshold applied.
+
+    Used for WEAK_DEFENDER threshold calibration only. Weak defenders by definition
+    don't earn rotation minutes, so the minutes-filtered player pool produces a
+    positively-biased p25 that incorrectly tags most rotation players.
+    """
+    conf_group:      str    # "power", "high_mid", "mid_major"
+    projected_dbpr:  float
+    source_year:     int
+
+
+@dataclass
 class ThresholdDataset:
-    players:      list[PlayerThresholdRow]
+    players:      list[PlayerThresholdRow]  # minutes-filtered (for blk/stl/fg3a thresholds)
     source_years: list[int]
     n_players:    int
+    dbpr_rows:    list[DbprRow] = field(default_factory=list)  # unfiltered (for weak_defender calibration)
 
 
 @dataclass
@@ -131,10 +145,11 @@ def collect_threshold_data(source_years: Optional[list[int]] = None) -> Threshol
         return ThresholdDataset(players=[], source_years=[], n_players=0)
 
     players: list[PlayerThresholdRow] = []
+    dbpr_rows: list[DbprRow] = []
     years_used: list[int] = []
 
     for source_year in years:
-        # Load qualifying projections for this source year
+        # Load qualifying projections for this source year (minutes-filtered)
         psp_rows = list(
             PlayerSeasonProjection.objects
             .filter(
@@ -151,7 +166,7 @@ def collect_threshold_data(source_years: Optional[list[int]] = None) -> Threshol
         if not psp_rows:
             continue
 
-        # Load team slugs for conf_group
+        # Load team slugs for conf_group (start with filtered set's team_ids)
         team_ids = {r["team_id"] for r in psp_rows if r.get("team_id")}
         slug_map: dict[int, str] = dict(
             Team.objects.filter(id__in=team_ids).values_list("id", "slug")
@@ -192,11 +207,39 @@ def collect_threshold_data(source_years: Optional[list[int]] = None) -> Threshol
                 source_year=source_year,
             ))
 
+        # Load ALL players for dbpr (no minutes filter) — weak defenders by definition
+        # don't earn rotation minutes, so filtering them out makes p25 come out positive.
+        all_dbpr = list(
+            PlayerSeasonProjection.objects
+            .filter(
+                from_season__year=source_year,
+                projected_dbpr__isnull=False,
+                role_bucket__isnull=False,
+            )
+            .values("team_id", "projected_dbpr")
+        )
+        # Extend slug_map for any team_ids not already loaded
+        extra_ids = {r["team_id"] for r in all_dbpr if r.get("team_id")} - set(slug_map)
+        if extra_ids:
+            slug_map.update(dict(Team.objects.filter(id__in=extra_ids).values_list("id", "slug")))
+        for row in all_dbpr:
+            slug = slug_map.get(row["team_id"] or 0, "")
+            dbpr_rows.append(DbprRow(
+                conf_group=get_conf_detail(slug),
+                projected_dbpr=float(row["projected_dbpr"]),
+                source_year=source_year,
+            ))
+
     logger.info(
-        "[BT-10] Collected %d player-season rows across %d source years.",
-        len(players), len(years_used),
+        "[BT-10] Collected %d rotation player-seasons and %d unfiltered dbpr rows across %d source years.",
+        len(players), len(dbpr_rows), len(years_used),
     )
-    return ThresholdDataset(players=players, source_years=years_used, n_players=len(players))
+    return ThresholdDataset(
+        players=players,
+        source_years=years_used,
+        n_players=len(players),
+        dbpr_rows=dbpr_rows,
+    )
 
 
 # ── Percentile computation ─────────────────────────────────────────────────────
@@ -205,8 +248,10 @@ def compute_bucket_percentiles(dataset: ThresholdDataset) -> BucketPercentiles:
     """
     Compute per-bucket and per-conf-group metric percentiles.
 
-    For projected_dbpr: lower values = worse defenders. p25 of projected_dbpr is the
-    25th percentile (worst 25%) — this is used for WEAK_DEFENDER threshold.
+    For projected_dbpr: lower values = worse defenders. p5 of projected_dbpr is the
+    5th percentile (bottom 5%) — this is used for WEAK_DEFENDER threshold.
+    p25 produces positive thresholds (too permissive); p5 ≈ -1.1, matching the
+    semantics of the legacy WEAK_DEFENDER_DBPR_MAX = -1.0.
 
     Per-bucket metrics: blk_pg, stl_pg, ast_pg, reb_pg, fg3a_pg.
     Per-conf-group metric: projected_dbpr (for weak-defender calibration).
@@ -215,9 +260,9 @@ def compute_bucket_percentiles(dataset: ThresholdDataset) -> BucketPercentiles:
         dataset: Output from collect_threshold_data().
 
     Returns:
-        BucketPercentiles with p25/p40/p50/p60/p70/p75/p80/p85/p90 per metric.
+        BucketPercentiles with p5/p10/p25/p40/p50/p60/p70/p75/p80/p85/p90 per metric.
     """
-    _PCT_LEVELS = [25, 40, 50, 60, 70, 75, 80, 85, 90]
+    _PCT_LEVELS = [5, 10, 25, 40, 50, 60, 70, 75, 80, 85, 90]
     _METRICS    = ["blk_pg", "stl_pg", "ast_pg", "reb_pg", "fg3a_pg"]
 
     def _quantile(vals: list[float], pct: int) -> float:
@@ -243,12 +288,17 @@ def compute_bucket_percentiles(dataset: ThresholdDataset) -> BucketPercentiles:
     by_conf: dict[str, dict[str, float]] = {}
     n_by_conf: dict[str, int] = {}
     for cg in _CONF_GROUPS:
-        subset = [p for p in dataset.players if p.conf_group == cg]
-        n_by_conf[cg] = len(subset)
-        dbpr_vals = [p.projected_dbpr for p in subset]
+        # Use UNFILTERED dbpr_rows so weak defenders who don't earn rotation minutes
+        # are included. Falls back to dataset.players if dbpr_rows is empty (legacy callers).
+        if dataset.dbpr_rows:
+            subset_dbpr = [r.projected_dbpr for r in dataset.dbpr_rows if r.conf_group == cg]
+            n_by_conf[cg] = len(subset_dbpr)
+        else:
+            subset_dbpr = [p.projected_dbpr for p in dataset.players if p.conf_group == cg]
+            n_by_conf[cg] = len(subset_dbpr)
         cg_percs: dict[str, float] = {}
         for pct in _PCT_LEVELS:
-            cg_percs[f"projected_dbpr_p{pct}"] = round(_quantile(dbpr_vals, pct), 3)
+            cg_percs[f"projected_dbpr_p{pct}"] = round(_quantile(subset_dbpr, pct), 3)
         by_conf[cg] = cg_percs
 
     return BucketPercentiles(
@@ -274,7 +324,7 @@ def recommend_thresholds(percentiles: BucketPercentiles) -> ThresholdRecommendat
       DISRUPTOR_STL_G        → p70 of Guard stl_pg
       DISRUPTOR_STL_WING     → p70 of Wing stl_pg
       SPACER_FG3A_{bucket}   → p60 per bucket
-      WEAK_DEFENDER_DBPR_{conf} → p25 of conf_group projected_dbpr (bottom 25%)
+      WEAK_DEFENDER_DBPR_{conf} → p5 of conf_group projected_dbpr (unfiltered pool, bottom 5%)
 
     Guard/Wing RIM_PROTECTOR and Big DISRUPTOR keep legacy values (rarely applies).
     """
@@ -367,21 +417,23 @@ def recommend_thresholds(percentiles: BucketPercentiles) -> ThresholdRecommendat
         ))
 
     # ── Weak defender ──────────────────────────────────────────────────────
+    # Use p5 (bottom 5%), NOT p25. The projected_dbpr distribution is right-skewed
+    # with most values positive; p25 comes out positive and tags too many players.
+    # p5 ≈ -1.1 to -1.2, matching the semantics of the legacy -1.0 threshold.
     for cg, key in [("power", "POWER"), ("high_mid", "HIGH_MID"), ("mid_major", "MID_MAJOR")]:
-        dbpr_p25 = bc.get(cg, {}).get("projected_dbpr_p25", WEAK_DEFENDER_DBPR_MAX)
+        dbpr_p5 = bc.get(cg, {}).get("projected_dbpr_p5", WEAK_DEFENDER_DBPR_MAX)
         recs.append(ThresholdRec(
             threshold_name=f"WEAK_DEFENDER_DBPR_{key}",
             current_value=WEAK_DEFENDER_DBPR_MAX,
-            recommended_value=round(dbpr_p25, 2),
+            recommended_value=round(dbpr_p5, 2),
             target_bucket=cg,
-            target_percentile="p25",
+            target_percentile="p5",
             n_players_in_bucket=nc.get(cg, 0),
             confidence=_confidence(nc.get(cg, 0)),
             rationale=(
-                f"Bottom 25% of {cg} defenders are 'weak'. "
-                f"A -1.0 dbpr is replacement-level in power conf but rotation-quality "
-                f"in mid-major (BPR measured in weaker competition). Context-relative "
-                f"threshold prevents over-firing on mid-major rosters."
+                f"Bottom 5% of {cg} defenders are 'truly weak' (p5 ≈ -1.1). "
+                f"p25 produces positive thresholds and over-fires. p5 matches the "
+                f"legacy -1.0 threshold semantics while being conf-group calibrated."
             ),
         ))
 

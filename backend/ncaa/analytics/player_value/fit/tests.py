@@ -286,6 +286,22 @@ class TestTagArchetypes(TestCase):
         p = _make_player(projected_dbpr=WEAK_DEFENDER_DBPR_MAX - 0.5)
         self.assertIn("weak_defender", tag_archetypes(p))
 
+    def test_average_player_is_not_weak_defender(self):
+        # Regression: WEAK_DEFENDER_DBPR_* was positive (+0.38) which tagged majority
+        # of rotation players. Must be negative so only genuinely bad defenders fire.
+        inp = PlayerFitInput(player_id=1, projected_dbpr=0.10, conf_group="power")
+        tags = tag_archetypes(inp)
+        self.assertNotIn("weak_defender", tags,
+            "D1-average dbpr (+0.10) should not be weak_defender in power conf — "
+            "check WEAK_DEFENDER_DBPR_POWER constant is negative")
+
+    def test_weak_defender_fires_for_genuinely_bad_defender(self):
+        # -1.5 dbpr is well below all conf-group thresholds (~-1.1 to -1.2)
+        for conf in ("power", "high_mid", "mid_major"):
+            inp = PlayerFitInput(player_id=1, projected_dbpr=-1.5, conf_group=conf)
+            self.assertIn("weak_defender", tag_archetypes(inp),
+                f"projected_dbpr=-1.5 should always be weak_defender in {conf} conf")
+
     def test_average_player_has_no_extreme_tags(self):
         # With bucket-relative thresholds, avg Wings (fg3a=2.44, stl=0.70) correctly
         # fire spacer + disruptor — those are no longer "extreme" at calibrated levels.
