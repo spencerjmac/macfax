@@ -1,6 +1,7 @@
 export type MethodologySection =
   | 'core-ratings'
   | 'player-evaluation'
+  | 'roster-projections'
   | 'prediction-tools'
   | 'visual-frameworks'
   | 'resume-data';
