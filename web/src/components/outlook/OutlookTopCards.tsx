@@ -12,38 +12,26 @@ interface OutlookTopCardsProps {
   isScenarioMode?: boolean;
 }
 
-function RankRangeCard({
+function RankCard({
   label,
   rank,
-  low,
-  high,
   adjValue,
   adjLow,
   adjHigh,
   prefix,
-  higherIsBetter,
   scenarioRank,
-  scenarioLow,
-  scenarioHigh,
   note,
 }: {
   label: string;
   rank: number | null;
-  low: number | null;
-  high: number | null;
   adjValue: number | null;
   adjLow: number | null;
   adjHigh: number | null;
   prefix: string;
-  higherIsBetter: boolean;
   scenarioRank?: number | null;
-  scenarioLow?: number | null;
-  scenarioHigh?: number | null;
-  /** Footnote shown below the card — used to flag approximate/carried-over values */
   note?: string;
 }) {
-  const rankDisplay = rank != null ? String(rank) : '—';
-  const rangeDisplay = low != null && high != null ? `${low} – ${high}` : '—';
+  const baseRankDisplay = rank != null ? `#${rank}` : '—';
   const adjDisplay = adjValue != null ? adjValue.toFixed(1) : '—';
   const adjRangeDisplay =
     adjLow != null && adjHigh != null
@@ -52,9 +40,7 @@ function RankRangeCard({
 
   const hasScenario = scenarioRank != null;
   const delta = hasScenario && rank != null ? rank - scenarioRank! : null;
-  // For rank: lower is better, so positive delta = improved (scenario rank is lower)
   const improved = delta != null && delta > 0;
-  const worsened = delta != null && delta < 0;
 
   return (
     <div className="bg-ui-card border border-ui-border rounded-xl p-5 flex-1 min-w-0">
@@ -64,11 +50,9 @@ function RankRangeCard({
         {hasScenario ? (
           <>
             <div className="text-3xl font-bold font-mono text-text-primary">
-              {scenarioLow != null && scenarioHigh != null
-                ? `${scenarioLow} – ${scenarioHigh}`
-                : scenarioRank != null ? String(scenarioRank) : '—'}
+              #{scenarioRank}
             </div>
-            <div className="text-sm text-text-muted line-through">{rangeDisplay}</div>
+            <div className="text-sm text-text-muted line-through">{baseRankDisplay}</div>
             {delta !== null && delta !== 0 && (
               <span
                 className={clsx(
@@ -81,7 +65,7 @@ function RankRangeCard({
             )}
           </>
         ) : (
-          <div className="text-3xl font-bold font-mono text-text-primary">{rangeDisplay}</div>
+          <div className="text-3xl font-bold font-mono text-text-primary">{baseRankDisplay}</div>
         )}
       </div>
 
@@ -104,14 +88,6 @@ export function OutlookTopCards({
   scenarioProjection,
   isScenarioMode,
 }: OutlookTopCardsProps) {
-  // Build scenario rank ranges from scenario projection (using approx rank from API)
-  const scenarioRankLow = scenarioProjection?.national_rank_range_low ?? null;
-  const scenarioRankHigh = scenarioProjection?.national_rank_range_high ?? null;
-  const scenarioOffLow = scenarioProjection?.offense_rank_range_low ?? null;
-  const scenarioOffHigh = scenarioProjection?.offense_rank_range_high ?? null;
-  const scenarioDefLow = scenarioProjection?.defense_rank_range_low ?? null;
-  const scenarioDefHigh = scenarioProjection?.defense_rank_range_high ?? null;
-
   return (
     <div className="space-y-3">
       {isScenarioMode && (
@@ -122,51 +98,34 @@ export function OutlookTopCards({
       )}
 
       <div className="flex gap-4 flex-wrap">
-        <RankRangeCard
-          label="Roster Ranking Range"
+        <RankCard
+          label="Projected Rank"
           rank={projection.projected_national_rank}
-          low={projection.national_rank_range_low}
-          high={projection.national_rank_range_high}
           adjValue={projection.projected_adj_em}
           adjLow={projection.projected_adj_em_low}
           adjHigh={projection.projected_adj_em_high}
           prefix="AdjEM"
-          higherIsBetter
           scenarioRank={
             (scenarioProjection as any)?.approx_national_rank ?? null
           }
-          scenarioLow={scenarioRankLow}
-          scenarioHigh={scenarioRankHigh}
         />
-        <RankRangeCard
-          label="Offense Range"
+        <RankCard
+          label="Offense Rank"
           rank={projection.projected_offense_rank}
-          low={projection.offense_rank_range_low}
-          high={projection.offense_rank_range_high}
           adjValue={projection.projected_adj_o}
           adjLow={projection.projected_adj_o_low}
           adjHigh={projection.projected_adj_o_high}
           prefix="AdjO"
-          higherIsBetter
-          scenarioRank={null}
-          scenarioLow={scenarioOffLow}
-          scenarioHigh={scenarioOffHigh}
-          note={isScenarioMode ? 'Offense rank unchanged — single-team scenario' : undefined}
+          scenarioRank={scenarioProjection?.projected_offense_rank ?? null}
         />
-        <RankRangeCard
-          label="Defense Range"
+        <RankCard
+          label="Defense Rank"
           rank={projection.projected_defense_rank}
-          low={projection.defense_rank_range_low}
-          high={projection.defense_rank_range_high}
           adjValue={projection.projected_adj_d}
           adjLow={projection.projected_adj_d_low}
           adjHigh={projection.projected_adj_d_high}
           prefix="AdjD"
-          higherIsBetter={false}
-          scenarioRank={null}
-          scenarioLow={scenarioDefLow}
-          scenarioHigh={scenarioDefHigh}
-          note={isScenarioMode ? 'Defense rank unchanged — single-team scenario' : undefined}
+          scenarioRank={scenarioProjection?.projected_defense_rank ?? null}
         />
       </div>
 

@@ -132,14 +132,15 @@ def _approx_rank_in_distribution(
     rank_high = rank if scenario team performed at scenario_em - 2*sigma
     """
     existing_ems = list(
-        TeamSeasonProjection.objects.filter(from_season=season)
+        TeamSeasonProjection.objects.filter(from_season=season, team__is_d1=True)
         .values_list("projected_adj_em", flat=True)
     )
     n = len(existing_ems)
     rank = sum(1 for em in existing_ems if em > scenario_em) + 1
     sigma_pts = _uncertainty_to_sigma(uncertainty)
-    rank_low  = max(1, sum(1 for em in existing_ems if em > scenario_em + 2 * sigma_pts) + 1)
-    rank_high = min(n + 1, sum(1 for em in existing_ems if em > scenario_em - 2 * sigma_pts) + 1)
+    # Use ±1σ for rank range (68% CI) — ±2σ produced ranges spanning half the league
+    rank_low  = max(1, sum(1 for em in existing_ems if em > scenario_em + sigma_pts) + 1)
+    rank_high = min(n + 1, sum(1 for em in existing_ems if em > scenario_em - sigma_pts) + 1)
     return {
         "approx_national_rank": rank,
         "n_teams_in_pool": n,

@@ -269,21 +269,22 @@ def _fmt_rank_display(rank, rank_low, rank_high) -> str:
 
 
 def _approx_rank(season, scenario_em: float, uncertainty: float = 0.0) -> dict:
-    """Approximate national rank by counting teams projected better than scenario_em.
+    """Approximate national rank by counting D1 teams projected better than scenario_em.
 
-    rank_range uses uncertainty-based sigma bands (±2σ on adj_em) rather than a fixed ±15.
+    rank_range uses ±1σ bands (68% CI). ±2σ produced ranges spanning half the league
+    and was too wide to be meaningful for display.
     """
     from ncaa.models import TeamSeasonProjection
 
     existing = list(
-        TeamSeasonProjection.objects.filter(from_season=season)
+        TeamSeasonProjection.objects.filter(from_season=season, team__is_d1=True)
         .values_list("projected_adj_em", flat=True)
     )
     n = len(existing)
     rank = sum(1 for em in existing if em > scenario_em) + 1
     sigma_pts = _uncertainty_to_sigma(uncertainty)
-    rank_low  = max(1, sum(1 for em in existing if em > scenario_em + 2 * sigma_pts) + 1)
-    rank_high = min(n + 1, sum(1 for em in existing if em > scenario_em - 2 * sigma_pts) + 1)
+    rank_low  = max(1, sum(1 for em in existing if em > scenario_em + sigma_pts) + 1)
+    rank_high = min(n + 1, sum(1 for em in existing if em > scenario_em - sigma_pts) + 1)
     return {
         "approx_rank": rank,
         "n_teams": n,
@@ -307,7 +308,7 @@ def _approx_offense_defense_ranks(
     from ncaa.models import TeamSeasonProjection
 
     rows = list(
-        TeamSeasonProjection.objects.filter(from_season=season)
+        TeamSeasonProjection.objects.filter(from_season=season, team__is_d1=True)
         .values_list("projected_adj_o", "projected_adj_d")
     )
     if not rows:
@@ -319,17 +320,21 @@ def _approx_offense_defense_ranks(
     existing_os = [r[0] for r in rows]
     existing_ds = [r[1] for r in rows]
     n = len(rows)
-    sigma_pts = _uncertainty_to_sigma(uncertainty)
 
     # Offense: higher is better
-    off_rank      = sum(1 for o in existing_os if o > adj_o) + 1
-    off_rank_low  = max(1, sum(1 for o in existing_os if o > adj_o + sigma_pts) + 1)
-    off_rank_high = min(n + 1, sum(1 for o in existing_os if o > adj_o - sigma_pts) + 1)
-
+    off_rank = sum(1 for o in existing_os if o > adj_o) + 1
     # Defense: lower is better (fewer pts allowed)
-    def_rank      = sum(1 for d in existing_ds if d < adj_d) + 1
-    def_rank_low  = max(1, sum(1 for d in existing_ds if d < adj_d - sigma_pts) + 1)
-    def_rank_high = min(n + 1, sum(1 for d in existing_ds if d < adj_d + sigma_pts) + 1)
+    def_rank = sum(1 for d in existing_ds if d < adj_d) + 1
+
+    # Use rank-window (uncertainty × n_teams × 0.15) rather than sigma-based bands.
+    # adj_o std ≈ 2.8 pts and adj_d std ≈ 2.1 pts; sigma_pts ≈ 4.6 pts spans the
+    # entire defensive distribution (std 2.1). Rank-window gives sensible ±15%-ish
+    # windows proportional to uncertainty without overflowing the distribution.
+    rank_window = max(1, round(uncertainty * n * 0.15))
+    off_rank_low  = max(1, off_rank - rank_window)
+    off_rank_high = min(n + 1, off_rank + rank_window)
+    def_rank_low  = max(1, def_rank - rank_window)
+    def_rank_high = min(n + 1, def_rank + rank_window)
 
     return {
         "off_rank": off_rank,

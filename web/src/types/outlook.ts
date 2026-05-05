@@ -166,6 +166,8 @@ export interface ScenarioProjectionResult {
   n_teams_in_pool: number;
   national_rank_range_low: number | null;
   national_rank_range_high: number | null;
+  projected_offense_rank: number | null;
+  projected_defense_rank: number | null;
   team_projection_uncertainty: number;
   returner_minutes_fraction: number;
   continuity_score: number;
