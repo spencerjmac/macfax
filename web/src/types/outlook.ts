@@ -186,9 +186,10 @@ export type QualityTier = 'elite' | 'all_conference' | 'starter' | 'rotation' | 
  * Returned by GET /api/outlook/placeholders/.
  */
 export interface PlaceholderArchetype {
-  key: string;               // e.g. 'power_starter_g'
-  display_name: string;      // e.g. 'Power Conf Guard (Starter)'
+  key: string;               // e.g. 'power_starter_g' or 'acc_starter_g'
+  display_name: string;      // e.g. 'Power Conf Guard (Starter)' or 'ACC Guard (Starter)'
   conf_group: ConfGroup;
+  conference: string;        // '' for conf_group-level, 'ACC' etc. for per-conference
   role_bucket: RoleBucket;
   quality_tier: QualityTier;
   projected_obpr: number;

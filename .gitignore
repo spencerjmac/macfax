@@ -63,7 +63,7 @@ kenpom_debug.html
 # Environment files (if you add any in future)
 .env
 .env.local
-.env.*.local
+.env.*.locald
 .env.docker
 
 # Personal paths (these should be parameterized)

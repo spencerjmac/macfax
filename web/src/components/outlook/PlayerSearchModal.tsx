@@ -14,6 +14,7 @@ interface PlayerSearchModalProps {
 }
 
 type Tab = 'search' | 'archetype';
+type RoleTab = 'G' | 'Wing' | 'Big';
 
 // Stable deterministic negative ID for a placeholder archetype key.
 // Ensures duplicate-detection via alreadyAddedIds works reliably.
@@ -39,42 +40,117 @@ function archetypeToPlayer(a: PlaceholderArchetype): OutlookPlayer {
     minutes_share_p2: a.minutes_share,
     mpg_p2: a.mpg,
     role_bucket: a.role_bucket,
-    // Placeholders are synthetic external additions — they have no prior DB
-    // history and represent hypothetical roster additions beyond the current
-    // team.  'newcomer' is the correct recruitment_type: the scenario engine
-    // applies a newcomer uncertainty multiplier that is appropriate for a
-    // player whose college track record is unknown or absent.
     recruitment_type: 'newcomer',
     projection_uncertainty: a.uncertainty,
     rotation_rank: null,
     n_prior_seasons: 0,
-    // Explicit synthetic-player markers so the UI and any downstream
-    // inspection can identify this as an archetype-derived placeholder.
     is_placeholder: true,
     placeholder_key: a.key,
   };
 }
 
-const TIER_LABELS: Record<string, string> = {
-  elite:          'All-American',
+const CONF_TIER_LABELS: Record<string, string> = {
   all_conference: 'All-Conference',
   starter:        'Starter',
-  rotation:       'Reserve',
-  bench:          'Bench',
+  rotation:       'Rotation Player',
+  bench:          'Bench Player',
 };
 
-const CONF_LABELS: Record<string, string> = {
-  national:  'National',
-  power:     'Power Conf',
-  high_mid:  'High Mid-Major',
-  mid_major: 'Mid-Major',
+// Within-conference tier ordering: All-Conference first, then starter → rotation → bench
+const TIER_ORDER: Record<string, number> = {
+  all_conference: 0,
+  starter: 1,
+  rotation: 2,
+  bench: 3,
 };
 
-// Display order for archetype groups
-const CONF_GROUP_ORDER = ['national', 'power', 'high_mid', 'mid_major'];
+// Human-readable conference names keyed by backend conference code
+const CONF_DISPLAY: Record<string, string> = {
+  ACC:  'ACC',
+  A10:  'Atlantic 10',
+  AE:   'America East',
+  Amer: 'American',
+  ASun: 'ASUN',
+  B10:  'Big Ten',
+  B12:  'Big 12',
+  BE:   'Big East',
+  BSky: 'Big Sky',
+  BSth: 'Big South',
+  BW:   'Big West',
+  CAA:  'CAA',
+  CUSA: 'Conference USA',
+  Horz: 'Horizon',
+  Ivy:  'Ivy League',
+  MAAC: 'MAAC',
+  MAC:  'MAC',
+  MEAC: 'MEAC',
+  MVC:  'Missouri Valley',
+  MWC:  'Mountain West',
+  NEC:  'NEC',
+  OVC:  'Ohio Valley',
+  Pat:  'Patriot',
+  SB:   'Sun Belt',
+  SC:   'Southern',
+  SEC:  'SEC',
+  SWAC: 'SWAC',
+  Slnd: 'Southland',
+  Sum:  'Summit League',
+  WAC:  'WAC',
+  WCC:  'WCC',
+};
 
-// Ordering for display within each group
-const TIER_ORDER: Record<string, number> = { elite: 0, starter: 1, rotation: 2 };
+function confDisplayName(code: string): string {
+  return CONF_DISPLAY[code] ?? code;
+}
+
+function ArchetypeRow({
+  archetype,
+  label,
+  alreadyAdded,
+  onAdd,
+}: {
+  archetype: PlaceholderArchetype;
+  label: string;
+  alreadyAdded: boolean;
+  onAdd: () => void;
+}) {
+  return (
+    <div
+      className={clsx(
+        'flex items-center justify-between px-5 py-3 border-b border-ui-border last:border-0',
+        alreadyAdded ? 'opacity-50' : 'hover:bg-ui-surface cursor-pointer',
+      )}
+      onClick={() => !alreadyAdded && onAdd()}
+    >
+      <div className="flex-1 min-w-0">
+        <div className="text-sm font-medium text-text-primary">{label}</div>
+        <div className="text-xs text-text-muted mt-0.5">
+          {archetype.mpg?.toFixed(1)} MPG · n={archetype.sample_n}
+        </div>
+      </div>
+
+      <div className="flex-shrink-0 text-right ml-3">
+        <div className={clsx(
+          'text-sm font-mono font-semibold',
+          archetype.projected_bpr >= 3 ? 'text-emerald-700' : 'text-text-primary',
+        )}>
+          {archetype.projected_bpr.toFixed(2)}
+        </div>
+        <div className="text-xs text-text-muted">BPR</div>
+      </div>
+
+      <div className="flex-shrink-0 ml-3">
+        {alreadyAdded ? (
+          <span className="text-xs text-text-muted">Added</span>
+        ) : (
+          <span className="text-xs px-2 py-1 rounded border border-brand text-brand hover:bg-brand/10 transition-colors">
+            + Add
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export function PlayerSearchModal({
   isOpen,
@@ -95,6 +171,7 @@ export function PlayerSearchModal({
   const [archetypes, setArchetypes] = useState<PlaceholderArchetype[]>([]);
   const [archetypeLoading, setArchetypeLoading] = useState(false);
   const [archetypeError, setArchetypeError] = useState<string | null>(null);
+  const [activeRole, setActiveRole] = useState<RoleTab>('G');
 
   useEffect(() => {
     if (isOpen) {
@@ -146,28 +223,33 @@ export function PlayerSearchModal({
     onAdd(player);
   }
 
-  // Group archetypes for display: national → power → high_mid → mid_major, sorted by tier within
-  const archetypeGroups: Array<{ label: string; group: string; items: PlaceholderArchetype[] }> = [];
-  const grouped: Record<string, PlaceholderArchetype[]> = {};
-  for (const a of archetypes) {
-    const g = a.conf_group;
-    if (!grouped[g]) grouped[g] = [];
-    grouped[g].push(a);
-  }
-  for (const g of CONF_GROUP_ORDER) {
-    const items = grouped[g] ?? [];
-    items.sort((a, b) => {
-      const ta = TIER_ORDER[a.quality_tier] ?? 9;
-      const tb = TIER_ORDER[b.quality_tier] ?? 9;
-      if (ta !== tb) return ta - tb;
-      // Within tier, order G → Wing → Big
-      const roles = { G: 0, Wing: 1, Big: 2 };
-      return (roles[a.role_bucket ?? 'G'] ?? 3) - (roles[b.role_bucket ?? 'G'] ?? 3);
+  // ── Archetype grouping ───────────────────────────────────────────────────
+  // For the active role, pull the national All-American archetype first,
+  // then group per-conference archetypes by conference sorted alphabetically.
+
+  const eliteArchetype = archetypes.find(
+    a => a.quality_tier === 'elite' && a.role_bucket === activeRole && !a.conference,
+  );
+
+  // All per-conference archetypes for the active role, sorted within each conference
+  const confArchetypes = archetypes
+    .filter(a => !!a.conference && a.role_bucket === activeRole)
+    .sort((a, b) => {
+      const nameA = confDisplayName(a.conference);
+      const nameB = confDisplayName(b.conference);
+      if (nameA !== nameB) return nameA.localeCompare(nameB);
+      return (TIER_ORDER[a.quality_tier] ?? 9) - (TIER_ORDER[b.quality_tier] ?? 9);
     });
-    if (items.length > 0) {
-      archetypeGroups.push({ label: CONF_LABELS[g] ?? g, group: g, items });
-    }
+
+  // Group into [{confCode, label, items}] in alphabetical order by display name
+  const confGroupMap = new Map<string, PlaceholderArchetype[]>();
+  for (const a of confArchetypes) {
+    if (!confGroupMap.has(a.conference)) confGroupMap.set(a.conference, []);
+    confGroupMap.get(a.conference)!.push(a);
   }
+  const confGroups = Array.from(confGroupMap.entries())
+    .sort(([cA], [cB]) => confDisplayName(cA).localeCompare(confDisplayName(cB)))
+    .map(([code, items]) => ({ code, label: confDisplayName(code), items }));
 
   return (
     <div
@@ -300,7 +382,27 @@ export function PlayerSearchModal({
         {/* ── Archetype tab ── */}
         {activeTab === 'archetype' && (
           <>
-            <div className="overflow-y-auto max-h-[480px]">
+            {/* Position tabs */}
+            {!archetypeLoading && !archetypeError && (
+              <div className="flex border-b border-ui-border bg-ui-surface">
+                {(['G', 'Wing', 'Big'] as RoleTab[]).map(role => (
+                  <button
+                    key={role}
+                    onClick={() => setActiveRole(role)}
+                    className={clsx(
+                      'flex-1 px-3 py-2 text-xs font-medium transition-colors',
+                      activeRole === role
+                        ? 'text-brand border-b-2 border-brand bg-white'
+                        : 'text-text-muted hover:text-text-primary border-b-2 border-transparent',
+                    )}
+                  >
+                    {role === 'G' ? 'Guards' : role === 'Wing' ? 'Wings / Forwards' : 'Bigs'}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <div className="overflow-y-auto max-h-[420px]">
               {archetypeLoading && (
                 <div className="text-center py-8 text-sm text-text-muted animate-pulse">
                   Loading archetypes…
@@ -309,75 +411,44 @@ export function PlayerSearchModal({
               {archetypeError && (
                 <div className="text-center py-6 text-sm text-rose-600">{archetypeError}</div>
               )}
-              {!archetypeLoading && !archetypeError && archetypeGroups.map(({ label, group, items }) => (
-                <div key={group}>
-                  <div className="px-5 py-2 sticky top-0 bg-ui-surface border-b border-ui-border z-10">
-                    <span className="text-xs font-semibold uppercase tracking-wider text-text-muted">
-                      {label}
-                    </span>
-                  </div>
-                  {items.map(archetype => {
-                    const fakeId = archetypePlayerId(archetype.key);
-                    const alreadyAdded = alreadyAddedIds.has(fakeId);
-                    const bpr = archetype.projected_bpr;
-                    return (
-                      <div
+
+              {!archetypeLoading && !archetypeError && (
+                <>
+                  {/* All-American Caliber at top */}
+                  {eliteArchetype && (
+                    <ArchetypeRow
+                      archetype={eliteArchetype}
+                      label="All-American Caliber Player"
+                      alreadyAdded={alreadyAddedIds.has(archetypePlayerId(eliteArchetype.key))}
+                      onAdd={() => handleAdd(archetypeToPlayer(eliteArchetype))}
+                    />
+                  )}
+
+                  {/* Flat list: {Conference} {Tier} per row, alphabetical by conference */}
+                  {confGroups.flatMap(({ code, label: confLabel, items }) =>
+                    items.map(archetype => (
+                      <ArchetypeRow
                         key={archetype.key}
-                        className={clsx(
-                          'flex items-center justify-between px-5 py-3 border-b border-ui-border last:border-0',
-                          alreadyAdded ? 'opacity-50' : 'hover:bg-ui-surface cursor-pointer',
-                        )}
-                        onClick={() => !alreadyAdded && handleAdd(archetypeToPlayer(archetype))}
-                      >
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-sm font-medium text-text-primary">
-                              {archetype.display_name}
-                            </span>
-                            {archetype.role_bucket && (
-                              <span className="text-xs px-1 py-0 rounded bg-ui-surface text-text-muted font-mono border border-ui-border">
-                                {archetype.role_bucket}
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-xs text-text-muted mt-0.5">
-                            {TIER_LABELS[archetype.quality_tier] ?? archetype.quality_tier}
-                            <span className="mx-1">·</span>
-                            {archetype.mpg.toFixed(0)} MPG
-                            <span className="mx-1">·</span>
-                            n={archetype.sample_n.toLocaleString()} players
-                          </div>
-                        </div>
+                        archetype={archetype}
+                        label={`${confLabel} ${CONF_TIER_LABELS[archetype.quality_tier] ?? archetype.quality_tier}`}
+                        alreadyAdded={alreadyAddedIds.has(archetypePlayerId(archetype.key))}
+                        onAdd={() => handleAdd(archetypeToPlayer(archetype))}
+                      />
+                    ))
+                  )}
 
-                        <div className="flex-shrink-0 text-right ml-3">
-                          <div className={clsx(
-                            'text-sm font-mono font-semibold',
-                            bpr >= 3 ? 'text-emerald-700' : 'text-text-primary',
-                          )}>
-                            {bpr >= 0 ? '+' : ''}{bpr.toFixed(2)}
-                          </div>
-                          <div className="text-xs text-text-muted">BPR</div>
-                        </div>
-
-                        <div className="flex-shrink-0 ml-3">
-                          {alreadyAdded ? (
-                            <span className="text-xs text-text-muted">Added</span>
-                          ) : (
-                            <span className="text-xs px-2 py-1 rounded border border-brand text-brand hover:bg-brand/10 transition-colors">
-                              + Add
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ))}
+                  {confGroups.length === 0 && !eliteArchetype && (
+                    <div className="text-center py-8 text-sm text-text-muted">
+                      No archetypes available for this position.
+                    </div>
+                  )}
+                </>
+              )}
             </div>
 
             <div className="px-5 py-3 bg-ui-surface text-xs text-text-muted border-t border-ui-border">
               Archetypes are derived from the median stats of real D1 player cohorts.
-              Each represents a realistic, data-grounded stand-in for scenario planning.
+              Values reflect pooled data across recent seasons — data-grounded, not estimated.
             </div>
           </>
         )}
@@ -385,4 +456,3 @@ export function PlayerSearchModal({
     </div>
   );
 }
-

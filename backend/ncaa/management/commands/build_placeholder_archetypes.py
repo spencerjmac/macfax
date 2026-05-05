@@ -50,7 +50,7 @@ from typing import Any
 
 from django.core.management.base import BaseCommand, CommandError
 
-from ncaa.conf_utils import get_conf_group, get_conf_detail
+from ncaa.conf_utils import get_conf_group, get_conf_detail, get_team_conference
 from ncaa.models import PlaceholderArchetype, PlayerSeasonProjection, PlayerSeasonStats
 
 
@@ -122,13 +122,17 @@ STARTER_MS_MIN       = 0.375   # minutes_share_p2 ≥ this → starter
 ROTATION_MS_MIN      = 0.20    # minutes_share_p2 ≥ this → rotation
 ROTATION_MS_MAX      = 0.375   # minutes_share_p2 < this → rotation (upper bound)
 BENCH_MS_MIN         = 0.05    # minutes_share_p2 ≥ this → bench (below rotation)
-ELITE_BPR_PERCENTILE = 0.85    # Bottom of the elite tier (top 15% nationally)
+ELITE_BPR_PERCENTILE = 0.99    # Bottom of the elite tier (top 1% nationally ≈ All-American caliber)
 ALL_CONF_BPR_PERCENTILE = 0.60 # Bottom of all_conference tier (top 40%→15% nationally)
 
 # Tier 1 minimum bucket size — warn but still write if below this.
 MIN_BUCKET_SIZE = 30
 # Tier 2 minimum bucket size — skip the archetype entirely if below this.
 MIN_SPECIFIC_BUCKET = 40
+# Per-conference minimum bucket size — skip conf-specific archetype if below this.
+# With multi-season pooling (default 4 seasons) even small conferences hit this.
+# 8 is enough for a reliable median while still filtering out truly empty buckets.
+MIN_CONFERENCE_BUCKET = 8
 
 # ── Uncertainty formula constants ────────────────────────────────────────── #
 # placeholder_uncertainty = base_unc + n_penalty + spread_penalty
@@ -191,6 +195,13 @@ class Command(BaseCommand):
             help="Source season year (from_season.year). Defaults to latest available.",
         )
         parser.add_argument(
+            "--seasons",
+            type=int,
+            default=4,
+            help="Number of recent seasons to pool (default: 3). More seasons → larger "
+                 "per-conference buckets → more reliable medians for small conferences.",
+        )
+        parser.add_argument(
             "--dry-run",
             action="store_true",
             default=False,
@@ -199,26 +210,48 @@ class Command(BaseCommand):
 
     def handle(self, *args: Any, **options: Any) -> None:
         season_year = options["season"]
+        n_seasons = options["seasons"]
         dry_run = options["dry_run"]
 
-        # ── 1. Resolve source season ──────────────────────────────────────── #
-        qs_all = PlayerSeasonProjection.objects.select_related("player", "team")
-        if season_year:
-            qs_all = qs_all.filter(from_season__year=season_year)
-        else:
-            # Use the latest from_season available
-            latest = (
-                PlayerSeasonProjection.objects
-                .order_by("-from_season__year")
-                .values_list("from_season__year", flat=True)
-                .first()
-            )
-            if latest is None:
-                raise CommandError("No PlayerSeasonProjection rows found.")
-            season_year = latest
-            qs_all = qs_all.filter(from_season__year=season_year)
+        # ── 1. Resolve source season(s) ───────────────────────────────────── #
+        # Find the latest available season year.
+        latest = (
+            PlayerSeasonProjection.objects
+            .order_by("-from_season__year")
+            .values_list("from_season__year", flat=True)
+            .first()
+        )
+        if latest is None:
+            raise CommandError("No PlayerSeasonProjection rows found.")
 
-        self.stdout.write(f"Source season: {season_year}. Loading projections…")
+        if season_year:
+            latest = season_year
+
+        # Pool the last n_seasons seasons for larger, more reliable per-conference
+        # buckets. Small conferences (MEAC, NEC, etc.) need multi-season pools to
+        # get >= MIN_CONFERENCE_BUCKET players in Wing/Big positions.
+        all_available = sorted(
+            PlayerSeasonProjection.objects
+            .values_list("from_season__year", flat=True)
+            .distinct()
+            .filter(from_season__year__lte=latest),
+            reverse=True,
+        )
+        years_to_use = sorted(all_available[:n_seasons])
+        if not years_to_use:
+            raise CommandError(f"No seasons found at or before {latest}.")
+
+        self.stdout.write(
+            f"Pooling seasons: {years_to_use}  (latest={latest}, n_seasons={n_seasons})"
+        )
+
+        qs_all = (
+            PlayerSeasonProjection.objects
+            .select_related("player", "team")
+            .filter(from_season__year__in=years_to_use)
+        )
+
+        self.stdout.write(f"Source seasons: {years_to_use}. Loading projections…")
         rows = list(qs_all.only(
             "player_id", "team__slug",
             "role_bucket",
@@ -232,7 +265,7 @@ class Command(BaseCommand):
         self.stdout.write(f"  Loaded {len(rows)} projections.")
 
         if not rows:
-            raise CommandError(f"No projections found for season {season_year}.")
+            raise CommandError(f"No projections found for seasons {years_to_use}.")
 
         # ── 2. Assign conf_group to each projection row ───────────────────── #
         # buckets[cg][role][tier] = list of projection dicts
@@ -251,12 +284,19 @@ class Command(BaseCommand):
             for role in ("G", "Wing", "Big")
         }
 
+        # Per-conference buckets for the new per-conference archetype generation
+        # conf_code_buckets[conf_code][role][tier] = list of records
+        conf_code_buckets: dict[str, dict[str, dict[str, list[dict]]]] = {}
+
         nat_starter_bpr: dict[str, list[float]] = {"G": [], "Wing": [], "Big": []}
 
         for row in rows:
+            if row.team is None:
+                continue
             slug = row.team.slug
             cg = get_conf_group(slug)           # coarse: 'power' | 'mid_major'
             cg_detail = get_conf_detail(slug)   # fine: 'power' | 'high_mid' | 'mid_major'
+            conf_code = get_team_conference(slug)   # actual code: 'ACC', 'WCC', etc.
             role = row.role_bucket
             if role not in ("G", "Wing", "Big"):
                 continue
@@ -274,21 +314,31 @@ class Command(BaseCommand):
                 "uncertainty":  row.projection_uncertainty,
             }
 
+            # Seed per-conference bucket structure lazily
+            if conf_code not in conf_code_buckets:
+                conf_code_buckets[conf_code] = {
+                    r: {"starter": [], "rotation": [], "bench": []}
+                    for r in ("G", "Wing", "Big")
+                }
+
             if ms >= STARTER_MS_MIN:
                 buckets[cg][role]["starter"].append(record)
                 buckets["national"][role]["all_starters"].append(record)
                 nat_starter_bpr[role].append(row.projected_bpr)
                 if cg_detail == "high_mid":
                     high_mid_buckets[role]["starter"].append(record)
+                conf_code_buckets[conf_code][role]["starter"].append(record)
             elif ms >= ROTATION_MS_MIN:
                 buckets[cg][role]["rotation"].append(record)
                 if cg_detail == "high_mid":
                     high_mid_buckets[role]["rotation"].append(record)
+                conf_code_buckets[conf_code][role]["rotation"].append(record)
             elif ms >= BENCH_MS_MIN:
                 buckets[cg][role]["bench"].append(record)
                 buckets["national"][role]["bench"].append(record)
                 if cg_detail == "high_mid":
                     high_mid_buckets[role]["bench"].append(record)
+                conf_code_buckets[conf_code][role]["bench"].append(record)
 
         # ── 3. Compute elite + all_conference BPR thresholds (per role) ──── #
         elite_thresholds: dict[str, float] = {}
@@ -304,15 +354,20 @@ class Command(BaseCommand):
                 f"of {len(sorted_bpr)} national starters)"
             )
 
-        # ── 4. Load stat profiles (PlayerSeasonStats for season_year) ─────── #
+        # ── 4. Load stat profiles (PlayerSeasonStats for all pooled seasons) ── #
+        # Accumulate multiple season rows per player so medians are computed
+        # across all pooled seasons (more stable for small-conference buckets).
         self.stdout.write("  Loading PlayerSeasonStats for stat profiles…")
-        stat_qs = PlayerSeasonStats.objects.filter(season__year=season_year).values(
+        stat_qs = PlayerSeasonStats.objects.filter(season__year__in=years_to_use).values(
             "player_id",
             "efg_pct", "fg3_pct", "ts_pct", "ast_to",
-            "oreb_pg", "dreb_pg", "tov",
+            "oreb_pg", "dreb_pg", "tov", "fg3a_pg",
         )
-        stats_by_player: dict[int, dict] = {r["player_id"]: r for r in stat_qs}
-        self.stdout.write(f"  Loaded {len(stats_by_player)} stat profiles.")
+        from collections import defaultdict
+        stats_by_player: dict[int, list[dict]] = defaultdict(list)
+        for r in stat_qs:
+            stats_by_player[r["player_id"]].append(r)
+        self.stdout.write(f"  Loaded stat rows for {len(stats_by_player)} players.")
 
         # ── 5. Build each archetype ───────────────────────────────────────── #
         results = []
@@ -358,9 +413,9 @@ class Command(BaseCommand):
             base_unc = _median(unc_vals) or 0.5
             adjusted_unc = _bucket_uncertainty(base_unc, bpr_vals, n)
 
-            # Stat profile medians from PlayerSeasonStats
+            # Stat profile medians from PlayerSeasonStats (flattened across pooled seasons)
             pids = [r["player_id"] for r in player_records]
-            stat_rows = [stats_by_player[pid] for pid in pids if pid in stats_by_player]
+            stat_rows = [s for pid in pids for s in stats_by_player.get(pid, [])]
 
             def stat_med(field: str) -> float | None:
                 vals = [s[field] for s in stat_rows if s.get(field) is not None]
@@ -370,6 +425,7 @@ class Command(BaseCommand):
                 "key":               key,
                 "display_name":      display_name,
                 "conf_group":        conf_group,
+                "conference":        "",  # blank for conf_group-level archetypes
                 "role_bucket":       role,
                 "quality_tier":      tier,
                 "projected_obpr":    _median(obpr_vals) or 0.0,
@@ -385,14 +441,115 @@ class Command(BaseCommand):
                 "oreb_pg":           stat_med("oreb_pg"),
                 "dreb_pg":           stat_med("dreb_pg"),
                 "tov":               stat_med("tov"),
+                "fg3a_pg":           stat_med("fg3a_pg"),
                 "sample_n":          n,
-                "source_season_year": season_year,
+                "source_season_year": latest,
             }
             results.append(archetype)
             self.stdout.write(
                 f"  [{key}] n={n:4d}  BPR={archetype_bpr:+.2f}  "
                 f"ms={archetype['minutes_share']:.3f}  unc={adjusted_unc:.3f}"
             )
+
+        # ── 5b. Build per-conference archetypes ───────────────────────────────── #
+        _TIER_DISPLAY = {
+            "all_conference": "All-Conference",
+            "starter":        "Starter",
+            "rotation":       "Rotation",
+            "bench":          "Bench",
+        }
+        _ROLE_DISPLAY = {"G": "Guard", "Wing": "Wing", "Big": "Big"}
+        _CONF_GROUP_FROM_CODE = {
+            **{c: "power"    for c in ("ACC", "B10", "B12", "SEC", "BE")},
+            **{c: "high_mid" for c in ("WCC", "MWC", "A10", "Amer")},
+        }
+
+        self.stdout.write(
+            f"\nBuilding per-conference archetypes "
+            f"(min n={MIN_CONFERENCE_BUCKET} per bucket)…"
+        )
+        n_conf_archetypes = 0
+
+        for conf_code in sorted(conf_code_buckets.keys()):
+            if conf_code == "Unknown":
+                continue
+            conf_cg = _CONF_GROUP_FROM_CODE.get(conf_code, "mid_major")
+
+            for role in ("G", "Wing", "Big"):
+                role_display = _ROLE_DISPLAY[role]
+                starters = conf_code_buckets[conf_code][role]["starter"]
+
+                for tier in ("all_conference", "starter", "rotation", "bench"):
+                    if tier == "all_conference":
+                        # Top 40% of this conference's starters by BPR
+                        pool = sorted(starters, key=lambda r: r["bpr"] or 0.0, reverse=True)
+                        pool = pool[:max(1, int(len(pool) * 0.40))]
+                    elif tier == "starter":
+                        pool = starters
+                    elif tier == "rotation":
+                        pool = conf_code_buckets[conf_code][role]["rotation"]
+                    else:  # bench
+                        pool = conf_code_buckets[conf_code][role]["bench"]
+
+                    n = len(pool)
+                    if n < MIN_CONFERENCE_BUCKET:
+                        continue
+
+                    key = f"{conf_code.lower()}_{tier}_{role.lower()}"
+                    display_name = f"{conf_code} {role_display} ({_TIER_DISPLAY[tier]})"
+
+                    obpr_vals  = [r["obpr"] for r in pool if r["obpr"] is not None]
+                    dbpr_vals  = [r["dbpr"] for r in pool if r["dbpr"] is not None]
+                    bpr_vals   = [r["bpr"]  for r in pool if r["bpr"]  is not None]
+                    ms_vals    = [r["ms"]   for r in pool if r["ms"]   is not None]
+                    mpg_vals   = [r["mpg"]  for r in pool if r["mpg"]  is not None]
+                    unc_vals   = [r["uncertainty"] for r in pool if r["uncertainty"] is not None]
+
+                    archetype_bpr = _median(bpr_vals) or 0.0
+                    base_unc = _median(unc_vals) or 0.5
+                    adjusted_unc = _bucket_uncertainty(base_unc, bpr_vals, n)
+
+                    pids = [r["player_id"] for r in pool]
+                    stat_rows = [s for pid in pids for s in stats_by_player.get(pid, [])]
+
+                    def stat_med_c(field: str) -> float | None:
+                        vals = [s[field] for s in stat_rows if s.get(field) is not None]
+                        return _median(vals)
+
+                    archetype = {
+                        "key":               key,
+                        "display_name":      display_name,
+                        "conf_group":        conf_cg,
+                        "conference":        conf_code,
+                        "role_bucket":       role,
+                        "quality_tier":      tier,
+                        "projected_obpr":    _median(obpr_vals) or 0.0,
+                        "projected_dbpr":    _median(dbpr_vals) or 0.0,
+                        "projected_bpr":     archetype_bpr,
+                        "minutes_share":     _median(ms_vals) or 0.0,
+                        "mpg":               _median(mpg_vals) or 0.0,
+                        "uncertainty":       adjusted_unc,
+                        "efg_pct":           stat_med_c("efg_pct"),
+                        "fg3_pct":           stat_med_c("fg3_pct"),
+                        "ts_pct":            stat_med_c("ts_pct"),
+                        "ast_to":            stat_med_c("ast_to"),
+                        "oreb_pg":           stat_med_c("oreb_pg"),
+                        "dreb_pg":           stat_med_c("dreb_pg"),
+                        "tov":               stat_med_c("tov"),
+                        "fg3a_pg":           stat_med_c("fg3a_pg"),
+                        "sample_n":          n,
+                        "source_season_year": latest,
+                    }
+                    results.append(archetype)
+                    n_conf_archetypes += 1
+                    self.stdout.write(
+                        f"  [{key}] n={n:4d}  BPR={archetype_bpr:+.2f}  unc={adjusted_unc:.3f}"
+                    )
+
+        self.stdout.write(
+            f"\n  Per-conference archetypes built: {n_conf_archetypes}"
+            f" across {len(conf_code_buckets)} conferences"
+        )
 
         if dry_run:
             self.stdout.write(self.style.SUCCESS("\n[dry-run] Not writing to database."))
@@ -413,7 +570,7 @@ class Command(BaseCommand):
         self.stdout.write(
             self.style.SUCCESS(
                 f"\nDone — {created} created, {updated} updated "
-                f"({len(results)} total archetypes from season {season_year})."
+                f"({len(results)} total archetypes from seasons {years_to_use})."
             )
         )
 

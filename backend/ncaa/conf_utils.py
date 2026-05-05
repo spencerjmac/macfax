@@ -557,6 +557,16 @@ POWER_CONFS: frozenset[str] = frozenset({"ACC", "B10", "B12", "SEC", "BE"})
 HIGH_MID_CONFS: frozenset[str] = frozenset({"WCC", "MWC", "A10", "Amer"})
 
 
+def get_team_conference(team_slug: str) -> str:
+    """
+    Return the raw conference code for a team slug (e.g. 'ACC', 'WCC', 'MAAC').
+
+    Used for per-conference archetype generation.
+    Unknown slugs return 'Unknown'.
+    """
+    return CONF_MAP.get(team_slug.lower(), "Unknown")
+
+
 def get_conf_group(team_slug: str) -> str:
     """
     Coarse 2-tier classifier: 'power' | 'mid_major'.

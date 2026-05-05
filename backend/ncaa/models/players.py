@@ -667,6 +667,14 @@ class PlaceholderArchetype(models.Model):
     fg3a_pg  = models.FloatField(null=True, blank=True,
                                  help_text="Median 3-point attempts per game")
 
+    # Conference — actual conference code for per-conference archetypes (e.g. 'ACC', 'WCC').
+    # Blank for broad conf_group-level archetypes (national/power/mid_major/high_mid).
+    conference = models.CharField(
+        max_length=16, blank=True, default='',
+        help_text="Actual conference code (e.g. 'ACC', 'WCC') — blank for conf_group-level archetypes",
+        db_index=True,
+    )
+
     # Provenance
     sample_n = models.IntegerField(help_text="Number of real players in source bucket")
     source_season_year = models.IntegerField(
