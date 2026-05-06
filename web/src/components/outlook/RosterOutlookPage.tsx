@@ -721,7 +721,7 @@ export default function RosterOutlookPage({ data }: RosterOutlookPageProps) {
           </div>
 
           <OutlookTopCards
-            projection={scenarioProjection}
+            projection={projection}
             fit={fit}
             scenarioProjection={scenarioProjection}
             isScenarioMode={true}

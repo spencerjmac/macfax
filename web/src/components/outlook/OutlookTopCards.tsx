@@ -20,6 +20,9 @@ function RankCard({
   adjHigh,
   prefix,
   scenarioRank,
+  scenarioAdjValue,
+  scenarioAdjLow,
+  scenarioAdjHigh,
   note,
 }: {
   label: string;
@@ -29,43 +32,50 @@ function RankCard({
   adjHigh: number | null;
   prefix: string;
   scenarioRank?: number | null;
+  scenarioAdjValue?: number | null;
+  scenarioAdjLow?: number | null;
+  scenarioAdjHigh?: number | null;
   note?: string;
 }) {
+  const hasScenario = scenarioRank != null;
+
+  const displayedRank = hasScenario ? scenarioRank : rank;
   const baseRankDisplay = rank != null ? `#${rank}` : '—';
-  const adjDisplay = adjValue != null ? adjValue.toFixed(1) : '—';
+
+  const displayedAdj = hasScenario && scenarioAdjValue != null ? scenarioAdjValue : adjValue;
+  const displayedLow = hasScenario ? (scenarioAdjLow ?? null) : adjLow;
+  const displayedHigh = hasScenario ? (scenarioAdjHigh ?? null) : adjHigh;
+
+  const adjDisplay = displayedAdj != null ? displayedAdj.toFixed(1) : '—';
   const adjRangeDisplay =
-    adjLow != null && adjHigh != null
-      ? `${adjLow.toFixed(1)} – ${adjHigh.toFixed(1)}`
+    displayedLow != null && displayedHigh != null
+      ? `${displayedLow.toFixed(1)} – ${displayedHigh.toFixed(1)}`
       : null;
 
-  const hasScenario = scenarioRank != null;
   const delta = hasScenario && rank != null ? rank - scenarioRank! : null;
   const improved = delta != null && delta > 0;
+  const rankChanged = delta !== null && delta !== 0;
 
   return (
     <div className="bg-ui-card border border-ui-border rounded-xl p-5 flex-1 min-w-0">
       <div className="text-xs text-text-muted font-medium uppercase tracking-wide mb-2">{label}</div>
 
       <div className="flex items-end gap-3 mb-1">
-        {hasScenario ? (
+        <div className="text-3xl font-bold font-mono text-text-primary">
+          {displayedRank != null ? `#${displayedRank}` : '—'}
+        </div>
+        {rankChanged && (
           <>
-            <div className="text-3xl font-bold font-mono text-text-primary">
-              #{scenarioRank}
-            </div>
             <div className="text-sm text-text-muted line-through">{baseRankDisplay}</div>
-            {delta !== null && delta !== 0 && (
-              <span
-                className={clsx(
-                  'text-sm font-mono font-semibold px-1.5 py-0.5 rounded',
-                  improved ? 'text-emerald-700 bg-emerald-50' : 'text-rose-700 bg-rose-50',
-                )}
-              >
-                {improved ? `▲ ${delta}` : `▼ ${Math.abs(delta)}`}
-              </span>
-            )}
+            <span
+              className={clsx(
+                'text-sm font-mono font-semibold px-1.5 py-0.5 rounded',
+                improved ? 'text-emerald-700 bg-emerald-50' : 'text-rose-700 bg-rose-50',
+              )}
+            >
+              {improved ? `▲ ${Math.abs(delta!)}` : `▼ ${Math.abs(delta!)}`}
+            </span>
           </>
-        ) : (
-          <div className="text-3xl font-bold font-mono text-text-primary">{baseRankDisplay}</div>
         )}
       </div>
 
@@ -88,12 +98,13 @@ export function OutlookTopCards({
   scenarioProjection,
   isScenarioMode,
 }: OutlookTopCardsProps) {
+  const sp = scenarioProjection as any;
   return (
     <div className="space-y-3">
       {isScenarioMode && (
         <div className="flex items-center gap-2 text-xs font-medium text-brand bg-brand/8 rounded-lg px-3 py-2 border border-brand/20">
           <span className="w-2 h-2 rounded-full bg-brand inline-block" />
-          Scenario mode — strikethrough values are baseline
+          Scenario mode — strikethrough values show baseline when rank changes
         </div>
       )}
 
@@ -105,9 +116,10 @@ export function OutlookTopCards({
           adjLow={projection.projected_adj_em_low}
           adjHigh={projection.projected_adj_em_high}
           prefix="AdjEM"
-          scenarioRank={
-            (scenarioProjection as any)?.approx_national_rank ?? null
-          }
+          scenarioRank={sp?.approx_national_rank ?? null}
+          scenarioAdjValue={sp?.projected_adj_em ?? null}
+          scenarioAdjLow={sp?.projected_adj_em_low ?? null}
+          scenarioAdjHigh={sp?.projected_adj_em_high ?? null}
         />
         <RankCard
           label="Offense Rank"
@@ -116,7 +128,10 @@ export function OutlookTopCards({
           adjLow={projection.projected_adj_o_low}
           adjHigh={projection.projected_adj_o_high}
           prefix="AdjO"
-          scenarioRank={scenarioProjection?.projected_offense_rank ?? null}
+          scenarioRank={sp?.projected_offense_rank ?? null}
+          scenarioAdjValue={sp?.projected_adj_o ?? null}
+          scenarioAdjLow={sp?.projected_adj_o_low ?? null}
+          scenarioAdjHigh={sp?.projected_adj_o_high ?? null}
         />
         <RankCard
           label="Defense Rank"
@@ -125,7 +140,10 @@ export function OutlookTopCards({
           adjLow={projection.projected_adj_d_low}
           adjHigh={projection.projected_adj_d_high}
           prefix="AdjD"
-          scenarioRank={scenarioProjection?.projected_defense_rank ?? null}
+          scenarioRank={sp?.projected_defense_rank ?? null}
+          scenarioAdjValue={sp?.projected_adj_d ?? null}
+          scenarioAdjLow={sp?.projected_adj_d_low ?? null}
+          scenarioAdjHigh={sp?.projected_adj_d_high ?? null}
         />
       </div>
 
