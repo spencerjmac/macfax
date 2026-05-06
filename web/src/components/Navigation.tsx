@@ -12,6 +12,7 @@ const NCAA_NAV = [
   { href: '/ncaa/outlook', label: 'Outlook' },
   { href: '/ncaa/viz', label: 'Visualizations' },
   { href: '/ncaa/glossary', label: 'Glossary' },
+  { href: '/validation', label: 'Accuracy' },
 ];
 
 const NBA_NAV = [

@@ -20,6 +20,11 @@ import type {
   PlayerSearchResult,
   PlaceholderListResponse,
 } from '@/types/outlook';
+import type {
+  ValidationSummaryResponse,
+  ValidationWeeklyResponse,
+  ValidationRecentGamesResponse,
+} from '@/types/validation';
 
 type QueryParams = Record<string, string | number | boolean | undefined | null>;
 
@@ -218,6 +223,20 @@ export const api = {
   }): Promise<PlaceholderListResponse> {
     return fetchJson<PlaceholderListResponse>(
       buildUrl('/outlook/placeholders/', params)
+    );
+  },
+
+  async getValidationSummary(season?: number): Promise<ValidationSummaryResponse> {
+    return fetchJson<ValidationSummaryResponse>(buildUrl('/validation/summary/', { season }));
+  },
+
+  async getValidationWeekly(season?: number): Promise<ValidationWeeklyResponse> {
+    return fetchJson<ValidationWeeklyResponse>(buildUrl('/validation/weekly/', { season }));
+  },
+
+  async getValidationRecentGames(season?: number, limit?: number): Promise<ValidationRecentGamesResponse> {
+    return fetchJson<ValidationRecentGamesResponse>(
+      buildUrl('/validation/recent-games/', { season, limit })
     );
   },
 };

@@ -25,6 +25,7 @@ from .viz_builder_views import VizStatsView, VizScatterView
 from .auth_views import csrf, login_view, logout_view, me
 from .outlook_views import RosterOutlookView, ScenarioProjectionView, PlayerSearchView, PlaceholderListView
 from .scenario_views import ScenarioComputeView, ScenarioSaveView, ScenarioDetailView, ScenarioListView
+from .validation_views import ValidationSummaryView, ValidationWeeklyView, ValidationRecentGamesView
 
 router = DefaultRouter()
 router.register(r"seasons", SeasonViewSet, basename="season")
@@ -60,4 +61,8 @@ urlpatterns = [
     path("scenarios/save/",       ScenarioSaveView.as_view(),     name="scenario-save"),
     path("scenarios/<int:pk>/",   ScenarioDetailView.as_view(),   name="scenario-detail"),
     path("scenarios/",            ScenarioListView.as_view(),     name="scenario-list"),
+    # Validation
+    path("validation/summary/",       ValidationSummaryView.as_view(),      name="validation-summary"),
+    path("validation/weekly/",        ValidationWeeklyView.as_view(),       name="validation-weekly"),
+    path("validation/recent-games/",  ValidationRecentGamesView.as_view(),  name="validation-recent-games"),
 ]

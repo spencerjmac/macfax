@@ -1538,6 +1538,7 @@ class PlaceholderArchetypeSerializer(serializers.ModelSerializer):
             "key",
             "display_name",
             "conf_group",
+            "conference",
             "role_bucket",
             "quality_tier",
             "projected_obpr",

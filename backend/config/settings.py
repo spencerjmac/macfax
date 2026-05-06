@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     "api",
     "backtesting",
     "nba",
+    "validation",
 ]
 
 MIDDLEWARE = [

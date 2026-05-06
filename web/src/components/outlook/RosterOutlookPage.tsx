@@ -79,23 +79,34 @@ function archetypeToPlayer(a: PlaceholderArchetype): OutlookPlayer {
   };
 }
 
-const TIER_LABELS: Record<string, string> = {
-  elite:          'All-American',
+const CONF_TIER_LABELS: Record<string, string> = {
   all_conference: 'All-Conference',
   starter:        'Starter',
-  rotation:       'Reserve',
-  bench:          'Bench',
+  rotation:       'Rotation Player',
+  bench:          'Bench Player',
 };
 
-const CONF_LABELS: Record<string, string> = {
-  national:  'National',
-  power:     'Power Conf',
-  high_mid:  'High Mid-Major',
-  mid_major: 'Mid-Major',
+const CONF_TIER_ORDER: Record<string, number> = {
+  all_conference: 0, starter: 1, rotation: 2, bench: 3,
 };
 
-const CONF_GROUP_ORDER = ['national', 'power', 'high_mid', 'mid_major'];
-const TIER_ORDER: Record<string, number> = { elite: 0, all_conference: 1, starter: 2, rotation: 3, bench: 4 };
+const CONF_DISPLAY: Record<string, string> = {
+  ACC:  'ACC',         A10:  'Atlantic 10',    AE:   'America East',
+  Amer: 'American',    ASun: 'ASUN',           B10:  'Big Ten',
+  B12:  'Big 12',      BE:   'Big East',        BSky: 'Big Sky',
+  BSth: 'Big South',   BW:   'Big West',        CAA:  'CAA',
+  CUSA: 'Conference USA', Horz: 'Horizon League', Ivy:  'Ivy League',
+  MAAC: 'MAAC',        MAC:  'MAC',             MEAC: 'MEAC',
+  MVC:  'Missouri Valley', MWC: 'Mountain West', NEC:  'NEC',
+  OVC:  'Ohio Valley', Pat:  'Patriot League',  SB:   'Sun Belt',
+  SC:   'Southern',    SEC:  'SEC',             SWAC: 'SWAC',
+  Slnd: 'Southland',   Sum:  'Summit League',   WAC:  'WAC',
+  WCC:  'West Coast',
+};
+
+function confLabel(code: string): string {
+  return CONF_DISPLAY[code] ?? code;
+}
 
 // ── Suggested players section ─────────────────────────────────────────────────
 function SuggestedSection({
@@ -298,7 +309,7 @@ function ArchetypeSection({
   onAdd: (p: OutlookPlayer) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const [selectedRole, setSelectedRole] = useState<'G' | 'Wing' | 'Big' | null>(null);
+  const [activeRole, setActiveRole] = useState<'G' | 'Wing' | 'Big'>('G');
   const [archetypes, setArchetypes] = useState<PlaceholderArchetype[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -312,22 +323,23 @@ function ArchetypeSection({
       .finally(() => setLoading(false));
   }, [expanded, archetypes.length, loading]);
 
-  // Group by tier then conf_group, filtered to selectedRole
-  const grouped = useMemo(() => {
-    const forRole = selectedRole
-      ? archetypes.filter(a => a.role_bucket === selectedRole)
-      : archetypes;
-    const byTier: Record<string, Record<string, PlaceholderArchetype>> = {};
-    for (const a of forRole) {
-      if (!byTier[a.quality_tier]) byTier[a.quality_tier] = {};
-      byTier[a.quality_tier][a.conf_group] = a;
-    }
-    return byTier;
-  }, [archetypes, selectedRole]);
-
-  const tierKeys = Object.keys(grouped).sort(
-    (a, b) => (TIER_ORDER[a] ?? 9) - (TIER_ORDER[b] ?? 9),
+  // Elite (national All-American) for the active role
+  const eliteArchetype = useMemo(
+    () => archetypes.find(a => a.quality_tier === 'elite' && a.role_bucket === activeRole && !a.conference),
+    [archetypes, activeRole],
   );
+
+  // Per-conference archetypes for the active role, flat sorted list
+  const confRows = useMemo(() => {
+    return archetypes
+      .filter(a => !!a.conference && a.role_bucket === activeRole)
+      .sort((a, b) => {
+        const nameA = confLabel(a.conference);
+        const nameB = confLabel(b.conference);
+        if (nameA !== nameB) return nameA.localeCompare(nameB);
+        return (CONF_TIER_ORDER[a.quality_tier] ?? 9) - (CONF_TIER_ORDER[b.quality_tier] ?? 9);
+      });
+  }, [archetypes, activeRole]);
 
   return (
     <div className="border border-ui-border rounded-xl overflow-hidden">
@@ -340,99 +352,97 @@ function ArchetypeSection({
       </button>
       {expanded && (
         <div className="border-t border-ui-border">
-          {/* Role selector */}
-          <div className="flex gap-2 px-4 py-3 border-b border-ui-border">
+          {/* Position tabs */}
+          <div className="flex border-b border-ui-border">
             {(['G', 'Wing', 'Big'] as const).map(role => (
               <button
                 key={role}
-                onClick={() => setSelectedRole(r => r === role ? null : role)}
+                onClick={() => setActiveRole(role)}
                 className={clsx(
-                  'px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border',
-                  selectedRole === role
-                    ? 'bg-brand text-white border-brand'
-                    : 'border-ui-border text-text-muted hover:text-text-primary',
+                  'flex-1 px-3 py-2 text-xs font-medium transition-colors',
+                  activeRole === role
+                    ? 'text-brand border-b-2 border-brand bg-white'
+                    : 'text-text-muted hover:text-text-primary border-b-2 border-transparent bg-ui-surface',
                 )}
               >
-                {role === 'Wing' ? 'Wing/F' : role}
+                {role === 'G' ? 'Guards' : role === 'Wing' ? 'Wings / Forwards' : 'Bigs'}
               </button>
             ))}
-            {selectedRole && (
-              <span className="ml-1 self-center text-xs text-text-muted">
-                Select a tier and conference below
-              </span>
-            )}
-            {!selectedRole && (
-              <span className="ml-1 self-center text-xs text-text-muted">
-                Pick a role first
-              </span>
-            )}
           </div>
 
           {loading && <div className="text-center py-6 text-sm text-text-muted animate-pulse">Loading archetypes…</div>}
           {error && <div className="text-center py-4 text-sm text-rose-600">{error}</div>}
 
-          {!loading && !error && selectedRole && (
-            <div className="max-h-72 overflow-y-auto">
-              {tierKeys.length === 0 && (
-                <div className="text-center py-6 text-sm text-text-muted">No archetypes available</div>
-              )}
-              {tierKeys.map(tier => {
-                const confMap = grouped[tier];
+          {!loading && !error && (
+            <div className="max-h-80 overflow-y-auto">
+              {/* All-American Caliber at top */}
+              {eliteArchetype && (() => {
+                const fakeId = archetypePlayerId(eliteArchetype.key);
+                const added = addedIds.has(fakeId);
                 return (
-                  <div key={tier}>
-                    <div className="px-4 py-1.5 bg-ui-surface border-b border-ui-border sticky top-0 z-10">
-                      <span className="text-xs font-semibold uppercase tracking-wider text-text-muted">
-                        {TIER_LABELS[tier] ?? tier}
-                      </span>
+                  <div
+                    onClick={() => !added && onAdd(archetypeToPlayer(eliteArchetype))}
+                    className={clsx(
+                      'flex items-center justify-between px-4 py-2.5 border-b border-ui-border',
+                      added ? 'opacity-40' : 'hover:bg-ui-surface cursor-pointer',
+                    )}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-text-primary">All-American Caliber Player</div>
+                      <div className="text-xs text-text-muted">{eliteArchetype.mpg.toFixed(0)} MPG · n={eliteArchetype.sample_n}</div>
                     </div>
-                    {CONF_GROUP_ORDER.filter(cg => confMap[cg]).map(cg => {
-                      const a = confMap[cg];
-                      const fakeId = archetypePlayerId(a.key);
-                      const added = addedIds.has(fakeId);
-                      return (
-                        <div
-                          key={cg}
-                          onClick={() => !added && onAdd(archetypeToPlayer(a))}
-                          className={clsx(
-                            'flex items-center justify-between px-4 py-2.5 border-b border-ui-border last:border-0',
-                            added ? 'opacity-40' : 'hover:bg-ui-surface cursor-pointer',
-                          )}
-                        >
-                          <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium text-text-primary">{a.display_name}</div>
-                            <div className="text-xs text-text-muted">
-                              {CONF_LABELS[cg] ?? cg}
-                              <span className="mx-1">·</span>
-                              {a.mpg.toFixed(0)} MPG
-                            </div>
-                          </div>
-                          <div className="flex-shrink-0 text-right ml-3">
-                            <div className={clsx(
-                              'text-sm font-mono font-semibold',
-                              a.projected_bpr >= 3 ? 'text-emerald-700' : 'text-text-primary',
-                            )}>
-                              {a.projected_bpr >= 0 ? '+' : ''}{a.projected_bpr.toFixed(2)}
-                            </div>
-                            <div className="text-xs text-text-muted">BPR</div>
-                          </div>
-                          <div className="flex-shrink-0 ml-3 w-12 text-right">
-                            {added
-                              ? <span className="text-xs text-text-muted">Added</span>
-                              : <span className="text-xs px-2 py-1 rounded border border-brand text-brand hover:bg-brand/10 transition-colors">+ Add</span>
-                            }
-                          </div>
-                        </div>
-                      );
-                    })}
+                    <div className="flex-shrink-0 text-right ml-3">
+                      <div className="text-sm font-mono font-semibold text-emerald-700">
+                        +{eliteArchetype.projected_bpr.toFixed(2)}
+                      </div>
+                      <div className="text-xs text-text-muted">BPR</div>
+                    </div>
+                    <div className="flex-shrink-0 ml-3 w-12 text-right">
+                      {added ? <span className="text-xs text-text-muted">Added</span>
+                        : <span className="text-xs px-2 py-1 rounded border border-brand text-brand hover:bg-brand/10 transition-colors">+ Add</span>}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Flat list: {Conference Full Name} {Tier} */}
+              {confRows.map(a => {
+                const fakeId = archetypePlayerId(a.key);
+                const added = addedIds.has(fakeId);
+                const label = `${confLabel(a.conference)} ${CONF_TIER_LABELS[a.quality_tier] ?? a.quality_tier}`;
+                return (
+                  <div
+                    key={a.key}
+                    onClick={() => !added && onAdd(archetypeToPlayer(a))}
+                    className={clsx(
+                      'flex items-center justify-between px-4 py-2.5 border-b border-ui-border last:border-0',
+                      added ? 'opacity-40' : 'hover:bg-ui-surface cursor-pointer',
+                    )}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-text-primary">{label}</div>
+                      <div className="text-xs text-text-muted">{a.mpg.toFixed(0)} MPG · n={a.sample_n}</div>
+                    </div>
+                    <div className="flex-shrink-0 text-right ml-3">
+                      <div className={clsx(
+                        'text-sm font-mono font-semibold',
+                        a.projected_bpr >= 3 ? 'text-emerald-700' : 'text-text-primary',
+                      )}>
+                        {a.projected_bpr >= 0 ? '+' : ''}{a.projected_bpr.toFixed(2)}
+                      </div>
+                      <div className="text-xs text-text-muted">BPR</div>
+                    </div>
+                    <div className="flex-shrink-0 ml-3 w-12 text-right">
+                      {added ? <span className="text-xs text-text-muted">Added</span>
+                        : <span className="text-xs px-2 py-1 rounded border border-brand text-brand hover:bg-brand/10 transition-colors">+ Add</span>}
+                    </div>
                   </div>
                 );
               })}
-            </div>
-          )}
 
-          {!selectedRole && !loading && (
-            <div className="px-4 py-3 text-xs text-text-muted border-t border-ui-border">
-              Archetypes are derived from median stats of real D1 player cohorts.
+              {confRows.length === 0 && !eliteArchetype && (
+                <div className="text-center py-6 text-sm text-text-muted">No archetypes available</div>
+              )}
             </div>
           )}
         </div>
