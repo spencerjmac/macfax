@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   useReactTable,
@@ -30,6 +31,7 @@ type TabId = 'traditional' | 'advanced' | 'impact';
 interface NBAPlayerRankingsTableProps {
   data: NBAPlayerSeasonStats[];
   seasonDisplay?: string;
+  seasonType?: string;
 }
 
 // Traditional keys shown for NBA (subset — no NCAA-only keys like ftm_pg)
@@ -65,7 +67,9 @@ const PLUS_MINUS_META: PlayerMetricMeta = {
 
 const PAGE_SIZE = 100;
 
-export default function NBAPlayerRankingsTable({ data, seasonDisplay }: NBAPlayerRankingsTableProps) {
+export default function NBAPlayerRankingsTable({ data, seasonDisplay, seasonType = 'regular' }: NBAPlayerRankingsTableProps) {
+  const router = useRouter();
+  const isPlayoffs = seasonType === 'playoffs';
   const [activeTab, setActiveTab] = useState<TabId>('traditional');
   const [sorting, setSorting] = useState<SortingState>([{ id: 'pts', desc: true }]);
   const [globalFilter, setGlobalFilter] = useState('');
@@ -88,7 +92,7 @@ export default function NBAPlayerRankingsTable({ data, seasonDisplay }: NBAPlaye
   const filtered = useMemo(
     () =>
       data.filter((p) => {
-        if (p.on_court_poss == null || p.on_court_poss < minPoss) return false;
+        if (!isPlayoffs && (p.on_court_poss == null || p.on_court_poss < minPoss)) return false;
         if (globalFilter) {
           const q = globalFilter.toLowerCase();
           return (
@@ -98,7 +102,7 @@ export default function NBAPlayerRankingsTable({ data, seasonDisplay }: NBAPlaye
         }
         return true;
       }),
-    [data, minPoss, globalFilter]
+    [data, minPoss, globalFilter, isPlayoffs]
   );
 
   // ── Metric lookup map ────────────────────────────────────────────────────
@@ -113,7 +117,9 @@ export default function NBAPlayerRankingsTable({ data, seasonDisplay }: NBAPlaye
   // ── Percentile ranks ─────────────────────────────────────────────────────
   const allKeys = [...NBA_TRAD_KEYS, ...NBA_ADV_KEYS, ...NBA_IMP_KEYS];
   const metricRanks = useMemo(() => {
-    const rankBase = data.filter((p) => p.on_court_poss != null && p.on_court_poss >= minPoss);
+    const rankBase = isPlayoffs
+      ? data
+      : data.filter((p) => p.on_court_poss != null && p.on_court_poss >= minPoss);
     const ranks = new Map<string, ReturnType<typeof computeRanks>>();
     allKeys.forEach((key) => {
       const meta = allMetaMaps[key];
@@ -278,6 +284,20 @@ export default function NBAPlayerRankingsTable({ data, seasonDisplay }: NBAPlaye
     <div className="space-y-4">
       {/* ── Filter bar ──────────────────────────────────────────────────── */}
       <div className="flex flex-wrap gap-3 items-center">
+        <div>
+          <select
+            value={seasonType}
+            onChange={(e) => {
+              const stParam = e.target.value === 'playoffs' ? '&season_type=playoffs' : '';
+              router.push(`/nba/rankings?tab=players${stParam}`);
+            }}
+            className="px-3 py-2 bg-ui-surface border border-ui-border rounded-lg text-sm
+                       focus:outline-none focus:ring-2 focus:ring-brand/50 font-medium"
+          >
+            <option value="regular">Regular Season</option>
+            <option value="playoffs">Playoffs</option>
+          </select>
+        </div>
         <div className="flex-1 min-w-[180px]">
           <input
             type="text"
@@ -291,21 +311,23 @@ export default function NBAPlayerRankingsTable({ data, seasonDisplay }: NBAPlaye
                        focus:outline-none focus:ring-2 focus:ring-brand/50"
           />
         </div>
-        <div>
-          <select
-            value={minPoss}
-            onChange={(e) => {
-              setMinPoss(Number(e.target.value));
-              setPagination((p) => ({ ...p, pageIndex: 0 }));
-            }}
-            className="px-3 py-2 bg-ui-surface border border-ui-border rounded-lg text-sm
-                       focus:outline-none focus:ring-2 focus:ring-brand/50"
-          >
-            {[100, 250, 500, 750, 1000, 1500, 2000].map((n) => (
-              <option key={n} value={n}>Min {n} poss</option>
-            ))}
-          </select>
-        </div>
+        {!isPlayoffs && (
+          <div>
+            <select
+              value={minPoss}
+              onChange={(e) => {
+                setMinPoss(Number(e.target.value));
+                setPagination((p) => ({ ...p, pageIndex: 0 }));
+              }}
+              className="px-3 py-2 bg-ui-surface border border-ui-border rounded-lg text-sm
+                         focus:outline-none focus:ring-2 focus:ring-brand/50"
+            >
+              {[100, 250, 500, 750, 1000, 1500, 2000].map((n) => (
+                <option key={n} value={n}>Min {n} poss</option>
+              ))}
+            </select>
+          </div>
+        )}
         <div className="text-sm text-text-muted whitespace-nowrap">
           {table.getFilteredRowModel().rows.length} players
           {seasonDisplay && <span className="ml-1">· {seasonDisplay}</span>}

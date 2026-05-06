@@ -14,19 +14,20 @@ export const metadata: Metadata = {
 };
 
 interface NBAPageProps {
-  searchParams: Promise<{ season?: string; tab?: string }>;
+  searchParams: Promise<{ season?: string; tab?: string; season_type?: string }>;
 }
 
 export default async function NBARankingsPage({ searchParams }: NBAPageProps) {
   const sp = await searchParams;
   const seasonYear = sp.season ? parseInt(sp.season, 10) : undefined;
   const activeTab = sp.tab === 'players' ? 'players' : 'teams';
+  const seasonType = sp.season_type === 'playoffs' ? 'playoffs' : 'regular';
 
   const [rankings, seasons, players] = await Promise.all([
-    nbaApi.getRankings(seasonYear).catch(() => []),
+    nbaApi.getRankings(seasonYear, seasonType).catch(() => []),
     nbaApi.getSeasons().catch(() => []),
     activeTab === 'players'
-      ? nbaApi.getLeaguePlayers({ season: seasonYear, ordering: '-pts', min_gp: 1 }).catch(() => [])
+      ? nbaApi.getLeaguePlayers({ season: seasonYear, ordering: '-pts', min_gp: 1, season_type: seasonType }).catch(() => [])
       : Promise.resolve([]),
   ]);
 
@@ -36,6 +37,7 @@ export default async function NBARankingsPage({ searchParams }: NBAPageProps) {
 
   const seasonDisplay = currentSeason?.display_name;
   const seasonParam = seasonYear ? `&season=${seasonYear}` : '';
+  const seasonTypeParam = seasonType === 'playoffs' ? `&season_type=playoffs` : '';
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -56,7 +58,7 @@ export default async function NBARankingsPage({ searchParams }: NBAPageProps) {
           ].map(({ id, label, icon: Icon }) => (
             <Link
               key={id}
-              href={`/nba/rankings?tab=${id}${seasonParam}`}
+              href={`/nba/rankings?tab=${id}${seasonParam}${seasonTypeParam}`}
               className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
                 activeTab === id
                   ? 'border-brand text-brand'
@@ -89,6 +91,7 @@ export default async function NBARankingsPage({ searchParams }: NBAPageProps) {
           data={rankings}
           seasons={seasons}
           selectedSeason={currentSeason?.year}
+          selectedSeasonType={seasonType}
         />
       ) : (
         /* Players tab */
@@ -105,7 +108,7 @@ export default async function NBARankingsPage({ searchParams }: NBAPageProps) {
             </div>
           </div>
         ) : (
-          <NBAPlayerRankingsTable data={players} seasonDisplay={seasonDisplay} />
+          <NBAPlayerRankingsTable data={players} seasonDisplay={seasonDisplay} seasonType={seasonType} />
         )
       )}
 

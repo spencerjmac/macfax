@@ -30,6 +30,7 @@ interface NBARankingsTableProps {
   data: NBATeamSeasonRatings[];
   seasons?: NBASeasonInfo[];
   selectedSeason?: number;
+  selectedSeasonType?: string;
 }
 
 interface SubColSpec {
@@ -61,6 +62,7 @@ export default function NBARankingsTable({
   data,
   seasons = [],
   selectedSeason,
+  selectedSeasonType = 'regular',
 }: NBARankingsTableProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabId>('overview');
@@ -370,7 +372,8 @@ export default function NBARankingsTable({
               value={selectedSeason ?? ''}
               onChange={(e) => {
                 const val = e.target.value;
-                router.push(val ? `/nba/rankings?season=${val}` : '/nba/rankings');
+                const stParam = selectedSeasonType === 'playoffs' ? '&season_type=playoffs' : '';
+                router.push(val ? `/nba/rankings?season=${val}${stParam}` : '/nba/rankings');
               }}
               className="px-3 py-2 bg-ui-surface border border-ui-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand/50 font-medium"
             >
@@ -382,6 +385,21 @@ export default function NBARankingsTable({
             </select>
           </div>
         )}
+
+        <div>
+          <select
+            value={selectedSeasonType}
+            onChange={(e) => {
+              const stParam = e.target.value === 'playoffs' ? '&season_type=playoffs' : '';
+              const sParam = selectedSeason ? `&season=${selectedSeason}` : '';
+              router.push(`/nba/rankings?${sParam}${stParam}`.replace('?&', '?'));
+            }}
+            className="px-3 py-2 bg-ui-surface border border-ui-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand/50 font-medium"
+          >
+            <option value="regular">Regular Season</option>
+            <option value="playoffs">Playoffs</option>
+          </select>
+        </div>
 
         <div className="flex-1 min-w-[200px]">
           <input

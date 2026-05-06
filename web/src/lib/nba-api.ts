@@ -59,8 +59,8 @@ export const nbaApi = {
     return unwrapResults<NBATeam>(data);
   },
 
-  async getRankings(season?: number): Promise<NBATeamSeasonRatings[]> {
-    const data = await fetchJson<unknown>(buildUrl('/rankings/', { season }));
+  async getRankings(season?: number, seasonType?: string): Promise<NBATeamSeasonRatings[]> {
+    const data = await fetchJson<unknown>(buildUrl('/rankings/', { season, season_type: seasonType }));
     return unwrapResults<NBATeamSeasonRatings>(data);
   },
 
@@ -93,6 +93,7 @@ export const nbaApi = {
     season?: number;
     ordering?: string;
     min_gp?: number;
+    season_type?: string;
   }): Promise<NBAPlayerSeasonStats[]> {
     const data = await fetchJson<unknown>(buildUrl('/players/', params));
     return Array.isArray(data) ? (data as NBAPlayerSeasonStats[]) : [];

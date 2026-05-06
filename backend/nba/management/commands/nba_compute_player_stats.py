@@ -40,9 +40,14 @@ class Command(BaseCommand):
             "--season", type=int, required=True,
             help="Ending season year (e.g., 2026)",
         )
+        parser.add_argument(
+            "--season-type", default="regular", choices=["regular", "playoffs"],
+            help="Which game type to aggregate (default: regular)",
+        )
 
     def handle(self, *args, **options):
         season_year: int = options["season"]
+        season_type: str = options["season_type"]
 
         try:
             season = NBASeason.objects.get(year=season_year)
@@ -51,9 +56,15 @@ class Command(BaseCommand):
                 f"Season {season_year} not found. Run nba_sync_teams first."
             )
 
+        game_filter: dict = {"game__season": season}
+        if season_type == "playoffs":
+            game_filter["game__season_type"] = "playoffs"
+        else:
+            game_filter["game__counts_toward_regular_season"] = True
+
         rows = (
             NBAPlayerGameStats.objects
-            .filter(game__season=season)
+            .filter(**game_filter)
             .select_related("player", "team")
         )
 
@@ -61,7 +72,7 @@ class Command(BaseCommand):
         if total_game_rows == 0:
             self.stdout.write(
                 self.style.WARNING(
-                    f"No NBAPlayerGameStats found for {season.display_name}. "
+                    f"No NBAPlayerGameStats found for {season.display_name} ({season_type}). "
                     "Run: python manage.py nba_sync_team_logs --season "
                     f"{season_year}"
                 )
@@ -123,6 +134,7 @@ class Command(BaseCommand):
                     player=player,
                     season=season,
                     team=team,
+                    season_type=season_type,
                     defaults={
                         "gp": gp,
                         "mpg": mpg,

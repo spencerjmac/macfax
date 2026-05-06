@@ -31,7 +31,7 @@ from django.core.management.base import BaseCommand
 from django.core.management import call_command
 from django.utils import timezone
 
-TOTAL_STEPS = 6
+TOTAL_STEPS = 8
 
 
 class Command(BaseCommand):
@@ -110,16 +110,16 @@ class Command(BaseCommand):
             steps.append(("NBA sync player box scores", True, "Skipped (--skip-ingest)"))
 
         self._run_step(
-            "NBA compute ratings",
+            "NBA compute ratings (Regular Season)",
             "nba_compute_ratings",
-            {"season": season_year},
+            {"season": season_year, "season_type": "regular"},
             steps,
             label=f"[3/{TOTAL_STEPS}]",
         )
         self._run_step(
-            "NBA compute player stats",
+            "NBA compute player stats (Regular Season)",
             "nba_compute_player_stats",
-            {"season": season_year},
+            {"season": season_year, "season_type": "regular"},
             steps,
             label=f"[4/{TOTAL_STEPS}]",
         )
@@ -136,6 +136,22 @@ class Command(BaseCommand):
             {"season": season_year},
             steps,
             label=f"[6/{TOTAL_STEPS}]",
+        )
+        self._run_step(
+            "NBA compute ratings (Playoffs)",
+            "nba_compute_ratings",
+            {"season": season_year, "season_type": "playoffs"},
+            steps,
+            fatal=False,
+            label=f"[7/{TOTAL_STEPS}]",
+        )
+        self._run_step(
+            "NBA compute player stats (Playoffs)",
+            "nba_compute_player_stats",
+            {"season": season_year, "season_type": "playoffs"},
+            steps,
+            fatal=False,
+            label=f"[8/{TOTAL_STEPS}]",
         )
 
         # Summary

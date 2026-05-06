@@ -78,6 +78,9 @@ class NBARankingsViewSet(viewsets.ReadOnlyModelViewSet):
             except NBASeason.DoesNotExist:
                 return qs.none()
 
+        season_type = self.request.query_params.get("season_type", "regular")
+        qs = qs.filter(season_type=season_type)
+
         return qs.order_by("rank_adj_net", "-adj_net")
 
 
@@ -326,9 +329,11 @@ class NBALeaguePlayersView(APIView):
             if season is None:
                 return Response([], status=status.HTTP_200_OK)
 
+        season_type = request.query_params.get("season_type", "regular")
+
         players = (
             NBAPlayerSeasonStats.objects
-            .filter(season=season, gp__gte=min_gp)
+            .filter(season=season, gp__gte=min_gp, season_type=season_type)
             .select_related("player", "team", "season")
             .order_by(ordering)
         )

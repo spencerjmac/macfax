@@ -33,10 +33,15 @@ class Command(BaseCommand):
             help="Ending season year (e.g., 2026 for the 2025-26 season)",
         )
         parser.add_argument("--dry-run", action="store_true")
+        parser.add_argument(
+            "--season-type", default="regular", choices=["regular", "playoffs"],
+            help="Which game type to compute ratings for (default: regular)",
+        )
 
     def handle(self, *args, **options):  # noqa: C901
         season_year: int = options["season"]
         dry_run: bool = options["dry_run"]
+        season_type: str = options["season_type"]
 
         try:
             season = NBASeason.objects.get(year=season_year)
@@ -47,11 +52,15 @@ class Command(BaseCommand):
             )
 
         # ── Load qualifying game stats ────────────────────────────────────────
+        if season_type == "playoffs":
+            game_filter = {"game__season": season, "game__season_type": "playoffs"}
+        else:
+            game_filter = {"game__season": season, "game__counts_toward_regular_season": True}
+
         stats_qs = (
             NBATeamGameStats.objects
             .filter(
-                game__season=season,
-                game__counts_toward_regular_season=True,
+                **game_filter,
                 poss__isnull=False,
                 poss__gt=0,
             )
@@ -300,6 +309,7 @@ class Command(BaseCommand):
             obj, _ = NBATeamSeasonRatings.objects.update_or_create(
                 team=team,
                 season=season,
+                season_type=season_type,
                 defaults={
                     "games": ff["games"],
                     "adj_off": r["adj_off"],

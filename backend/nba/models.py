@@ -308,6 +308,9 @@ class NBATeamSeasonRatings(models.Model):
     season = models.ForeignKey(
         NBASeason, on_delete=models.CASCADE, related_name="team_ratings"
     )
+    season_type = models.CharField(
+        max_length=20, choices=SEASON_TYPE_CHOICES, default="regular", db_index=True
+    )
     games = models.IntegerField(default=0)
 
     # ── Adjusted efficiency ──────────────────────────────────────────────────
@@ -352,7 +355,7 @@ class NBATeamSeasonRatings(models.Model):
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=["team", "season"], name="unique_nba_team_season_ratings"
+                fields=["team", "season", "season_type"], name="unique_nba_team_season_ratings"
             )
         ]
         ordering = ["rank_adj_net"]
@@ -382,6 +385,9 @@ class NBAPlayerSeasonStats(models.Model):
     )
     season = models.ForeignKey(
         NBASeason, on_delete=models.CASCADE, related_name="player_season_stats"
+    )
+    season_type = models.CharField(
+        max_length=20, choices=SEASON_TYPE_CHOICES, default="regular", db_index=True
     )
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -456,7 +462,7 @@ class NBAPlayerSeasonStats(models.Model):
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=["player", "season", "team"],
+                fields=["player", "season", "team", "season_type"],
                 name="unique_nba_player_season_stats",
             )
         ]
