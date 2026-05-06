@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   useReactTable,
@@ -47,11 +47,12 @@ const TRAD_OPTIONAL_KEYS = [
 ];
 
 // ── Impact ────────────────────────────────────────────────────────────────────
-// These are the numeric metric columns (Source + computed Adj Net added separately)
+// Flat columns (BPR family + poss) — adj_team context rendered as a group
 const IMPACT_METRIC_KEYS = [
   'bpr', 'obpr', 'dbpr', 'off_poss', 'box_bpr',
-  'adj_team_off_eff_on', 'adj_team_def_eff_on',
 ];
+// These become the "On-Court Context" grouped columns in the Impact tab
+const IMPACT_ADJ_CTX_KEYS = ['adj_team_off_eff_on', 'adj_team_def_eff_on'];
 
 // ── Four Factors ──────────────────────────────────────────────────────────────
 const FF_ALL_KEYS = [
@@ -87,7 +88,16 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
   const [minMinutes, setMinMinutes] = useState(200);
   const [conferenceFilter, setConferenceFilter] = useState('all');
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: PAGE_SIZE });
-  const [tradOptional, setTradOptional] = useState<Set<string>>(new Set());
+  const [tradOptional, setTradOptional] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem('ncaa-player-trad-cols');
+      return saved ? new Set(JSON.parse(saved) as string[]) : new Set();
+    } catch { return new Set(); }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('ncaa-player-trad-cols', JSON.stringify([...tradOptional]));
+  }, [tradOptional]);
   const [bprMode, setBprMode] = useState<BprMode>('strict_bpr');
 
   const tabs: Array<{ id: TabId; label: string }> = [
@@ -163,7 +173,7 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
   const activeTabKeys = useMemo(() => {
     if (activeTab === 'traditional') return [...TRAD_DEFAULT_KEYS, ...TRAD_OPTIONAL_KEYS];
     if (activeTab === 'fourfactors') return FF_ALL_KEYS;
-    return IMPACT_METRIC_KEYS;
+    return [...IMPACT_METRIC_KEYS, ...IMPACT_ADJ_CTX_KEYS];
   }, [activeTab]);
 
   const metricRanks = useMemo(() => {
@@ -304,6 +314,13 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
 
     const base = [rankCol, playerCol, teamCol, posCol, gpCol, mpgCol];
 
+    const invisible = (id: string, cols: ColumnDef<NCAAPlayerSeasonStats>[]): ColumnDef<NCAAPlayerSeasonStats> => ({
+      id,
+      header: () => null,
+      meta: { isInvisible: true },
+      columns: cols,
+    });
+
     // ── Traditional ──
     if (activeTab === 'traditional') {
       const visibleKeys = [
@@ -315,7 +332,7 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
 
     // ── Impact ──
     if (activeTab === 'impact') {
-      const adjNetCol: ColumnDef<NCAAPlayerSeasonStats> = {
+      const adjNetSubCol: ColumnDef<NCAAPlayerSeasonStats> = {
         id: 'adj_team_net_on',
         header: () => (
           <HeaderWithTooltip
@@ -330,17 +347,71 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
             : null,
         cell: (info) => {
           const val = info.getValue<number | null>();
-          if (val == null) return <span className="text-text-muted">—</span>;
+          if (val == null) return <div className="text-center text-text-muted text-xs">—</div>;
           const rankData = metricRanks.get('adj_team_net_on')?.get(info.row.original.player_id);
           const colorClass = getPercentileColor(rankData?.percentile ?? null, 'higher', true);
           return (
-            <div className={clsx('flex items-center justify-between gap-1 px-2 py-1 rounded', colorClass)}>
-              <span className="font-mono">{val.toFixed(1)}</span>
+            <div className={clsx('px-1 py-0.5 rounded text-center', colorClass)}>
+              <div className="font-mono text-xs leading-tight">{val.toFixed(1)}</div>
             </div>
           );
         },
         sortDescFirst: true,
         size: 68,
+      };
+
+      const adjOffSubCol: ColumnDef<NCAAPlayerSeasonStats> = {
+        accessorKey: 'adj_team_off_eff_on',
+        header: () => (
+          <HeaderWithTooltip
+            label="Adj Off"
+            better="higher"
+            tooltip={allMetaMaps['adj_team_off_eff_on']?.tooltip ?? ''}
+          />
+        ),
+        cell: (info) => {
+          const val = info.getValue<number | null>();
+          if (val == null) return <div className="text-center text-text-muted text-xs">—</div>;
+          const rankData = metricRanks.get('adj_team_off_eff_on')?.get(info.row.original.player_id);
+          const colorClass = getPercentileColor(rankData?.percentile ?? null, 'higher', true);
+          return (
+            <div className={clsx('px-1 py-0.5 rounded text-center', colorClass)}>
+              <div className="font-mono text-xs leading-tight">{val.toFixed(1)}</div>
+            </div>
+          );
+        },
+        sortDescFirst: true,
+        size: 68,
+      };
+
+      const adjDefSubCol: ColumnDef<NCAAPlayerSeasonStats> = {
+        accessorKey: 'adj_team_def_eff_on',
+        header: () => (
+          <HeaderWithTooltip
+            label="Adj Def"
+            better="lower"
+            tooltip={allMetaMaps['adj_team_def_eff_on']?.tooltip ?? ''}
+          />
+        ),
+        cell: (info) => {
+          const val = info.getValue<number | null>();
+          if (val == null) return <div className="text-center text-text-muted text-xs">—</div>;
+          const rankData = metricRanks.get('adj_team_def_eff_on')?.get(info.row.original.player_id);
+          const colorClass = getPercentileColor(rankData?.percentile ?? null, 'lower', true);
+          return (
+            <div className={clsx('px-1 py-0.5 rounded text-center', colorClass)}>
+              <div className="font-mono text-xs leading-tight">{val.toFixed(1)}</div>
+            </div>
+          );
+        },
+        sortDescFirst: false,
+        size: 68,
+      };
+
+      const onCtxGroup: ColumnDef<NCAAPlayerSeasonStats> = {
+        id: 'impact-adj-ctx',
+        header: 'On-Court Context',
+        columns: [adjOffSubCol, adjDefSubCol, adjNetSubCol],
       };
 
       const sourceCol: ColumnDef<NCAAPlayerSeasonStats> = {
@@ -362,7 +433,12 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
         size: 60,
       };
 
-      return [...base, ...IMPACT_METRIC_KEYS.map(createMetricColumn), adjNetCol, sourceCol];
+      return [
+        invisible('impact-base', base),
+        ...IMPACT_METRIC_KEYS.map(createMetricColumn),
+        onCtxGroup,
+        sourceCol,
+      ];
     }
 
     // ── Four Factors — grouped columns matching team rankings design ────────
@@ -404,12 +480,6 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
       columns: subs.map(createSubColumn),
     });
 
-    const invisible = (id: string, cols: ColumnDef<NCAAPlayerSeasonStats>[]): ColumnDef<NCAAPlayerSeasonStats> => ({
-      id,
-      header: () => null,
-      meta: { isInvisible: true },
-      columns: cols,
-    });
 
     return [
       invisible('ff-base', base),
@@ -475,7 +545,7 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
     getPaginationRowModel: getPaginationRowModel(),
   });
 
-  const isGroupedTab = activeTab === 'fourfactors';
+  const isGroupedTab = activeTab === 'fourfactors' || activeTab === 'impact';
 
   return (
     <div className="space-y-4">

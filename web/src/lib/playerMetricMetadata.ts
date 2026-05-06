@@ -22,29 +22,30 @@ export interface PlayerMetricMeta {
   showRank?: boolean;
   heatmap?: boolean;
   group?: string; // column group label
+  tier?: 'primary' | 'secondary' | 'optional'; // default visibility tier
 }
 
 // ─── Traditional ─────────────────────────────────────────────────────────────
 
 export const PLAYER_TRADITIONAL_METRICS: PlayerMetricMeta[] = [
-  { key: 'pts',     label: 'PPG',   tooltip: 'Points per game.',                format: 'number1', better: 'neutral', showRank: true,  heatmap: true  },
-  { key: 'reb',     label: 'RPG',   tooltip: 'Total rebounds per game.',         format: 'number1', better: 'neutral', showRank: false, heatmap: true  },
-  { key: 'ast',     label: 'APG',   tooltip: 'Assists per game.',                format: 'number1', better: 'neutral', showRank: false, heatmap: true  },
-  { key: 'stl',     label: 'SPG',   tooltip: 'Steals per game.',                 format: 'number1', better: 'neutral', showRank: false, heatmap: false },
-  { key: 'blk',     label: 'BPG',   tooltip: 'Blocks per game.',                 format: 'number1', better: 'neutral', showRank: false, heatmap: false },
-  { key: 'tov',     label: 'TOV',   tooltip: 'Turnovers per game.',              format: 'number1', better: 'lower',   showRank: false, heatmap: false },
-  { key: 'oreb_pg', label: 'ORB',   tooltip: 'Offensive rebounds per game.',     format: 'number1', better: 'neutral', showRank: false, heatmap: false },
-  { key: 'dreb_pg', label: 'DRB',   tooltip: 'Defensive rebounds per game.',     format: 'number1', better: 'neutral', showRank: false, heatmap: false },
-  { key: 'fga_pg',  label: 'FGA',   tooltip: 'Field goal attempts per game.',    format: 'number1', better: 'neutral', showRank: false, heatmap: false },
-  { key: 'fg3a_pg', label: '3PA',   tooltip: '3-point attempts per game.',       format: 'number1', better: 'neutral', showRank: false, heatmap: false },
-  { key: 'fta_pg',  label: 'FTA',   tooltip: 'Free throw attempts per game.',    format: 'number1', better: 'neutral', showRank: false, heatmap: false },
-  { key: 'ftm_pg',  label: 'FTM',   tooltip: 'Free throw makes per game.',       format: 'number1', better: 'neutral', showRank: false, heatmap: false },
-  { key: 'fg_pct',  label: 'FG%',   tooltip: 'Field goal percentage.',           format: 'pct4',    better: 'higher',  showRank: false, heatmap: true  },
-  { key: 'fg3_pct', label: '3P%',   tooltip: '3-point field goal percentage.',   format: 'pct4',    better: 'higher',  showRank: false, heatmap: true  },
-  { key: 'ft_pct',  label: 'FT%',   tooltip: 'Free throw percentage.',           format: 'pct4',    better: 'higher',  showRank: false, heatmap: true  },
-  { key: 'efg_pct', label: 'eFG%',  tooltip: 'Effective FG% = (FGM + 0.5×FG3M) / FGA. Adjusts for 3-pointers being worth more.', format: 'pct4', better: 'higher', showRank: false, heatmap: true  },
-  { key: 'ts_pct',  label: 'TS%',   tooltip: 'True Shooting% = PTS / (2 × (FGA + 0.44 × FTA)). Most complete single shooting efficiency stat.', format: 'pct4', better: 'higher', showRank: true, heatmap: true },
-  { key: 'ast_to',  label: 'AST/TO', tooltip: 'Assist-to-turnover ratio. Higher is better.', format: 'number2', better: 'higher', showRank: false, heatmap: true },
+  { key: 'pts',     label: 'PPG',   tooltip: 'Points per game.',                format: 'number1', better: 'neutral', showRank: true,  heatmap: true,  tier: 'primary'   },
+  { key: 'reb',     label: 'RPG',   tooltip: 'Total rebounds per game.',         format: 'number1', better: 'neutral', showRank: false, heatmap: true,  tier: 'primary'   },
+  { key: 'ast',     label: 'APG',   tooltip: 'Assists per game.',                format: 'number1', better: 'neutral', showRank: false, heatmap: true,  tier: 'primary'   },
+  { key: 'stl',     label: 'SPG',   tooltip: 'Steals per game.',                 format: 'number1', better: 'neutral', showRank: false, heatmap: false, tier: 'primary'   },
+  { key: 'blk',     label: 'BPG',   tooltip: 'Blocks per game.',                 format: 'number1', better: 'neutral', showRank: false, heatmap: false, tier: 'primary'   },
+  { key: 'tov',     label: 'TOV',   tooltip: 'Turnovers per game.',              format: 'number1', better: 'lower',   showRank: false, heatmap: false, tier: 'primary'   },
+  { key: 'oreb_pg', label: 'ORB',   tooltip: 'Offensive rebounds per game.',     format: 'number1', better: 'neutral', showRank: false, heatmap: false, tier: 'secondary' },
+  { key: 'dreb_pg', label: 'DRB',   tooltip: 'Defensive rebounds per game.',     format: 'number1', better: 'neutral', showRank: false, heatmap: false, tier: 'secondary' },
+  { key: 'fga_pg',  label: 'FGA',   tooltip: 'Field goal attempts per game.',    format: 'number1', better: 'neutral', showRank: false, heatmap: false, tier: 'optional'  },
+  { key: 'fg3a_pg', label: '3PA',   tooltip: '3-point attempts per game.',       format: 'number1', better: 'neutral', showRank: false, heatmap: false, tier: 'optional'  },
+  { key: 'fta_pg',  label: 'FTA',   tooltip: 'Free throw attempts per game.',    format: 'number1', better: 'neutral', showRank: false, heatmap: false, tier: 'optional'  },
+  { key: 'ftm_pg',  label: 'FTM',   tooltip: 'Free throw makes per game.',       format: 'number1', better: 'neutral', showRank: false, heatmap: false, tier: 'optional'  },
+  { key: 'fg_pct',  label: 'FG%',   tooltip: 'Field goal percentage.',           format: 'pct4',    better: 'higher',  showRank: false, heatmap: true,  tier: 'secondary' },
+  { key: 'fg3_pct', label: '3P%',   tooltip: '3-point field goal percentage.',   format: 'pct4',    better: 'higher',  showRank: false, heatmap: true,  tier: 'secondary' },
+  { key: 'ft_pct',  label: 'FT%',   tooltip: 'Free throw percentage.',           format: 'pct4',    better: 'higher',  showRank: false, heatmap: true,  tier: 'secondary' },
+  { key: 'efg_pct', label: 'eFG%',  tooltip: 'Effective FG% = (FGM + 0.5×FG3M) / FGA. Adjusts for 3-pointers being worth more.', format: 'pct4', better: 'higher', showRank: false, heatmap: true,  tier: 'primary'   },
+  { key: 'ts_pct',  label: 'TS%',   tooltip: 'True Shooting% = PTS / (2 × (FGA + 0.44 × FTA)). Most complete single shooting efficiency stat.', format: 'pct4', better: 'higher', showRank: true, heatmap: true, tier: 'primary' },
+  { key: 'ast_to',  label: 'AST/TO', tooltip: 'Assist-to-turnover ratio. Higher is better.', format: 'number2', better: 'higher', showRank: false, heatmap: true, tier: 'primary' },
 ];
 
 // ─── NCAA Impact (on-court raw from PBP) ─────────────────────────────────────
@@ -294,17 +295,17 @@ export const NCAA_FF_METRICS: PlayerMetricMeta[] = [
 // ─── NBA Impact ───────────────────────────────────────────────────────────────
 
 export const NBA_ADVANCED_METRICS: PlayerMetricMeta[] = [
-  { key: 'ts_pct',   label: 'TS%',    tooltip: 'True Shooting%.',                       format: 'pct4',    better: 'higher', showRank: true,  heatmap: true  },
-  { key: 'efg_pct',  label: 'eFG%',   tooltip: 'Effective Field Goal%.',                format: 'pct4',    better: 'higher', showRank: false, heatmap: true  },
-  { key: 'usg_pct',  label: 'USG%',   tooltip: 'Usage rate — share of team possessions used by this player.', format: 'pct4', better: 'neutral', showRank: false, heatmap: false },
-  { key: 'oreb_pct', label: 'ORB%',   tooltip: 'Offensive rebound rate while on court.', format: 'pct4',   better: 'higher', showRank: false, heatmap: true  },
-  { key: 'dreb_pct', label: 'DRB%',   tooltip: 'Defensive rebound rate while on court.', format: 'pct4',  better: 'higher', showRank: false, heatmap: true  },
-  { key: 'ast_pct',  label: 'AST%',   tooltip: 'Assist rate — % of team FGM assisted while on court.', format: 'pct4', better: 'higher', showRank: false, heatmap: true },
-  { key: 'tov_pct',  label: 'TOV%',   tooltip: 'Turnover rate per 100 plays.',           format: 'pct4',   better: 'lower',  showRank: false, heatmap: true  },
-  { key: 'ast_to',   label: 'AST/TO', tooltip: 'Assist-to-turnover ratio.',              format: 'number2', better: 'higher', showRank: false, heatmap: true },
-  { key: 'pie',      label: 'PIE',    tooltip: 'Player Impact Estimate — share of positive game events contributed.', format: 'pct4', better: 'higher', showRank: true, heatmap: true },
-  { key: 'stl_pct',  label: 'STL%',   tooltip: 'Steal rate while on court.',             format: 'pct4',   better: 'higher', showRank: false, heatmap: false },
-  { key: 'blk_pct',  label: 'BLK%',   tooltip: 'Block rate — % of opponent 2PA blocked while on court.', format: 'pct4', better: 'higher', showRank: false, heatmap: false },
+  { key: 'ts_pct',   label: 'TS%',    tooltip: 'True Shooting%.',                       format: 'pct4',    better: 'higher', showRank: true,  heatmap: true,  tier: 'primary'  },
+  { key: 'efg_pct',  label: 'eFG%',   tooltip: 'Effective Field Goal%.',                format: 'pct4',    better: 'higher', showRank: false, heatmap: true,  tier: 'primary'  },
+  { key: 'usg_pct',  label: 'USG%',   tooltip: 'Usage rate — share of team possessions used by this player.', format: 'pct4', better: 'neutral', showRank: false, heatmap: false, tier: 'primary' },
+  { key: 'oreb_pct', label: 'ORB%',   tooltip: 'Offensive rebound rate while on court.', format: 'pct4',   better: 'higher', showRank: false, heatmap: true,  tier: 'primary'  },
+  { key: 'dreb_pct', label: 'DRB%',   tooltip: 'Defensive rebound rate while on court.', format: 'pct4',  better: 'higher', showRank: false, heatmap: true,  tier: 'primary'  },
+  { key: 'ast_pct',  label: 'AST%',   tooltip: 'Assist rate — % of team FGM assisted while on court.', format: 'pct4', better: 'higher', showRank: false, heatmap: true,  tier: 'primary' },
+  { key: 'tov_pct',  label: 'TOV%',   tooltip: 'Turnover rate per 100 plays.',           format: 'pct4',   better: 'lower',  showRank: false, heatmap: true,  tier: 'primary'  },
+  { key: 'ast_to',   label: 'AST/TO', tooltip: 'Assist-to-turnover ratio.',              format: 'number2', better: 'higher', showRank: false, heatmap: true,  tier: 'primary' },
+  { key: 'pie',      label: 'PIE',    tooltip: 'Player Impact Estimate — share of positive game events contributed.', format: 'pct4', better: 'higher', showRank: true, heatmap: true, tier: 'primary' },
+  { key: 'stl_pct',  label: 'STL%',   tooltip: 'Steal rate while on court.',             format: 'pct4',   better: 'higher', showRank: false, heatmap: false, tier: 'optional' },
+  { key: 'blk_pct',  label: 'BLK%',   tooltip: 'Block rate — % of opponent 2PA blocked while on court.', format: 'pct4', better: 'higher', showRank: false, heatmap: false, tier: 'optional' },
 ];
 
 export const NBA_IMPACT_METRICS: PlayerMetricMeta[] = [
@@ -312,68 +313,68 @@ export const NBA_IMPACT_METRICS: PlayerMetricMeta[] = [
   {
     key: 'box_bpr',   label: 'Box BPR',   group: 'Box BPR',
     tooltip: 'Box-score Bayesian Performance Rating (Box OBPR + Box DBPR). Ridge regression model trained on per-100-poss box stats. Stage 1 proxy; will be replaced by RAPM-informed BPR in Stage 2.',
-    format: 'number2', better: 'higher', showRank: true, heatmap: true,
+    format: 'number2', better: 'higher', showRank: true, heatmap: true, tier: 'primary',
   },
   {
     key: 'box_obpr',  label: 'Box OBPR',  group: 'Box BPR',
     tooltip: 'Offensive Box BPR — box-score model estimate of offensive pts/100 poss added, relative to league average.',
-    format: 'number2', better: 'higher', showRank: true, heatmap: true,
+    format: 'number2', better: 'higher', showRank: true, heatmap: true, tier: 'primary',
   },
   {
     key: 'box_dbpr',  label: 'Box DBPR',  group: 'Box BPR',
     tooltip: 'Defensive Box BPR — box-score model estimate of defensive pts/100 poss prevented. Higher = better defender.',
-    format: 'number2', better: 'higher', showRank: true, heatmap: true,
+    format: 'number2', better: 'higher', showRank: true, heatmap: true, tier: 'primary',
   },
   // ── MPIR ─────────────────────────────────────────────────────────────────────
   {
     key: 'mpir',          label: 'MPIR',      group: 'Macfax Impact',
     tooltip: 'Macfax Player Impact Rating (O-MPIR + D-MPIR). Combines box production and on-court team efficiency into a single impact score.',
-    format: 'number2', better: 'higher', showRank: true, heatmap: true,
+    format: 'number2', better: 'higher', showRank: true, heatmap: true, tier: 'primary',
   },
   {
     key: 'o_mpir',        label: 'O-MPIR',    group: 'Macfax Impact',
     tooltip: 'Offensive MPIR — blend of on-court offensive impact and box-score offensive prior.',
-    format: 'number2', better: 'higher', showRank: false, heatmap: true,
+    format: 'number2', better: 'higher', showRank: false, heatmap: true, tier: 'primary',
   },
   {
     key: 'd_mpir',        label: 'D-MPIR',    group: 'Macfax Impact',
     tooltip: 'Defensive MPIR — blend of on-court defensive impact and box-score defensive prior.',
-    format: 'number2', better: 'higher', showRank: false, heatmap: true,
+    format: 'number2', better: 'higher', showRank: false, heatmap: true, tier: 'primary',
   },
   {
     key: 'on_court_adj_o', label: 'On-Ct Adj O', group: 'Adj On-Court',
     tooltip: 'Bayesian-stabilised adjusted offensive efficiency with player on court.',
-    format: 'number1', better: 'higher', showRank: false, heatmap: true,
+    format: 'number1', better: 'higher', showRank: false, heatmap: true, tier: 'secondary',
   },
   {
     key: 'on_court_adj_d', label: 'On-Ct Adj D', group: 'Adj On-Court',
     tooltip: 'Bayesian-stabilised adjusted defensive efficiency with player on court.',
-    format: 'number1', better: 'lower', showRank: false, heatmap: true,
+    format: 'number1', better: 'lower', showRank: false, heatmap: true, tier: 'secondary',
   },
   {
     key: 'on_court_adj_em', label: 'On-Ct Adj EM', group: 'Adj On-Court',
     tooltip: 'On-court adjusted net efficiency (Adj O – Adj D) with player on court.',
-    format: 'number1', better: 'higher', showRank: true, heatmap: true,
+    format: 'number1', better: 'higher', showRank: true, heatmap: true, tier: 'secondary',
   },
   {
     key: 'on_court_ortg',  label: 'Raw ORtg',   group: 'Raw On-Court',
     tooltip: 'Raw team offensive rating (pts per 100 poss) with player on court.',
-    format: 'number1', better: 'higher', showRank: false, heatmap: true,
+    format: 'number1', better: 'higher', showRank: false, heatmap: true, tier: 'optional',
   },
   {
     key: 'on_court_drtg',  label: 'Raw DRtg',   group: 'Raw On-Court',
     tooltip: 'Raw team defensive rating (pts allowed per 100 poss) with player on court.',
-    format: 'number1', better: 'lower', showRank: false, heatmap: true,
+    format: 'number1', better: 'lower', showRank: false, heatmap: true, tier: 'optional',
   },
   {
     key: 'on_court_net',   label: 'Raw Net',     group: 'Raw On-Court',
     tooltip: 'Raw on-court net rating (ORtg − DRtg) with player on court.',
-    format: 'number1', better: 'higher', showRank: false, heatmap: true,
+    format: 'number1', better: 'higher', showRank: false, heatmap: true, tier: 'optional',
   },
   {
     key: 'on_court_poss',  label: 'Poss',        group: 'Playing Time',
     tooltip: 'Estimated possessions played on court this season.',
-    format: 'int', better: 'neutral', showRank: false, heatmap: false,
+    format: 'int', better: 'neutral', showRank: false, heatmap: false, tier: 'primary',
   },
 ];
 

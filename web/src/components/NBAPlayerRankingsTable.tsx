@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -34,21 +34,24 @@ interface NBAPlayerRankingsTableProps {
   seasonType?: string;
 }
 
-// Traditional keys shown for NBA (subset — no NCAA-only keys like ftm_pg)
-const NBA_TRAD_KEYS = [
-  'pts', 'reb', 'ast', 'stl', 'blk', 'tov', 'plus_minus',
-  'fg_pct', 'fg3_pct', 'ft_pct',
-  'fga_pg', 'fg3a_pg', 'fta_pg',
-  'oreb_pg', 'dreb_pg',
-];
-const NBA_ADV_KEYS  = ['ts_pct', 'efg_pct', 'usg_pct', 'oreb_pct', 'dreb_pct', 'ast_pct', 'tov_pct', 'ast_to', 'pie', 'stl_pct', 'blk_pct'];
-const NBA_IMP_KEYS  = [
-  'box_bpr', 'box_obpr', 'box_dbpr',
-  'on_court_poss',
-  'mpir', 'o_mpir', 'd_mpir',
-  'on_court_adj_o', 'on_court_adj_d', 'on_court_adj_em',
-  'on_court_ortg', 'on_court_drtg', 'on_court_net',
-];
+// Primary columns always shown — never in picker
+const NBA_TRAD_PRIMARY = ['pts', 'reb', 'ast', 'stl', 'blk', 'tov', 'efg_pct', 'ts_pct', 'ast_to'];
+// Secondary (pre-checked) + optional (off by default) — shown in picker
+const NBA_TRAD_EXTRAS  = ['fg_pct', 'fg3_pct', 'ft_pct', 'oreb_pg', 'dreb_pg', 'fga_pg', 'fg3a_pg', 'fta_pg'];
+const NBA_TRAD_SECONDARY = new Set(['fg_pct', 'fg3_pct', 'ft_pct', 'oreb_pg', 'dreb_pg']);
+
+const NBA_ADV_PRIMARY  = ['ts_pct', 'efg_pct', 'usg_pct', 'oreb_pct', 'dreb_pct', 'ast_pct', 'tov_pct', 'ast_to', 'pie'];
+const NBA_ADV_EXTRAS   = ['stl_pct', 'blk_pct'];
+
+// Impact primary columns (excluding on-court groups which are handled separately)
+const NBA_IMP_PRIMARY  = ['box_bpr', 'box_obpr', 'box_dbpr', 'mpir', 'o_mpir', 'd_mpir'];
+const NBA_IMP_ADJ_KEYS = ['on_court_adj_o', 'on_court_adj_d', 'on_court_adj_em']; // secondary
+const NBA_IMP_RAW_KEYS = ['on_court_ortg', 'on_court_drtg', 'on_court_net'];       // optional
+
+const NBA_DEFAULT_EXTRAS = new Set([
+  ...NBA_TRAD_SECONDARY,
+  ...NBA_IMP_ADJ_KEYS, // adj on-court secondary — pre-checked
+]);
 
 const NBA_ARCHETYPE_STYLES: Record<string, string> = {
   creator:     'bg-brand/10 text-brand border-brand/20',
@@ -59,10 +62,10 @@ const NBA_ARCHETYPE_STYLES: Record<string, string> = {
   connector:   'bg-ui-hover text-text-muted border-ui-border',
 };
 
-// plus_minus lives on the type but not in playerMetricMetadata — add it inline
+// plus_minus lives on the type but not in playerMetricMetadata — add inline
 const PLUS_MINUS_META: PlayerMetricMeta = {
   key: 'plus_minus', label: '+/-', tooltip: 'Season plus/minus per game.',
-  format: 'number1', better: 'higher', showRank: false, heatmap: true,
+  format: 'number1', better: 'higher', showRank: false, heatmap: true, tier: 'primary',
 };
 
 const PAGE_SIZE = 100;
@@ -70,23 +73,43 @@ const PAGE_SIZE = 100;
 export default function NBAPlayerRankingsTable({ data, seasonDisplay, seasonType = 'regular' }: NBAPlayerRankingsTableProps) {
   const router = useRouter();
   const isPlayoffs = seasonType === 'playoffs';
+
   const [activeTab, setActiveTab] = useState<TabId>('traditional');
   const [sorting, setSorting] = useState<SortingState>([{ id: 'pts', desc: true }]);
   const [globalFilter, setGlobalFilter] = useState('');
   const [minPoss, setMinPoss] = useState(500);
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: PAGE_SIZE });
 
-  const tabs = [
-    { id: 'traditional' as TabId, label: 'Traditional' },
-    { id: 'advanced'    as TabId, label: 'Advanced'    },
-    { id: 'impact'      as TabId, label: 'Impact'      },
-  ];
+  const [optionalCols, setOptionalCols] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem('nba-player-cols-v1');
+      return saved ? new Set(JSON.parse(saved) as string[]) : new Set(NBA_DEFAULT_EXTRAS);
+    } catch { return new Set(NBA_DEFAULT_EXTRAS); }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('nba-player-cols-v1', JSON.stringify([...optionalCols]));
+  }, [optionalCols]);
 
   const tabDefaultSort: Record<TabId, SortingState> = {
     traditional: [{ id: 'pts',     desc: true }],
     advanced:    [{ id: 'ts_pct',  desc: true }],
     impact:      [{ id: 'box_bpr', desc: true }],
   };
+
+  // Auto-redirect away from Impact when switching to playoffs
+  useEffect(() => {
+    if (isPlayoffs && activeTab === 'impact') {
+      setActiveTab('traditional');
+      setSorting(tabDefaultSort['traditional']);
+    }
+  }, [isPlayoffs]);
+
+  const tabs = [
+    { id: 'traditional' as TabId, label: 'Traditional' },
+    { id: 'advanced'    as TabId, label: 'Advanced'    },
+    ...(!isPlayoffs ? [{ id: 'impact' as TabId, label: 'Impact' }] : []),
+  ];
 
   // ── Filter ──────────────────────────────────────────────────────────────
   const filtered = useMemo(
@@ -115,7 +138,12 @@ export default function NBAPlayerRankingsTable({ data, seasonDisplay, seasonType
   }, []);
 
   // ── Percentile ranks ─────────────────────────────────────────────────────
-  const allKeys = [...NBA_TRAD_KEYS, ...NBA_ADV_KEYS, ...NBA_IMP_KEYS];
+  const allKeys = [
+    ...NBA_TRAD_PRIMARY, ...NBA_TRAD_EXTRAS, 'plus_minus',
+    ...NBA_ADV_PRIMARY, ...NBA_ADV_EXTRAS,
+    ...NBA_IMP_PRIMARY, ...NBA_IMP_ADJ_KEYS, ...NBA_IMP_RAW_KEYS, 'on_court_poss',
+  ];
+
   const metricRanks = useMemo(() => {
     const rankBase = isPlayoffs
       ? data
@@ -131,7 +159,7 @@ export default function NBAPlayerRankingsTable({ data, seasonDisplay, seasonType
       ranks.set(key, computeRanks(entries, meta.better));
     });
     return ranks;
-  }, [data, minPoss, allMetaMaps]);
+  }, [data, minPoss, allMetaMaps, isPlayoffs]);
 
   // ── Column factory ───────────────────────────────────────────────────────
   const createMetricColumn = (key: string): ColumnDef<NBAPlayerSeasonStats> => {
@@ -149,7 +177,6 @@ export default function NBAPlayerRankingsTable({ data, seasonDisplay, seasonType
         const colorClass = meta.heatmap
           ? getPercentileColor(rankData?.percentile ?? null, meta.better, true)
           : '';
-        // Special colour for +/-
         if (key === 'plus_minus') {
           return (
             <span className={clsx('font-mono text-xs', value > 0 ? 'text-emerald-700' : value < 0 ? 'text-rose-700' : '')}>
@@ -168,7 +195,45 @@ export default function NBAPlayerRankingsTable({ data, seasonDisplay, seasonType
     };
   };
 
-  // ── Base identity columns (excluding rank, which lives in the columns useMemo) ──
+  const createSubColumn = (key: string, label?: string): ColumnDef<NBAPlayerSeasonStats> => {
+    const meta = allMetaMaps[key];
+    if (!meta) return { id: key } as ColumnDef<NBAPlayerSeasonStats>;
+    const displayLabel = label ?? meta.label;
+    return {
+      accessorKey: key,
+      header: () => (
+        <HeaderWithTooltip label={displayLabel} better={meta.better} tooltip={meta.tooltip} />
+      ),
+      cell: (info) => {
+        const value = info.getValue<number | null>();
+        const rankData = metricRanks.get(key)?.get(String(info.row.original.id));
+        if (value == null) return <div className="text-center text-text-muted text-xs">—</div>;
+        const colorClass = meta.heatmap
+          ? getPercentileColor(rankData?.percentile ?? null, meta.better, true)
+          : '';
+        return (
+          <div className={clsx('px-1 py-0.5 rounded text-center', colorClass)}>
+            <div className="font-mono text-xs leading-tight">{formatPlayerMetric(value, meta.format)}</div>
+          </div>
+        );
+      },
+      size: 72,
+      sortDescFirst: meta.better !== 'lower',
+    };
+  };
+
+  const createGroup = (
+    id: string,
+    label: string,
+    keys: string[],
+    labels?: string[],
+  ): ColumnDef<NBAPlayerSeasonStats> => ({
+    id,
+    header: label,
+    columns: keys.map((k, i) => createSubColumn(k, labels?.[i])),
+  });
+
+  // ── Base identity columns ────────────────────────────────────────────────
   const baseColumns: ColumnDef<NBAPlayerSeasonStats>[] = [
     {
       accessorKey: 'player_name',
@@ -213,6 +278,13 @@ export default function NBAPlayerRankingsTable({ data, seasonDisplay, seasonType
     },
   ];
 
+  const invisible = (id: string, cols: ColumnDef<NBAPlayerSeasonStats>[]): ColumnDef<NBAPlayerSeasonStats> => ({
+    id,
+    header: () => null,
+    meta: { isInvisible: true },
+    columns: cols,
+  });
+
   // ── Full column set per tab ──────────────────────────────────────────────
   const columns = useMemo((): ColumnDef<NBAPlayerSeasonStats>[] => {
     const activeSortKey = sorting[0]?.id;
@@ -232,6 +304,7 @@ export default function NBAPlayerRankingsTable({ data, seasonDisplay, seasonType
       enableSorting: false,
       size: 44,
     };
+
     if (activeTab === 'impact') {
       const archetypeCol: ColumnDef<NBAPlayerSeasonStats> = {
         id: 'nba_archetype',
@@ -251,14 +324,51 @@ export default function NBAPlayerRankingsTable({ data, seasonDisplay, seasonType
         enableSorting: false,
         size: 72,
       };
-      return [rankColumn, ...baseColumns, ...NBA_IMP_KEYS.map(createMetricColumn), archetypeCol];
+
+      const possCol = createMetricColumn('on_court_poss');
+
+      const adjOnCourtVisible = NBA_IMP_ADJ_KEYS.every((k) => optionalCols.has(k));
+      const rawOnCourtVisible = NBA_IMP_RAW_KEYS.every((k) => optionalCols.has(k));
+
+      return [
+        invisible('imp-base', [rankColumn, ...baseColumns, possCol]),
+        createGroup('imp-bpr',  'Box BPR',  NBA_IMP_PRIMARY.slice(0, 3)),
+        createGroup('imp-mpir', 'MPIR',     NBA_IMP_PRIMARY.slice(3)),
+        ...(adjOnCourtVisible
+          ? [createGroup('imp-adj-oc', 'Adj On-Court', NBA_IMP_ADJ_KEYS, ['Adj O', 'Adj D', 'Adj EM'])]
+          : []),
+        ...(rawOnCourtVisible
+          ? [createGroup('imp-raw-oc', 'Raw On-Court', NBA_IMP_RAW_KEYS, ['ORtg', 'DRtg', 'Net'])]
+          : []),
+        archetypeCol,
+      ];
     }
 
-    const metricCols =
-      activeTab === 'traditional' ? NBA_TRAD_KEYS.map(createMetricColumn)
-                                  : NBA_ADV_KEYS.map(createMetricColumn);
-    return [rankColumn, ...baseColumns, ...metricCols];
-  }, [activeTab, metricRanks, sorting]);
+    const visibleExtras =
+      activeTab === 'traditional'
+        ? NBA_TRAD_EXTRAS.filter((k) => optionalCols.has(k))
+        : NBA_ADV_EXTRAS.filter((k) => optionalCols.has(k));
+
+    const primaryKeys =
+      activeTab === 'traditional' ? [...NBA_TRAD_PRIMARY, 'plus_minus'] : NBA_ADV_PRIMARY;
+
+    return [rankColumn, ...baseColumns, ...[...primaryKeys, ...visibleExtras].map(createMetricColumn)];
+  }, [activeTab, metricRanks, sorting, pagination.pageIndex, optionalCols]);
+
+  const isGroupedTab = activeTab === 'impact';
+
+  // ── Extras per tab (for the column picker UI) ────────────────────────────
+  const extrasForTab = activeTab === 'traditional' ? NBA_TRAD_EXTRAS
+    : activeTab === 'advanced' ? NBA_ADV_EXTRAS
+    : [...NBA_IMP_ADJ_KEYS, ...NBA_IMP_RAW_KEYS];
+
+  const toggleExtra = (key: string) => {
+    setOptionalCols((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
 
   // ── TanStack table ───────────────────────────────────────────────────────
   const table = useReactTable({
@@ -358,6 +468,32 @@ export default function NBAPlayerRankingsTable({ data, seasonDisplay, seasonType
         </div>
       </div>
 
+      {/* ── Column picker ───────────────────────────────────────────────── */}
+      {extrasForTab.length > 0 && (
+        <div className="flex flex-wrap gap-2 items-center">
+          <span className="text-xs text-text-muted font-medium">Show:</span>
+          {extrasForTab.map((key) => {
+            const meta = allMetaMaps[key];
+            if (!meta) return null;
+            const on = optionalCols.has(key);
+            return (
+              <button
+                key={key}
+                onClick={() => toggleExtra(key)}
+                className={clsx(
+                  'px-2.5 py-1 text-xs rounded border transition-colors',
+                  on
+                    ? 'bg-brand/10 text-brand border-brand/30 font-medium'
+                    : 'bg-ui-surface text-text-muted border-ui-border hover:border-brand/30',
+                )}
+              >
+                {meta.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* ── Impact tab context note ──────────────────────────────────────── */}
       {activeTab === 'impact' && (
         <div className="flex items-start gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
@@ -365,7 +501,7 @@ export default function NBAPlayerRankingsTable({ data, seasonDisplay, seasonType
           <span>
             <strong>Box BPR</strong> is a Ridge regression model predicting on-court impact from per-100-poss box stats and role archetype — Stage 1 proxy trained on MPIR targets.{' '}
             <strong>MPIR</strong> (Macfax Player Impact Rating) is NBA.com{"'"}s Bayesian-stabilised on-court efficiency recentred on league average.{' '}
-            <strong>On-Ct Adj O/D/EM</strong> are opponent-adjusted team ratings while the player is on the floor.
+            <strong>Adj On-Court</strong> are Bayesian-stabilised on-court efficiency ratings (toggle Raw On-Court for unadjusted).
           </span>
         </div>
       )}
@@ -374,28 +510,45 @@ export default function NBAPlayerRankingsTable({ data, seasonDisplay, seasonType
       <div className="overflow-x-auto border border-ui-border rounded-lg">
         <table className="w-full">
           <thead>
-            {table.getHeaderGroups().map((hg) => (
-              <tr key={hg.id} className="border-b border-ui-border bg-ui-surface">
-                {hg.headers.map((header) => (
-                  <th
-                    key={header.id}
-                    onClick={header.column.getToggleSortingHandler()}
-                    className={clsx(
-                      'px-2 py-2 text-xs font-semibold text-text-secondary uppercase tracking-wider text-left',
-                      header.column.getCanSort() && 'cursor-pointer select-none hover:bg-ui-hover',
-                    )}
-                    style={{ width: header.column.getSize() }}
-                  >
-                    <div className="flex items-center gap-1">
-                      {flexRender(header.column.columnDef.header, header.getContext())}
-                      {header.column.getIsSorted() && (
-                        <span className="text-brand">
-                          {header.column.getIsSorted() === 'desc' ? '↓' : '↑'}
-                        </span>
+            {table.getHeaderGroups().map((hg, groupIdx) => (
+              <tr
+                key={hg.id}
+                className={clsx(
+                  'border-b border-ui-border',
+                  isGroupedTab && groupIdx === 0 ? 'bg-ui-hover' : 'bg-ui-surface',
+                )}
+              >
+                {hg.headers.map((header) => {
+                  if (header.isPlaceholder) return null;
+                  const isInvisibleGroup = !!(header.column.columnDef.meta as { isInvisible?: boolean })?.isInvisible;
+                  const isLabeledGroup = header.colSpan > 1 && !isInvisibleGroup;
+                  const isLeaf = header.colSpan === 1;
+                  return (
+                    <th
+                      key={header.id}
+                      colSpan={header.colSpan}
+                      onClick={isLeaf ? header.column.getToggleSortingHandler() : undefined}
+                      className={clsx(
+                        'px-2 py-2 text-xs font-semibold text-text-secondary uppercase tracking-wider align-middle',
+                        isLabeledGroup && 'text-center border-x border-ui-border/50',
+                        isLeaf && 'text-left',
+                        isLeaf && header.column.getCanSort() && 'cursor-pointer select-none hover:bg-ui-hover',
                       )}
-                    </div>
-                  </th>
-                ))}
+                      style={isLeaf ? { width: header.column.getSize() } : undefined}
+                    >
+                      {isInvisibleGroup ? null : (
+                        <div className={clsx('flex items-center gap-1', isLabeledGroup && 'justify-center')}>
+                          {flexRender(header.column.columnDef.header, header.getContext())}
+                          {isLeaf && header.column.getIsSorted() && (
+                            <span className="text-brand">
+                              {header.column.getIsSorted() === 'desc' ? '↓' : '↑'}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </th>
+                  );
+                })}
               </tr>
             ))}
           </thead>
@@ -403,7 +556,11 @@ export default function NBAPlayerRankingsTable({ data, seasonDisplay, seasonType
             {table.getRowModel().rows.map((row) => (
               <tr key={row.id} className="border-b border-ui-border hover:bg-ui-hover transition-colors">
                 {row.getVisibleCells().map((cell) => (
-                  <td key={cell.id} className="px-2 py-2 text-sm" style={{ width: cell.column.getSize() }}>
+                  <td
+                    key={cell.id}
+                    className={clsx('py-2 text-sm', isGroupedTab ? 'px-1' : 'px-2')}
+                    style={{ width: cell.column.getSize() }}
+                  >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </td>
                 ))}
