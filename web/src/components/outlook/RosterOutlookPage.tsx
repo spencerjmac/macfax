@@ -561,13 +561,17 @@ export default function RosterOutlookPage({ data }: RosterOutlookPageProps) {
     setScenarioError(null);
   }
 
-  // Add from D1 search or archetype — keep original recruitment_type.
+  // Add from D1 search or archetype.
+  // D1 search players are transfers to this team — their stored recruitment_type
+  // reflects the prior season on their old team, not the upcoming season here.
+  // Placeholders (archetypes) already carry the correct type ('newcomer').
   function addPlayer(player: OutlookPlayer) {
     if (addedIds.has(player.player_id)) return;
     setScenarioPlayers(prev => [
       ...prev,
       {
         ...player,
+        recruitment_type: player.is_placeholder ? player.recruitment_type : 'transfer',
         scenarioState: 'added',
         minutes_share_p2: player.minutes_share_p2 ?? 0.10,
       },
