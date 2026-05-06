@@ -80,16 +80,17 @@ class Command(BaseCommand):
         # ── Pipeline steps ────────────────────────────────────────────────────
         steps = []
 
-        # Step 1 — NBA game log ingest
+        # Step 1 — NBA game log ingest (Regular Season + PlayIn + Playoffs)
         if not skip_ingest:
-            self._run_step(
-                "NBA sync games",
-                "nba_sync_games",
-                {"season": season_year},
-                steps,
-                fatal=False,
-                label=f"[1/{TOTAL_STEPS}]",
-            )
+            for season_type in ["Regular Season", "PlayIn", "Playoffs"]:
+                self._run_step(
+                    f"NBA sync games ({season_type})",
+                    "nba_sync_games",
+                    {"season": season_year, "season_type": season_type},
+                    steps,
+                    fatal=False,
+                    label=f"[1/{TOTAL_STEPS}]",
+                )
         else:
             self.stdout.write(f"[SKIP] [1/{TOTAL_STEPS}] Skipping NBA game log ingest\n")
             steps.append(("NBA sync games", True, "Skipped (--skip-ingest)"))

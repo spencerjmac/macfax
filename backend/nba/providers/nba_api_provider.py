@@ -166,6 +166,7 @@ class NBAApiProvider(NBADataProvider):
                         team_id=int(row["TEAM_ID"]),
                         team_abbreviation=str(row.get("TEAM_ABBREVIATION", "")),
                         is_home=is_home,
+                        matchup=matchup,
                         pts=self._safe_int(row.get("PTS")),
                         fgm=self._safe_int(row.get("FGM")),
                         fga=self._safe_int(row.get("FGA")),

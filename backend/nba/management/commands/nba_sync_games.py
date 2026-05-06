@@ -94,12 +94,35 @@ class Command(BaseCommand):
             away_rows = [r for r in game_rows if not r.is_home]
 
             if len(home_rows) != 1 or len(away_rows) != 1:
-                logger.warning(
-                    "game_id=%s has unexpected row count (home=%d, away=%d) — skipping",
-                    game_id, len(home_rows), len(away_rows),
-                )
-                skipped += 1
-                continue
+                # Fallback: NBA API sometimes returns both rows with "@" (neutral site
+                # or bad data). Resolve using "AWAY @ HOME" matchup of the first row.
+                if len(home_rows) == 0 and len(away_rows) == 2:
+                    row_a, row_b = away_rows
+                    parts = row_a.matchup.split(" @ ")
+                    if len(parts) == 2:
+                        home_abbr = parts[1].strip()
+                        if row_b.team_abbreviation == home_abbr:
+                            home_rows, away_rows = [row_b], [row_a]
+                        else:
+                            home_rows, away_rows = [row_a], [row_b]
+                        logger.info(
+                            "game_id=%s resolved home via matchup fallback: home=%s away=%s",
+                            game_id, home_rows[0].team_abbreviation, away_rows[0].team_abbreviation,
+                        )
+                    else:
+                        logger.warning(
+                            "game_id=%s has unexpected row count (home=%d, away=%d) — skipping",
+                            game_id, len(home_rows), len(away_rows),
+                        )
+                        skipped += 1
+                        continue
+                else:
+                    logger.warning(
+                        "game_id=%s has unexpected row count (home=%d, away=%d) — skipping",
+                        game_id, len(home_rows), len(away_rows),
+                    )
+                    skipped += 1
+                    continue
 
             home_row = home_rows[0]
             away_row = away_rows[0]

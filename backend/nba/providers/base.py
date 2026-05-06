@@ -68,6 +68,7 @@ class RawLeagueGameLog:
 
     # Game result
     wl: str                 # 'W', 'L', or '' for scheduled games
+    matchup: str = ""       # raw MATCHUP string, e.g. "DAL @ DET"
 
     @property
     def is_final(self) -> bool:

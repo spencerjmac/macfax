@@ -158,13 +158,7 @@ class NBAGame(models.Model):
         super().save(*args, **kwargs)
 
     def _set_counts_flag(self):
-        """
-        NBA Cup Championship game does NOT count toward regular-season standings.
-        All other game types default to True and can be overridden at ingestion.
-        """
-        if self.competition == "nba_cup_final":
-            self.counts_toward_regular_season = False
-        elif self.season_type != "regular":
+        if self.season_type != "regular":
             self.counts_toward_regular_season = False
 
 
