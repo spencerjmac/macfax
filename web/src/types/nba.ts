@@ -261,5 +261,11 @@ export interface NBAPlayerSeasonStats {
   // Defense rates
   stl_pct: number | null;
   blk_pct: number | null;
+  // Box BPR
+  box_obpr: number | null;
+  box_dbpr: number | null;
+  box_bpr: number | null;
+  nba_archetype: string | null;
+  bpr_last_updated: string | null;
   updated_at: string;
 }

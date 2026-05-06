@@ -40,7 +40,22 @@ const NBA_TRAD_KEYS = [
   'oreb_pg', 'dreb_pg',
 ];
 const NBA_ADV_KEYS  = ['ts_pct', 'efg_pct', 'usg_pct', 'oreb_pct', 'dreb_pct', 'ast_pct', 'tov_pct', 'ast_to', 'pie', 'stl_pct', 'blk_pct'];
-const NBA_IMP_KEYS  = ['mpir', 'o_mpir', 'd_mpir', 'on_court_adj_o', 'on_court_adj_d', 'on_court_adj_em', 'on_court_ortg', 'on_court_drtg', 'on_court_net', 'on_court_poss'];
+const NBA_IMP_KEYS  = [
+  'box_bpr', 'box_obpr', 'box_dbpr',
+  'on_court_poss',
+  'mpir', 'o_mpir', 'd_mpir',
+  'on_court_adj_o', 'on_court_adj_d', 'on_court_adj_em',
+  'on_court_ortg', 'on_court_drtg', 'on_court_net',
+];
+
+const NBA_ARCHETYPE_STYLES: Record<string, string> = {
+  creator:     'bg-brand/10 text-brand border-brand/20',
+  scorer:      'bg-secondary/10 text-secondary border-secondary/20',
+  interior:    'bg-amber-500/10 text-amber-700 border-amber-400/20',
+  three_and_d: 'bg-emerald-500/10 text-emerald-700 border-emerald-400/20',
+  stretch:     'bg-violet-500/10 text-violet-700 border-violet-400/20',
+  connector:   'bg-ui-hover text-text-muted border-ui-border',
+};
 
 // plus_minus lives on the type but not in playerMetricMetadata — add it inline
 const PLUS_MINUS_META: PlayerMetricMeta = {
@@ -64,9 +79,9 @@ export default function NBAPlayerRankingsTable({ data, seasonDisplay }: NBAPlaye
   ];
 
   const tabDefaultSort: Record<TabId, SortingState> = {
-    traditional: [{ id: 'pts',  desc: true }],
-    advanced:    [{ id: 'ts_pct', desc: true }],
-    impact:      [{ id: 'mpir', desc: true }],
+    traditional: [{ id: 'pts',     desc: true }],
+    advanced:    [{ id: 'ts_pct',  desc: true }],
+    impact:      [{ id: 'box_bpr', desc: true }],
   };
 
   // ── Filter ──────────────────────────────────────────────────────────────
@@ -211,10 +226,31 @@ export default function NBAPlayerRankingsTable({ data, seasonDisplay }: NBAPlaye
       enableSorting: false,
       size: 44,
     };
+    if (activeTab === 'impact') {
+      const archetypeCol: ColumnDef<NBAPlayerSeasonStats> = {
+        id: 'nba_archetype',
+        header: 'Role',
+        accessorFn: (row) => row.nba_archetype ?? '',
+        cell: (info) => {
+          const arch = info.row.original.nba_archetype;
+          if (!arch) return <span className="text-text-muted">—</span>;
+          const label = arch === 'three_and_d' ? '3&D' : arch.charAt(0).toUpperCase() + arch.slice(1);
+          const cls = NBA_ARCHETYPE_STYLES[arch] ?? 'text-text-muted';
+          return (
+            <span className={clsx('text-[11px] font-mono px-1.5 py-0.5 rounded border', cls)}>
+              {label}
+            </span>
+          );
+        },
+        enableSorting: false,
+        size: 72,
+      };
+      return [rankColumn, ...baseColumns, ...NBA_IMP_KEYS.map(createMetricColumn), archetypeCol];
+    }
+
     const metricCols =
       activeTab === 'traditional' ? NBA_TRAD_KEYS.map(createMetricColumn)
-      : activeTab === 'advanced'  ? NBA_ADV_KEYS.map(createMetricColumn)
-                                  : NBA_IMP_KEYS.map(createMetricColumn);
+                                  : NBA_ADV_KEYS.map(createMetricColumn);
     return [rankColumn, ...baseColumns, ...metricCols];
   }, [activeTab, metricRanks, sorting]);
 
@@ -305,10 +341,9 @@ export default function NBAPlayerRankingsTable({ data, seasonDisplay }: NBAPlaye
         <div className="flex items-start gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
           <span className="shrink-0 mt-0.5">ℹ</span>
           <span>
-            <strong>MPIR</strong> (Macfax Player Impact Rating) combines on-court adjusted efficiency
-            with box-score priors via Bayesian shrinkage.{' '}
-            <strong>On-Ct Adj O/D/EM</strong> are opponent-adjusted team ratings while the player
-            is on the floor.
+            <strong>Box BPR</strong> is a Ridge regression model predicting on-court impact from per-100-poss box stats and role archetype — Stage 1 proxy trained on MPIR targets.{' '}
+            <strong>MPIR</strong> (Macfax Player Impact Rating) is NBA.com{"'"}s Bayesian-stabilised on-court efficiency recentred on league average.{' '}
+            <strong>On-Ct Adj O/D/EM</strong> are opponent-adjusted team ratings while the player is on the floor.
           </span>
         </div>
       )}

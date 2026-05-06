@@ -16,6 +16,7 @@ NBA PIPELINE
     3. nba_compute_ratings    — opponent-adjusted ratings + FFI
     4. nba_compute_player_stats — roll up player season averages
     5. nba_sync_player_advanced — advanced + impact stats from NBA.com
+    6. nba_compute_box_bpr    — box-score BPR + archetype classification
 
 Usage
 ─────
@@ -30,7 +31,7 @@ from django.core.management.base import BaseCommand
 from django.core.management import call_command
 from django.utils import timezone
 
-TOTAL_STEPS = 5
+TOTAL_STEPS = 6
 
 
 class Command(BaseCommand):
@@ -127,6 +128,13 @@ class Command(BaseCommand):
             {"season": season_year},
             steps,
             label=f"[5/{TOTAL_STEPS}]",
+        )
+        self._run_step(
+            "NBA compute box BPR",
+            "nba_compute_box_bpr",
+            {"season": season_year},
+            steps,
+            label=f"[6/{TOTAL_STEPS}]",
         )
 
         # Summary

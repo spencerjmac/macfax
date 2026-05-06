@@ -308,6 +308,23 @@ export const NBA_ADVANCED_METRICS: PlayerMetricMeta[] = [
 ];
 
 export const NBA_IMPACT_METRICS: PlayerMetricMeta[] = [
+  // ── Box BPR ──────────────────────────────────────────────────────────────────
+  {
+    key: 'box_bpr',   label: 'Box BPR',   group: 'Box BPR',
+    tooltip: 'Box-score Bayesian Performance Rating (Box OBPR + Box DBPR). Ridge regression model trained on per-100-poss box stats. Stage 1 proxy; will be replaced by RAPM-informed BPR in Stage 2.',
+    format: 'number2', better: 'higher', showRank: true, heatmap: true,
+  },
+  {
+    key: 'box_obpr',  label: 'Box OBPR',  group: 'Box BPR',
+    tooltip: 'Offensive Box BPR — box-score model estimate of offensive pts/100 poss added, relative to league average.',
+    format: 'number2', better: 'higher', showRank: true, heatmap: true,
+  },
+  {
+    key: 'box_dbpr',  label: 'Box DBPR',  group: 'Box BPR',
+    tooltip: 'Defensive Box BPR — box-score model estimate of defensive pts/100 poss prevented. Higher = better defender.',
+    format: 'number2', better: 'higher', showRank: true, heatmap: true,
+  },
+  // ── MPIR ─────────────────────────────────────────────────────────────────────
   {
     key: 'mpir',          label: 'MPIR',      group: 'Macfax Impact',
     tooltip: 'Macfax Player Impact Rating (O-MPIR + D-MPIR). Combines box production and on-court team efficiency into a single impact score.',

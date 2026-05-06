@@ -450,6 +450,15 @@ class NBAPlayerSeasonStats(models.Model):
     stl_pct = models.FloatField(null=True, blank=True, help_text="Steal %")
     blk_pct = models.FloatField(null=True, blank=True, help_text="Block %")
 
+    # ── Box BPR (nba_compute_box_bpr) ────────────────────────────────────────
+    box_obpr = models.FloatField(null=True, blank=True, help_text="Box-score offensive BPR")
+    box_dbpr = models.FloatField(null=True, blank=True, help_text="Box-score defensive BPR")
+    box_bpr = models.FloatField(null=True, blank=True, help_text="Box-score total BPR")
+    nba_archetype = models.CharField(
+        max_length=32, null=True, blank=True, help_text="Role archetype (creator/scorer/stretch/three_and_d/interior/connector)"
+    )
+    bpr_last_updated = models.DateTimeField(null=True, blank=True)
+
     class Meta:
         constraints = [
             models.UniqueConstraint(

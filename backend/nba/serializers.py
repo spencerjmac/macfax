@@ -107,6 +107,9 @@ class NBAPlayerSeasonStatsSerializer(serializers.ModelSerializer):
             "mpir", "o_mpir", "d_mpir",
             # Defense rates
             "stl_pct", "blk_pct",
+            # Box BPR
+            "box_obpr", "box_dbpr", "box_bpr", "nba_archetype",
+            "bpr_last_updated",
             "updated_at",
         ]
 
