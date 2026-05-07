@@ -508,7 +508,19 @@ export default function NBATeamPageTabs({ slug, seasonYear, ratings, games }: NB
                 <tbody>
                   {players.map((p) => (
                     <tr key={p.id} className="border-b border-ui-border/50 hover:bg-ui-surface/50">
-                      <td className="py-2.5 px-3 font-medium">{p.player_name}</td>
+                      <td className="py-2.5 px-3 font-medium">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-full overflow-hidden bg-ui-surface flex-shrink-0">
+                            <img
+                              src={`https://cdn.nba.com/headshots/nba/latest/1040x760/${p.player_id}.png`}
+                              alt={p.player_name}
+                              className="w-6 h-6 object-cover"
+                              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                            />
+                          </div>
+                          {p.player_name}
+                        </div>
+                      </td>
                       <td className="py-2.5 px-3 text-right font-mono text-text-muted">{p.gp}</td>
                       <td className="py-2.5 px-3 text-right font-mono text-text-muted">
                         {p.mpg != null ? p.mpg.toFixed(1) : '—'}

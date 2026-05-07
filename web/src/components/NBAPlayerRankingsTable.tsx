@@ -238,9 +238,23 @@ export default function NBAPlayerRankingsTable({ data, seasonDisplay, seasonType
     {
       accessorKey: 'player_name',
       header: 'Player',
-      cell: (info) => (
-        <span className="font-medium text-sm">{info.getValue<string>()}</span>
-      ),
+      cell: (info) => {
+        const row = info.row.original;
+        const headshotUrl = `https://cdn.nba.com/headshots/nba/latest/1040x760/${row.player_id}.png`;
+        return (
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-full overflow-hidden bg-ui-surface flex-shrink-0">
+              <img
+                src={headshotUrl}
+                alt={row.player_name}
+                className="w-6 h-6 object-cover"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+              />
+            </div>
+            <span className="font-medium text-sm">{info.getValue<string>()}</span>
+          </div>
+        );
+      },
       size: 170,
     },
     {

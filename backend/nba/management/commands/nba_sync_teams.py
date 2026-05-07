@@ -74,6 +74,7 @@ class Command(BaseCommand):
                 "city": team_data["city"],
                 "conference": team_data["conference"],
                 "division": team_data["division"],
+                "logo_url": f"https://cdn.nba.com/logos/nba/{team_data['nba_team_id']}/global/L/logo.svg",
             }
             if dry_run:
                 exists = NBATeam.objects.filter(nba_team_id=team_data["nba_team_id"]).exists()
