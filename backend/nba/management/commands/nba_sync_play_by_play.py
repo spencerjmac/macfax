@@ -60,6 +60,79 @@ def _period_start_secs(period: int) -> int:
     return QUARTER_SECS if period <= 4 else OT_SECS
 
 
+# ── PlayByPlayV3 action type constants ────────────────────────────────────────
+# PlayByPlayV3 uses these action_type strings (NOT "2pt"/"3pt"/"freethrow").
+_FGA_TYPES = {"made shot", "missed shot", "heave"}
+
+# ── Name-based player lookup helpers ─────────────────────────────────────────
+
+def _build_name_lookup(player_pk_map: dict[int, int]) -> dict[str, int]:
+    """
+    Build normalized name → NBAPlayer.pk lookup for PlayByPlayV3 description parsing.
+    Entries: full name lower, last-name(s) lower, base last name (no Jr./II/III/IV).
+    Later entries win on key collision (arbitrary but consistent).
+    """
+    from nba.models import NBAPlayer
+    name_to_pk: dict[str, int] = {}
+    for player in NBAPlayer.objects.filter(
+        player_id__in=player_pk_map.keys()
+    ).only("pk", "player_id", "name"):
+        pk = player_pk_map[player.player_id]
+        name_lower = player.name.strip().lower()
+        name_to_pk[name_lower] = pk
+
+        parts = name_lower.split()
+        if len(parts) > 1:
+            last = " ".join(parts[1:])          # "smith jr.", "van vleet"
+            base = re.sub(r"\b(jr\.?|sr\.?|ii|iii|iv)\b", "", last).strip()
+            for key in (last, base, parts[-1]):
+                if key and key not in name_to_pk:
+                    name_to_pk[key] = pk
+    return name_to_pk
+
+
+def _parse_sub_incoming(description: str) -> str:
+    """
+    Extract the incoming player name from 'SUB: Eason FOR Smith Jr.' → 'eason'.
+    Returns lowercase stripped name, or '' on parse failure.
+    """
+    desc = description.strip()
+    upper = desc.upper()
+    if not upper.startswith("SUB:"):
+        return ""
+    rest = desc[4:].strip()
+    idx = rest.upper().find(" FOR ")
+    if idx < 0:
+        return ""
+    return rest[:idx].strip().lower()
+
+
+def _lookup_name(name: str, name_to_pk: dict[str, int]) -> "int | None":
+    """Try full name, then each suffix-trimmed form."""
+    if not name:
+        return None
+    pk = name_to_pk.get(name)
+    if pk is not None:
+        return pk
+    # Try last word only
+    parts = name.split()
+    if len(parts) > 1:
+        pk = name_to_pk.get(" ".join(parts[1:]))
+        if pk is not None:
+            return pk
+        pk = name_to_pk.get(parts[-1])
+    return pk
+
+
+def _is_offensive_rebound(description: str) -> bool:
+    """
+    PlayByPlayV3 rebound subType is always 'unknown'.
+    Detect offensive rebound from description pattern '(Off:N Def:M)' where N > 0.
+    """
+    m = re.search(r'\(Off:(\d+)', description)
+    return bool(m and int(m.group(1)) > 0)
+
+
 def _ot_periods_for_secs(total_secs: int) -> int:
     """Infer number of OT periods from total game seconds."""
     extra = max(0, total_secs - REGULATION_SECS)
@@ -89,8 +162,10 @@ class StintState:
 def _parse_game(
     game: NBAGame,
     events: list[RawPlayEvent],
-    player_pk_map: dict[int, int],   # NBA.com player_id → NBAPlayer.pk
-    team_pk_map: dict[int, int],     # NBA.com team_id → NBATeam.pk
+    player_pk_map: dict[int, int],        # NBA.com player_id → NBAPlayer.pk
+    team_pk_map: dict[int, int],          # NBA.com team_id → NBATeam.pk
+    name_to_pk: dict[str, int],           # normalized name → NBAPlayer.pk (global)
+    game_roster: "dict[int, set[int]]",   # team.pk → set of NBAPlayer.pk for THIS game
 ) -> tuple[list[dict], bool, str]:
     """
     Parse a game's PBP events into stint records.
@@ -107,6 +182,17 @@ def _parse_game(
     home_team_pk = team_pk_map.get(home_team_id)
     away_team_pk = team_pk_map.get(away_team_id)
 
+    # ── Team-constrained name lookup (eliminates "Williams" ambiguity) ────────
+    # Filter global name_to_pk to only players who actually played in this game
+    # for each team. A "Williams" on OKC won't match "Williams" on another team.
+    home_pks = game_roster.get(home_team_pk, set())
+    away_pks = game_roster.get(away_team_pk, set())
+    home_name_to_pk = {k: v for k, v in name_to_pk.items() if v in home_pks}
+    away_name_to_pk = {k: v for k, v in name_to_pk.items() if v in away_pks}
+
+    def _lookup_for_team(name: str, is_home: bool) -> "int | None":
+        return _lookup_name(name, home_name_to_pk if is_home else away_name_to_pk)
+
     # ── Pass 1: reconstruct starting lineup from period 1 events ─────────────
 
     home_starters: set[int] = set()   # NBAPlayer.pk
@@ -117,25 +203,26 @@ def _parse_game(
     for ev in events:
         if ev.period != 1:
             break
-        pid_nbacom = ev.person_id
         tid = ev.team_id
-        if pid_nbacom is None or tid is None:
-            continue
-        pk = player_pk_map.get(pid_nbacom)
-        if pk is None:
+        if tid is None:
             continue
         is_home = (tid == home_team_id)
         subbed_in = home_subbed_in if is_home else away_subbed_in
-        starters = home_starters if is_home else away_starters
+        starters  = home_starters  if is_home else away_starters
 
         if ev.action_type == "substitution":
-            if ev.sub_type == "in":
-                subbed_in.add(pk)
-            elif ev.sub_type == "out":
-                if pk not in subbed_in:
-                    starters.add(pk)
-        else:
-            if pk not in subbed_in:
+            # personId = OUTGOING player; parse incoming from description
+            outgoing_pk = player_pk_map.get(ev.person_id) if ev.person_id else None
+            incoming_name = _parse_sub_incoming(ev.description)
+            incoming_pk = _lookup_for_team(incoming_name, is_home)
+
+            if outgoing_pk and outgoing_pk not in subbed_in:
+                starters.add(outgoing_pk)
+            if incoming_pk:
+                subbed_in.add(incoming_pk)
+        elif ev.person_id is not None:
+            pk = player_pk_map.get(ev.person_id)
+            if pk is not None and pk not in subbed_in:
                 starters.add(pk)
 
     if len(home_starters) < 5 or len(away_starters) < 5:
@@ -271,21 +358,23 @@ def _parse_game(
             continue
 
         # ── Box event accumulation ────────────────────────────────────────────
+        # PlayByPlayV3 action types: "made shot", "missed shot", "free throw",
+        # "rebound" (subType always "unknown"), "turnover"
         tid = ev.team_id
         if tid is not None:
-            box = home_box if tid == home_team_id else away_box
-            opp = away_box if tid == home_team_id else home_box
+            box   = home_box if tid == home_team_id else away_box
             atype = ev.action_type
-            if atype in ("2pt", "3pt"):
+            if atype in _FGA_TYPES:
                 box["fga"] += 1
                 if ev.shot_result == "Made":
                     box["fgm"] += 1
-                    if atype == "3pt":
+                    desc_up = ev.description.upper()
+                    if "3PT" in desc_up or "3-PT" in desc_up:
                         box["fg3m"] += 1
-            elif atype == "freethrow":
+            elif atype == "free throw":
                 box["fta"] += 1
             elif atype == "rebound":
-                if ev.sub_type == "offensive":
+                if _is_offensive_rebound(ev.description):
                     box["oreb"] += 1
                 else:
                     box["dreb"] += 1
@@ -293,6 +382,7 @@ def _parse_game(
                 box["tov"] += 1
 
         # ── Substitution batch (1-second window) ──────────────────────────────
+        # PlayByPlayV3: personId = OUTGOING player; incoming parsed from description.
         if ev.action_type == "substitution":
             batch_clock = ev.clock_secs
             batch_period = ev.period
@@ -307,13 +397,19 @@ def _parse_game(
                 ev2 = events[j]
                 if abs(ev2.clock_secs - batch_clock) > 1 or ev2.period != batch_period:
                     break
-                pk2 = player_pk_map.get(ev2.person_id) if ev2.person_id else None
-                if pk2 is not None:
-                    is_home2 = (ev2.team_id == home_team_id)
-                    if ev2.sub_type == "out":
-                        (outs_home if is_home2 else outs_away).append(pk2)
-                    elif ev2.sub_type == "in":
-                        (ins_home if is_home2 else ins_away).append(pk2)
+                is_home2 = (ev2.team_id == home_team_id)
+
+                # personId = outgoing player
+                outgoing_pk = player_pk_map.get(ev2.person_id) if ev2.person_id else None
+                if outgoing_pk:
+                    (outs_home if is_home2 else outs_away).append(outgoing_pk)
+
+                # Incoming player from description "SUB: [IN] FOR [OUT]"
+                incoming_name = _parse_sub_incoming(ev2.description)
+                incoming_pk = _lookup_name(incoming_name, name_to_pk)
+                if incoming_pk:
+                    (ins_home if is_home2 else ins_away).append(incoming_pk)
+
                 j += 1
 
             # Close ALL active stints at this clock (not just the subs).
@@ -464,7 +560,8 @@ class Command(BaseCommand):
             t.nba_team_id: t.pk
             for t in NBATeam.objects.only("pk", "nba_team_id")
         }
-        self.stdout.write(f"  {len(player_pk_map)} players, {len(team_pk_map)} teams in map")
+        name_to_pk = _build_name_lookup(player_pk_map)
+        self.stdout.write(f"  {len(player_pk_map)} players, {len(team_pk_map)} teams, {len(name_to_pk)} name keys")
 
         # ── Select games to process ───────────────────────────────────────────
         qs = NBAGame.objects.filter(
@@ -542,7 +639,7 @@ class Command(BaseCommand):
                     continue
 
                 done = processed + skipped + 1
-                stints, quality_flag, msg = _parse_game(game, events, player_pk_map, team_pk_map)
+                stints, quality_flag, msg = _parse_game(game, events, player_pk_map, team_pk_map, name_to_pk)
 
                 if not stints:
                     self.stdout.write(f"  [{done}/{total}] [SKIP] {game_id_str}: {msg}")

@@ -1,24 +1,25 @@
 import { Metadata } from 'next';
-import { metricDefinitions } from '@/lib/metrics';
+import { GLOSSARY_TERMS } from '@/lib/glossaryContent';
 import GlossaryTable from '@/components/GlossaryTable';
 
 export const metadata: Metadata = {
-  title: 'Glossary | macfax',
-  description: 'Complete definitions and formulas for all college basketball analytics metrics including efficiency ratings, four factors, and advanced statistics.',
+  title: 'Macfax Glossary | College Basketball Metrics',
+  description:
+    'Official definitions for all metrics, ratings, and visual frameworks on Macfax — including efficiency ratings, Four Factors, player ratings, resume metrics, and prediction terms.',
 };
 
 export default function GlossaryPage() {
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8 max-w-4xl">
       <div className="mb-8">
-        <h1 className="text-4xl font-bold mb-2">Metrics Glossary</h1>
+        <h1 className="text-4xl font-bold mb-2 text-text-primary">Macfax Glossary</h1>
         <p className="text-text-muted">
-          Comprehensive definitions and formulas for all metrics used in our analytics. 
-          All formulas are rendered with proper mathematical notation.
+          Official definitions for all metrics, ratings, and visual frameworks used across Macfax.
+          Formulas are shown for conceptual understanding — not as complete technical specifications.
         </p>
       </div>
-      
-      <GlossaryTable metrics={metricDefinitions} />
+
+      <GlossaryTable terms={GLOSSARY_TERMS} />
     </div>
   );
 }

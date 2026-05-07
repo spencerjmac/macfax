@@ -8,6 +8,7 @@ import ChampionChecklistCard from './ChampionChecklistCard';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import clsx from 'clsx';
+import { MetricTooltip } from './glossary/MetricTooltip';
 
 interface TeamPageTabsProps {
   team: TeamSeason;
@@ -342,7 +343,7 @@ function FourFactorsTab({ team, ranks }: { team: TeamSeason; ranks: TeamRanks })
             margin={formatPercent(team.eFG_margin)}
             marginRank={ranks.eFG_margin}
             marginPositive={team.eFG_margin > 0}
-            description="Field goal percentage adjusted for 3-pointers being worth more"
+            description="FG% adjusted for 3-pointers being worth 1.5× — the most important shooting efficiency metric"
           />
           
           {/* TOV% */}
@@ -355,7 +356,7 @@ function FourFactorsTab({ team, ranks }: { team: TeamSeason; ranks: TeamRanks })
             margin={formatPercent(team.tov_edge)}
             marginRank={ranks.tov_edge}
             marginPositive={team.tov_edge > 0}
-            description="Turnovers per 100 plays (forcing > committing is good)"
+            description="Turnovers per 100 plays — forcing more than you commit is a significant advantage"
           />
           
           {/* ORB% */}
@@ -368,7 +369,7 @@ function FourFactorsTab({ team, ranks }: { team: TeamSeason; ranks: TeamRanks })
             margin={formatPercent(team.reb_edge)}
             marginRank={ranks.reb_edge}
             marginPositive={team.reb_edge > 0}
-            description="Offensive rebound % vs Defensive rebound %"
+            description="Offensive rebound % vs Defensive rebound % — measures second-chance opportunity control"
           />
           
           {/* FTR */}
@@ -381,7 +382,7 @@ function FourFactorsTab({ team, ranks }: { team: TeamSeason; ranks: TeamRanks })
             margin={formatPercent(team.ftr_margin)}
             marginRank={ranks.ftr_margin}
             marginPositive={team.ftr_margin > 0}
-            description="Free throw attempts per field goal attempt"
+            description="Free throws attempted per field goal attempt — measures getting to the line vs. sending opponents there"
           />
         </div>
       </div>
@@ -608,7 +609,7 @@ function ResumeTab({ team, ranks }: { team: TeamSeason; ranks: TeamRanks }) {
         {/* WAB */}
         <div className="p-6 bg-ui-surface border border-ui-border rounded-lg">
           <div className="flex items-start justify-between gap-2 mb-2">
-            <div className="text-text-muted text-sm">Wins Above Bubble</div>
+            <div className="text-text-muted text-sm"><MetricTooltip termId="wab">Wins Above Bubble</MetricTooltip></div>
             {team.wab !== null && ranks.wab && (
               <div className="text-xs font-mono px-2 py-0.5 rounded bg-brand/20 text-brand font-semibold">
                 #{ranks.wab}
@@ -623,7 +624,7 @@ function ResumeTab({ team, ranks }: { team: TeamSeason; ranks: TeamRanks }) {
             )}
           </div>
           <p className="text-text-muted text-sm mt-2">
-            Expected wins above a bubble team with the same schedule
+            Wins above what a bubble team would expect against the same schedule
           </p>
         </div>
         
@@ -652,7 +653,7 @@ function ResumeTab({ team, ranks }: { team: TeamSeason; ranks: TeamRanks }) {
         {/* SOR */}
         <div className="p-6 bg-ui-surface border border-ui-border rounded-lg">
           <div className="flex items-start justify-between gap-2 mb-2">
-            <div className="text-text-muted text-sm">Strength of Record</div>
+            <div className="text-text-muted text-sm"><MetricTooltip termId="sor">Strength of Record</MetricTooltip></div>
             {team.sor_rank && (
               <div className="text-xs font-mono px-2 py-0.5 rounded bg-brand/20 text-brand font-semibold">
                 #{team.sor_rank}
@@ -667,14 +668,14 @@ function ResumeTab({ team, ranks }: { team: TeamSeason; ranks: TeamRanks }) {
             )}
           </div>
           <p className="text-text-muted text-sm mt-2">
-            Resume quality: probability baseline team achieves this record
+            Probability a reference team achieves this record against the same schedule
           </p>
         </div>
         
         {/* SOS - Strength of Schedule */}
         <div className="p-6 bg-ui-surface border border-ui-border rounded-lg">
           <div className="flex items-start justify-between gap-2 mb-2">
-            <div className="text-text-muted text-sm">Strength of Schedule</div>
+            <div className="text-text-muted text-sm"><MetricTooltip termId="sos">Strength of Schedule</MetricTooltip></div>
             {team.sos_rank && (
               <div className="text-xs font-mono px-2 py-0.5 rounded bg-brand/20 text-brand font-semibold">
                 #{team.sos_rank}
@@ -689,7 +690,7 @@ function ResumeTab({ team, ranks }: { team: TeamSeason; ranks: TeamRanks }) {
             )}
           </div>
           <p className="text-text-muted text-sm mt-2">
-            Expected win% for an average D1 team vs this schedule
+            Expected win% for an average D1 team vs this schedule (lower = harder)
           </p>
         </div>
       </div>
