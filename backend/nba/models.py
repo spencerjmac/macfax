@@ -144,6 +144,14 @@ class NBAGame(models.Model):
     # Set to True after BoxScoreTraditionalV3 enrichment runs
     box_score_synced = models.BooleanField(default=False, db_index=True)
 
+    # ── Play-by-play sync state (nba_sync_play_by_play) ──────────────────────
+    pbp_synced = models.BooleanField(default=False, db_index=True)
+    pbp_synced_at = models.DateTimeField(null=True, blank=True)
+    pbp_quality_flag = models.BooleanField(
+        default=False, db_index=True,
+        help_text="True when > 5% of stints fail 10-player validation — excluded from RAPM",
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -286,6 +294,65 @@ class NBAPlayerGameStats(models.Model):
 
     def __str__(self):
         return f"{self.player.name} in {self.game.game_id}"
+
+
+class NBAPlayerGameStint(models.Model):
+    """
+    One contiguous on-court stint for a player within a single quarter/OT period.
+
+    Created by: python manage.py nba_sync_play_by_play --season YYYY
+    Used by:    python manage.py nba_compute_baseline_rapm --season YYYY
+
+    Design matrix for RAPM groups stints by (game, stint_index) to reconstruct
+    the full 5v5 lineup from each side's player rows.
+    """
+
+    player = models.ForeignKey(NBAPlayer, on_delete=models.CASCADE, related_name="game_stints")
+    game   = models.ForeignKey(NBAGame,   on_delete=models.CASCADE, related_name="player_stints")
+    team   = models.ForeignKey(NBATeam,   on_delete=models.SET_NULL, null=True, blank=True, related_name="player_stints")
+
+    stint_index      = models.IntegerField(help_text="0-based sequential per (player, game)")
+    period           = models.IntegerField(help_text="1-4 regulation, 5+ OT")
+    clock_start_secs = models.IntegerField(help_text="Seconds remaining in period at stint start")
+    clock_end_secs   = models.IntegerField(help_text="Seconds remaining in period at stint end")
+    secs_on          = models.IntegerField(default=0, help_text="Duration in seconds")
+    pts_scored       = models.IntegerField(default=0, help_text="Team pts scored while on court")
+    pts_allowed      = models.IntegerField(default=0, help_text="Opp pts scored while on court")
+    plus_minus       = models.IntegerField(default=0)
+
+    # ── Team box events while on court ────────────────────────────────────────
+    team_fgm  = models.SmallIntegerField(default=0)
+    team_fga  = models.SmallIntegerField(default=0)
+    team_fg3m = models.SmallIntegerField(default=0)
+    team_fta  = models.SmallIntegerField(default=0)
+    team_tov  = models.SmallIntegerField(default=0)
+    team_oreb = models.SmallIntegerField(default=0)
+    team_dreb = models.SmallIntegerField(default=0)
+
+    # ── Opponent box events while on court ────────────────────────────────────
+    opp_fgm  = models.SmallIntegerField(default=0)
+    opp_fga  = models.SmallIntegerField(default=0)
+    opp_fg3m = models.SmallIntegerField(default=0)
+    opp_fta  = models.SmallIntegerField(default=0)
+    opp_tov  = models.SmallIntegerField(default=0)
+    opp_oreb = models.SmallIntegerField(default=0)
+    opp_dreb = models.SmallIntegerField(default=0)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["player", "game", "stint_index"],
+                name="unique_nba_player_game_stint",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["game", "stint_index"]),  # RAPM design matrix construction
+            models.Index(fields=["player", "game"]),        # per-player season lookup
+            models.Index(fields=["game", "team"]),          # home/away split per stint
+        ]
+
+    def __str__(self):
+        return f"{self.player.name} stint {self.stint_index} in {self.game.game_id}"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -450,6 +517,12 @@ class NBAPlayerSeasonStats(models.Model):
     stl_pct = models.FloatField(null=True, blank=True, help_text="Steal %")
     blk_pct = models.FloatField(null=True, blank=True, help_text="Block %")
 
+    # ── Baseline RAPM (nba_compute_baseline_rapm) ────────────────────────────
+    baseline_obpr = models.FloatField(null=True, blank=True, help_text="Baseline RAPM offensive BPR")
+    baseline_dbpr = models.FloatField(null=True, blank=True, help_text="Baseline RAPM defensive BPR")
+    off_poss = models.FloatField(null=True, blank=True, help_text="Total offensive possessions (from PBP stints)")
+    def_poss = models.FloatField(null=True, blank=True, help_text="Total defensive possessions (from PBP stints)")
+
     # ── Box BPR (nba_compute_box_bpr) ────────────────────────────────────────
     box_obpr = models.FloatField(null=True, blank=True, help_text="Box-score offensive BPR")
     box_dbpr = models.FloatField(null=True, blank=True, help_text="Box-score defensive BPR")
@@ -573,3 +646,46 @@ class NBAModelCalibration(models.Model):
 
     def __str__(self):
         return f"NBAModelCalibration {self.season.display_name} (computed {self.computed_at:%Y-%m-%d})"
+
+
+class NBABPRModelArtifact(models.Model):
+    """
+    Fitted Box BPR Ridge pipelines and diagnostics per season.
+
+    Persisted so nba_compute_box_bpr can load a prior-season model for
+    prediction on incremental runs, rather than retraining from scratch.
+    Use --retrain flag or change target_type (mpir → rapm) to force retrain.
+
+    Written by: python manage.py nba_compute_box_bpr --season YYYY
+    """
+
+    season       = models.OneToOneField(NBASeason, on_delete=models.CASCADE, related_name="bpr_artifact")
+    model_version = models.CharField(max_length=32, default="1.0")
+    target_type  = models.CharField(
+        max_length=32, default="mpir",
+        help_text="Training target: 'mpir' (Stage 1 proxy) or 'rapm' (Stage 2+)",
+    )
+
+    off_pipeline = models.BinaryField(help_text="Pickled sklearn Pipeline (StandardScaler + RidgeCV) for offense")
+    def_pipeline = models.BinaryField(help_text="Pickled sklearn Pipeline for defense")
+
+    off_cv_alpha = models.FloatField(null=True, blank=True)
+    def_cv_alpha = models.FloatField(null=True, blank=True)
+    off_r2       = models.FloatField(null=True, blank=True)
+    def_r2       = models.FloatField(null=True, blank=True)
+    n_train_off  = models.IntegerField(default=0)
+    n_train_def  = models.IntegerField(default=0)
+
+    off_features = models.JSONField(default=list)
+    def_features = models.JSONField(default=list)
+
+    prior_sd_off = models.FloatField(null=True, blank=True, help_text="sqrt(1 - R²) × σ_target for offense")
+    prior_sd_def = models.FloatField(null=True, blank=True)
+
+    computed_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-season__year"]
+
+    def __str__(self):
+        return f"NBABPRModelArtifact {self.season.display_name} [{self.target_type}]"

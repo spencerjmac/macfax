@@ -150,6 +150,35 @@ class RawRosterEntry:
 
 
 @dataclass
+class RawPlayEvent:
+    """
+    One play-by-play event from PlayByPlayV3.
+
+    clock_secs: seconds remaining in the period (parsed from ISO duration "PT##M##.##S").
+    action_type examples: "substitution", "2pt", "3pt", "freethrow",
+                          "rebound", "turnover", "foul", "period", "jumpball"
+    sub_type examples: "in"/"out" (subs), "offensive"/"defensive" (rebound),
+                       "start"/"end" (period)
+    shot_result: "Made" | "Missed" | None
+    """
+    game_id:       str
+    action_number: int
+    clock_secs:    int        # seconds remaining in period
+    period:        int
+    team_id:       Optional[int]
+    person_id:     Optional[int]
+    action_type:   str
+    sub_type:      str        # empty string if not applicable
+    shot_result:   Optional[str]
+    is_field_goal: bool
+    score_home:    Optional[int]
+    score_away:    Optional[int]
+    points_total:  int        # points scored by this specific action
+    description:   str
+    order_number:  int        # monotonic ordering within game
+
+
+@dataclass
 class ProviderHealthResult:
     """Result of a provider health check on a single endpoint family."""
 
@@ -219,6 +248,15 @@ class NBADataProvider(ABC):
         is_only_current_season: bool = True,
     ) -> list[RawPlayerInfo]:
         """All active players from CommonAllPlayers."""
+
+    @abstractmethod
+    def get_play_by_play(self, game_id: str) -> list[RawPlayEvent]:
+        """
+        Play-by-play events for a single game via PlayByPlayV3.
+
+        Events are returned in chronological order (ascending orderNumber).
+        Returns empty list if game has no PBP data available.
+        """
 
     @abstractmethod
     def health_check(self) -> list[ProviderHealthResult]:

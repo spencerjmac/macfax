@@ -18,11 +18,18 @@ NBA PIPELINE
     5. nba_sync_player_advanced — advanced + impact stats from NBA.com
     6. nba_compute_box_bpr    — box-score BPR + archetype classification
 
+  PBP + RAPM (only when --with-pbp, takes hours on first run)
+    7. nba_sync_play_by_play  — PBP ingestion into NBAPlayerGameStint
+    8. nba_compute_baseline_rapm — fit baseline RAPM, write baseline_obpr/dbpr
+    9. nba_compute_box_bpr (re-run) — retrain box BPR with RAPM targets
+
 Usage
 ─────
   python manage.py update_nba_all --season 2026
   python manage.py update_nba_all --season 2026 --skip-ingest
   python manage.py update_nba_all --season 2026 --workers 4
+  python manage.py update_nba_all --season 2026 --with-pbp         # add PBP+RAPM
+  python manage.py update_nba_all --season 2026 --with-pbp --pbp-workers 3
 """
 
 import sys
@@ -53,6 +60,18 @@ class Command(BaseCommand):
             metavar="N",
             help="Parallel workers for nba_sync_team_logs (default: 1)",
         )
+        parser.add_argument(
+            "--with-pbp",
+            action="store_true",
+            help="Also run PBP ingestion + baseline RAPM (takes hours on first run)",
+        )
+        parser.add_argument(
+            "--pbp-workers",
+            type=int,
+            default=1,
+            metavar="N",
+            help="Parallel workers for nba_sync_play_by_play (default: 1, max 3)",
+        )
 
     # ──────────────────────────────────────────────────────────────────────────
     # Entry point
@@ -62,6 +81,8 @@ class Command(BaseCommand):
         season_year = options["season"]
         skip_ingest = options["skip_ingest"]
         workers = max(1, int(options.get("workers", 1)))
+        with_pbp = options.get("with_pbp", False)
+        pbp_workers = max(1, min(3, int(options.get("pbp_workers", 1))))
 
         start_time = timezone.now()
 
@@ -153,6 +174,30 @@ class Command(BaseCommand):
             fatal=False,
             label=f"[8/{TOTAL_STEPS}]",
         )
+
+        # ── Optional PBP + RAPM (--with-pbp only) ────────────────────────────
+        if with_pbp:
+            self._run_step(
+                "NBA sync play-by-play",
+                "nba_sync_play_by_play",
+                {"season": season_year, "workers": pbp_workers},
+                steps,
+                label="[PBP-1/3]",
+            )
+            self._run_step(
+                "NBA compute baseline RAPM",
+                "nba_compute_baseline_rapm",
+                {"season": season_year},
+                steps,
+                label="[PBP-2/3]",
+            )
+            self._run_step(
+                "NBA compute box BPR (RAPM targets)",
+                "nba_compute_box_bpr",
+                {"season": season_year},
+                steps,
+                label="[PBP-3/3]",
+            )
 
         # Summary
         end_time = timezone.now()

@@ -100,7 +100,12 @@ class NBAApiProvider(NBADataProvider):
                 last_exc = exc
                 logger.warning("nba_api call failed (attempt %d/%d): %s", attempt, self.max_retries, exc)
                 if attempt < self.max_retries:
-                    time.sleep(self.sleep_seconds * attempt)
+                    # Timeout errors need much longer backoff — 0.8s retry after 60s timeout is useless
+                    exc_str = str(exc).lower()
+                    is_timeout = "timeout" in exc_str or "timed out" in exc_str
+                    backoff = (20.0 * attempt) if is_timeout else (self.sleep_seconds * attempt)
+                    logger.info("Backing off %.1fs before retry...", backoff)
+                    time.sleep(backoff)
         raise RuntimeError(f"nba_api call failed after {self.max_retries} attempts") from last_exc
 
     @staticmethod
@@ -358,6 +363,66 @@ class NBAApiProvider(NBADataProvider):
                 logger.warning("Could not parse player row: %s", exc)
         return results
 
+    # ── get_play_by_play ──────────────────────────────────────────────────────
+
+    def get_play_by_play(self, game_id: str) -> "list[RawPlayEvent]":
+        """
+        Fetch play-by-play events for one game via PlayByPlayV3.
+
+        Returns events in chronological order (ascending orderNumber).
+        clock format from API: "PT09M36.00S" → parsed to seconds remaining.
+        """
+        import re
+        from nba_api.stats.endpoints.playbyplayv3 import PlayByPlayV3
+        from .base import RawPlayEvent
+
+        def _call():
+            return PlayByPlayV3(game_id=game_id, timeout=self.timeout) \
+                   .play_by_play.get_data_frame()
+
+        df = self._call_with_retry(_call)
+
+        if df is None or df.empty:
+            logger.warning("PlayByPlayV3 returned empty for game %s", game_id)
+            return []
+
+        def _parse_clock(clock: str) -> int:
+            """PT09M36.00S → 576 seconds remaining in period."""
+            m = re.match(r'PT(\d+)M([\d.]+)S', str(clock or ""))
+            return int(m.group(1)) * 60 + int(float(m.group(2))) if m else 0
+
+        def _safe_score(val) -> "int | None":
+            try:
+                return int(val) if val is not None and str(val).strip() not in ('', 'None', 'nan') else None
+            except (ValueError, TypeError):
+                return None
+
+        results: list[RawPlayEvent] = []
+        for _, row in df.iterrows():
+            try:
+                results.append(RawPlayEvent(
+                    game_id=str(row.get("gameId", game_id)),
+                    action_number=int(row.get("actionNumber", 0) or 0),
+                    clock_secs=_parse_clock(row.get("clock", "")),
+                    period=int(row.get("period", 1) or 1),
+                    team_id=self._safe_int(row.get("teamId")),
+                    person_id=self._safe_int(row.get("personId")),
+                    action_type=str(row.get("actionType", "") or "").lower(),
+                    sub_type=str(row.get("subType", "") or "").lower(),
+                    shot_result=str(row.get("shotResult", "") or "") or None,
+                    is_field_goal=bool(row.get("isFieldGoal", False)),
+                    score_home=_safe_score(row.get("scoreHome")),
+                    score_away=_safe_score(row.get("scoreAway")),
+                    points_total=int(row.get("pointsTotal", 0) or 0),
+                    description=str(row.get("description", "") or ""),
+                    order_number=int(row.get("orderNumber", 0) or 0),
+                ))
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("Could not parse PBP row for game %s: %s", game_id, exc)
+
+        results.sort(key=lambda e: e.order_number)
+        return results
+
     # ── health_check ──────────────────────────────────────────────────────────
 
     def health_check(self) -> list[ProviderHealthResult]:
@@ -368,6 +433,7 @@ class NBAApiProvider(NBADataProvider):
             "BoxScoreTraditionalV3": "nba_api.stats.endpoints.boxscoretraditionalv3",
             "CommonTeamRoster": "nba_api.stats.endpoints.commonteamroster",
             "CommonAllPlayers": "nba_api.stats.endpoints.commonallplayers",
+            "PlayByPlayV3": "nba_api.stats.endpoints.playbyplayv3",
         }
         results = []
         for name, module_path in endpoints.items():
