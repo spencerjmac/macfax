@@ -209,7 +209,7 @@ class Command(BaseCommand):
             self.stdout.write(f"\nBackfilling names for {stubs.count()} players...")
             provider = NBAApiProvider()
             try:
-                all_players = provider.get_all_players(season_year)
+                all_players = provider.get_all_players(season_year, is_only_current_season=False)
                 name_map = {p.player_id: p.name for p in all_players}
                 updated = 0
                 for player in stubs:

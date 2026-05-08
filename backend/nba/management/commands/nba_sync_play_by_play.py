@@ -28,6 +28,7 @@ from __future__ import annotations
 import logging
 import re
 import sys
+import unicodedata
 import time
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -37,7 +38,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 from django.utils import timezone
 
-from nba.models import NBAGame, NBAPlayer, NBAPlayerGameStint, NBATeam
+from nba.models import NBAGame, NBAPlayer, NBAPlayerGameStint, NBAPlayerGameStats, NBATeam
 from nba.providers.nba_api_provider import NBAApiProvider
 from nba.providers.base import RawPlayEvent
 
@@ -66,6 +67,12 @@ _FGA_TYPES = {"made shot", "missed shot", "heave"}
 
 # ── Name-based player lookup helpers ─────────────────────────────────────────
 
+def _normalize_name(name: str) -> str:
+    """Lowercase + strip accents. 'Porziņģis' → 'porzingis'."""
+    nfkd = unicodedata.normalize("NFKD", name)
+    return nfkd.encode("ascii", "ignore").decode("ascii").lower().strip()
+
+
 def _build_name_lookup(player_pk_map: dict[int, int]) -> dict[str, int]:
     """
     Build normalized name → NBAPlayer.pk lookup for PlayByPlayV3 description parsing.
@@ -78,10 +85,10 @@ def _build_name_lookup(player_pk_map: dict[int, int]) -> dict[str, int]:
         player_id__in=player_pk_map.keys()
     ).only("pk", "player_id", "name"):
         pk = player_pk_map[player.player_id]
-        name_lower = player.name.strip().lower()
-        name_to_pk[name_lower] = pk
+        norm = _normalize_name(player.name)
+        name_to_pk[norm] = pk
 
-        parts = name_lower.split()
+        parts = norm.split()
         if len(parts) > 1:
             last = " ".join(parts[1:])          # "smith jr.", "van vleet"
             base = re.sub(r"\b(jr\.?|sr\.?|ii|iii|iv)\b", "", last).strip()
@@ -89,6 +96,28 @@ def _build_name_lookup(player_pk_map: dict[int, int]) -> dict[str, int]:
                 if key and key not in name_to_pk:
                     name_to_pk[key] = pk
     return name_to_pk
+
+
+def _build_roster_name_lookup(player_pks: set[int]) -> dict[str, int]:
+    """
+    Build name → pk for a specific game roster (~13 players per team).
+    Unlike the global lookup, this OVERWRITES on collision — at team scope
+    there are no cross-era collisions, so last-writer wins is fine.
+    Unicode-normalized so accented names match ASCII PBP descriptions.
+    """
+    from nba.models import NBAPlayer
+    name_map: dict[str, int] = {}
+    for player in NBAPlayer.objects.filter(pk__in=player_pks).only("pk", "name"):
+        norm = _normalize_name(player.name)
+        name_map[norm] = player.pk
+        parts = norm.split()
+        if len(parts) > 1:
+            last = " ".join(parts[1:])
+            base = re.sub(r"\b(jr\.?|sr\.?|ii|iii|iv)\b", "", last).strip()
+            for key in (last, base, parts[-1]):
+                if key:
+                    name_map[key] = player.pk  # override OK: team scope, no cross-era collisions
+    return name_map
 
 
 def _parse_sub_incoming(description: str) -> str:
@@ -104,7 +133,7 @@ def _parse_sub_incoming(description: str) -> str:
     idx = rest.upper().find(" FOR ")
     if idx < 0:
         return ""
-    return rest[:idx].strip().lower()
+    return _normalize_name(rest[:idx].strip())
 
 
 def _lookup_name(name: str, name_to_pk: dict[str, int]) -> "int | None":
@@ -166,7 +195,7 @@ def _parse_game(
     team_pk_map: dict[int, int],          # NBA.com team_id → NBATeam.pk
     name_to_pk: dict[str, int],           # normalized name → NBAPlayer.pk (global)
     game_roster: "dict[int, set[int]]",   # team.pk → set of NBAPlayer.pk for THIS game
-) -> tuple[list[dict], bool, str]:
+) -> tuple[list[dict], bool, str, list[str]]:
     """
     Parse a game's PBP events into stint records.
 
@@ -175,23 +204,33 @@ def _parse_game(
         quality_flag = True if > 5% of stints fail 10-player check.
     """
     if not events:
-        return [], False, "no events"
+        return [], False, "no events", []
+
+    failed_lookups: list[str] = []  # names that could not be resolved
 
     home_team_id = game.home_team.nba_team_id
     away_team_id = game.away_team.nba_team_id
     home_team_pk = team_pk_map.get(home_team_id)
     away_team_pk = team_pk_map.get(away_team_id)
 
-    # ── Team-constrained name lookup (eliminates "Williams" ambiguity) ────────
-    # Filter global name_to_pk to only players who actually played in this game
-    # for each team. A "Williams" on OKC won't match "Williams" on another team.
+    # ── Team-constrained name lookup (eliminates cross-era "Williams" ambiguity) ─
+    # Build fresh from each team's actual game roster (~13 players) so common
+    # last names (James, Smith, Thompson) map to the correct current-game player,
+    # not a historical namesake from a different era in the global lookup.
     home_pks = game_roster.get(home_team_pk, set())
     away_pks = game_roster.get(away_team_pk, set())
-    home_name_to_pk = {k: v for k, v in name_to_pk.items() if v in home_pks}
-    away_name_to_pk = {k: v for k, v in name_to_pk.items() if v in away_pks}
+    home_name_to_pk = _build_roster_name_lookup(home_pks)
+    away_name_to_pk = _build_roster_name_lookup(away_pks)
 
     def _lookup_for_team(name: str, is_home: bool) -> "int | None":
-        return _lookup_name(name, home_name_to_pk if is_home else away_name_to_pk)
+        # Primary: team-constrained (correct player for this game's roster)
+        pk = _lookup_name(name, home_name_to_pk if is_home else away_name_to_pk)
+        if pk is not None:
+            return pk
+        # Fallback: global lookup for players missing from game_roster (brief DNP
+        # appearances with no box score row). Cross-era collision risk is low for
+        # fringe players; prefer this over None which guarantees lineup failure.
+        return _lookup_name(name, name_to_pk)
 
     # ── Pass 1: reconstruct starting lineup from period 1 events ─────────────
 
@@ -220,6 +259,8 @@ def _parse_game(
                 starters.add(outgoing_pk)
             if incoming_pk:
                 subbed_in.add(incoming_pk)
+            elif incoming_name:
+                failed_lookups.append(f"P1:{incoming_name}")
         elif ev.person_id is not None:
             pk = player_pk_map.get(ev.person_id)
             if pk is not None and pk not in subbed_in:
@@ -229,7 +270,7 @@ def _parse_game(
         return [], False, (
             f"could not reconstruct starting lineup "
             f"(home={len(home_starters)}, away={len(away_starters)})"
-        )
+        ), []
 
     # ── Pass 2: process all events ────────────────────────────────────────────
 
@@ -391,7 +432,12 @@ def _parse_game(
             ins_home:  list[int] = []
             ins_away:  list[int] = []
 
-            # Collect all subs at this clock value (within 1 sec)
+            # Collect all subs at this clock value (within 1 sec).
+            # on_court_home/away are not modified during collection, so checking
+            # them here reflects the pre-batch state — used to guard against
+            # NBA.com PBP data errors where the incoming player is already on court
+            # (e.g. "SUB: Davis FOR Ajinca" when Davis is already playing).
+            # Skipping the entire event preserves 5v5 lineup integrity.
             j = i
             while j < len(events) and events[j].action_type == "substitution":
                 ev2 = events[j]
@@ -399,16 +445,46 @@ def _parse_game(
                     break
                 is_home2 = (ev2.team_id == home_team_id)
 
-                # personId = outgoing player
                 outgoing_pk = player_pk_map.get(ev2.person_id) if ev2.person_id else None
+
+                incoming_name = _parse_sub_incoming(ev2.description)
+                incoming_pk = _lookup_for_team(incoming_name, is_home2)
+
+                court = on_court_home if is_home2 else on_court_away
+                # Only process clean swaps: outgoing IS on court, incoming is NOT.
+                # Any deviation corrupts the 5-player invariant — skip the whole event.
+                if not (outgoing_pk is not None and outgoing_pk in court
+                        and incoming_pk is not None and incoming_pk not in court):
+                    logger.debug(
+                        "skipping bad sub game=%s P%s@%s: out_pk=%s in_court=%s "
+                        "in_pk=%s already_on=%s desc=%r",
+                        game.game_id, batch_period, batch_clock,
+                        outgoing_pk,
+                        outgoing_pk in court if outgoing_pk is not None else "n/a",
+                        incoming_pk,
+                        incoming_pk in court if incoming_pk is not None else "n/a",
+                        ev2.description,
+                    )
+                    j += 1
+                    continue
+
                 if outgoing_pk:
                     (outs_home if is_home2 else outs_away).append(outgoing_pk)
-
-                # Incoming player from description "SUB: [IN] FOR [OUT]"
-                incoming_name = _parse_sub_incoming(ev2.description)
-                incoming_pk = _lookup_name(incoming_name, name_to_pk)
                 if incoming_pk:
                     (ins_home if is_home2 else ins_away).append(incoming_pk)
+                elif incoming_name:
+                    failed_lookups.append(incoming_name)
+                    logger.debug(
+                        "sub lookup miss game=%s clock=%s name=%r home_keys=%d away_keys=%d",
+                        game.game_id, ev2.clock_secs, incoming_name,
+                        len(home_name_to_pk), len(away_name_to_pk),
+                    )
+                else:
+                    failed_lookups.append(f"PARSE_FAIL:{ev2.description[:50]!r}")
+                    logger.debug(
+                        "sub desc parse failed game=%s clock=%s desc=%r",
+                        game.game_id, ev2.clock_secs, ev2.description,
+                    )
 
                 j += 1
 
@@ -421,7 +497,6 @@ def _parse_game(
                 if st:
                     completed_stints.append(st)
 
-            # Update on_court sets
             for pk in outs_home:
                 on_court_home.discard(pk)
             for pk in outs_away:
@@ -496,13 +571,15 @@ def _parse_game(
             dropped_stints += len(group)
 
     total_groups = len(lineup_groups)
-    dropped_groups = sum(
-        1 for key, group in lineup_groups.items()
-        if not (
-            sum(1 for s in group if s["team_pk"] == home_team_pk) == 5 and
-            sum(1 for s in group if s["team_pk"] == away_team_pk) == 5
-        )
-    )
+    dropped_groups = 0
+    bad_group_samples: list[str] = []
+    for key, group in lineup_groups.items():
+        hc = sum(1 for s in group if s["team_pk"] == home_team_pk)
+        ac = sum(1 for s in group if s["team_pk"] == away_team_pk)
+        if hc != 5 or ac != 5:
+            dropped_groups += 1
+            if len(bad_group_samples) < 5:
+                bad_group_samples.append(f"P{key[0]}@{key[1]}-{key[2]}:h{hc}a{ac}n{len(group)}")
     quality_flag = (total_groups > 0 and dropped_groups / total_groups > 0.05)
 
     # Duration check (soft warning)
@@ -515,11 +592,16 @@ def _parse_game(
             game.game_id, total_secs, expected_secs, ot_periods,
         )
 
-    msg = f"{len(valid_stints)} stints, {dropped_stints} dropped ({dropped_groups}/{total_groups} groups)"
+    msg = (
+        f"roster_h={len(home_pks)}/a={len(away_pks)}, "
+        f"{len(valid_stints)} stints, {dropped_stints} dropped ({dropped_groups}/{total_groups} groups)"
+    )
+    if failed_lookups:
+        msg += f", {len(failed_lookups)} missed sub lookups"
     if quality_flag:
-        msg += " [QUALITY FLAG]"
+        msg += f" [QUALITY FLAG] bad:{','.join(bad_group_samples)}"
 
-    return valid_stints, quality_flag, msg
+    return valid_stints, quality_flag, msg, failed_lookups
 
 
 # ── Management command ────────────────────────────────────────────────────────
@@ -589,6 +671,16 @@ class Command(BaseCommand):
         total = len(pending)
         self.stdout.write(f"  {total} games to process")
 
+        # Pre-fetch per-game rosters from existing box scores for team-constrained
+        # name resolution inside _parse_game (eliminates same-name ambiguity).
+        _roster_rows = NBAPlayerGameStats.objects.filter(
+            game__game_id__in=[g.game_id for g in pending]
+        ).values("game__game_id", "team_id", "player_id")
+        game_id_to_roster: dict[str, dict[int, set[int]]] = {}
+        for _row in _roster_rows:
+            _gid = _row["game__game_id"]
+            game_id_to_roster.setdefault(_gid, {}).setdefault(_row["team_id"], set()).add(_row["player_id"])
+
         if total == 0:
             self.stdout.write("Nothing to do.")
             return
@@ -639,7 +731,7 @@ class Command(BaseCommand):
                     continue
 
                 done = processed + skipped + 1
-                stints, quality_flag, msg = _parse_game(game, events, player_pk_map, team_pk_map, name_to_pk)
+                stints, quality_flag, msg, failed_names = _parse_game(game, events, player_pk_map, team_pk_map, name_to_pk, game_id_to_roster.get(game_id_str, {}))
 
                 if not stints:
                     self.stdout.write(f"  [{done}/{total}] [SKIP] {game_id_str}: {msg}")
@@ -718,6 +810,9 @@ class Command(BaseCommand):
                 if quality_flag:
                     quality_flagged += 1
                     self.stdout.write(self.style.WARNING(f"  [{done}/{total}] [QFLAG] {game_id_str}: {msg}"))
+                    if failed_names:
+                        sample = ", ".join(repr(n) for n in failed_names[:8])
+                        self.stdout.write(self.style.WARNING(f"            missed names: {sample}"))
                 elif done % 25 == 0 or done == total:
                     self.stdout.write(f"  [{done}/{total}] {game_id_str}: {msg}")
 
