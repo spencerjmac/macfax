@@ -94,6 +94,13 @@ class Command(BasePipelineCommand):
             default=None,
             help="Years to pool for BPR RAPM estimation",
         )
+        parser.add_argument(
+            "--no-em-calibrate",
+            dest="no_em_calibrate",
+            action="store_true",
+            default=False,
+            help="Disable Evan Miya calibration for Box BPR training.",
+        )
 
     def handle(self, *args, **options):
         season_year     = options["season"]
@@ -105,6 +112,7 @@ class Command(BasePipelineCommand):
         player_workers  = max(1, int(options.get("player_workers", 1)))
         nba_workers     = max(1, int(options.get("nba_workers", 1)))
         rapm_years      = options.get("rapm_years")
+        no_em_calibrate = options.get("no_em_calibrate", False)
 
         cfg = PipelineConfig.get_config()
         iterations = options["iterations"] or cfg.adj_ratings_iterations
@@ -155,6 +163,8 @@ class Command(BasePipelineCommand):
             }
             if rapm_years:
                 ncaa_player_kwargs["rapm_years"] = rapm_years
+            if no_em_calibrate:
+                ncaa_player_kwargs["no_em_calibrate"] = True
             self._run_step(
                 "NCAA player pipeline",
                 "update_ncaa_players",

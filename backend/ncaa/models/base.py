@@ -259,7 +259,7 @@ class PipelineConfig(models.Model):
         help_text="Max AdjEM change between iterations to declare convergence",
     )
     adj_ratings_shrinkage_floor = models.IntegerField(
-        default=170,
+        default=150,
         help_text="Minimum shrinkage constant (possessions) regardless of games played",
     )
     adj_ratings_shrinkage_ceiling = models.IntegerField(

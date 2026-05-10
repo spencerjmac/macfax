@@ -47,6 +47,7 @@ from ncaa.analytics.player_value.bpr.constants import (
     MIN_PRIOR_TRAINING_SAMPLES,
     MIN_GP_BOX_BPR,
     MIN_MPG_BOX_BPR,
+    MIN_BOX_BPR_INFERENCE_POSS,
     PRIOR_SD_BOX_OFF,
     PRIOR_SD_BOX_DEF,
     PRIOR_SD_DEFAULT_OFF,
@@ -56,6 +57,8 @@ from ncaa.analytics.player_value.bpr.constants import (
     BPR_SOURCE_MIXED,
     BPR_SOURCE_PARTIAL,
     BOX_TRAINING_RAPM_LAMBDA,
+    OBPR_PLAUSIBLE_RANGE,
+    DBPR_PLAUSIBLE_RANGE,
 )
 from ncaa.analytics.player_value.bpr.datasets import build_rapm_dataset
 from ncaa.analytics.player_value.bpr.rapm import (
@@ -90,6 +93,7 @@ def run_bpr_season(
     rapm_lambda_override: float | None = None,
     rapm_years: "list[int] | None" = None,
     rapm_window_size: int = 4,
+    em_calibrate: bool = True,
     verbose: bool = True,
 ) -> dict:
     """
@@ -246,14 +250,24 @@ def run_bpr_season(
     if not skip_box_bpr and baseline_rapm is not None:
         logger.info("[BPR] Phase 4: Box BPR (leak-free training)")
 
+        # 4a-EM. EM calibration (highest priority when available).
+        # Uses Evan Miya adj_obpr/adj_dbpr from prior seasons as training targets.
+        # Fixes scale compression: our baseline RAPM tops at ~8-10 for elite players,
+        # but EM's top players reach 12-14. Training on EM targets gives the box model
+        # the correct scale to predict.  Falls through gracefully when EM data is absent.
+        prior_train_data = None
+        if em_calibrate and not skip_box_bpr:
+            prior_train_data = _load_em_box_training_data(season_year)
+            if prior_train_data:
+                prior_train_data["training_source_type"] = "em_calibrated"
+
         # 4a. Prefer multi-year RAPM non-target coefficients as Box BPR training targets.
         # These are jointly estimated across all window seasons → lower noise than
         # single-season DB baselines. This is the EvanMiya methodology: train Box BPR
         # on stable multi-year RAPM coefficients, not noisy single-season estimates.
         # Fall back to prior-season DB baselines when multi-year is unavailable
         # (single-season mode or first run without prior window seasons).
-        prior_train_data = None
-        if len(_rapm_years) > 1 and baseline_rapm is not None:
+        if prior_train_data is None and len(_rapm_years) > 1 and baseline_rapm is not None:
             prior_train_data = _load_box_bpr_training_from_multi_year_rapm(
                 baseline_rapm_obpr=box_training_rapm["obpr"],
                 baseline_rapm_dbpr=box_training_rapm["dbpr"],
@@ -748,6 +762,141 @@ def _build_team_adj_em_map(season_year: int) -> dict[int, float]:
     }
 
 
+def _load_em_box_training_data(
+    season_year: int,
+) -> "dict | None":
+    """
+    Build box BPR training arrays using Evan Miya adj_obpr/adj_dbpr as targets.
+
+    For each prior season that has EM data in RAW_DATA, loads PlayerSeasonStats,
+    fuzzy-matches players to EM records by name+team, and builds (features, em_bpr)
+    training pairs.  Returned dict is the same shape as _load_prior_season_box_data().
+
+    This fixes the systematic scale compression: our baseline RAPM (lambda=500)
+    tops out at ~8-10 for elite players, but EM's top players reach 12-14.  Training
+    directly on EM targets gives the box model the correct scale to predict from.
+    """
+    import difflib
+    import re
+    import unicodedata
+    from ncaa.models import PlayerSeasonStats
+    from ncaa.analytics.player_value.bpr.evan_miya_reference import RAW_DATA, parse_em_text, normalize_team_name
+
+    available_em_years = sorted(yr for yr in RAW_DATA if yr < season_year)
+    if not available_em_years:
+        return None
+
+    def _norm(s: str) -> str:
+        s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode("ascii")
+        return re.sub(r"[^a-z0-9 ]", "", s.lower()).strip()
+
+    off_X_all, off_y_all, def_X_all, def_y_all = [], [], [], []
+    pid_all: list[int] = []
+    prior_years: list[int] = []
+    n_matched_total = 0
+
+    for yr in available_em_years:
+        em_records = parse_em_text(RAW_DATA[yr])
+        if not em_records:
+            continue
+
+        qs = PlayerSeasonStats.objects.filter(
+            season__year=yr,
+            off_poss__isnull=False,
+            off_poss__gte=MIN_OFF_POSS_BPR,
+            def_poss__isnull=False,
+            def_poss__gte=MIN_DEF_POSS_BPR,
+            gp__gte=MIN_GP_BOX_BPR,
+            mpg__gte=MIN_MPG_BOX_BPR,
+        ).values(
+            "player_id", "team_id", "player__display_name", "team__name",
+            "gp", "mpg",
+            "pts", "ast", "tov", "stl", "blk", "pf", "reb",
+            "oreb_pg", "dreb_pg",
+            "fga_pg", "fg3a_pg", "fta_pg", "ftm_pg",
+            "efg_pct", "ts_pct",
+            "on_court_secs_pg",
+            "on_court_adj_em",
+            "on_court_tov_edge",
+            "on_court_reb_edge",
+            "off_poss", "def_poss",
+        )
+        db_records = list(qs)
+        if not db_records:
+            continue
+
+        yr_off_poss  = {r["player_id"]: r["off_poss"]  for r in db_records}
+        yr_def_poss  = {r["player_id"]: r["def_poss"]  for r in db_records}
+        yr_opp_qual  = _build_opponent_quality_map(yr)
+        yr_team_adj  = _build_team_adj_em_map(yr)
+        yr_feats     = extract_box_features(
+            db_records, yr_off_poss, yr_def_poss,
+            opp_quality_map=yr_opp_qual,
+            team_adj_em_map=yr_team_adj,
+        )
+
+        # Build name→records lookup for O(log n) matching
+        name_lookup: dict[str, list] = {}
+        for r in db_records:
+            key = _norm(r["player__display_name"])
+            name_lookup.setdefault(key, []).append(r)
+        name_keys = list(name_lookup.keys())
+
+        n_yr = 0
+        for em in em_records:
+            em_name_n = _norm(em["name"])
+            candidates = difflib.get_close_matches(em_name_n, name_keys, n=3, cutoff=0.65)
+            if not candidates:
+                continue
+
+            best_rec, best_score = None, 0.0
+            for ckey in candidates:
+                for rec in name_lookup[ckey]:
+                    name_s = difflib.SequenceMatcher(None, em_name_n, ckey).ratio()
+                    team_s = difflib.SequenceMatcher(
+                        None,
+                        _norm(normalize_team_name(em["team"])),
+                        _norm(rec["team__name"] or ""),
+                    ).ratio()
+                    score = name_s * 0.65 + team_s * 0.35
+                    if score > best_score:
+                        best_score, best_rec = score, rec
+
+            if best_score < 0.58 or best_rec is None:
+                continue
+            pid = best_rec["player_id"]
+            if pid not in yr_feats:
+                continue
+
+            feats = yr_feats[pid]
+            off_X_all.append(feats["off"])
+            off_y_all.append(em["adj_obpr"])
+            def_X_all.append(feats["def"])
+            def_y_all.append(em["adj_dbpr"])
+            pid_all.append(pid)
+            n_yr += 1
+
+        if n_yr > 0:
+            prior_years.append(yr)
+            n_matched_total += n_yr
+
+    if not off_X_all:
+        return None
+
+    logger.info(
+        f"[BPR] EM calibration: {n_matched_total} matched players "
+        f"from seasons {prior_years} → using EM adj_obpr/adj_dbpr as Box BPR targets"
+    )
+    return {
+        "off_X":       np.array(off_X_all, dtype=np.float64),
+        "off_y":       np.array(off_y_all, dtype=np.float64),
+        "def_X":       np.array(def_X_all, dtype=np.float64),
+        "def_y":       np.array(def_y_all, dtype=np.float64),
+        "prior_years": prior_years,
+        "player_ids":  pid_all,
+    }
+
+
 def _load_prior_season_box_data(
     season_year: int,
     current_season_stats: list[dict],
@@ -1132,11 +1281,22 @@ def _write_bpr_results(
         has_off_poss = player_off_poss >= MIN_OFF_POSS_BPR
         has_def_poss = player_def_poss >= MIN_DEF_POSS_BPR
 
+        def _clamp_obpr(v: float) -> float:
+            return max(OBPR_PLAUSIBLE_RANGE[0], min(OBPR_PLAUSIBLE_RANGE[1], v))
+
+        def _clamp_dbpr(v: float) -> float:
+            return max(DBPR_PLAUSIBLE_RANGE[0], min(DBPR_PLAUSIBLE_RANGE[1], v))
+
         if obpr_val is not None and has_off_poss:
-            pss.obpr = round(obpr_val, 4)
+            clamped = _clamp_obpr(obpr_val)
+            if clamped != obpr_val:
+                logger.debug(f"[BPR] OBPR clamped for player {pid}: {obpr_val:.2f} → {clamped:.2f}")
+            pss.obpr = round(clamped, 4)
             obpr_src = BPR_SOURCE_RAPM
-        elif box:
-            pss.obpr = round(box.get("box_obpr", 0.0), 4)
+        elif box and player_off_poss >= MIN_BOX_BPR_INFERENCE_POSS:
+            # Possession gate: prevents per-100 explosion when off_poss≈0 blows up box features
+            raw = box.get("box_obpr", 0.0)
+            pss.obpr = round(_clamp_obpr(raw), 4)
             obpr_src = BPR_SOURCE_BOX
         else:
             pss.obpr = None
@@ -1144,10 +1304,14 @@ def _write_bpr_results(
         changed = True
 
         if dbpr_val is not None and has_def_poss:
-            pss.dbpr = round(dbpr_val, 4)
+            clamped = _clamp_dbpr(dbpr_val)
+            if clamped != dbpr_val:
+                logger.debug(f"[BPR] DBPR clamped for player {pid}: {dbpr_val:.2f} → {clamped:.2f}")
+            pss.dbpr = round(clamped, 4)
             dbpr_src = BPR_SOURCE_RAPM
-        elif box:
-            pss.dbpr = round(box.get("box_dbpr", 0.0), 4)
+        elif box and player_def_poss >= MIN_BOX_BPR_INFERENCE_POSS:
+            raw = box.get("box_dbpr", 0.0)
+            pss.dbpr = round(_clamp_dbpr(raw), 4)
             dbpr_src = BPR_SOURCE_BOX
         else:
             pss.dbpr = None

@@ -12,6 +12,11 @@ Usage:
   python manage.py update_ncaa_players --season 2026 --workers 4
   python manage.py update_ncaa_players --season 2026 --rapm-years 2024 2025 2026
   python manage.py update_ncaa_players --season 2021  # backfill example
+  python manage.py update_ncaa_players --season 2026 --no-em-calibrate  # skip EM box BPR calibration
+
+BPR step (step 5) uses Evan Miya historical ratings (evan_miya_reference.RAW_DATA) as
+box BPR training targets by default.  Add new seasons to RAW_DATA to automatically
+improve calibration on future runs.  Use --no-em-calibrate to disable.
 """
 
 import sys
@@ -46,6 +51,13 @@ class Command(BasePipelineCommand):
             type=int,
             default=None,
             help="Years to pool for RAPM; omitted means single-season mode",
+        )
+        parser.add_argument(
+            "--no-em-calibrate",
+            dest="no_em_calibrate",
+            action="store_true",
+            default=False,
+            help="Disable EM calibration for Box BPR (falls back to multi-year RAPM targets).",
         )
 
     def handle(self, *args, **options):
@@ -115,6 +127,8 @@ class Command(BasePipelineCommand):
         bpr_kwargs = {"season": season_year}
         if options["rapm_years"]:
             bpr_kwargs["rapm_years"] = options["rapm_years"]
+        if options["no_em_calibrate"]:
+            bpr_kwargs["no_em_calibrate"] = True
 
         self._run_step(
             "Compute NCAA BPR",

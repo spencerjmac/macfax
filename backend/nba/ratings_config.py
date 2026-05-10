@@ -1,14 +1,14 @@
 """
 NBA Ratings Configuration — macfax NBA app
 
-All constants in this file are PROVISIONAL until validated by backtesting.
-Run `python manage.py nba_backtest_ratings` (Phase 3) to derive data-driven values.
+Constants derived from 11-season backtest (2016–2026) via nba_eval_model.
+Run `python manage.py nba_eval_model --season YYYY` to regenerate NBAModelCalibration.
 
 Key differences from NCAA config:
   - prior_games is much smaller (5 vs ~15) because 82 games provides far more signal
-  - home_court_adj is estimated lower than NCAA (2.5 vs ~3.2)
+  - home_court_adj lower than NCAA (2.1 vs ~3.2) — empirical 11-season avg
   - B2B penalty is real in the NBA due to travel and condensed schedule
-  - FFI weights are NOT ported from NCAA — they need NBA-specific backtesting
+  - FFI weights derived from NBA data — diverge from Oliver's original NCAA coefficients
 """
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -26,19 +26,17 @@ NBA_RATINGS_CONFIG = {
     # 2025-26 approximate values.
     "prior_ortg": 115.0,
     "prior_drtg": 115.0,
-    # Context adjustments — PROVISIONAL, estimated from recent NBA data.
+    # Context adjustments — empirical 11-season averages (2016–2026) from nba_eval_model.
     # Positive = helps the home/rested team's offense.
-    "home_court_adj": 2.5,
+    # 2021 COVID bubble (HCA=0.50) excluded from HCA average; included in B2B.
+    "home_court_adj": 2.1,
     # Bonus per extra day of rest (beyond 1 day), capped at 3 days.
     "rest_adj_per_day": 0.4,
     # Shared penalty for both offense and defense on back-to-back nights.
-    "b2b_penalty": 1.8,
+    # Empirical: home_b2b ≈ -1.8, away_b2b ≈ +2.4; using midpoint 2.1.
+    "b2b_penalty": 2.1,
     # Games to include: filter counts_toward_regular_season=True
     "season_type_filter": "regular",
-    "_note": (
-        "PROVISIONAL — all adjustments estimated, not backtested. "
-        "Run nba_backtest_ratings (Phase 3) to derive data-driven coefficients."
-    ),
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -46,18 +44,16 @@ NBA_RATINGS_CONFIG = {
 # ─────────────────────────────────────────────────────────────────────────────
 
 NBA_FFI_WEIGHTS = {
-    # Using the same weights as the NCAA formula until NBA-specific backtesting is run.
-    # NCAA weights: eFG 47%, TOV 24%, REB 21%, FTR 8%  (Oliver's original coefficients).
-    "efg_margin": 0.47,
-    "tov_edge": 0.24,
-    "oreb_edge": 0.21,
-    "fta_margin": 0.08,
+    # Empirical weights from 11-season OLS backtest (2016–2026) via nba_eval_model.
+    # TOV is substantially more predictive than Oliver's NCAA formula; OREB less so.
+    # Avg proposed weights across seasons: eFG=0.484, TOV=0.342, OREB=0.121, FTA=0.053
+    "efg_margin": 0.48,
+    "tov_edge": 0.34,
+    "oreb_edge": 0.12,
+    "fta_margin": 0.06,
     # Scale: FFI_100 = clamp(50 + 20 * FFI_z, 0, 100)  — same as NCAA formula.
     "scale_midpoint": 50.0,
     "scale_multiplier": 20.0,
-    "_note": (
-        "Using NCAA weights/scale until NBA-specific backtesting (nba_backtest_ffi) is run."
-    ),
 }
 
 # ─────────────────────────────────────────────────────────────────────────────

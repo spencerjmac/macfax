@@ -26,15 +26,17 @@ per 100 defensive possessions for DBPR):
     usage_rate   — (FGA + 0.44×FTA + TOV) per 100 poss  (offensive load)
     ast_rate     — AST100 / max(usage_rate, 1)  (playmaking vs scoring role)
 
-  Defensive (8):
-    stl100       — steals
-    blk100       — blocks
-    dreb100      — defensive rebounds
-    pf100        — personal fouls (negative weight expected)
-    min_share    — minutes share
-    fg3a_share   — 3PA / FGA  (position/role proxy: guards vs bigs)
-    oreb_share   — OREB / max(total REB, 0.01)  (rebounding-role indicator)
-    pf_per_min   — PF per 40 min  (complementary foul-rate angle)
+  Defensive (9):
+    stl100          — steals
+    blk100          — blocks
+    dreb100         — defensive rebounds
+    pf100           — personal fouls (negative weight expected)
+    min_share       — minutes share
+    fg3a_share      — 3PA / FGA  (position/role proxy: guards vs bigs)
+    oreb_share      — OREB / max(total REB, 0.01)  (rebounding-role indicator)
+    pf_per_min      — PF per 40 min  (complementary foul-rate angle)
+    blk_to_fga_ratio — BLK / max(own FGA, 0.1)  (rim-protection intensity: centers with
+                      low FGA + high blocks are shot-blockers whose value exceeds blk100)
 
   Pruned from v1.2 (v1.3 collinearity fix):
     reb100       — removed; collinear with dreb100 + oreb_share
@@ -85,6 +87,7 @@ OFF_FEATURES = [
 DEF_FEATURES = [
     "stl100", "blk100", "dreb100", "pf100", "min_share",
     "fg3a_share", "oreb_share", "pf_per_min",
+    "blk_to_fga_ratio",     # rim-protection intensity: BLK / own FGA (bigs with low FGA + high blk)
     "opp_quality",          # same value, both models
     "on_off_adj_em_delta",  # on-off delta: removes team-quality component from on-court adj_em
     "on_court_tov_edge",    # turnover forcing edge when on court
@@ -216,6 +219,7 @@ def extract_box_features(
             fg3a_pg / max(fga_pg, 0.01),                                      # fg3a_share: position proxy
             oreb_pg / max(total_reb_pg, 0.01),                               # oreb_share: rebounding-role indicator
             pf_pg * (40.0 / max(mpg, 1.0)),                                  # pf_per_min: foul rate per 40 min
+            blk_pg / max(fga_pg, 0.1),                                       # blk_to_fga_ratio: rim-protection intensity
             opp_quality,
             on_off_delta,
             on_ct_tov_edge,

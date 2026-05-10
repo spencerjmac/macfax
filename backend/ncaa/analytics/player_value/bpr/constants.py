@@ -106,10 +106,18 @@ DEVIATIONS FROM THE PUBLIC BPR ARTICLE
               (1) on-off delta replaces raw on_court_adj_em in Box BPR: feature is now
               on_court_adj_em − team_adj_em, removing team-quality bias so role players
               on elite teams (Duke, Iowa State) are no longer inflated.
-              (2) Separate BOX_TRAINING_RAPM_LAMBDA (100) for Box BPR training targets:
+              (2) Separate BOX_TRAINING_RAPM_LAMBDA for Box BPR training targets:
               a second, less-regularised RAPM fit generates the baseline_obpr/dbpr stored
               in DB and used as Box BPR training labels. Less shrinkage → targets span
               10-15 range → Box BPR learns correct scale → top player priors reach 12-14.
+            v1.6: backtesting vs Evan Miya 2025-26 season (backtest_bpr_vs_evan_miya).
+              (1) BOX_TRAINING_RAPM_LAMBDA remains 500 (tested 100 — noisier baseline
+              RAPM targets inflated all players by ~1.65 pts/100, worse RMSE 3.10 vs
+              1.89). 500 is the correct working value; v1.5 docstring "(100)" was wrong.
+              (2) blk_to_fga_ratio added to DEF_FEATURES: BLK / own FGA captures
+              rim-protection intensity for shot-blockers whose value exceeds blk100.
+              (3) EM reference data + backtest command added (see evan_miya_reference.py
+              and backtest_bpr_vs_evan_miya management command).
 
 9. Opponent quality (schedule strength) adjustment in Box BPR
    Article: uses "average opponent rating faced by each player" as a Box BPR
@@ -124,7 +132,7 @@ DEVIATIONS FROM THE PUBLIC BPR ARTICLE
 """
 
 # ── Model version ─────────────────────────────────────────────────────────────
-BPR_MODEL_VERSION = "1.5"
+BPR_MODEL_VERSION = "1.6"
 
 # ── Possession estimation (Kubatko formula) ───────────────────────────────────
 # Possessions ≈ FGA + 0.44×FTA + TOV − ORB
@@ -256,7 +264,17 @@ BOX_BPR_ALPHAS_DEF = [0.1, 0.5, 1.0, 5.0, 10.0, 50.0, 100.0, 200.0]
 BOX_BPR_ALPHAS = BOX_BPR_ALPHAS_OFF
 BOX_BPR_CV_FOLDS = 5
 
-# ── BPR output bounds (for sanity-checking, not hard caps) ───────────────────
+# ── Box BPR inference possession floor ───────────────────────────────────────
+# Minimum off_poss to allow box BPR as a fallback (players below this get null).
+# Prevents per-100 inflation for players with near-zero lineup possessions
+# (e.g. off_poss=1 → pts100 = pts_pg × gp × 100 → absurd predictions).
+# Players with off_poss in [MIN_BOX_BPR_INFERENCE_POSS, MIN_OFF_POSS_BPR) get
+# box BPR; players with off_poss >= MIN_OFF_POSS_BPR get RAPM BPR.
+MIN_BOX_BPR_INFERENCE_POSS = 50
+
+# ── BPR output bounds — HARD CAPS at write time ───────────────────────────────
+# Hard clamp applied in _write_bpr_results(); prevents DB corruption from
+# extreme RAPM coefficients on low-possession / badly-calibrated training seasons.
 # Based on historical BPM/RAPM distributions in published research.
 # Elite college players: ~8-14 BPR
 # Strong starters: ~4-8

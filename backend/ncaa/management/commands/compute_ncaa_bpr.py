@@ -81,6 +81,19 @@ class Command(BaseCommand):
             ),
         )
         parser.add_argument(
+            "--no-em-calibrate",
+            dest="no_em_calibrate",
+            action="store_true",
+            default=False,
+            help=(
+                "Disable Evan Miya calibration for Box BPR training. "
+                "When omitted (default), the pipeline uses EM adj_obpr/adj_dbpr from "
+                "evan_miya_reference.RAW_DATA as box model training targets when available, "
+                "fixing scale compression vs EM's published ratings. "
+                "Pass this flag to fall back to multi-year RAPM or DB baseline targets."
+            ),
+        )
+        parser.add_argument(
             "--rapm-window",
             dest="rapm_window_size",
             type=int,
@@ -116,6 +129,7 @@ class Command(BaseCommand):
                 rapm_lambda_override=options.get("lambda_override"),
                 rapm_years=options.get("rapm_years"),
                 rapm_window_size=options.get("rapm_window_size", 4),
+                em_calibrate=not options.get("no_em_calibrate", False),
                 verbose=True,
             )
         except Exception as exc:

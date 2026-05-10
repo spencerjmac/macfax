@@ -173,9 +173,9 @@ class Command(BaseCommand):
 
         avg_games_played = team_games_count / num_d1_teams if num_d1_teams > 0 else 0
         
-        # Dynamic k: starts at 300, decays to floor of 170
+        # Dynamic k: starts at 300, decays to floor of 150
         # At 16 games (midseason): k ≈ 200
-        # At 21+ games: k = 170 (floor)
+        # At 21+ games: k = 150 (floor)
         # Clamped between 150 and 300 for safety
         if shrinkage_k is None:  # dynamic schedule using PipelineConfig bounds
             shrinkage_k = min(
