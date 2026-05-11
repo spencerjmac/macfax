@@ -304,6 +304,12 @@ class NBALeaguePlayersView(APIView):
         "on_court_adj_em", "-on_court_adj_em",
         # MPIR
         "mpir", "-mpir", "o_mpir", "-o_mpir", "d_mpir", "-d_mpir",
+        # Final BPR (prior-informed RAPM)
+        "bpr", "-bpr", "obpr", "-obpr", "dbpr", "-dbpr",
+        # Box BPR (intermediate)
+        "box_bpr", "-box_bpr", "box_obpr", "-box_obpr", "box_dbpr", "-box_dbpr",
+        # Baseline RAPM
+        "baseline_obpr", "-baseline_obpr", "baseline_dbpr", "-baseline_dbpr",
         # Defense
         "stl_pct", "-stl_pct", "blk_pct", "-blk_pct",
     }

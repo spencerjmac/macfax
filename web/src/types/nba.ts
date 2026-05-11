@@ -261,10 +261,17 @@ export interface NBAPlayerSeasonStats {
   // Defense rates
   stl_pct: number | null;
   blk_pct: number | null;
-  // Box BPR
+  // Final BPR (prior-informed RAPM — displayed)
+  obpr: number | null;
+  dbpr: number | null;
+  bpr: number | null;
+  // Box BPR (intermediate)
   box_obpr: number | null;
   box_dbpr: number | null;
   box_bpr: number | null;
+  // Baseline RAPM
+  baseline_obpr: number | null;
+  baseline_dbpr: number | null;
   nba_archetype: string | null;
   bpr_last_updated: string | null;
   updated_at: string;

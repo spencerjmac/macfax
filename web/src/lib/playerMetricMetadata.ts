@@ -309,21 +309,37 @@ export const NBA_ADVANCED_METRICS: PlayerMetricMeta[] = [
 ];
 
 export const NBA_IMPACT_METRICS: PlayerMetricMeta[] = [
-  // ── Box BPR ──────────────────────────────────────────────────────────────────
+  // ── BPR (prior-informed RAPM — primary displayed rating) ─────────────────────
+  {
+    key: 'bpr',   label: 'BPR',   group: 'BPR',
+    tooltip: 'Bayesian Performance Rating (OBPR + DBPR). Box-score prior regularized toward 3-year lineup RAPM. Team-quality-adjusted individual impact in pts/100 possessions above league average.',
+    format: 'number2', better: 'higher', showRank: true, heatmap: true, tier: 'primary',
+  },
+  {
+    key: 'obpr',  label: 'OBPR',  group: 'BPR',
+    tooltip: 'Offensive BPR — estimated offensive pts/100 poss added above league average.',
+    format: 'number2', better: 'higher', showRank: true, heatmap: true, tier: 'primary',
+  },
+  {
+    key: 'dbpr',  label: 'DBPR',  group: 'BPR',
+    tooltip: 'Defensive BPR — estimated defensive pts/100 poss prevented above league average. Higher = better defender.',
+    format: 'number2', better: 'higher', showRank: true, heatmap: true, tier: 'primary',
+  },
+  // ── Box BPR (intermediate — available but not primary) ────────────────────────
   {
     key: 'box_bpr',   label: 'Box BPR',   group: 'Box BPR',
-    tooltip: 'Box-score Bayesian Performance Rating (Box OBPR + Box DBPR). Ridge regression model trained on per-100-poss box stats. Stage 1 proxy; will be replaced by RAPM-informed BPR in Stage 2.',
-    format: 'number2', better: 'higher', showRank: true, heatmap: true, tier: 'primary',
+    tooltip: 'Box-score-only BPR — Ridge regression on per-100-poss box stats. Intermediate signal used as prior for final BPR.',
+    format: 'number2', better: 'higher', showRank: false, heatmap: false, tier: 'optional',
   },
   {
     key: 'box_obpr',  label: 'Box OBPR',  group: 'Box BPR',
-    tooltip: 'Offensive Box BPR — box-score model estimate of offensive pts/100 poss added, relative to league average.',
-    format: 'number2', better: 'higher', showRank: true, heatmap: true, tier: 'primary',
+    tooltip: 'Offensive Box BPR (box-score model only).',
+    format: 'number2', better: 'higher', showRank: false, heatmap: false, tier: 'optional',
   },
   {
     key: 'box_dbpr',  label: 'Box DBPR',  group: 'Box BPR',
-    tooltip: 'Defensive Box BPR — box-score model estimate of defensive pts/100 poss prevented. Higher = better defender.',
-    format: 'number2', better: 'higher', showRank: true, heatmap: true, tier: 'primary',
+    tooltip: 'Defensive Box BPR (box-score model only).',
+    format: 'number2', better: 'higher', showRank: false, heatmap: false, tier: 'optional',
   },
   // ── MPIR ─────────────────────────────────────────────────────────────────────
   {
