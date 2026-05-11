@@ -532,6 +532,13 @@ class NBAPlayerSeasonStats(models.Model):
     )
     bpr_last_updated = models.DateTimeField(null=True, blank=True)
 
+    # ── Final BPR (nba_compute_final_bpr) — prior-informed RAPM ─────────────
+    # Box-score prior regularized toward 3-year lineup RAPM. This is the
+    # displayed player rating — use instead of box_bpr or baseline_obpr.
+    obpr = models.FloatField(null=True, blank=True, help_text="Final offensive BPR (prior-informed RAPM)")
+    dbpr = models.FloatField(null=True, blank=True, help_text="Final defensive BPR (prior-informed RAPM)")
+    bpr  = models.FloatField(null=True, blank=True, help_text="Final total BPR (obpr + dbpr)")
+
     class Meta:
         constraints = [
             models.UniqueConstraint(

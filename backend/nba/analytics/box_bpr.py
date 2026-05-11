@@ -39,8 +39,8 @@ MIN_POSS = 500           # minimum on_court_poss to qualify for box BPR
 MIN_GP = 20              # minimum games played
 MIN_MPG = 12.0           # minimum minutes per game
 
-BOX_BPR_ALPHAS_OFF = [0.01, 0.05, 0.1, 0.5, 1.0, 5.0, 10.0, 50.0]
-BOX_BPR_ALPHAS_DEF = [0.1, 0.5, 1.0, 5.0, 10.0, 50.0, 100.0, 200.0]
+BOX_BPR_ALPHAS_OFF = [0.01, 0.05, 0.1, 0.5, 1.0, 5.0, 10.0, 50.0, 200.0, 500.0, 1000.0]
+BOX_BPR_ALPHAS_DEF = [0.1, 0.5, 1.0, 5.0, 10.0, 50.0, 100.0, 200.0, 500.0, 1000.0, 2000.0]
 BOX_BPR_CV_FOLDS = 5
 
 # Feature lists — order must match extract_nba_box_features()
@@ -179,12 +179,12 @@ def extract_nba_box_features(
         opp_quality = opp_quality_map.get(team_id, 0.0) if team_id else 0.0
 
         # On-off delta: player's on-court net rating minus team baseline.
-        # Possession-dampened to reduce noise from small samples.
+        # Linear possession scaling (was cubic ^1.5 — too aggressive for bench players).
         _on_ct_adj_em = p.get("on_court_adj_em")
         if _on_ct_adj_em is not None:
             team_em = team_adj_em_map.get(team_id, 0.0) if team_id else 0.0
             _raw_delta = float(_on_ct_adj_em) - team_em
-            _poss_scale = min((poss / 3000.0) ** 1.5, 1.0)
+            _poss_scale = min(poss / 3000.0, 1.0)
             on_off_delta = max(min(_raw_delta * _poss_scale, 6.0), -6.0)
         else:
             on_off_delta = 0.0

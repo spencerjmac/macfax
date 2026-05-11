@@ -444,3 +444,60 @@ def fit_baseline_rapm(
         "lambda":     best_lambda,
         "cv_metrics": cv_metrics,
     }
+
+
+def fit_prior_informed_rapm(
+    observations: list[dict],
+    player_season_index: dict,
+    n_player_seasons: int,
+    prior_obpr: dict[int, float],   # {nba_player_id: box_obpr prior mean}
+    prior_dbpr: dict[int, float],   # {nba_player_id: box_dbpr prior mean}
+    lambda_val: float,
+) -> dict:
+    """
+    LEBRON-style regularized on-off: RAPM regularized toward per-player box-score priors.
+
+    Instead of shrinking toward zero (baseline RAPM), each player's coefficient is
+    pulled toward their box_obpr / box_dbpr prior. This reduces team-quality bias
+    by grounding the estimate in a team-adjusted prior while updating with lineup data.
+
+    prior_obpr / prior_dbpr are keyed by NBA.com player_id (same as player_season_index).
+    """
+    X, y, weights = build_design_matrix(observations, player_season_index, n_player_seasons)
+
+    player_season_keys = sorted(player_season_index, key=player_season_index.get)
+    n_features = X.shape[1]
+    prior_means = np.zeros(n_features)
+
+    for i, (pid, _yr) in enumerate(player_season_keys):
+        prior_means[2 + i] = prior_obpr.get(pid, 0.0)
+        # DBPR internal sign: positive = allowed more (bad defense). Negate the prior.
+        prior_means[2 + n_player_seasons + i] = -prior_dbpr.get(pid, 0.0)
+
+    player_col_slice = (2, 2 + 2 * n_player_seasons)
+    beta = _solve_augmented(X, y, weights, lambda_val, prior_means=prior_means,
+                            player_col_slice=player_col_slice)
+
+    intercept  = float(beta[0])
+    hca        = float(beta[1])
+    obpr_block = beta[2 : 2 + n_player_seasons]
+    dbpr_block = beta[2 + n_player_seasons : 2 + 2 * n_player_seasons]
+
+    obpr = {ps: float(obpr_block[i]) for i, ps in enumerate(player_season_keys)}
+    dbpr = {ps: float(-dbpr_block[i]) for i, ps in enumerate(player_season_keys)}
+
+    logger.info(
+        "Prior-informed RAPM done (λ=%.1f). "
+        "OBPR range [%.2f, %.2f], DBPR range [%.2f, %.2f]",
+        lambda_val,
+        min(obpr.values()), max(obpr.values()),
+        min(dbpr.values()), max(dbpr.values()),
+    )
+
+    return {
+        "obpr":      obpr,
+        "dbpr":      dbpr,
+        "intercept": intercept,
+        "hca":       hca,
+        "lambda":    lambda_val,
+    }

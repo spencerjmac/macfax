@@ -5,8 +5,11 @@ Computes NBA Box BPR (box_obpr, box_dbpr, box_bpr) for all qualified
 players in a season using Ridge regression on per-100-possession
 box-score features.
 
-Stage 1 targets: o_mpir / d_mpir (NBA.com E_OFF/DEF_RATING residuals).
-Stage 2+ will retrain with baseline_obpr / baseline_dbpr from RAPM.
+Training targets (in priority order):
+  1. baseline_obpr / baseline_dbpr from RAPM (team-quality-adjusted, preferred)
+  2. o_mpir / d_mpir (NBA.com E_OFF/DEF_RATING residuals, fallback)
+
+Run nba_compute_baseline_rapm before this command to enable RAPM targets.
 
 Usage:
   python manage.py nba_compute_box_bpr --season 2026
@@ -75,6 +78,7 @@ class Command(BaseCommand):
                 "on_court_poss", "on_court_adj_em",
                 "on_court_adj_d",
                 "o_mpir", "d_mpir",
+                "baseline_obpr", "baseline_dbpr",
             )
         )
 
@@ -90,23 +94,51 @@ class Command(BaseCommand):
         self.stdout.write(f"  opp_quality: {len(opp_quality_map)} teams")
         self.stdout.write(f"  team_adj_em: {len(team_adj_em_map)} teams")
 
-        # ── 3. Build target maps (o_mpir / d_mpir) ────────────────────────────
+        # ── 3. Build target maps — prefer RAPM (team-quality-adjusted) ──────────
         target_obpr: dict[int, float] = {}
         target_dbpr: dict[int, float] = {}
+        n_rapm_off = n_rapm_def = n_mpir_off = n_mpir_def = 0
+
         for p in stats_values:
             pid = p["player_id"]
-            if p.get("o_mpir") is not None:
+            if p.get("baseline_obpr") is not None:
+                target_obpr[pid] = p["baseline_obpr"]
+                n_rapm_off += 1
+            elif p.get("o_mpir") is not None:
                 target_obpr[pid] = p["o_mpir"]
-            if p.get("d_mpir") is not None:
+                n_mpir_off += 1
+            if p.get("baseline_dbpr") is not None:
+                target_dbpr[pid] = p["baseline_dbpr"]
+                n_rapm_def += 1
+            elif p.get("d_mpir") is not None:
                 target_dbpr[pid] = p["d_mpir"]
+                n_mpir_def += 1
 
         self.stdout.write(
-            f"Targets: {len(target_obpr)} o_mpir, {len(target_dbpr)} d_mpir"
+            f"Targets: off={len(target_obpr)} "
+            f"(rapm={n_rapm_off}, mpir={n_mpir_off}), "
+            f"def={len(target_dbpr)} "
+            f"(rapm={n_rapm_def}, mpir={n_mpir_def})"
         )
+        if n_rapm_off > 0:
+            self.stdout.write(
+                self.style.SUCCESS(
+                    f"  Using RAPM targets for {n_rapm_off} off / {n_rapm_def} def players "
+                    "(team-quality-adjusted)"
+                )
+            )
+        else:
+            self.stdout.write(
+                self.style.WARNING(
+                    "  No RAPM targets found — falling back to MPIR. "
+                    "Run nba_compute_baseline_rapm for better accuracy."
+                )
+            )
 
         if len(target_obpr) < 30 or len(target_dbpr) < 30:
             raise CommandError(
-                "Insufficient MPIR targets. Run nba_sync_player_advanced first."
+                "Insufficient targets (<30). Run nba_sync_player_advanced "
+                "or nba_compute_baseline_rapm first."
             )
 
         # ── 4. Train / predict ────────────────────────────────────────────────
