@@ -194,7 +194,7 @@ class Command(BaseCommand):
             X_rows.append([1.0, adj_diff, float(game.home_b2b), float(game.away_b2b)])
             y_vals.append(float(game.home_score - game.away_score))
 
-        ols_games = ols_r_sq = empirical_hca = ols_scale = emp_home_b2b = emp_away_b2b = None
+        ols_games = ols_r_sq = empirical_hca = ols_scale = emp_home_b2b = emp_away_b2b = prediction_sigma = None
 
         if len(X_rows) >= 10:
             X_np = np.array(X_rows)
@@ -207,7 +207,15 @@ class Command(BaseCommand):
             ols_scale = float(coeffs[1])
             emp_home_b2b = float(coeffs[2])
             emp_away_b2b = float(coeffs[3])
+            # ddof=4: OLS consumed 4 degrees of freedom (intercept + 3 regressors)
+            prediction_sigma = float(np.std(y_np - y_pred, ddof=4))
             configured_b2b = NBA_RATINGS_CONFIG["b2b_penalty"]
+
+            _sigma_note = (
+                "healthy" if 10 <= prediction_sigma <= 14
+                else "LOW — check adj_net units vs raw game points" if prediction_sigma < 10
+                else "HIGH — ratings may not yet explain much variance"
+            )
 
             self.stdout.write(
                 f"  OLS games:          {ols_games}\n"
@@ -216,6 +224,9 @@ class Command(BaseCommand):
                 f"    Empirical:        {empirical_hca:+.2f} raw pts\n"
                 f"    Configured:       {configured_hca:+.2f} pts/100 poss\n"
                 f"\n  β₁ (model scale):  {ols_scale:.3f}  (goal ≈ 1.0)\n"
+                f"\n  Prediction sigma:   {prediction_sigma:.2f} pts  ({_sigma_note})\n"
+                f"  Note: std dev of (actual − predicted margin), ddof=4.\n"
+                f"  Expected 10–14 for NBA. Used in win-probability CDF.\n"
                 f"\n  B2B penalties:\n"
                 f"    Home B2B (β₂):    {emp_home_b2b:+.2f} raw pts  "
                 f"(configured −{configured_b2b:.1f})\n"
@@ -331,6 +342,7 @@ class Command(BaseCommand):
                 "empirical_home_b2b_penalty": emp_home_b2b,
                 "empirical_away_b2b_penalty": emp_away_b2b,
                 "configured_b2b_penalty": configured_b2b_val,
+                "prediction_sigma": prediction_sigma,
                 # Analysis 4
                 "ffi_teams_used": ffi_teams if ffi_teams else None,
                 "ffi_adj_net_r_squared": ffi_r_sq,

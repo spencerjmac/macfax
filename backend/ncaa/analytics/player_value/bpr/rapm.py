@@ -70,15 +70,19 @@ logger = logging.getLogger(__name__)
 
 def build_design_matrix(
     observations: list[dict],
-    player_season_index: dict,  # (player_id, season_year) → column index (0-based)
+    player_season_index: dict,  # (player_id, season_year) → col  OR  player_id → col
     n_player_seasons: int,
     league_avg_off_eff: Optional[float] = None,
+    player_keyed: bool = False,
 ) -> tuple[sparse.csr_matrix, np.ndarray, np.ndarray]:
     """
     Build the sparse design matrix X, target vector y, and weight vector w.
 
-    Columns use player-season identities: the same player in different seasons
-    gets separate OBPR/DBPR columns, enabling correct multi-year RAPM.
+    player_keyed=False (default): player_season_index is {(player_id, yr): col}.
+      Same player in different years gets separate columns — correct multi-year RAPM.
+    player_keyed=True: player_season_index is {player_id: col}.
+      Same player across all years maps to ONE column, implementing EM's "constant
+      value across 4 pooled years" assumption. Used only for box training RAPM targets.
 
     Returns:
         X        (n_obs, 2 + 2*n_player_seasons)  CSR sparse
@@ -116,11 +120,11 @@ def build_design_matrix(
             rows.append(i); cols.append(1); vals.append(hca_sign)
             # home players: OBPR columns (offensive)
             for pid in home_ids:
-                j = player_season_index[(pid, obs_year)]
+                j = player_season_index[pid] if player_keyed else player_season_index[(pid, obs_year)]
                 rows.append(i); cols.append(2 + j); vals.append(1.0)
             # away players: DBPR columns (defending against home offense)
             for pid in away_ids:
-                j = player_season_index[(pid, obs_year)]
+                j = player_season_index[pid] if player_keyed else player_season_index[(pid, obs_year)]
                 rows.append(i); cols.append(2 + n_player_seasons + j); vals.append(1.0)
 
         # ── Row 2·idx+1: away team on offense ────────────────────────────────
@@ -132,10 +136,10 @@ def build_design_matrix(
             rows.append(i); cols.append(0); vals.append(1.0)
             rows.append(i); cols.append(1); vals.append(-hca_sign)
             for pid in away_ids:
-                j = player_season_index[(pid, obs_year)]
+                j = player_season_index[pid] if player_keyed else player_season_index[(pid, obs_year)]
                 rows.append(i); cols.append(2 + j); vals.append(1.0)
             for pid in home_ids:
-                j = player_season_index[(pid, obs_year)]
+                j = player_season_index[pid] if player_keyed else player_season_index[(pid, obs_year)]
                 rows.append(i); cols.append(2 + n_player_seasons + j); vals.append(1.0)
 
     X = sparse.coo_matrix(
@@ -285,23 +289,30 @@ def fit_baseline_rapm(
     n_player_seasons: int,
     run_cv: bool = True,
     lambda_override: Optional[float] = None,
+    player_keyed: bool = False,
 ) -> dict:
     """
     Fit baseline RAPM with global prior μ=0.
 
+    player_keyed=False (default): returns obpr/dbpr keyed by (player_id, season_year).
+    player_keyed=True: single coefficient per player across all years.
+      Returns obpr/dbpr keyed by player_id directly — no extract_target_season needed.
+
     Returns:
         {
-          obpr:        dict[(player_id, season_year), float]
-          dbpr:        dict[(player_id, season_year), float]
+          obpr:        dict[(player_id, season_year), float]  OR  dict[player_id, float]
+          dbpr:        dict[(player_id, season_year), float]  OR  dict[player_id, float]
           intercept:   float
           hca:         float
           lambda:      float
           cv_metrics:  dict | None
+          player_keyed: bool
         }
-    Use extract_target_season(result["obpr"], target_year) for {player_id: float}.
     """
     logger.info(f"Building RAPM design matrix for {len(observations)} lineup segments …")
-    X, y, weights = build_design_matrix(observations, player_season_index, n_player_seasons)
+    X, y, weights = build_design_matrix(
+        observations, player_season_index, n_player_seasons, player_keyed=player_keyed
+    )
     logger.info(f"  Design matrix: {X.shape[0]} observations × {X.shape[1]} features  "
                 f"({X.nnz} non-zeros)")
 
@@ -333,12 +344,13 @@ def fit_baseline_rapm(
     dbpr = {ps: float(-dbpr_block[i]) for i, ps in enumerate(player_season_keys)}
 
     return {
-        "obpr":       obpr,
-        "dbpr":       dbpr,
-        "intercept":  intercept,
-        "hca":        hca,
-        "lambda":     best_lambda,
-        "cv_metrics": cv_metrics,
+        "obpr":         obpr,
+        "dbpr":         dbpr,
+        "intercept":    intercept,
+        "hca":          hca,
+        "lambda":       best_lambda,
+        "cv_metrics":   cv_metrics,
+        "player_keyed": player_keyed,
     }
 
 

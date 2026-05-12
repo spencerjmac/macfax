@@ -146,9 +146,9 @@ MIN_SEGMENT_POSS = 0.5  # ~1 possession minimum
 # Prevents near-zero denominators from blowing up y = pts/poss * 100.
 MIN_OBS_POSS = 1.0
 # Player must have at least this many offensive possessions to receive BPR
-MIN_OFF_POSS_BPR = 100
+MIN_OFF_POSS_BPR = 200
 # Player must have at least this many defensive possessions
-MIN_DEF_POSS_BPR = 100
+MIN_DEF_POSS_BPR = 200
 # Box BPR: minimum minutes per game to include in box model training
 MIN_MPG_BOX_BPR = 8.0
 # Box BPR: minimum games played
@@ -199,7 +199,7 @@ PRIOR_HISTORY_BLEND = 0.20
 # prior-informed RAPM penalty.  s < 1 → trust box priors more; s > 1 → trust data more.
 # Pipeline tunes BOTH a single joint sd_scale AND separate sd_scale_off/sd_scale_def,
 # using whichever gives lower held-out WMSE.
-PRIOR_SD_SCALE_CANDIDATES = [0.35, 0.4, 0.5, 0.6, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0]
+PRIOR_SD_SCALE_CANDIDATES = [0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.4, 0.5, 0.6, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0]
 
 # Reference scale evaluated during CV to approximate "box-only" held-out WMSE.
 # At this scale, per-player penalty ≈ λ / (base_SD × 0.01)² → ∞,

@@ -206,6 +206,156 @@ export interface NBAModelCalibration {
   ffi_current_weight_fta: number | null;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Matchup
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface NBAMatchupTeam {
+  id: number;
+  name: string;
+  slug: string;
+  logo_url: string | null;
+  conference: 'East' | 'West';
+  division: string;
+  rank: number | null;
+  record: string;
+  adj_em: number;
+  adj_o: number;
+  adj_d: number;
+  adj_tempo: number;
+  ffi: number;
+}
+
+export interface NBAMatchupForecast {
+  pace: number;
+  pts_a_neutral: number;
+  pts_b_neutral: number;
+  pts_a: number;
+  pts_b: number;
+  margin: number;
+  spread: number;
+  spread_team: 'a' | 'b';
+  total: number;
+  prob_a: number;
+  prob_b: number;
+  // Score projection range: margin ± prediction_sigma (game outcome spread in raw points)
+  margin_low: number;
+  margin_high: number;
+  // Model confidence band: prob if spread estimate is off by ±1.5 pts (NOT game variance)
+  prob_a_low: number;
+  prob_a_high: number;
+}
+
+export interface NBAFourFactorEdges {
+  efg_edge: number;
+  tov_edge: number;
+  orb_edge: number;
+  ftr_edge: number;
+  exp_efg_a: number;
+  exp_efg_b: number;
+  exp_tov_a: number;
+  exp_tov_b: number;
+  exp_orb_a: number;
+  exp_orb_b: number;
+  exp_ftr_a: number;
+  exp_ftr_b: number;
+}
+
+export interface NBAShotProfile {
+  fg3_rate_edge: number;
+  fg3_pct_edge: number;
+  fg2_pct_edge: number;
+  fg3_rate_a: number;
+  fg3_rate_b: number;
+  fg3_pct_a: number;
+  fg3_pct_b: number;
+  fg2_pct_a: number;
+  fg2_pct_b: number;
+}
+
+export interface NBAVolatility {
+  volatility_score: number;
+  pace_component: number;
+  three_pt_component: number;
+  variance_component: number;
+  reasons: string[];
+  upset_warning: string | null;
+}
+
+export interface NBARecentGame {
+  date: string;
+  opponent: string;
+  result: 'W' | 'L';
+  score: string;
+  margin: number;
+}
+
+export interface NBARecentForm {
+  games_analyzed: number;
+  record: string;
+  avg_margin: number;
+  variance: number;
+  games: NBARecentGame[];
+}
+
+export interface NBAMatchupMetadata {
+  hca_points: number;
+  prediction_sigma: number;
+  nat_avg_ortg: number;
+  coefficients: {
+    efg: number | null;
+    tov: number | null;
+    orb: number | null;
+    ftr: number | null;
+    r_squared: number | null;
+  };
+}
+
+export interface NBASeriesGame {
+  game: number;
+  site: 'home' | 'away';
+  label: string;
+}
+
+export interface NBASeriesPrediction {
+  prob_a_series: number;
+  prob_b_series: number;
+  prob_sweep_a: number;
+  prob_a_in_5: number;
+  prob_a_in_6: number;
+  prob_a_in_7: number;
+  prob_sweep_b: number;
+  prob_b_in_5: number;
+  prob_b_in_6: number;
+  prob_b_in_7: number;
+  series_home: 'a' | 'b';
+  game_schedule: NBASeriesGame[];
+}
+
+export interface NBAMatchupResult {
+  season: string;
+  site: 'neutral' | 'home' | 'away';
+  mode: 'game' | 'series';
+  teamA: NBAMatchupTeam;
+  teamB: NBAMatchupTeam;
+  forecast: NBAMatchupForecast;
+  four_factor_edges: NBAFourFactorEdges;
+  ffi_edge: number;
+  points_breakdown: null;
+  top_drivers: null;
+  shot_profile: NBAShotProfile | null;
+  volatility: NBAVolatility;
+  recent_form_a: NBARecentForm;
+  recent_form_b: NBARecentForm;
+  series_prediction: NBASeriesPrediction | null;
+  metadata: NBAMatchupMetadata;
+}
+
+export interface NBATeamColors {
+  primary: string;
+  secondary: string;
+}
+
 export interface NBAPlayerSeasonStats {
   id: number;
   player: number;

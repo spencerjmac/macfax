@@ -16,6 +16,7 @@ from .views import (
     NBATeamRosterView,
     NBALeaguePlayersView,
     NBAHealthView,
+    NBAMatchupView,
     NBAModelCalibrationView,
 )
 
@@ -32,4 +33,5 @@ urlpatterns = [
     path("players/", NBALeaguePlayersView.as_view(), name="nba-players"),
     path("health/", NBAHealthView.as_view(), name="nba-health"),
     path("model-calibration/", NBAModelCalibrationView.as_view(), name="nba-model-calibration"),
+    path("matchup/", NBAMatchupView.as_view(), name="nba-matchup"),
 ]

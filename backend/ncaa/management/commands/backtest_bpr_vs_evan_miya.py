@@ -243,19 +243,17 @@ class Command(BaseCommand):
             best_row   = None
             best_score = 0.0
 
-            # First: exact name match
             for db_name, rows in db_by_name.items():
                 score = _name_match_score(em["name"], db_name)
-                if score > best_score:
-                    # Secondary filter: team name similarity
-                    team_score = max(
-                        _name_match_score(em_team_norm, row["team__name"] or "")
-                        for row in rows
-                    )
+                if score < 0.5:
+                    continue
+                # Pick the specific row with the best team match (handles duplicate names)
+                for row in rows:
+                    team_score = _name_match_score(em_team_norm, row["team__name"] or "")
                     combined = score * 0.7 + team_score * 0.3
                     if combined > best_score:
                         best_score = combined
-                        best_row = rows[0]
+                        best_row = row
 
             if best_score < 0.55 or best_row is None:
                 unmatched_em.append(em)

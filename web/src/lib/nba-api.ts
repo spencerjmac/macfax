@@ -11,6 +11,7 @@ import type {
   NBAGame,
   NBATeamDetailResponse,
   NBAHealthData,
+  NBAMatchupResult,
   NBAModelCalibration,
   NBAPlayerSeasonStats,
 } from '@/types/nba';
@@ -87,6 +88,16 @@ export const nbaApi = {
 
   async getTeamRoster(slug: string, season?: number): Promise<NBAPlayerSeasonStats[]> {
     return fetchJson<NBAPlayerSeasonStats[]>(buildUrl(`/team/${slug}/players/`, { season }));
+  },
+
+  async getMatchup(
+    teamA: string,
+    teamB: string,
+    site: 'neutral' | 'home' | 'away',
+    season?: number,
+    mode?: 'game' | 'series',
+  ): Promise<NBAMatchupResult> {
+    return fetchJson<NBAMatchupResult>(buildUrl('/matchup/', { teamA, teamB, site, season, mode }));
   },
 
   async getLeaguePlayers(params?: {

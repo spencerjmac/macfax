@@ -188,7 +188,7 @@ def run_bpr_season(
         # Phase 2b: Fit a lower-lambda RAPM for Box BPR training targets.
         # The production baseline RAPM (lambda=CV~1000) shrinks elite coefficients too
         # heavily → Box BPR learns a compressed scale → recursive attenuation.
-        # Using BOX_TRAINING_RAPM_LAMBDA (100) gives wider-spread targets so Box BPR
+        # Using BOX_TRAINING_RAPM_LAMBDA gives wider-spread targets so Box BPR
         # can learn the 10-14+ range. Production RAPM (Phase 5) is unaffected.
         logger.info(
             f"[BPR] Phase 2b: Fitting Box BPR training RAPM (λ={BOX_TRAINING_RAPM_LAMBDA})"

@@ -425,7 +425,7 @@ function ForecastSection({ result, colorA, colorB }: { result: MatchupResult; co
               {forecast.margin.toFixed(1)}
             </p>
             <p className="text-xs text-gray-500 mt-2">
-              95% CI: {forecast.margin_low.toFixed(1)} to {forecast.margin_high.toFixed(1)}
+              Score range: {forecast.margin_low.toFixed(1)} to {forecast.margin_high.toFixed(1)}
             </p>
           </div>
         </div>

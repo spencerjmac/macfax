@@ -5,8 +5,13 @@ Phase 1: Stub views that return empty/minimal data.
 Phase 2: Populated by nba_sync_* management commands + real ingestion.
 """
 
+import logging
+
+from django.core.cache import cache
 from django.db.models import Q
 from rest_framework import viewsets, status
+
+_log = logging.getLogger(__name__)
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -271,6 +276,294 @@ class NBATeamRosterView(APIView):
             )
 
         return Response(NBAPlayerSeasonStatsSerializer(players, many=True).data)
+
+
+class NBAMatchupView(APIView):
+    """
+    GET /api/nba/matchup/?teamA=<slug>&teamB=<slug>&site=neutral&season=2026&mode=game
+
+    Returns comprehensive head-to-head NBA matchup analysis.
+
+    Query Parameters:
+        teamA:   Team A slug (required)
+        teamB:   Team B slug (required)
+        site:    'neutral' | 'home' (A home) | 'away' (B home) — default neutral
+        season:  Season year integer — default current season
+        mode:    'game' | 'series' — default 'game'; 'series' adds 7-game series DP
+    """
+
+    def get(self, request):
+        from api.matchup_engine import (
+            apply_hca_adjustment,
+            compute_matchup_four_factors,
+            compute_shot_profile_edges,
+            compute_volatility_score,
+            compute_win_probability,
+            forecast_game,
+        )
+        from nba.matchup_engine import (
+            NBA_PACE_DEFAULT,
+            compute_nba_national_four_factors,
+            compute_nba_recent_form,
+            compute_nba_record,
+            compute_nba_shot_profile,
+            compute_series_probability,
+            get_nba_four_factors_pct,
+            get_nba_model_params,
+        )
+
+        team_a_slug = request.query_params.get("teamA", "").lower()
+        team_b_slug = request.query_params.get("teamB", "").lower()
+        site = request.query_params.get("site", "neutral")
+        mode = request.query_params.get("mode", "game")
+        season_year = request.query_params.get("season")
+
+        if not team_a_slug or not team_b_slug:
+            return Response({"error": "teamA and teamB required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if site not in ("neutral", "home", "away"):
+            return Response({"error": "site must be neutral, home, or away"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if mode not in ("game", "series"):
+            return Response({"error": "mode must be game or series"}, status=status.HTTP_400_BAD_REQUEST)
+
+        cache_key = f"nba:matchup:{team_a_slug}:{team_b_slug}:{site}:{season_year or 'current'}:{mode}"
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return Response(cached)
+
+        # Resolve season
+        if season_year:
+            try:
+                season = NBASeason.objects.get(year=int(season_year))
+            except (NBASeason.DoesNotExist, ValueError):
+                return Response({"error": f"Season {season_year} not found"}, status=status.HTTP_404_NOT_FOUND)
+        else:
+            season = NBASeason.objects.filter(is_current=True).first()
+            if not season:
+                return Response({"error": "No current season found"}, status=status.HTTP_404_NOT_FOUND)
+
+        # Load teams
+        try:
+            team_a = NBATeam.objects.get(slug=team_a_slug)
+        except NBATeam.DoesNotExist:
+            return Response({"error": f"Team '{team_a_slug}' not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            team_b = NBATeam.objects.get(slug=team_b_slug)
+        except NBATeam.DoesNotExist:
+            return Response({"error": f"Team '{team_b_slug}' not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        # Load ratings
+        try:
+            ratings_a = NBATeamSeasonRatings.objects.get(team=team_a, season=season, season_type="regular")
+            ratings_b = NBATeamSeasonRatings.objects.get(team=team_b, season=season, season_type="regular")
+        except NBATeamSeasonRatings.DoesNotExist:
+            return Response(
+                {"error": "Team ratings not found for this season. Run nba_compute_ratings first."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Model parameters (HCA, sigma, nat_avg_ortg)
+        params = get_nba_model_params(season)
+        hca_points = params["hca_points"]
+        sigma = params["sigma"]
+        nat_avg_ortg = params["nat_avg_ortg"]
+        ols_r_squared = params["ols_r_squared"]
+
+        # National four-factor averages (percentage-point scale)
+        nat_ff = compute_nba_national_four_factors(season)
+
+        # Convert NBA decimal four factors to percentage points
+        ff_a = get_nba_four_factors_pct(ratings_a)
+        ff_b = get_nba_four_factors_pct(ratings_b)
+
+        # ===== FORECAST =====
+        _log.debug(
+            "[NBA matchup] %s adj_off=%.1f adj_def=%.1f adj_net=%.1f pace=%.1f | "
+            "%s adj_off=%.1f adj_def=%.1f adj_net=%.1f pace=%.1f | "
+            "nat_avg_ortg=%.1f sigma=%.2f hca=%.2f",
+            team_a.abbreviation,
+            ratings_a.adj_off or -999, ratings_a.adj_def or -999,
+            ratings_a.adj_net or -999, ratings_a.pace or -999,
+            team_b.abbreviation,
+            ratings_b.adj_off or -999, ratings_b.adj_def or -999,
+            ratings_b.adj_net or -999, ratings_b.pace or -999,
+            nat_avg_ortg, sigma, hca_points,
+        )
+
+        forecast = forecast_game(
+            adj_o_a=ratings_a.adj_off or nat_avg_ortg,
+            adj_d_a=ratings_a.adj_def or nat_avg_ortg,
+            adj_em_a=ratings_a.adj_net or 0.0,
+            tempo_a=ratings_a.pace or NBA_PACE_DEFAULT,
+            adj_o_b=ratings_b.adj_off or nat_avg_ortg,
+            adj_d_b=ratings_b.adj_def or nat_avg_ortg,
+            adj_em_b=ratings_b.adj_net or 0.0,
+            tempo_b=ratings_b.pace or NBA_PACE_DEFAULT,
+            nat_avg_ortg=nat_avg_ortg,
+            hca_points=hca_points,
+            sigma=sigma,
+            site=site,
+        )
+
+        # Score sanity: neutral-site pts should be within ±15% of nat_avg_ortg × (pace/100)
+        _expected = nat_avg_ortg * ((ratings_a.pace or NBA_PACE_DEFAULT) / 100)
+        if not (0.85 * _expected < forecast["pts_a_neutral"] < 1.15 * _expected):
+            _log.warning(
+                "[NBA matchup] Score sanity: %s pts_a_neutral=%.1f, expected ~%.1f. "
+                "Check adj_off/adj_def units.",
+                team_a.abbreviation, forecast["pts_a_neutral"], _expected,
+            )
+
+        _log.debug(
+            "[NBA matchup] forecast margin=%.1f pts_a=%.1f pts_b=%.1f prob_a=%.3f",
+            forecast["margin"], forecast["pts_a"], forecast["pts_b"], forecast["prob_a"],
+        )
+
+        # ===== FOUR FACTOR EDGES =====
+        ff_edges = compute_matchup_four_factors(
+            efg_a=ff_a["efg"],     tov_a=ff_a["tov"],     orb_a=ff_a["orb"],     ftr_a=ff_a["ftr"],
+            efg_d_a=ff_a["opp_efg"], tov_d_a=ff_a["opp_tov"], orb_d_a=ff_a["opp_orb"], ftr_d_a=ff_a["opp_ftr"],
+            efg_b=ff_b["efg"],     tov_b=ff_b["tov"],     orb_b=ff_b["orb"],     ftr_b=ff_b["ftr"],
+            efg_d_b=ff_b["opp_efg"], tov_d_b=ff_b["opp_tov"], orb_d_b=ff_b["opp_orb"], ftr_d_b=ff_b["opp_ftr"],
+            nat_efg=nat_ff["nat_efg"], nat_tov=nat_ff["nat_tov"],
+            nat_orb=nat_ff["nat_orb"], nat_ftr=nat_ff["nat_ftr"],
+        )
+
+        # ===== FFI EDGE =====
+        ffi_a = ratings_a.ffi if ratings_a.ffi is not None else 50.0
+        ffi_b = ratings_b.ffi if ratings_b.ffi is not None else 50.0
+        ffi_edge = round(ffi_a - ffi_b, 1)
+
+        # ===== RECORDS =====
+        record_a = compute_nba_record(team_a, season)
+        record_b = compute_nba_record(team_b, season)
+
+        # ===== SHOT PROFILE =====
+        shot_a = compute_nba_shot_profile(team_a, season)
+        shot_b = compute_nba_shot_profile(team_b, season)
+        shot_profile = None
+        if shot_a and shot_b:
+            shot_profile = compute_shot_profile_edges(
+                fg3_rate_a=shot_a["fg3_rate"], fg3_pct_a=shot_a["fg3_pct"], fg2_pct_a=shot_a["fg2_pct"],
+                fg3_rate_b=shot_b["fg3_rate"], fg3_pct_b=shot_b["fg3_pct"], fg2_pct_b=shot_b["fg2_pct"],
+            )
+
+        # ===== RECENT FORM =====
+        recent_form_a = compute_nba_recent_form(team_a, season, nat_avg_ortg, hca_points, sigma)
+        recent_form_b = compute_nba_recent_form(team_b, season, nat_avg_ortg, hca_points, sigma)
+        variance_a = recent_form_a["variance"] or None
+        variance_b = recent_form_b["variance"] or None
+
+        # ===== VOLATILITY =====
+        all_paces = list(
+            NBATeamSeasonRatings.objects.filter(
+                season=season, season_type="regular", pace__isnull=False
+            ).values_list("pace", flat=True)
+        )
+        all_fg3_rates = []
+        for tr in NBATeamSeasonRatings.objects.filter(season=season, season_type="regular"):
+            sp = compute_nba_shot_profile(tr.team, season)
+            if sp:
+                all_fg3_rates.append(sp["fg3_rate"])
+
+        if len(all_paces) >= 10:
+            import numpy as np
+            tempo_range = (float(np.percentile(all_paces, 5)), float(np.percentile(all_paces, 95)))
+        else:
+            tempo_range = (90.0, 102.0)
+
+        if len(all_fg3_rates) >= 10:
+            import numpy as np
+            fg3_range = (float(np.percentile(all_fg3_rates, 5)), float(np.percentile(all_fg3_rates, 95)))
+        else:
+            fg3_range = (36.0, 50.0)
+
+        volatility = compute_volatility_score(
+            tempo_a=ratings_a.pace or NBA_PACE_DEFAULT,
+            tempo_b=ratings_b.pace or NBA_PACE_DEFAULT,
+            fg3_rate_a=shot_a["fg3_rate"] if shot_a else 42.0,
+            fg3_rate_b=shot_b["fg3_rate"] if shot_b else 42.0,
+            recent_variance_a=variance_a,
+            recent_variance_b=variance_b,
+            tempo_range=tempo_range,
+            fg3_rate_range=fg3_range,
+            variance_range=(3.0, 15.0),
+        )
+
+        # ===== SERIES PREDICTION =====
+        series_prediction = None
+        if mode == "series":
+            pts_a_neutral = forecast["pts_a_neutral"]
+            pts_b_neutral = forecast["pts_b_neutral"]
+            pts_a_home, pts_b_home = apply_hca_adjustment(pts_a_neutral, pts_b_neutral, "home", hca_points)
+            pts_a_away, pts_b_away = apply_hca_adjustment(pts_a_neutral, pts_b_neutral, "away", hca_points)
+            prob_a_home, _ = compute_win_probability(pts_a_home - pts_b_home, sigma)
+            prob_a_away, _ = compute_win_probability(pts_a_away - pts_b_away, sigma)
+            series_home = "b" if site == "away" else "a"
+            series_prediction = compute_series_probability(prob_a_home, prob_a_away, series_home)
+
+        response_data = {
+            "season": season.display_name,
+            "site": site,
+            "mode": mode,
+            "teamA": {
+                "id": team_a.id,
+                "name": team_a.name,
+                "slug": team_a.slug,
+                "logo_url": team_a.logo_url,
+                "conference": team_a.conference,
+                "division": team_a.division,
+                "rank": ratings_a.rank_adj_net,
+                "record": record_a,
+                "adj_em": round(ratings_a.adj_net or 0.0, 1),
+                "adj_o": round(ratings_a.adj_off or nat_avg_ortg, 1),
+                "adj_d": round(ratings_a.adj_def or nat_avg_ortg, 1),
+                "adj_tempo": round(ratings_a.pace or NBA_PACE_DEFAULT, 1),
+                "ffi": round(ffi_a, 1),
+            },
+            "teamB": {
+                "id": team_b.id,
+                "name": team_b.name,
+                "slug": team_b.slug,
+                "logo_url": team_b.logo_url,
+                "conference": team_b.conference,
+                "division": team_b.division,
+                "rank": ratings_b.rank_adj_net,
+                "record": record_b,
+                "adj_em": round(ratings_b.adj_net or 0.0, 1),
+                "adj_o": round(ratings_b.adj_off or nat_avg_ortg, 1),
+                "adj_d": round(ratings_b.adj_def or nat_avg_ortg, 1),
+                "adj_tempo": round(ratings_b.pace or NBA_PACE_DEFAULT, 1),
+                "ffi": round(ffi_b, 1),
+            },
+            "forecast": forecast,
+            "four_factor_edges": ff_edges,
+            "ffi_edge": ffi_edge,
+            "points_breakdown": None,
+            "top_drivers": None,
+            "shot_profile": shot_profile,
+            "volatility": volatility,
+            "recent_form_a": recent_form_a,
+            "recent_form_b": recent_form_b,
+            "series_prediction": series_prediction,
+            "metadata": {
+                "hca_points": round(hca_points, 2),
+                "prediction_sigma": round(sigma, 2),
+                "nat_avg_ortg": round(nat_avg_ortg, 1),
+                "coefficients": {
+                    "efg": None,
+                    "tov": None,
+                    "orb": None,
+                    "ftr": None,
+                    "r_squared": round(ols_r_squared, 3) if ols_r_squared else None,
+                },
+            },
+        }
+
+        cache.set(cache_key, response_data, 60 * 30)
+        return Response(response_data)
 
 
 class NBALeaguePlayersView(APIView):

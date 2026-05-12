@@ -8,23 +8,18 @@ interface EspnTeam {
   alternateColor: string;
 }
 
-let cache: EspnTeam[] | null = null;
-let cacheExpiry = 0;
+let ncaaCache: EspnTeam[] | null = null;
+let ncaaCacheExpiry = 0;
+let nbaCache: EspnTeam[] | null = null;
+let nbaCacheExpiry = 0;
 const TTL_MS = 24 * 60 * 60 * 1000;
 
-async function getTeams(): Promise<EspnTeam[]> {
-  if (cache && Date.now() < cacheExpiry) return cache;
-
-  const res = await fetch(
-    'https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/teams?limit=700',
-    { next: { revalidate: 86400 } }
-  );
+async function fetchEspnTeams(url: string): Promise<EspnTeam[]> {
+  const res = await fetch(url, { next: { revalidate: 86400 } });
   if (!res.ok) throw new Error(`ESPN API ${res.status}`);
-
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const data = await res.json() as any;
   const items: unknown[] = data?.sports?.[0]?.leagues?.[0]?.teams ?? [];
-
   const teams: EspnTeam[] = [];
   for (const item of items) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -39,10 +34,25 @@ async function getTeams(): Promise<EspnTeam[]> {
       });
     }
   }
-
-  cache = teams;
-  cacheExpiry = Date.now() + TTL_MS;
   return teams;
+}
+
+async function getNcaaTeams(): Promise<EspnTeam[]> {
+  if (ncaaCache && Date.now() < ncaaCacheExpiry) return ncaaCache;
+  ncaaCache = await fetchEspnTeams(
+    'https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/teams?limit=700'
+  );
+  ncaaCacheExpiry = Date.now() + TTL_MS;
+  return ncaaCache;
+}
+
+async function getNbaTeams(): Promise<EspnTeam[]> {
+  if (nbaCache && Date.now() < nbaCacheExpiry) return nbaCache;
+  nbaCache = await fetchEspnTeams(
+    'https://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams?limit=40'
+  );
+  nbaCacheExpiry = Date.now() + TTL_MS;
+  return nbaCache;
 }
 
 function normalize(s: string): string {
@@ -89,8 +99,16 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const teams = await getTeams();
-    const team = findTeam(teams, name || slug.replace(/-/g, ' '), slug);
+    const displayName = name || slug.replace(/-/g, ' ');
+
+    // Try NCAA first, then NBA
+    const ncaaTeams = await getNcaaTeams();
+    let team = findTeam(ncaaTeams, displayName, slug);
+
+    if (!team) {
+      const nbaTeams = await getNbaTeams();
+      team = findTeam(nbaTeams, displayName, slug);
+    }
 
     if (!team) {
       return NextResponse.json({ error: 'not found' }, { status: 404 });

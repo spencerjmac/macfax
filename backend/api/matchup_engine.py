@@ -115,34 +115,39 @@ def compute_win_probability(
 
 def compute_win_probability_with_confidence(
     margin: float,
-    sigma: float
+    sigma: float,
+    model_margin_error: float = 1.5,
 ) -> Dict[str, float]:
     """
-    Compute win probability with confidence bands.
-    
-    Returns:
-        {
-            'prob_a': float,
-            'prob_b': float,
-            'margin_low': float (1 sigma below)
-            'margin_high': float (1 sigma above),
-            'prob_a_low': float,
-            'prob_a_high': float
-        }
+    Compute win probability with two distinct bands.
+
+    margin_low / margin_high  — score projection range (±1 sigma).
+        Shows the spread of plausible game outcomes in raw points.
+        e.g. "game could end anywhere from -7 to +17"
+
+    prob_a_low / prob_a_high  — model confidence band.
+        How much the win probability shifts if our margin estimate is
+        off by ±model_margin_error points (default ±1.5 pts).
+        This is the uncertainty in the prediction, not game variance.
+        e.g. for a 5-pt favorite: [0.61, 0.71] — tight and honest.
+
+    The old approach used margin ± sigma for both, producing enormous
+    probability bands (e.g. [0.28, 0.92]) that misrepresent model
+    uncertainty as if the model could predict a swing of ±1 sigma.
     """
     if sigma <= 0:
         sigma = 11.0
-    
+
     prob_a, prob_b = compute_win_probability(margin, sigma)
-    
-    # Confidence band: ±1 sigma around predicted margin
+
+    # Score projection range: ±1 sigma in raw points
     margin_low = margin - sigma
     margin_high = margin + sigma
-    
-    # Win probabilities at confidence bounds
-    prob_a_low, _ = compute_win_probability(margin_low, sigma)
-    prob_a_high, _ = compute_win_probability(margin_high, sigma)
-    
+
+    # Model confidence band: prob shift from ±model_margin_error on the spread
+    prob_a_low, _ = compute_win_probability(margin - model_margin_error, sigma)
+    prob_a_high, _ = compute_win_probability(margin + model_margin_error, sigma)
+
     return {
         'prob_a': prob_a,
         'prob_b': prob_b,

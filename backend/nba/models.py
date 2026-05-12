@@ -625,6 +625,11 @@ class NBAModelCalibration(models.Model):
     configured_b2b_penalty = models.FloatField(
         null=True, blank=True, help_text="Current ratings_config b2b_penalty value"
     )
+    prediction_sigma = models.FloatField(
+        null=True, blank=True,
+        help_text="Std dev of OLS residuals (actual margin − predicted) in raw game points. "
+                  "Used as sigma for win-probability CDF in the matchup model.",
+    )
 
     # ── 4. FFI weight regression ─────────────────────────────────────────────
     # OLS: adj_net ~ β₀ + β₁*efg_margin + β₂*tov_edge + β₃*oreb_edge + β₄*fta_margin
