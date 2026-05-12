@@ -341,8 +341,20 @@ export interface NBAMatchupResult {
   forecast: NBAMatchupForecast;
   four_factor_edges: NBAFourFactorEdges;
   ffi_edge: number;
-  points_breakdown: null;
-  top_drivers: null;
+  points_breakdown: {
+    pts_from_efg: number;
+    pts_from_tov: number;
+    pts_from_orb: number;
+    pts_from_ftr: number;
+    baseline: number;
+    total_margin: number;
+  } | null;
+  top_drivers: Array<{
+    factor: string;
+    edge: number;
+    points: number;
+    team: 'a' | 'b';
+  }> | null;
   shot_profile: NBAShotProfile | null;
   volatility: NBAVolatility;
   recent_form_a: NBARecentForm;

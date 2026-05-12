@@ -260,6 +260,7 @@ class Command(BaseCommand):
             ffi_y.append(r.adj_net)
 
         ffi_r_sq = prop_efg = prop_tov = prop_oreb = prop_fta = None
+        ffi_raw_intercept = ffi_raw_coef_efg = ffi_raw_coef_tov = ffi_raw_coef_oreb = ffi_raw_coef_fta = None
         ffi_teams = 0
 
         current_w = NBA_FFI_WEIGHTS
@@ -272,8 +273,12 @@ class Command(BaseCommand):
             ffi_r_sq = _r_squared(y_np, y_pred)
             ffi_teams = len(ffi_y)
 
-            # Normalize positive coefficients to [0,1] summing to 1.
+            # Store raw OLS coefficients for matchup points_breakdown
+            ffi_raw_intercept = float(coeffs[0])
             raw = [float(coeffs[1]), float(coeffs[2]), float(coeffs[3]), float(coeffs[4])]
+            ffi_raw_coef_efg, ffi_raw_coef_tov, ffi_raw_coef_oreb, ffi_raw_coef_fta = raw
+
+            # Normalize positive coefficients to [0,1] summing to 1.
             pos = [max(w, 0.0) for w in raw]
             total_pos = sum(pos) or 1.0
             prop_efg, prop_tov, prop_oreb, prop_fta = [w / total_pos for w in pos]
@@ -354,6 +359,12 @@ class Command(BaseCommand):
                 "ffi_current_weight_tov": current_w["tov_edge"],
                 "ffi_current_weight_oreb": current_w["oreb_edge"],
                 "ffi_current_weight_fta": current_w["fta_margin"],
+                # Raw OLS coefficients — used for matchup points_breakdown
+                "ffi_raw_intercept":  ffi_raw_intercept,
+                "ffi_raw_coef_efg":   ffi_raw_coef_efg,
+                "ffi_raw_coef_tov":   ffi_raw_coef_tov,
+                "ffi_raw_coef_oreb":  ffi_raw_coef_oreb,
+                "ffi_raw_coef_fta":   ffi_raw_coef_fta,
             },
         )
 

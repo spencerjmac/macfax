@@ -302,7 +302,12 @@ class NBAMatchupView(APIView):
             forecast_game,
         )
         from nba.matchup_engine import (
+            NBA_NAT_EFG,
+            NBA_NAT_FTR,
+            NBA_NAT_ORB,
+            NBA_NAT_TOV,
             NBA_PACE_DEFAULT,
+            NBA_VOLATILITY_WEIGHTS,
             compute_nba_national_four_factors,
             compute_nba_recent_form,
             compute_nba_record,
@@ -310,6 +315,10 @@ class NBAMatchupView(APIView):
             compute_series_probability,
             get_nba_four_factors_pct,
             get_nba_model_params,
+        )
+        from api.matchup_engine import (
+            compute_points_from_four_factors,
+            identify_top_drivers,
         )
 
         team_a_slug = request.query_params.get("teamA", "").lower()
@@ -372,7 +381,14 @@ class NBAMatchupView(APIView):
         ols_r_squared = params["ols_r_squared"]
 
         # National four-factor averages (percentage-point scale)
-        nat_ff = compute_nba_national_four_factors(season)
+        # Guard: never let zero/None reach the shared engine — use NBA defaults, not NCAA ones
+        _raw_nat_ff = compute_nba_national_four_factors(season)
+        nat_ff = {
+            "nat_efg": _raw_nat_ff["nat_efg"] if _raw_nat_ff["nat_efg"] > 0 else NBA_NAT_EFG,
+            "nat_tov": _raw_nat_ff["nat_tov"] if _raw_nat_ff["nat_tov"] > 0 else NBA_NAT_TOV,
+            "nat_orb": _raw_nat_ff["nat_orb"] if _raw_nat_ff["nat_orb"] > 0 else NBA_NAT_ORB,
+            "nat_ftr": _raw_nat_ff["nat_ftr"] if _raw_nat_ff["nat_ftr"] > 0 else NBA_NAT_FTR,
+        }
 
         # Convert NBA decimal four factors to percentage points
         ff_a = get_nba_four_factors_pct(ratings_a)
@@ -490,6 +506,7 @@ class NBAMatchupView(APIView):
             tempo_range=tempo_range,
             fg3_rate_range=fg3_range,
             variance_range=(3.0, 15.0),
+            weights=NBA_VOLATILITY_WEIGHTS,
         )
 
         # ===== SERIES PREDICTION =====
@@ -503,6 +520,47 @@ class NBAMatchupView(APIView):
             prob_a_away, _ = compute_win_probability(pts_a_away - pts_b_away, sigma)
             series_home = "b" if site == "away" else "a"
             series_prediction = compute_series_probability(prob_a_home, prob_a_away, series_home)
+
+        # ===== POINTS BREAKDOWN + TOP DRIVERS =====
+        _pts_breakdown = None
+        _top_drivers = None
+        _has_coefs = False
+        _cal = None
+        try:
+            _cal = NBAModelCalibration.objects.get(season=season)
+            _has_coefs = all([
+                _cal.ffi_raw_coef_efg  is not None,
+                _cal.ffi_raw_coef_tov  is not None,
+                _cal.ffi_raw_coef_oreb is not None,
+                _cal.ffi_raw_coef_fta  is not None,
+            ])
+        except NBAModelCalibration.DoesNotExist:
+            pass
+
+        if _has_coefs:
+            _pts_breakdown = compute_points_from_four_factors(
+                efg_edge=ff_edges["efg_edge"],
+                tov_edge=ff_edges["tov_edge"],
+                orb_edge=ff_edges["orb_edge"],
+                ftr_edge=ff_edges["ftr_edge"],
+                coef_efg=_cal.ffi_raw_coef_efg,
+                coef_tov=_cal.ffi_raw_coef_tov,
+                coef_orb=_cal.ffi_raw_coef_oreb,
+                coef_ftr=_cal.ffi_raw_coef_fta,
+                coef_intercept=_cal.ffi_raw_intercept or 0.0,
+                pace=forecast["pace"],
+            )
+            _top_drivers = identify_top_drivers(
+                efg_edge=ff_edges["efg_edge"],
+                tov_edge=ff_edges["tov_edge"],
+                orb_edge=ff_edges["orb_edge"],
+                ftr_edge=ff_edges["ftr_edge"],
+                coef_efg=_cal.ffi_raw_coef_efg,
+                coef_tov=_cal.ffi_raw_coef_tov,
+                coef_orb=_cal.ffi_raw_coef_oreb,
+                coef_ftr=_cal.ffi_raw_coef_fta,
+                pace=forecast["pace"],
+            )
 
         response_data = {
             "season": season.display_name,
@@ -541,8 +599,8 @@ class NBAMatchupView(APIView):
             "forecast": forecast,
             "four_factor_edges": ff_edges,
             "ffi_edge": ffi_edge,
-            "points_breakdown": None,
-            "top_drivers": None,
+            "points_breakdown": _pts_breakdown,
+            "top_drivers": _top_drivers,
             "shot_profile": shot_profile,
             "volatility": volatility,
             "recent_form_a": recent_form_a,
@@ -553,11 +611,11 @@ class NBAMatchupView(APIView):
                 "prediction_sigma": round(sigma, 2),
                 "nat_avg_ortg": round(nat_avg_ortg, 1),
                 "coefficients": {
-                    "efg": None,
-                    "tov": None,
-                    "orb": None,
-                    "ftr": None,
-                    "r_squared": round(ols_r_squared, 3) if ols_r_squared else None,
+                    "efg":       round(_cal.ffi_raw_coef_efg,  3) if _has_coefs else None,
+                    "tov":       round(_cal.ffi_raw_coef_tov,  3) if _has_coefs else None,
+                    "orb":       round(_cal.ffi_raw_coef_oreb, 3) if _has_coefs else None,
+                    "ftr":       round(_cal.ffi_raw_coef_fta,  3) if _has_coefs else None,
+                    "r_squared": round(_cal.ffi_adj_net_r_squared, 3) if (_has_coefs and _cal.ffi_adj_net_r_squared) else None,
                 },
             },
         }

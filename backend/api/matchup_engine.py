@@ -549,7 +549,8 @@ def compute_volatility_score(
     recent_variance_b: Optional[float] = None,
     tempo_range: Optional[Tuple[float, float]] = None,
     fg3_rate_range: Optional[Tuple[float, float]] = None,
-    variance_range: Optional[Tuple[float, float]] = None
+    variance_range: Optional[Tuple[float, float]] = None,
+    weights: Optional[Tuple[float, float, float]] = None,
 ) -> Dict:
     """
     Compute game volatility score (0-100) based on factors that increase upset potential.
@@ -581,6 +582,10 @@ def compute_volatility_score(
     Returns:
         Dict with volatility score and breakdown
     """
+    # weights = (pace_weight, three_pt_weight, variance_weight)
+    # NCAA defaults: 30/40/30 — NBA callers pass 40/20/40 (compressed 3P range)
+    w_pace, w_3pt, w_var = weights if weights else (0.30, 0.40, 0.30)
+
     # Helper function to normalize to 0-100 range with clamping
     def norm_to_100(x: float, lo: float, hi: float) -> float:
         """Normalize x from range [lo, hi] to [0, 100], clamped to bounds"""
@@ -614,9 +619,9 @@ def compute_volatility_score(
     
     # WEIGHTED VOLATILITY SCORE
     volatility = (
-        0.30 * pace_score +
-        0.40 * three_pt_score +
-        0.30 * variance_score
+        w_pace * pace_score +
+        w_3pt  * three_pt_score +
+        w_var  * variance_score
     )
     volatility = round(volatility, 1)
     
@@ -655,12 +660,12 @@ def compute_volatility_score(
     if fg3_diff >= 15:  # ~2 standard deviations (std = 7.6)
         reasons.append(f"Contrasting shot styles ({fg3_diff:.1f}% 3P rate gap)")
     
-    # Upset potential
+    # Upset potential — check higher threshold first (elif 85 was unreachable before)
     upset_warning = None
-    if volatility >= 70:
-        upset_warning = "High upset potential"
-    elif volatility >= 85:
+    if volatility >= 85:
         upset_warning = "Extreme upset potential - anything can happen"
+    elif volatility >= 70:
+        upset_warning = "High upset potential"
     
     return {
         'volatility_score': volatility,

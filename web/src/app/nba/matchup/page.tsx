@@ -265,6 +265,9 @@ function MatchupPageInner() {
         <div className="space-y-6">
           <ForecastSection result={result} colorA={colorA} colorB={colorB} />
           <FourFactorSection result={result} colorA={colorA} colorB={colorB} />
+          {result.top_drivers && result.top_drivers.length > 0 && (
+            <TopDriversSection drivers={result.top_drivers} teamA={result.teamA.name} teamB={result.teamB.name} colorA={colorA} colorB={colorB} />
+          )}
           {result.shot_profile && (
             <ShotProfileSection profile={result.shot_profile} teamA={result.teamA.name} teamB={result.teamB.name} colorA={colorA} colorB={colorB} />
           )}
@@ -433,7 +436,7 @@ function FourFactorSection({ result, colorA, colorB }: { result: NBAMatchupResul
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
-      <h2 className="text-2xl font-bold mb-2">Four Factor Breakdown</h2>
+      <h2 className="text-2xl font-bold mb-2">Efficiency Profile</h2>
 
       <div className="flex gap-4 mb-5 text-xs font-medium">
         <span className="flex items-center gap-1.5">
@@ -484,6 +487,47 @@ function FactorBar({ value, colorA, colorB }: { value: number; colorA: TeamColor
         marginLeft: value < 0 ? `${100 - percentage}%` : '0',
         backgroundColor: bg,
       }} />
+    </div>
+  );
+}
+
+// ==================== Top Drivers Section ====================
+
+function TopDriversSection({ drivers, teamA, teamB, colorA, colorB }: {
+  drivers: NonNullable<NBAMatchupResult['top_drivers']>;
+  teamA: string;
+  teamB: string;
+  colorA: TeamColors;
+  colorB: TeamColors;
+}) {
+  return (
+    <div className="bg-white rounded-lg shadow-md p-6">
+      <h2 className="text-2xl font-bold mb-2">Key Matchup Drivers</h2>
+      <p className="text-sm text-gray-600 mb-6">Top factors contributing to the projected margin</p>
+      <div className="space-y-4">
+        {drivers.map((driver, i) => {
+          const leadTeam = driver.team === 'a' ? teamA : teamB;
+          const color = driver.team === 'a' ? colorA.primary : colorB.primary;
+          return (
+            <div key={i} className="border-l-4 pl-4 py-2" style={{ borderColor: color }}>
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="font-bold text-lg">{i + 1}. {driver.factor}</p>
+                  <p className="text-sm text-gray-700 mt-1">
+                    {leadTeam} has a {Math.abs(driver.edge).toFixed(1)}% edge
+                  </p>
+                </div>
+                <div className="text-right ml-4">
+                  <p className="text-2xl font-bold mono" style={{ color }}>
+                    {driver.points > 0 ? '+' : ''}{driver.points.toFixed(1)}
+                  </p>
+                  <p className="text-xs text-gray-600">pts impact</p>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

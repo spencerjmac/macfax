@@ -653,6 +653,30 @@ class NBAModelCalibration(models.Model):
     ffi_current_weight_oreb = models.FloatField(null=True, blank=True)
     ffi_current_weight_fta = models.FloatField(null=True, blank=True)
 
+    # Raw OLS coefficients from the four-factor → adj_net regression.
+    # Units: adj_net pts/100 poss per 1 percentage-point of factor margin.
+    # Used by the matchup engine for points_breakdown and top_drivers.
+    ffi_raw_intercept = models.FloatField(
+        null=True, blank=True,
+        help_text="OLS intercept from four-factors → adj_net regression",
+    )
+    ffi_raw_coef_efg = models.FloatField(
+        null=True, blank=True,
+        help_text="adj_net pts/100 poss per 1pp of eFG margin",
+    )
+    ffi_raw_coef_tov = models.FloatField(
+        null=True, blank=True,
+        help_text="adj_net pts/100 poss per 1pp of TOV edge",
+    )
+    ffi_raw_coef_oreb = models.FloatField(
+        null=True, blank=True,
+        help_text="adj_net pts/100 poss per 1pp of OREB edge",
+    )
+    ffi_raw_coef_fta = models.FloatField(
+        null=True, blank=True,
+        help_text="adj_net pts/100 poss per 1pp of FTA margin",
+    )
+
     class Meta:
         ordering = ["-season__year"]
 

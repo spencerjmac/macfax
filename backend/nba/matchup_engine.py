@@ -28,6 +28,11 @@ NBA_NAT_TOV = 13.5
 NBA_NAT_ORB = 27.0
 NBA_NAT_FTR = 23.0
 
+# Volatility weights: (pace, 3pt_volume, variance)
+# NBA 3P rate range is compressed (~38-47%) vs NCAA (~28-52%), so it carries less signal.
+# Shift weight from 3P to pace and variance.
+NBA_VOLATILITY_WEIGHTS = (0.40, 0.20, 0.40)
+
 
 def get_nba_model_params(season) -> Dict:
     """
