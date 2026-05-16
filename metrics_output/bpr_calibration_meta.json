@@ -1,0 +1,31 @@
+{
+  "model_name": "Calib_C_ridge",
+  "features": [
+    "bpr_top8",
+    "bpr_star",
+    "star_count",
+    "obpr_top8",
+    "dbpr_top8",
+    "bpr_mean"
+  ],
+  "training_seasons": [
+    2022,
+    2023,
+    2024,
+    2025
+  ],
+  "val_season": 2026,
+  "training_rmse": 5.543,
+  "val_rmse": 8.198,
+  "val_r2": 0.637,
+  "gap_closed_pct": -123.4,
+  "coefficients": [
+    0.45984907871457636,
+    0.008493831169772648,
+    0.1928496918783722,
+    0.2870846916864238,
+    0.17136479522555254,
+    7.399569955218656
+  ],
+  "intercept": 30.241402693904316
+}

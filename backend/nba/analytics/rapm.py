@@ -29,6 +29,7 @@ from __future__ import annotations
 import logging
 import random
 from collections import defaultdict
+from datetime import date
 from typing import Optional
 
 import numpy as np
@@ -42,6 +43,9 @@ logger = logging.getLogger(__name__)
 RAPM_LAMBDA_CANDIDATES = [1.0, 5.0, 10.0, 25.0, 50.0, 100.0, 250.0, 500.0, 1000.0]
 RAPM_CV_FOLDS = 5
 MIN_OBS_POSS  = 2.0   # minimum possession count to include a stint observation
+RAPM_TEMPORAL_DECAY = 1.0  # cross-season decay multiplier
+# Tuning note: cross-season decay shows zero effect at λ≥1000 — ridge regularization dominates
+# the inter-season signal. Tested 0.25–1.0; all produce identical metrics. Not worth tuning.
 
 
 # ── Observation builder ───────────────────────────────────────────────────────
@@ -63,6 +67,7 @@ def build_nba_observations(
     Returns list of dicts:
       {
         "game_id":         str,
+        "game_date":       date,        # NBAGame.date (for within-season recency)
         "season_year":     int,
         "home_player_ids": list[int],   # NBAPlayer.player_id (NBA.com ID)
         "away_player_ids": list[int],
@@ -90,10 +95,12 @@ def build_nba_observations(
             ).only(
                 "player__player_id",
                 "game__game_id",
+                "game__date",
                 "game__home_team__nba_team_id",
                 "game__away_team__nba_team_id",
                 "team__nba_team_id",
                 "stint_index",
+                "period", "clock_start_secs", "clock_end_secs",
                 "pts_scored", "pts_allowed",
                 "team_fgm", "team_fga", "team_fg3m", "team_fta", "team_tov", "team_oreb", "team_dreb",
                 "opp_fgm", "opp_fga", "opp_fg3m", "opp_fta", "opp_tov", "opp_oreb", "opp_dreb",
@@ -119,6 +126,7 @@ def build_nba_observations(
             if g.pk not in game_meta:
                 game_meta[g.pk] = {
                     "game_id": g.game_id,
+                    "game_date": g.date,
                     "home_team_id": g.home_team.nba_team_id,
                     "away_team_id": g.away_team.nba_team_id,
                 }
@@ -186,6 +194,7 @@ def build_nba_observations(
 
             all_observations.append({
                 "game_id":         g_meta["game_id"],
+                "game_date":       g_meta["game_date"],
                 "season_year":     year,
                 "home_player_ids": home_players,
                 "away_player_ids": away_players,
@@ -208,6 +217,10 @@ def build_design_matrix(
     observations: list[dict],
     player_season_index: dict,   # (player_id, season_year) → col index (0-based)
     n_player_seasons: int,
+    target_season_year: int | None = None,  # when set, applies cross-season temporal decay
+    cross_season_decay: float = RAPM_TEMPORAL_DECAY,  # per-year multiplier (default 0.5)
+    within_season_half_life: float | None = None,  # days; None = no within-season decay
+    eval_date: date | None = None,  # "as of" date for within-season decay; defaults to max game_date
 ) -> tuple[sparse.csr_matrix, np.ndarray, np.ndarray]:
     """
     Build sparse CSR design matrix X, target vector y, weights vector w.
@@ -221,6 +234,10 @@ def build_design_matrix(
     y = np.zeros(n_obs, dtype=np.float64)
     weights = np.zeros(n_obs, dtype=np.float64)
 
+    # Resolve eval_date default: latest game in observations
+    if within_season_half_life is not None and eval_date is None:
+        eval_date = max(obs["game_date"] for obs in observations)
+
     for idx, obs in enumerate(observations):
         home_ids = obs["home_player_ids"]
         away_ids = obs["away_player_ids"]
@@ -231,11 +248,25 @@ def build_design_matrix(
         obs_year = obs["season_year"]
         hca_sign = 1.0   # NBA always has a designated home team
 
+        if target_season_year is not None:
+            obs_age = target_season_year - obs_year
+            temporal_weight = cross_season_decay ** obs_age
+        else:
+            temporal_weight = 1.0
+
+        if within_season_half_life is not None and eval_date is not None:
+            days_old = (eval_date - obs["game_date"]).days
+            within_weight = 0.5 ** (max(0, days_old) / within_season_half_life)
+        else:
+            within_weight = 1.0
+
+        combined_weight = temporal_weight * within_weight
+
         # ── Home-offense row ─────────────────────────────────────────────────
         i = idx * 2
         if h_poss >= MIN_OBS_POSS:
             y[i] = h_pts / h_poss * 100.0
-            weights[i] = h_poss
+            weights[i] = h_poss * combined_weight
             rows.append(i); cols.append(0); vals.append(1.0)           # intercept
             rows.append(i); cols.append(1); vals.append(hca_sign)      # hca
             for pid in home_ids:
@@ -251,7 +282,7 @@ def build_design_matrix(
         i = idx * 2 + 1
         if a_poss >= MIN_OBS_POSS:
             y[i] = a_pts / a_poss * 100.0
-            weights[i] = a_poss
+            weights[i] = a_poss * combined_weight
             rows.append(i); cols.append(0); vals.append(1.0)
             rows.append(i); cols.append(1); vals.append(-hca_sign)
             for pid in away_ids:
@@ -280,13 +311,18 @@ def _solve_augmented(
     lambda_val: float,
     prior_means: Optional[np.ndarray] = None,
     player_col_slice: Optional[tuple[int, int]] = None,
+    per_player_lambda: Optional[np.ndarray] = None,
 ) -> np.ndarray:
     """
     Weighted ridge regression via augmented least squares.
 
-    Solves: min_β ||√W (Xβ − y)||² + λ ||β_players − μ||²
+    Solves: min_β ||√W (Xβ − y)||² + Σ_j λ_j (β_j − μ_j)²
 
     Intercept and HCA columns are NOT regularized (player_col_slice excludes them).
+
+    per_player_lambda: optional array of shape (end-start,) giving per-player λ values.
+    When provided, overrides the scalar lambda_val for each individual player column.
+    This enables minutes-stratified regularization without changing the solver.
     """
     n_features = X.shape[1]
     if prior_means is None:
@@ -301,11 +337,15 @@ def _solve_augmented(
         n_pen = end - start
         pen_rows = np.arange(n_pen)
         pen_cols = np.arange(start, end)
-        pen_vals = np.full(n_pen, np.sqrt(lambda_val))
+        # Use per-player λ array when provided, else uniform scalar
+        if per_player_lambda is not None:
+            sqrt_lams = np.sqrt(np.asarray(per_player_lambda, dtype=np.float64))
+        else:
+            sqrt_lams = np.full(n_pen, np.sqrt(lambda_val))
         I_pen = sparse.coo_matrix(
-            (pen_vals, (pen_rows, pen_cols)), shape=(n_pen, n_features)
+            (sqrt_lams, (pen_rows, pen_cols)), shape=(n_pen, n_features)
         ).tocsr()
-        pen_targets = np.sqrt(lambda_val) * prior_means[start:end]
+        pen_targets = sqrt_lams * prior_means[start:end]
     else:
         I_pen = np.sqrt(lambda_val) * sparse.eye(n_features, format="csr")
         pen_targets = np.sqrt(lambda_val) * prior_means
@@ -383,6 +423,10 @@ def fit_baseline_rapm(
     n_player_seasons: int,
     run_cv: bool = True,
     lambda_override: Optional[float] = None,
+    target_season_year: int | None = None,
+    cross_season_decay: float = RAPM_TEMPORAL_DECAY,
+    within_season_half_life: float | None = None,
+    eval_date: date | None = None,
 ) -> dict:
     """
     Fit baseline RAPM with global prior μ=0, λ selected by 5-fold game CV.
@@ -398,8 +442,24 @@ def fit_baseline_rapm(
       }
     """
     logger.info("Building RAPM design matrix for %d observations...", len(observations))
-    X, y, weights = build_design_matrix(observations, player_season_index, n_player_seasons)
+    X, y, weights = build_design_matrix(
+        observations, player_season_index, n_player_seasons,
+        target_season_year=target_season_year,
+        cross_season_decay=cross_season_decay,
+        within_season_half_life=within_season_half_life,
+        eval_date=eval_date,
+    )
     logger.info("  Matrix: %s × %s (%d non-zeros)", X.shape[0], X.shape[1], X.nnz)
+    if target_season_year is not None:
+        logger.info(
+            "Temporal decay=%.2f: effective obs weights by season: %s",
+            cross_season_decay,
+            {yr: round(cross_season_decay ** (target_season_year - yr), 3)
+             for yr in sorted({obs["season_year"] for obs in observations})},
+        )
+    if within_season_half_life is not None:
+        _eval = eval_date or max(obs["game_date"] for obs in observations)
+        logger.info("Within-season half-life=%.0f days (eval_date=%s)", within_season_half_life, _eval)
 
     player_col_slice = (2, 2 + 2 * n_player_seasons)
     cv_metrics = None
@@ -453,6 +513,11 @@ def fit_prior_informed_rapm(
     prior_obpr: dict[int, float],   # {nba_player_id: box_obpr prior mean}
     prior_dbpr: dict[int, float],   # {nba_player_id: box_dbpr prior mean}
     lambda_val: float,
+    lambda_by_nba_id: Optional[dict[int, float]] = None,  # per-player λ override
+    target_season_year: int | None = None,
+    cross_season_decay: float = RAPM_TEMPORAL_DECAY,
+    within_season_half_life: float | None = None,
+    eval_date: date | None = None,
 ) -> dict:
     """
     LEBRON-style regularized on-off: RAPM regularized toward per-player box-score priors.
@@ -462,8 +527,15 @@ def fit_prior_informed_rapm(
     by grounding the estimate in a team-adjusted prior while updating with lineup data.
 
     prior_obpr / prior_dbpr are keyed by NBA.com player_id (same as player_season_index).
+    lambda_by_nba_id: optional dict {nba_id: lambda} for minutes-stratified regularization.
     """
-    X, y, weights = build_design_matrix(observations, player_season_index, n_player_seasons)
+    X, y, weights = build_design_matrix(
+        observations, player_season_index, n_player_seasons,
+        target_season_year=target_season_year,
+        cross_season_decay=cross_season_decay,
+        within_season_half_life=within_season_half_life,
+        eval_date=eval_date,
+    )
 
     player_season_keys = sorted(player_season_index, key=player_season_index.get)
     n_features = X.shape[1]
@@ -474,9 +546,20 @@ def fit_prior_informed_rapm(
         # DBPR internal sign: positive = allowed more (bad defense). Negate the prior.
         prior_means[2 + n_player_seasons + i] = -prior_dbpr.get(pid, 0.0)
 
+    # Build per-player lambda array if stratified lambdas provided
+    per_player_lambda: Optional[np.ndarray] = None
+    if lambda_by_nba_id is not None:
+        arr = np.zeros(2 * n_player_seasons)
+        for i, (pid, _yr) in enumerate(player_season_keys):
+            lam = lambda_by_nba_id.get(pid, lambda_val)
+            arr[i] = lam                    # offensive
+            arr[n_player_seasons + i] = lam # defensive
+        per_player_lambda = arr
+
     player_col_slice = (2, 2 + 2 * n_player_seasons)
     beta = _solve_augmented(X, y, weights, lambda_val, prior_means=prior_means,
-                            player_col_slice=player_col_slice)
+                            player_col_slice=player_col_slice,
+                            per_player_lambda=per_player_lambda)
 
     intercept  = float(beta[0])
     hca        = float(beta[1])

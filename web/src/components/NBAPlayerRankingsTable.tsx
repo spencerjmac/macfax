@@ -44,7 +44,7 @@ const NBA_ADV_PRIMARY  = ['ts_pct', 'efg_pct', 'usg_pct', 'oreb_pct', 'dreb_pct'
 const NBA_ADV_EXTRAS   = ['stl_pct', 'blk_pct'];
 
 // Impact primary columns (excluding on-court groups which are handled separately)
-const NBA_IMP_PRIMARY  = ['bpr', 'obpr', 'dbpr', 'mpir', 'o_mpir', 'd_mpir'];
+const NBA_IMP_PRIMARY  = ['box_bpr', 'box_obpr', 'box_dbpr', 'mpir', 'o_mpir', 'd_mpir'];
 const NBA_IMP_ADJ_KEYS = ['on_court_adj_o', 'on_court_adj_d', 'on_court_adj_em']; // secondary
 const NBA_IMP_RAW_KEYS = ['on_court_ortg', 'on_court_drtg', 'on_court_net'];       // optional
 
@@ -94,7 +94,7 @@ export default function NBAPlayerRankingsTable({ data, seasonDisplay, seasonType
   const tabDefaultSort: Record<TabId, SortingState> = {
     traditional: [{ id: 'pts',     desc: true }],
     advanced:    [{ id: 'ts_pct',  desc: true }],
-    impact:      [{ id: 'bpr', desc: true }],
+    impact:      [{ id: 'box_bpr', desc: true }],
   };
 
   // Auto-redirect away from Impact when switching to playoffs

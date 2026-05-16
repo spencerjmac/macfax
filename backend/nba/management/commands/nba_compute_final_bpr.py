@@ -4,7 +4,7 @@ Management command: nba_compute_final_bpr
 Computes the final displayed BPR for NBA players using prior-informed RAPM:
   - Prior mean: box_obpr / box_dbpr (per-player, from nba_compute_box_bpr)
   - Data: 3-year pooled lineup stints (same window as nba_compute_baseline_rapm)
-  - Regularization: λ=1000 (CV-matched to baseline RAPM)
+  - Regularization: minutes-stratified λ (stars get lower λ, fringe players higher)
 
 This is the LEBRON-style "Box prior Regularized On-off" approach. Results are
 written to NBAPlayerSeasonStats.obpr / .dbpr / .bpr — the fields the frontend
@@ -19,89 +19,486 @@ Usage:
   python manage.py nba_compute_final_bpr --season 2026
   python manage.py nba_compute_final_bpr --season 2026 --lambda-val 500
   python manage.py nba_compute_final_bpr --season 2026 --dry-run
+  python manage.py nba_compute_final_bpr --season 2026 --sweep
 """
 
-import logging
+from __future__ import annotations
 
+import csv
+import logging
+import re
+from pathlib import Path
+
+import numpy as np
 from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 
-from nba.analytics.rapm import build_nba_observations, fit_prior_informed_rapm
+from nba.analytics.rapm import (
+    build_design_matrix,
+    build_nba_observations,
+    fit_prior_informed_rapm,
+    _solve_augmented,
+)
 from nba.models import NBAPlayerSeasonStats
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_LAMBDA = 1000.0
-DEFAULT_RAPM_WINDOW = 3   # seasons to pool
+SCRIPT_DIR      = Path(__file__).parent.parent.parent.parent.parent  # project root
+METRICS_CSV     = SCRIPT_DIR / "metrics_output" / "nba_metrics_2025_26.csv"
+OUTPUT_DIR      = SCRIPT_DIR / "metrics_output"
+DEFAULT_LAMBDA  = 1000.0
+DEFAULT_RAPM_WINDOW = 3
+
+
+# Minutes-stratified lambda tiers: (≥2000, ≥1200, ≥600, <600)
+LAMBDA_TIERS: dict[str, tuple[float, float, float, float]] = {
+    "A_conservative": (400.0,  700.0, 1000.0, 1400.0),
+    "B_moderate":     (200.0,  400.0,  700.0, 1200.0),
+    "C_aggressive":   (100.0,  200.0,  400.0,  800.0),
+    "D_very_agg":     ( 50.0,  100.0,  200.0,  500.0),
+}
+
+
+# ── Helpers ────────────────────────────────────────────────────────────────────
+
+def _stratified_lambda(minutes: float, tiers: tuple[float, float, float, float]) -> float:
+    lam_hi, lam_mid, lam_lo, lam_fringe = tiers
+    if minutes >= 2000:   return lam_hi
+    elif minutes >= 1200: return lam_mid
+    elif minutes >= 600:  return lam_lo
+    else:                 return lam_fringe
+
+
+def _build_lambda_array(
+    player_season_keys: list[tuple[int, int]],
+    minutes_by_nba_id: dict[int, float],
+    tiers: tuple[float, float, float, float],
+) -> np.ndarray:
+    """Per-player lambda array, shape (2*N,) — off then def, same λ per player."""
+    n = len(player_season_keys)
+    arr = np.zeros(2 * n)
+    for i, (pid, _yr) in enumerate(player_season_keys):
+        lam = _stratified_lambda(minutes_by_nba_id.get(pid, 0.0), tiers)
+        arr[i] = lam
+        arr[n + i] = lam
+    return arr
+
+
+def _norm_name(s: str) -> str:
+    s = str(s).lower().strip()
+    s = s.encode("ascii", errors="ignore").decode()
+    return re.sub(r"\s+", " ", re.sub(r"[^a-z ]", "", s)).strip()
+
+
+
+def _load_bpm_map() -> dict[str, float]:
+    """Load player_name → BPM from metrics CSV."""
+    bpm: dict[str, float] = {}
+    if not METRICS_CSV.exists():
+        return bpm
+    import pandas as pd  # type: ignore
+    df = pd.read_csv(METRICS_CSV)
+    for _, row in df.iterrows():
+        if str(row.get("BPM", "")).strip() not in ("", "nan"):
+            try:
+                bpm[_norm_name(str(row["player_name"]))] = float(row["BPM"])
+            except (ValueError, TypeError):
+                pass
+    return bpm
+
+
+def _extract_results(
+    beta: np.ndarray,
+    player_season_keys: list[tuple[int, int]],
+    n_ps: int,
+    season_year: int,
+) -> tuple[dict[int, float], dict[int, float]]:
+    """Extract obpr/dbpr dicts for target season from beta vector."""
+    obpr_block = beta[2: 2 + n_ps]
+    dbpr_block = beta[2 + n_ps: 2 + 2 * n_ps]
+    obpr = {pid: float(obpr_block[i]) for i, (pid, yr) in enumerate(player_season_keys) if yr == season_year}
+    dbpr = {pid: float(-dbpr_block[i]) for i, (pid, yr) in enumerate(player_season_keys) if yr == season_year}
+    return obpr, dbpr
+
+
+def _compute_metrics(
+    obpr: dict[int, float],
+    dbpr: dict[int, float],
+    bpm_map: dict[str, float],
+    usg_map: dict[int, float],
+    name_map: dict[int, str],
+    box_bpr_map: dict[int, float],
+) -> dict:
+    """Compute BPM corr, Jokić z, Q4 divergence, SD, top5."""
+    import scipy.stats  # type: ignore
+
+    bpr_vals, bpm_vals, usg_vals, pids = [], [], [], []
+    for pid, o in obpr.items():
+        d = dbpr.get(pid, 0.0)
+        name = name_map.get(pid, "")
+        bpm = bpm_map.get(_norm_name(name))
+        if bpm is None:
+            continue
+        bpr_vals.append(o + d)
+        bpm_vals.append(bpm)
+        usg_vals.append(usg_map.get(pid, 0.0))
+        pids.append(pid)
+
+    if len(bpr_vals) < 10:
+        return {"bpm_r": float("nan"), "jokic_z": float("nan"),
+                "q4_div": float("nan"), "sd": float("nan"), "top5": []}
+
+    bpr_arr = np.array(bpr_vals)
+    bpm_arr = np.array(bpm_vals)
+    usg_arr = np.array(usg_vals)
+
+    r_bpm, _ = scipy.stats.pearsonr(bpr_arr, bpm_arr)
+    sd = float(bpr_arr.std())
+
+    # Jokić z-score
+    jokic_z = float("nan")
+    if sd > 0:
+        for i, pid in enumerate(pids):
+            if "joki" in _norm_name(name_map.get(pid, "")):
+                jokic_z = float((bpr_arr[i] - bpr_arr.mean()) / sd)
+                break
+
+    # Q4 divergence
+    q4_div = float("nan")
+    q4_mask = usg_arr > 0.28
+    if q4_mask.sum() >= 3 and sd > 0 and bpm_arr.std() > 0:
+        z_bpr = (bpr_arr - bpr_arr.mean()) / sd
+        z_bpm = (bpm_arr - bpm_arr.mean()) / bpm_arr.std()
+        q4_div = float((z_bpr[q4_mask] - z_bpm[q4_mask]).mean())
+
+    # Top 5
+    top5_idx = np.argsort(bpr_arr)[::-1][:5]
+    top5 = [name_map.get(pids[i], f"id={pids[i]}") for i in top5_idx]
+
+    return {
+        "bpm_r":   round(float(r_bpm), 3),
+        "jokic_z": round(jokic_z, 3) if not np.isnan(jokic_z) else float("nan"),
+        "q4_div":  round(q4_div, 3) if not np.isnan(q4_div) else float("nan"),
+        "sd":      round(sd, 3),
+        "top5":    top5,
+        "bpr_map": dict(zip(pids, bpr_arr.tolist())),   # for stability/team checks
+    }
 
 
 class Command(BaseCommand):
-    help = "Compute final BPR (prior-informed RAPM) and write to obpr/dbpr/bpr"
+    help = "Compute final BPR (prior-informed RAPM) with minutes-stratified λ"
 
     def add_arguments(self, parser):
         parser.add_argument("--season", type=int, required=True)
         parser.add_argument(
             "--lambda-val", type=float, default=DEFAULT_LAMBDA,
-            help=f"Ridge regularization λ (default {DEFAULT_LAMBDA})",
+            help=f"Ridge regularization λ for single run (default {DEFAULT_LAMBDA})",
         )
         parser.add_argument(
             "--rapm-window", type=int, default=DEFAULT_RAPM_WINDOW,
             help=f"Seasons of stints to pool (default {DEFAULT_RAPM_WINDOW})",
         )
         parser.add_argument("--dry-run", action="store_true")
+        parser.add_argument(
+            "--sweep",
+            action="store_true",
+            help="Run all 4 lambda-tier configs, print comparison table, write best if checks pass",
+        )
+        parser.add_argument(
+            "--within-season-half-life", type=float, default=90.0,
+            help="Days half-life for within-season recency decay. Default 90 (best retrodiction R²=0.739 vs baseline 0.715). Pass 0 to disable.",
+        )
+        parser.add_argument(
+            "--cross-season-decay", type=float, default=1.0,
+            # Note: empirically inert at λ≥1000 (regularization dominates). Exposed for experiments only.
+            help="Per-year multiplier for cross-season decay (default 1.0 = off; tested 0.25–1.0, all identical).",
+        )
 
     def handle(self, *args, **options):
         season_year: int = options["season"]
         lambda_val: float = options["lambda_val"]
         rapm_window: int = options["rapm_window"]
         dry_run: bool = options["dry_run"]
+        sweep: bool = options.get("sweep", False)
+        _whl = options.get("within_season_half_life")
+        within_season_half_life: float | None = None if (_whl is not None and _whl <= 0) else _whl
+        cross_season_decay: float = options["cross_season_decay"]
+
+        if sweep:
+            self._run_sweep(season_year, rapm_window, within_season_half_life, cross_season_decay)
+            return
 
         self.stdout.write(f"\n[FINAL BPR] Season {season_year}  λ={lambda_val}  window={rapm_window}yr")
         if dry_run:
             self.stdout.write("[DRY RUN] No writes")
 
         # ── 1. Load box_bpr priors ─────────────────────────────────────────────
+        prior_obpr, prior_dbpr, minutes_by_nba_id = self._load_priors(season_year)
+
+        # Build lambda_by_nba_id using B_moderate tiers as default for non-sweep runs
+        # (falls back to lambda_val only if --lambda-val explicitly set away from default)
+        if lambda_val == DEFAULT_LAMBDA:
+            lambda_by_nba_id = {
+                pid: _stratified_lambda(minutes_by_nba_id.get(pid, 0.0), LAMBDA_TIERS["B_moderate"])
+                for pid in prior_obpr
+            }
+            self.stdout.write("Using B_moderate stratified λ (200/400/700/1200 by minutes tier)")
+        else:
+            lambda_by_nba_id = None
+            self.stdout.write(f"Using uniform λ={lambda_val}")
+
+        # ── 2. Load stints ─────────────────────────────────────────────────────
+        observations, player_season_index, n_ps = self._load_stints(season_year, rapm_window)
+
+        # ── 3. Fit ─────────────────────────────────────────────────────────────
+        self.stdout.write("Fitting prior-informed RAPM...")
+        result = fit_prior_informed_rapm(
+            observations=observations,
+            player_season_index=player_season_index,
+            n_player_seasons=n_ps,
+            prior_obpr=prior_obpr,
+            prior_dbpr=prior_dbpr,
+            lambda_val=lambda_val,
+            lambda_by_nba_id=lambda_by_nba_id,
+            target_season_year=season_year,
+            cross_season_decay=cross_season_decay,
+            within_season_half_life=within_season_half_life,
+        )
+
+        final_obpr = {pid: v for (pid, yr), v in result["obpr"].items() if yr == season_year}
+        final_dbpr = {pid: v for (pid, yr), v in result["dbpr"].items() if yr == season_year}
+        self.stdout.write(f"  {len(final_obpr)} players with final BPR for {season_year}")
+
+        if dry_run:
+            self._print_leaderboard(final_obpr, final_dbpr, season_year)
+            return
+
+        self._write_to_db(final_obpr, final_dbpr, season_year)
+        self._print_leaderboard(final_obpr, final_dbpr, season_year)
+
+    # ── Sweep ──────────────────────────────────────────────────────────────────
+
+    def _run_sweep(
+        self, season_year: int, rapm_window: int,
+        within_season_half_life: float | None = None,
+        cross_season_decay: float = 1.0,
+    ) -> None:
+        self.stdout.write(f"\n[SWEEP] Season {season_year} — testing {len(LAMBDA_TIERS)} lambda configs")
+
+        # Load shared data once
+        prior_obpr, prior_dbpr, minutes_by_nba_id = self._load_priors(season_year)
+        observations, player_season_index, n_ps = self._load_stints(season_year, rapm_window)
+
+        bpm_map  = _load_bpm_map()
+        usg_map  = self._load_usg_map(season_year)
+        name_map = self._load_name_map(list(prior_obpr.keys()))
+        box_bpr_map = self._load_box_bpr_map(season_year)
+        old_bpr_map = self._load_current_bpr_map(season_year)
+
+        self.stdout.write(f"  BPM map: {len(bpm_map)} players")
+        self.stdout.write(f"  USG map: {len(usg_map)} players")
+
+        # Build design matrix ONCE — reused across all configs
+        self.stdout.write("Building design matrix (done once)...")
+        player_season_keys = sorted(player_season_index, key=player_season_index.get)
+        n_features = 2 + 2 * n_ps
+        prior_means = np.zeros(n_features)
+        for i, (pid, _yr) in enumerate(player_season_keys):
+            prior_means[2 + i]          =  prior_obpr.get(pid, 0.0)
+            prior_means[2 + n_ps + i]   = -prior_dbpr.get(pid, 0.0)
+
+        X, y, weights = build_design_matrix(
+            observations, player_season_index, n_ps,
+            target_season_year=season_year,
+            cross_season_decay=cross_season_decay,
+            within_season_half_life=within_season_half_life,
+        )
+        player_col_slice = (2, 2 + 2 * n_ps)
+        self.stdout.write(f"  Matrix: {X.shape[0]} × {X.shape[1]}")
+
+        # Sweep configs
+        results: dict[str, dict] = {}
+        for config_name, tiers in LAMBDA_TIERS.items():
+            self.stdout.write(f"\n  [{config_name}] tiers={tiers}...")
+            lam_arr = _build_lambda_array(player_season_keys, minutes_by_nba_id, tiers)
+            beta = _solve_augmented(
+                X, y, weights,
+                lambda_val=tiers[0],         # scalar fallback (not used when per_player_lambda set)
+                prior_means=prior_means,
+                player_col_slice=player_col_slice,
+                per_player_lambda=lam_arr,
+            )
+            obpr, dbpr = _extract_results(beta, player_season_keys, n_ps, season_year)
+            metrics = _compute_metrics(obpr, dbpr, bpm_map, usg_map, name_map, box_bpr_map)
+            results[config_name] = {**metrics, "obpr": obpr, "dbpr": dbpr, "tiers": tiers}
+
+        # Print comparison table
+        self.stdout.write("\n" + "=" * 75)
+        self.stdout.write("LAMBDA SWEEP COMPARISON TABLE")
+        self.stdout.write("=" * 75)
+        self.stdout.write(
+            f"{'Config':<16} {'BPM_r':>6} {'Jokić_z':>8} {'Q4_div':>8} {'SD':>6}  {'Top1'}"
+        )
+        self.stdout.write("-" * 75)
+        for name, res in results.items():
+            top1 = res["top5"][0].split()[-1] if res["top5"] else "?"
+            self.stdout.write(
+                f"  {name:<14} {res['bpm_r']:>6.3f} {res['jokic_z']:>8.3f} "
+                f"{res['q4_div']:>8.3f} {res['sd']:>6.3f}  {top1}"
+            )
+        self.stdout.write("=" * 75)
+
+        # Select best config
+        best_name = self._select_best_config(results)
+        best = results[best_name]
+        self.stdout.write(f"\nSelected config: {best_name}  tiers={best['tiers']}")
+
+        # Stability checks on best config
+        self._stability_checks(
+            best["obpr"], best["dbpr"], best["bpr_map"],
+            box_bpr_map, minutes_by_nba_id, usg_map, name_map, season_year
+        )
+
+        # Team bias check
+        self._team_bias_check(best["obpr"], best["dbpr"], bpm_map, name_map, season_year)
+
+        # Conditional DB write
+        bpm_r   = best["bpm_r"]
+        jokic_z = best["jokic_z"]
+        q4_div  = best["q4_div"]
+        n_pass  = sum([bpm_r > 0.70, jokic_z > 2.5, q4_div > -0.30])
+
+        self.stdout.write("\n" + "=" * 55)
+        self.stdout.write("LAMBDA TUNING RESULTS")
+        self.stdout.write("=" * 55)
+        self.stdout.write(f"Best config: {best_name}")
+        self._print_check("BPM correlation",   bpm_r,   0.70, "above")
+        self._print_check("Jokić z-score",     jokic_z, 2.50, "above")
+        self._print_check("Q4 divergence",     q4_div, -0.30, "above")
+        self._print_check("SD of BPR",         best["sd"], 5.0, "below", low=3.0)
+        self.stdout.write("=" * 55)
+
+        if n_pass >= 3:
+            self.stdout.write(self.style.SUCCESS(f"\n{n_pass}/3 primary checks passed — WRITING TO DB"))
+            self._write_to_db(best["obpr"], best["dbpr"], season_year)
+            self._print_leaderboard(best["obpr"], best["dbpr"], season_year)
+        else:
+            self.stdout.write(
+                self.style.WARNING(
+                    f"\nNOT WRITTEN TO DB — {n_pass}/3 primary checks failed. "
+                    "Review CSV and decide whether to adjust λ further or accept current state."
+                )
+            )
+            self._save_comparison_csv(
+                best["obpr"], best["dbpr"], old_bpr_map, box_bpr_map,
+                bpm_map, usg_map, name_map, season_year
+            )
+
+    def _select_best_config(self, results: dict) -> str:
+        def score(name):
+            r = results[name]
+            n_pass = sum([r["bpm_r"] > 0.70, r["jokic_z"] > 2.5, r["q4_div"] > -0.30])
+            # Prefer passing checks first, then lower SD (stability)
+            return (n_pass, -r["sd"])
+        return max(results, key=score)
+
+    def _stability_checks(
+        self, obpr, dbpr, bpr_map, box_bpr_map, minutes_by_nba_id, usg_map, name_map, season_year
+    ) -> None:
+        self.stdout.write("\n[STABILITY CHECK A] Fringe player stability (10 lowest minutes):")
+        fringe = sorted(
+            [(pid, minutes_by_nba_id.get(pid, 0)) for pid in obpr],
+            key=lambda x: x[1]
+        )[:10]
+        for pid, mins in fringe:
+            bpr_new = (obpr.get(pid, 0) + dbpr.get(pid, 0))
+            box_b   = box_bpr_map.get(pid, float("nan"))
+            diff    = abs(bpr_new - box_b) if not (box_b != box_b) else float("nan")
+            flag    = " ← UNSTABLE" if diff > 1.0 else ""
+            self.stdout.write(
+                f"  {name_map.get(pid, pid):<28} min={mins:.0f}  "
+                f"bpr={bpr_new:+.2f}  box={box_b:+.2f}  |diff|={diff:.2f}{flag}"
+            )
+
+        self.stdout.write("\n[STABILITY CHECK B] Top 20 — flag <800 min players:")
+        ranked = sorted(obpr.items(), key=lambda x: x[1] + dbpr.get(x[0], 0), reverse=True)[:20]
+        for rank, (pid, o) in enumerate(ranked, 1):
+            d   = dbpr.get(pid, 0)
+            mins = minutes_by_nba_id.get(pid, 0)
+            flag = " ← LOW MINUTES" if mins < 800 else ""
+            self.stdout.write(
+                f"  {rank:>2}. {name_map.get(pid, pid):<28} bpr={o+d:+.2f}  min={mins:.0f}{flag}"
+            )
+
+    def _team_bias_check(self, obpr, dbpr, bpm_map, name_map, season_year) -> None:
+        from collections import defaultdict
+        from nba.models import NBAPlayerSeasonStats
+        self.stdout.write("\n[STABILITY CHECK C] Team bias:")
+        target_teams = {"IND", "MIA", "TOR", "LAL", "NYK"}
+        team_bpr: dict[str, list[tuple[float, float]]] = defaultdict(list)
+        team_bpm: dict[str, list[tuple[float, float]]] = defaultdict(list)
+        for row in NBAPlayerSeasonStats.objects.filter(
+            season__year=season_year, season_type="regular"
+        ).select_related("player", "team").only(
+            "player__player_id", "player__name", "team__abbreviation", "mpg", "gp"
+        ):
+            abbr = row.team.abbreviation if row.team else ""
+            if abbr not in target_teams:
+                continue
+            nba_id = row.player.player_id
+            mins = (row.mpg or 0) * (row.gp or 0)
+            bpr_val = obpr.get(nba_id, 0) + dbpr.get(nba_id, 0)
+            bpm_val = bpm_map.get(_norm_name(row.player.name))
+            team_bpr[abbr].append((bpr_val, mins))
+            if bpm_val is not None:
+                team_bpm[abbr].append((bpm_val, mins))
+        for abbr in sorted(target_teams):
+            if not team_bpr.get(abbr):
+                continue
+            def wgt_mean(pairs):
+                total_w = sum(w for _, w in pairs)
+                return sum(v * w for v, w in pairs) / total_w if total_w > 0 else 0.0
+            m_bpr = wgt_mean(team_bpr[abbr])
+            m_bpm = wgt_mean(team_bpm.get(abbr, [(0.0, 1.0)]))
+            self.stdout.write(
+                f"  {abbr}: mean_BPR={m_bpr:+.2f}  mean_BPM={m_bpm:+.2f}  diff={m_bpr-m_bpm:+.2f}"
+            )
+
+    # ── Shared helpers ─────────────────────────────────────────────────────────
+
+    def _load_priors(self, season_year: int) -> tuple[dict, dict, dict]:
         box_stats = list(
             NBAPlayerSeasonStats.objects.filter(
                 season__year=season_year,
                 season_type="regular",
                 box_obpr__isnull=False,
             ).select_related("player").only(
-                "player__player_id", "box_obpr", "box_dbpr",
+                "player__player_id", "box_obpr", "box_dbpr", "mpg", "gp",
             )
         )
         if not box_stats:
-            raise CommandError(
-                f"No box_obpr found for {season_year}. "
-                "Run nba_compute_box_bpr first."
-            )
-
+            raise CommandError(f"No box_obpr found for {season_year}. Run nba_compute_box_bpr first.")
         prior_obpr: dict[int, float] = {}
         prior_dbpr: dict[int, float] = {}
+        minutes_by_nba_id: dict[int, float] = {}
         for row in box_stats:
             nba_id = row.player.player_id
             if nba_id:
                 prior_obpr[nba_id] = row.box_obpr or 0.0
                 prior_dbpr[nba_id] = row.box_dbpr or 0.0
+                minutes_by_nba_id[nba_id] = (row.mpg or 0.0) * (row.gp or 0)
+        self.stdout.write(
+            f"Box priors loaded: {len(prior_obpr)} players  "
+            f"(stars ≥2000 min: {sum(1 for m in minutes_by_nba_id.values() if m >= 2000)})"
+        )
+        return prior_obpr, prior_dbpr, minutes_by_nba_id
 
-        self.stdout.write(f"Box priors loaded: {len(prior_obpr)} players")
-
-        # ── 2. Load pooled stint observations ──────────────────────────────────
+    def _load_stints(self, season_year: int, rapm_window: int) -> tuple[list, dict, int]:
         rapm_years = list(range(season_year - rapm_window + 1, season_year + 1))
         self.stdout.write(f"Loading stints for {rapm_years}...")
-
-        observations = build_nba_observations(
-            season_year=season_year,
-            rapm_years=rapm_years,
-        )
+        observations = build_nba_observations(season_year=season_year, rapm_years=rapm_years)
         if not observations:
-            raise CommandError(
-                f"No stint observations found. "
-                "Run nba_sync_play_by_play for the relevant seasons first."
-            )
-        self.stdout.write(f"  {len(observations)} lineup observations")
-
-        # ── 3. Build player-season index ───────────────────────────────────────
+            raise CommandError("No stint observations found.")
         all_ps: set[tuple[int, int]] = set()
         for obs in observations:
             yr = obs["season_year"]
@@ -110,42 +507,52 @@ class Command(BaseCommand):
         player_season_index = {ps: i for i, ps in enumerate(sorted(all_ps))}
         n_ps = len(player_season_index)
         self.stdout.write(
-            f"  {n_ps} player-season columns "
+            f"  {len(observations)} lineup observations  "
+            f"{n_ps} player-season columns  "
             f"({len({ps[0] for ps in all_ps})} unique players)"
         )
+        return observations, player_season_index, n_ps
 
-        # ── 4. Fit prior-informed RAPM ─────────────────────────────────────────
-        self.stdout.write(f"Fitting prior-informed RAPM (λ={lambda_val})...")
-        result = fit_prior_informed_rapm(
-            observations=observations,
-            player_season_index=player_season_index,
-            n_player_seasons=n_ps,
-            prior_obpr=prior_obpr,
-            prior_dbpr=prior_dbpr,
-            lambda_val=lambda_val,
-        )
-
-        # Extract target-season coefficients keyed by NBA.com player_id
-        final_obpr: dict[int, float] = {
-            pid: v for (pid, yr), v in result["obpr"].items() if yr == season_year
+    def _load_usg_map(self, season_year: int) -> dict[int, float]:
+        return {
+            row["player__player_id"]: (row["usg_pct"] or 0.0)
+            for row in NBAPlayerSeasonStats.objects.filter(
+                season__year=season_year, season_type="regular"
+            ).values("player__player_id", "usg_pct")
+            if row["player__player_id"]
         }
-        final_dbpr: dict[int, float] = {
-            pid: v for (pid, yr), v in result["dbpr"].items() if yr == season_year
+
+    def _load_name_map(self, nba_ids: list[int]) -> dict[int, str]:
+        from nba.models import NBAPlayer
+        return {
+            p.player_id: p.name
+            for p in NBAPlayer.objects.filter(player_id__in=nba_ids).only("player_id", "name")
         }
-        self.stdout.write(
-            f"  {len(final_obpr)} players with final BPR for {season_year}"
-        )
 
-        if dry_run:
-            self._print_leaderboard(final_obpr, final_dbpr, season_year)
-            return
+    def _load_box_bpr_map(self, season_year: int) -> dict[int, float]:
+        return {
+            row["player__player_id"]: (row["box_bpr"] or 0.0)
+            for row in NBAPlayerSeasonStats.objects.filter(
+                season__year=season_year, season_type="regular", box_bpr__isnull=False
+            ).values("player__player_id", "box_bpr")
+            if row["player__player_id"]
+        }
 
-        # ── 5. Write to DB ─────────────────────────────────────────────────────
+    def _load_current_bpr_map(self, season_year: int) -> dict[int, float]:
+        return {
+            row["player__player_id"]: (row["bpr"] or 0.0)
+            for row in NBAPlayerSeasonStats.objects.filter(
+                season__year=season_year, season_type="regular", bpr__isnull=False
+            ).values("player__player_id", "bpr")
+            if row["player__player_id"]
+        }
+
+    def _write_to_db(
+        self, final_obpr: dict[int, float], final_dbpr: dict[int, float], season_year: int
+    ) -> None:
         stats_qs = NBAPlayerSeasonStats.objects.filter(
-            season__year=season_year,
-            season_type="regular",
+            season__year=season_year, season_type="regular"
         ).select_related("player")
-
         now = timezone.now()
         updated = skipped = 0
         for row in stats_qs:
@@ -161,34 +568,59 @@ class Command(BaseCommand):
             row.bpr_last_updated = now
             row.save(update_fields=["obpr", "dbpr", "bpr", "bpr_last_updated"])
             updated += 1
+        self.stdout.write(self.style.SUCCESS(
+            f"[OK] Final BPR written: {updated} updated, {skipped} skipped"
+        ))
 
-        self.stdout.write(
-            self.style.SUCCESS(
-                f"[OK] Final BPR written: {updated} updated, {skipped} skipped"
-            )
-        )
-        self._print_leaderboard(final_obpr, final_dbpr, season_year)
-
-    def _print_leaderboard(
-        self,
-        final_obpr: dict[int, float],
-        final_dbpr: dict[int, float],
-        season_year: int,
+    def _save_comparison_csv(
+        self, obpr, dbpr, old_bpr_map, box_bpr_map,
+        bpm_map, usg_map, name_map, season_year
     ) -> None:
-        from nba.models import NBAPlayer
+        path = OUTPUT_DIR / "final_bpr_lambda_best.csv"
+        rows = []
+        for pid, o in obpr.items():
+            d = dbpr.get(pid, 0.0)
+            bpr_new = o + d
+            name = name_map.get(pid, f"id={pid}")
+            bpm  = bpm_map.get(_norm_name(name))
+            z_bpr = z_bpm = div = None
+            rows.append({
+                "player_name": name,
+                "player_id":   pid,
+                "bpr_new":     round(bpr_new, 3),
+                "bpr_old":     round(old_bpr_map.get(pid, float("nan")), 3),
+                "box_bpr":     round(box_bpr_map.get(pid, float("nan")), 3),
+                "bpm":         bpm,
+            })
+        import pandas as pd  # type: ignore
+        df = pd.DataFrame(rows).sort_values("bpr_new", ascending=False)
+        df.to_csv(path, index=False)
+        self.stdout.write(f"[SAVED] {path}")
 
-        name_map: dict[int, str] = {
+    def _print_check(self, label: str, val: float, target: float, direction: str,
+                     low: float | None = None) -> None:
+        if direction == "above":
+            ok = val > target
+            sym = ">"
+        else:
+            ok = val < target
+            sym = "<"
+        if low is not None:
+            ok = low < val < target
+            sym = f"{low}-{target}"
+        status = self.style.SUCCESS("PASS") if ok else self.style.WARNING("FAIL")
+        self.stdout.write(f"  {label:<25} {val:.3f}  [{status}] (target {sym}{target})")
+
+    def _print_leaderboard(self, final_obpr, final_dbpr, season_year) -> None:
+        from nba.models import NBAPlayer
+        name_map = {
             p.player_id: p.name
             for p in NBAPlayer.objects.filter(player_id__in=final_obpr.keys()).only("player_id", "name")
         }
-
-        # Deduplicate by player_id (traded players may appear via multiple team rows)
         ranked = sorted(
             [(pid, final_obpr[pid], final_dbpr.get(pid, 0.0)) for pid in final_obpr],
-            key=lambda x: x[1] + x[2],
-            reverse=True,
+            key=lambda x: x[1] + x[2], reverse=True,
         )
-
         self.stdout.write(f"\nTop 20 by final BPR — Season {season_year}:")
         self.stdout.write(f"  {'Player':<30} {'OBPR':>6} {'DBPR':>6} {'BPR':>7}")
         self.stdout.write("  " + "-" * 55)

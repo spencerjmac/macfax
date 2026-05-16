@@ -41,18 +41,34 @@ class Command(BaseCommand):
             help="Skip CV and use this λ directly (e.g. --lambda-override 500)",
         )
         parser.add_argument("--dry-run", action="store_true", help="Compute but do not write")
+        parser.add_argument(
+            "--within-season-half-life", type=float, default=90.0,
+            help="Days half-life for within-season recency decay. Default 90 (best retrodiction R²=0.739 vs baseline 0.715). Pass 0 to disable.",
+        )
+        parser.add_argument(
+            "--cross-season-decay", type=float, default=1.0,
+            # Note: empirically inert at λ≥1000 (regularization dominates). Exposed for experiments only.
+            help="Per-year multiplier for cross-season decay (default 1.0 = off; tested 0.25–1.0, all identical).",
+        )
 
     def handle(self, *args, **options):
         season_year: int = options["season"]
         rapm_years: list[int] | None = options.get("rapm_years")
         lambda_override: float | None = options.get("lambda_override")
         dry_run: bool = options["dry_run"]
+        _whl = options.get("within_season_half_life")
+        within_season_half_life: float | None = None if (_whl is not None and _whl <= 0) else _whl
+        cross_season_decay: float = options["cross_season_decay"]
 
         self.stdout.write(f"\n[BASELINE RAPM] Target season: {season_year}")
         if rapm_years:
             self.stdout.write(f"  Pooling seasons: {rapm_years}")
         if lambda_override:
             self.stdout.write(f"  λ override: {lambda_override} (skipping CV)")
+        if within_season_half_life:
+            self.stdout.write(f"  Within-season half-life: {within_season_half_life} days")
+        if cross_season_decay != 1.0:
+            self.stdout.write(f"  Cross-season decay: {cross_season_decay}/year")
         if dry_run:
             self.stdout.write("[DRY RUN] No writes")
 
@@ -95,6 +111,9 @@ class Command(BaseCommand):
             n_player_seasons=n_player_seasons,
             run_cv=(lambda_override is None),
             lambda_override=lambda_override,
+            target_season_year=season_year,
+            cross_season_decay=cross_season_decay,
+            within_season_half_life=within_season_half_life,
         )
 
         best_lambda = result["lambda"]

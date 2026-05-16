@@ -15,9 +15,11 @@ Usage:
   python manage.py nba_compute_box_bpr --season 2026
   python manage.py nba_compute_box_bpr --season 2026 --dry-run
   python manage.py nba_compute_box_bpr --season 2026 --oof
+  python manage.py nba_compute_box_bpr --season 2026 --validate
 """
 
 import logging
+from pathlib import Path
 
 from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
@@ -29,6 +31,7 @@ from nba.analytics.box_bpr import (
     predict_nba_box_bpr,
     train_nba_box_bpr,
 )
+from nba.analytics.career_stats import build_career_stats_map
 from nba.models import NBAPlayerSeasonStats
 
 logger = logging.getLogger(__name__)
@@ -51,11 +54,19 @@ class Command(BaseCommand):
             action="store_true",
             help="Use out-of-fold predictions to avoid train/predict leakage",
         )
+        parser.add_argument(
+            "--validate",
+            action="store_true",
+            help="Compute without writing to DB; run validation checks and save comparison CSV",
+        )
 
     def handle(self, *args, **options):
         season_year: int = options["season"]
         dry_run: bool = options["dry_run"]
         use_oof: bool = options["oof"]
+        validate: bool = options.get("validate", False)
+        if validate:
+            dry_run = True   # --validate implies no DB writes
 
         self.stdout.write(f"\n[NBA BOX BPR] Season {season_year}")
         if dry_run:
@@ -74,13 +85,19 @@ class Command(BaseCommand):
                 "oreb_pg", "dreb_pg", "fga_pg", "fg3a_pg", "fta_pg",
                 "efg_pct", "ts_pct", "usg_pct", "ast_pct",
                 "oreb_pct", "dreb_pct", "ast_to",
-                "stl_pct", "blk_pct",
+                "stl_pct", "blk_pct", "tov_pct",
                 "on_court_poss", "on_court_adj_em",
-                "on_court_adj_d",
+                "on_court_adj_o", "on_court_adj_d",
                 "o_mpir", "d_mpir",
                 "baseline_obpr", "baseline_dbpr",
             )
         )
+
+        # Snapshot old box_bpr before computing new model (for --validate)
+        old_box_bpr: dict[int, float] = {}
+        if validate:
+            for row in stats_qs.filter(box_bpr__isnull=False).values("player_id", "box_bpr"):
+                old_box_bpr[row["player_id"]] = row["box_bpr"]
 
         self.stdout.write(f"Loaded {len(stats_values)} player-season rows")
 
@@ -94,25 +111,39 @@ class Command(BaseCommand):
         self.stdout.write(f"  opp_quality: {len(opp_quality_map)} teams")
         self.stdout.write(f"  team_adj_em: {len(team_adj_em_map)} teams")
 
+        self.stdout.write("Building career-stabilized stats map...")
+        career_stats_map = build_career_stats_map(
+            target_season_year=season_year,
+            min_season_year=2016,
+        )
+        self.stdout.write(f"  Career map: {len(career_stats_map)} players")
+
         # ── 3. Build target maps — prefer RAPM (team-quality-adjusted) ──────────
         target_obpr: dict[int, float] = {}
         target_dbpr: dict[int, float] = {}
+        rapm_off_pids: set[int] = set()
+        rapm_def_pids: set[int] = set()
         n_rapm_off = n_rapm_def = n_mpir_off = n_mpir_def = 0
 
         for p in stats_values:
             pid = p["player_id"]
             if p.get("baseline_obpr") is not None:
                 target_obpr[pid] = p["baseline_obpr"]
+                rapm_off_pids.add(pid)
                 n_rapm_off += 1
             elif p.get("o_mpir") is not None:
                 target_obpr[pid] = p["o_mpir"]
                 n_mpir_off += 1
             if p.get("baseline_dbpr") is not None:
                 target_dbpr[pid] = p["baseline_dbpr"]
+                rapm_def_pids.add(pid)
                 n_rapm_def += 1
             elif p.get("d_mpir") is not None:
                 target_dbpr[pid] = p["d_mpir"]
                 n_mpir_def += 1
+
+        # Clean training set: players with RAPM targets for BOTH off and def
+        rapm_pids = rapm_off_pids & rapm_def_pids
 
         self.stdout.write(
             f"Targets: off={len(target_obpr)} "
@@ -144,6 +175,11 @@ class Command(BaseCommand):
         # ── 4. Train / predict ────────────────────────────────────────────────
         now = timezone.now()
 
+        if validate and use_oof:
+            self.stdout.write(self.style.WARNING("--validate requires full training (ignoring --oof)"))
+            use_oof = False
+
+        artifacts: dict = {}
         if use_oof:
             self.stdout.write("Running out-of-fold Box BPR (--oof)...")
             predictions, _ = out_of_fold_box_bpr(
@@ -152,25 +188,35 @@ class Command(BaseCommand):
                 team_adj_em_map=team_adj_em_map,
                 target_obpr=target_obpr,
                 target_dbpr=target_dbpr,
+                rapm_pids=rapm_pids,
+                career_stats_map=career_stats_map,
             )
         else:
-            self.stdout.write("Training Box BPR on full season...")
+            self.stdout.write(
+                f"Training Box BPR on full season "
+                f"(RAPM-only training set: {len(rapm_pids)} players, "
+                f"MPIR-only excluded from training: {n_mpir_off})..."
+            )
             artifacts = train_nba_box_bpr(
                 stats=stats_values,
                 opp_quality_map=opp_quality_map,
                 team_adj_em_map=team_adj_em_map,
                 target_obpr=target_obpr,
                 target_dbpr=target_dbpr,
+                rapm_pids=rapm_pids,
+                career_stats_map=career_stats_map,
             )
             self.stdout.write(
                 f"  off alpha={artifacts['off_cv_alpha']:.2f} (n={artifacts['n_train_off']}), "
-                f"def alpha={artifacts['def_cv_alpha']:.2f} (n={artifacts['n_train_def']})"
+                f"def alpha={artifacts['def_cv_alpha']:.2f} (n={artifacts['n_train_def']}), "
+                f"mpir_excluded={artifacts.get('n_mpir_excluded', 0)}"
             )
             predictions = predict_nba_box_bpr(
                 stats=stats_values,
                 opp_quality_map=opp_quality_map,
                 team_adj_em_map=team_adj_em_map,
                 model_artifacts=artifacts,
+                career_stats_map=career_stats_map,
             )
 
         self.stdout.write(f"Box BPR computed for {len(predictions)} players")
@@ -178,6 +224,8 @@ class Command(BaseCommand):
         # ── 5. Write results ───────────────────────────────────────────────────
         if dry_run:
             self._print_top_players(predictions, stats_values)
+            if validate:
+                self._run_validation(predictions, stats_values, artifacts, old_box_bpr, season_year)
             return
 
         updated = 0
@@ -205,6 +253,9 @@ class Command(BaseCommand):
             )
         )
         self._print_top_players(predictions, stats_values)
+        self._print_fix_summary(predictions, stats_values, artifacts, season_year,
+                                n_total_before=len(target_obpr), n_rapm=len(rapm_pids),
+                                n_mpir=n_mpir_off)
 
     def _print_top_players(
         self, predictions: dict[int, dict], stats_values: list[dict]
@@ -239,3 +290,217 @@ class Command(BaseCommand):
         arch_counts = Counter(pred["archetype"] for pred in predictions.values())
         for arch, count in sorted(arch_counts.items(), key=lambda x: -x[1]):
             self.stdout.write(f"  {arch:15s}: {count}")
+
+    def _print_fix_summary(
+        self,
+        predictions: dict[int, dict],
+        stats_values: list[dict],
+        artifacts: dict,
+        season_year: int,
+        n_total_before: int,
+        n_rapm: int,
+        n_mpir: int,
+    ) -> None:
+        """Print Issue 1 fix diagnostic summary."""
+        import re
+        import numpy as np
+        import scipy.stats
+        from pathlib import Path
+
+        self.stdout.write("\n" + "=" * 55)
+        self.stdout.write("ISSUE 1 FIX SUMMARY")
+        self.stdout.write("=" * 55)
+        self.stdout.write(f"Training set before fix: {n_total_before} players (RAPM + MPIR mixed)")
+        self.stdout.write(f"Training set after fix:  {n_rapm} players (RAPM only)")
+        self.stdout.write(f"MPIR players predicted not trained: {n_mpir}")
+        self.stdout.write(f"Offensive alpha: {artifacts.get('off_cv_alpha', '?'):.2f}")
+        self.stdout.write(f"Defensive alpha: {artifacts.get('def_cv_alpha', '?'):.2f}")
+
+        # Jokić check
+        from nba.models import NBAPlayer
+        name_map = {
+            p.pk: p.name
+            for p in NBAPlayer.objects.filter(pk__in=predictions.keys()).only("pk", "name")
+        }
+        jokic_pid = next(
+            (pid for pid, name in name_map.items() if "joki" in name.lower()), None
+        )
+        if jokic_pid and jokic_pid in predictions:
+            pred = predictions[jokic_pid]
+            self.stdout.write(
+                f"Jokić box_obpr: {pred['box_obpr']:+.3f}  box_dbpr: {pred['box_dbpr']:+.3f}  "
+                f"total: {pred['box_obpr']+pred['box_dbpr']:+.3f}"
+            )
+
+        # BPM correlation and Q4 divergence (2026 only — needs metrics CSV)
+        metrics_path = Path(__file__).parent.parent.parent.parent.parent / "metrics_output" / "nba_metrics_2025_26.csv"
+        if metrics_path.exists() and season_year == 2026:
+            try:
+                import pandas as pd
+                mdf = pd.read_csv(metrics_path)
+                bpm_map = {
+                    str(r["player_name"]).lower().strip(): float(r["BPM"])
+                    for _, r in mdf.iterrows() if str(r.get("BPM", "")).strip() not in ("", "nan")
+                }
+                usg_map = {
+                    str(r["player_name"]).lower().strip(): float(r["USG_pct"])
+                    for _, r in mdf.iterrows() if str(r.get("USG_pct", "")).strip() not in ("", "nan")
+                }
+                bpr_vals, bpm_vals, usg_vals = [], [], []
+                for pid, pred in predictions.items():
+                    name = name_map.get(pid, "")
+                    bpm = bpm_map.get(name.lower().strip())
+                    usg = usg_map.get(name.lower().strip(), 0)
+                    if bpm is not None:
+                        bpr_vals.append(pred["box_obpr"] + pred["box_dbpr"])
+                        bpm_vals.append(bpm)
+                        usg_vals.append(usg)
+                if len(bpr_vals) >= 20:
+                    r_bpm, _ = scipy.stats.pearsonr(bpr_vals, bpm_vals)
+                    self.stdout.write(f"BPM correlation: {r_bpm:.3f} (was 0.592)")
+                    # Q4 divergence — BBref stores USG% as percentage (33.4) not decimal (0.334)
+                    bpr_arr = np.array(bpr_vals)
+                    bpm_arr = np.array(bpm_vals)
+                    usg_arr = np.array(usg_vals)
+                    # Auto-detect format: if median > 1, it's percentage
+                    usg_threshold = 28.0 if np.median(usg_arr[usg_arr > 0]) > 1.0 else 0.28
+                    q4_mask = usg_arr > usg_threshold
+                    if q4_mask.sum() >= 3 and bpr_arr.std() > 0 and bpm_arr.std() > 0:
+                        z_bpr = (bpr_arr - bpr_arr.mean()) / bpr_arr.std()
+                        z_bpm = (bpm_arr - bpm_arr.mean()) / bpm_arr.std()
+                        q4_div = float((z_bpr[q4_mask] - z_bpm[q4_mask]).mean())
+                        self.stdout.write(f"Q4 divergence:   {q4_div:+.3f} (was -0.978)")
+                    # Determine status
+                    improved = r_bpm > 0.592
+                    status = self.style.SUCCESS("IMPROVEMENT") if improved else self.style.WARNING("NO CHANGE / REGRESSION")
+                    self.stdout.write(f"Status: {status}")
+            except Exception as e:
+                self.stdout.write(f"  (BPM/Q4 checks skipped: {e})")
+        self.stdout.write("=" * 55)
+
+    def _run_validation(
+        self,
+        predictions: dict[int, dict],
+        stats_values: list[dict],
+        artifacts: dict,
+        old_box_bpr: dict[int, float],
+        season_year: int,
+    ) -> None:
+        """Run validation checks, print summary, save comparison CSV."""
+        import numpy as np
+        import scipy.stats
+        import pandas as pd
+
+        # ── Load BPM from metrics CSV ──────────────────────────────────────────
+        metrics_path = Path(__file__).parent.parent.parent.parent.parent / "metrics_output" / "nba_metrics_2025_26.csv"
+        bpm_map: dict[str, float] = {}
+        if metrics_path.exists():
+            mdf = pd.read_csv(metrics_path)
+            for _, row in mdf.iterrows():
+                if pd.notna(row.get("BPM")):
+                    bpm_map[str(row["player_name"]).lower().strip()] = float(row["BPM"])
+
+        # ── Build comparison rows ──────────────────────────────────────────────
+        from nba.models import NBAPlayer
+        name_map = {
+            p.pk: p.name
+            for p in NBAPlayer.objects.filter(pk__in=predictions.keys()).only("pk", "name")
+        }
+        # minutes + usg lookup (keyed by player_id)
+        min_map = {p["player_id"]: (p.get("mpg") or 0) * (p.get("gp") or 0)
+                   for p in stats_values}
+        team_map = {p["player_id"]: p.get("team_id") for p in stats_values}
+        usg_map  = {p["player_id"]: (p.get("usg_pct") or 0.0) for p in stats_values}
+
+        rows = []
+        for pid, pred in predictions.items():
+            name   = name_map.get(pid, f"id={pid}")
+            new_b  = round(pred["box_obpr"] + pred["box_dbpr"], 3)
+            old_b  = old_box_bpr.get(pid)
+            bpm    = bpm_map.get(name.lower().strip())
+            rows.append({
+                "player_name":   name,
+                "player_id":     pid,
+                "team_id":       team_map.get(pid),
+                "minutes":       min_map.get(pid, 0),
+                "usg_pct":       usg_map.get(pid, 0.0),
+                "box_bpr_old":   old_b,
+                "box_bpr_new":   new_b,
+                "box_obpr_new":  pred["box_obpr"],
+                "box_dbpr_new":  pred["box_dbpr"],
+                "BPM":           bpm,
+                "divergence_old": round(old_b - bpm, 3) if (old_b is not None and bpm is not None) else None,
+                "divergence_new": round(new_b - bpm, 3) if bpm is not None else None,
+            })
+
+        df = pd.DataFrame(rows)
+        out_path = metrics_path.parent / "box_bpr_fixed_2025_26.csv"
+        df.to_csv(out_path, index=False)
+        self.stdout.write(f"\n[SAVED] {out_path}")
+
+        # ── Validation checks ──────────────────────────────────────────────────
+        off_alpha = artifacts.get("off_cv_alpha", float("nan"))
+        def_alpha = artifacts.get("def_cv_alpha", float("nan"))
+
+        # Check: BPM correlation
+        valid_bpm = df[df["BPM"].notna() & df["box_bpr_new"].notna()]
+        r_bpm = float(scipy.stats.pearsonr(valid_bpm["box_bpr_new"], valid_bpm["BPM"])[0]) if len(valid_bpm) > 10 else float("nan")
+
+        # Check: Jokić z-score
+        jokic_row = df[df["player_name"].str.contains("Joki", na=False)]
+        z_jokic = float("nan")
+        if not jokic_row.empty and not df["box_bpr_new"].std() == 0:
+            mu, sigma = df["box_bpr_new"].mean(), df["box_bpr_new"].std()
+            z_jokic = float((jokic_row.iloc[0]["box_bpr_new"] - mu) / sigma)
+
+        # Check: Q4 usage divergence — usg_pct is decimal (0.28 = 28%), not percentage
+        usg_threshold = 0.28 if df["usg_pct"].median() < 1.0 else 28.0
+        valid_q4 = df[(df["usg_pct"] > usg_threshold) & df["BPM"].notna() & df["box_bpr_new"].notna()]
+        q4_divergence = float("nan")
+        if len(valid_q4) >= 3:
+            def _z(s): return (s - s.mean()) / s.std() if s.std() > 0 else s * 0
+            full_valid = df[df["BPM"].notna() & df["box_bpr_new"].notna()].copy()
+            full_valid["z_bpr"] = _z(full_valid["box_bpr_new"])
+            full_valid["z_cons"] = _z(full_valid["BPM"])
+            full_valid["div"] = full_valid["z_bpr"] - full_valid["z_cons"]
+            q4_mask = full_valid["player_name"].isin(valid_q4["player_name"])
+            q4_divergence = float(full_valid[q4_mask]["div"].mean())
+
+        top_off_feat = artifacts.get("off_importance", [("?", 0)])[0][0]
+        top_def_feat = artifacts.get("def_importance", [("?", 0)])[0][0]
+
+        # ── Print summary ──────────────────────────────────────────────────────
+        self.stdout.write("\n" + "=" * 55)
+        self.stdout.write("BOX BPR FIX VALIDATION")
+        self.stdout.write("=" * 55)
+        self.stdout.write(f"Alpha selected (OBPR): {off_alpha:.2f}")
+        self.stdout.write(f"Alpha selected (DBPR): {def_alpha:.2f}")
+
+        def _check(label, val, target, direction="above", was=None):
+            if was is not None:
+                was_str = f" (was {was})"
+            else:
+                was_str = ""
+            ok = (val > target) if direction == "above" else (val < target)
+            status = self.style.SUCCESS("PASS") if ok else self.style.WARNING("FAIL")
+            tgt_sym = ">" if direction == "above" else "<"
+            self.stdout.write(
+                f"{label}: {val:.3f}{was_str} — [{status}] (target {tgt_sym}{target})"
+            )
+            return ok
+
+        c1 = _check("box_bpr vs BPM correlation", r_bpm,        0.70, "above", was=0.493)
+        c2 = _check("Jokić z-score",              z_jokic,      2.0,  "above", was=1.36)
+        c3 = _check("Q4 usage divergence",        q4_divergence,-0.30,"above", was=-0.742)
+        c4 = off_alpha < 50.0
+        self.stdout.write(
+            f"Alpha < 50 (OBPR): {'PASS' if c4 else 'FAIL'} (was 50, now {off_alpha:.2f})"
+        )
+        self.stdout.write(f"Top offensive feature: {top_off_feat}")
+        self.stdout.write(f"Top defensive feature: {top_def_feat}")
+
+        n_pass = sum([c1, c2, c3, c4])
+        ready = n_pass >= 3
+        overall = self.style.SUCCESS("READY FOR RAPM INTEGRATION") if ready else self.style.WARNING("NEEDS FURTHER WORK")
+        self.stdout.write(f"\nOverall ({n_pass}/4 passed): {overall}")
+        self.stdout.write("=" * 55)

@@ -1,0 +1,9 @@
+BPR DIAGNOSTIC REPORT — 2025-26 NBA Season
+==================================================
+1. Overall BPR-consensus correlation: 0.502
+2. Offensive component (obpr vs OBPM): 0.506
+3. Defensive component (dbpr vs DBPM): 0.373
+4. Usage bias confirmed: YES — Q1 div=+0.103, Q4 div=-0.742
+5. Biggest team bias: MIA (BPR over/underrates this team's players most)
+6. Jokić: suppressed most on defense, z_obpr=+1.63 vs z_OBPM=+4.30
+7. Recommended fix priority: usage-weighting + defensive model
