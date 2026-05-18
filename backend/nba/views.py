@@ -278,6 +278,55 @@ class NBATeamRosterView(APIView):
         return Response(NBAPlayerSeasonStatsSerializer(players, many=True).data)
 
 
+_BLEND_FIELDS = (
+    "adj_off", "adj_def", "adj_net", "pace",
+    "efg_pct", "opp_efg_pct",
+    "tov_rate", "opp_tov_rate",
+    "oreb_pct", "opp_oreb_pct",
+    "fta_rate", "opp_fta_rate",
+)
+
+
+def _get_blended_ratings(reg, po_ratings):
+    """
+    Blend regular-season ratings toward playoff ratings in memory (no .save()).
+    Weight: w = min(po.games / (po.games + 5.0), 0.7).
+    Returns reg unchanged if po_ratings is None or has 0 games.
+
+    Derived margin fields (efg_margin, tov_edge, oreb_edge, fta_margin) are
+    recomputed from blended raws. rank_adj_net and rank_ffi are nulled because
+    they are stale after the adj_net shift.
+
+    NOTE: recent_form and volatility league distributions in NBAMatchupView
+    always use regular-season data regardless of this blend (by design).
+    """
+    if po_ratings is None or not po_ratings.games or po_ratings.games < 4:
+        return reg
+
+    w = min(po_ratings.games / (po_ratings.games + 8.0), 0.7)
+
+    for field in _BLEND_FIELDS:
+        r_val = getattr(reg, field)
+        p_val = getattr(po_ratings, field)
+        if r_val is not None and p_val is not None:
+            setattr(reg, field, (1.0 - w) * r_val + w * p_val)
+
+    # Recompute derived margin fields from blended raws
+    if reg.efg_pct is not None and reg.opp_efg_pct is not None:
+        reg.efg_margin = reg.efg_pct - reg.opp_efg_pct
+    if reg.tov_rate is not None and reg.opp_tov_rate is not None:
+        reg.tov_edge = reg.opp_tov_rate - reg.tov_rate
+    if reg.oreb_pct is not None and reg.opp_oreb_pct is not None:
+        reg.oreb_edge = reg.oreb_pct - reg.opp_oreb_pct
+    if reg.fta_rate is not None and reg.opp_fta_rate is not None:
+        reg.fta_margin = reg.fta_rate - reg.opp_fta_rate
+
+    reg.rank_adj_net = None
+    reg.rank_ffi = None
+
+    return reg
+
+
 class NBAMatchupView(APIView):
     """
     GET /api/nba/matchup/?teamA=<slug>&teamB=<slug>&site=neutral&season=2026&mode=game
@@ -326,6 +375,8 @@ class NBAMatchupView(APIView):
         site = request.query_params.get("site", "neutral")
         mode = request.query_params.get("mode", "game")
         season_year = request.query_params.get("season")
+        _upb_raw = request.query_params.get("use_playoff_blend", "true")
+        use_playoff_blend = _upb_raw.lower() not in ("0", "false", "no", "off")
 
         if not team_a_slug or not team_b_slug:
             return Response({"error": "teamA and teamB required"}, status=status.HTTP_400_BAD_REQUEST)
@@ -336,7 +387,8 @@ class NBAMatchupView(APIView):
         if mode not in ("game", "series"):
             return Response({"error": "mode must be game or series"}, status=status.HTTP_400_BAD_REQUEST)
 
-        cache_key = f"nba:matchup:{team_a_slug}:{team_b_slug}:{site}:{season_year or 'current'}:{mode}"
+        _blend_flag = "blend" if use_playoff_blend else "reg"
+        cache_key = f"nba:matchup:{team_a_slug}:{team_b_slug}:{site}:{season_year or 'current'}:{mode}:{_blend_flag}"
         cached = cache.get(cache_key)
         if cached is not None:
             return Response(cached)
@@ -372,6 +424,16 @@ class NBAMatchupView(APIView):
                 {"error": "Team ratings not found for this season. Run nba_compute_ratings first."},
                 status=status.HTTP_404_NOT_FOUND,
             )
+
+        if use_playoff_blend:
+            po_qs = {
+                r.team_id: r
+                for r in NBATeamSeasonRatings.objects.filter(
+                    team__in=[team_a, team_b], season=season, season_type="playoffs"
+                )
+            }
+            ratings_a = _get_blended_ratings(ratings_a, po_qs.get(team_a.id))
+            ratings_b = _get_blended_ratings(ratings_b, po_qs.get(team_b.id))
 
         # Model parameters (HCA, sigma, nat_avg_ortg)
         params = get_nba_model_params(season)
@@ -610,6 +672,7 @@ class NBAMatchupView(APIView):
                 "hca_points": round(hca_points, 2),
                 "prediction_sigma": round(sigma, 2),
                 "nat_avg_ortg": round(nat_avg_ortg, 1),
+                "playoff_blend": use_playoff_blend,
                 "coefficients": {
                     "efg":       round(_cal.ffi_raw_coef_efg,  3) if _has_coefs else None,
                     "tov":       round(_cal.ffi_raw_coef_tov,  3) if _has_coefs else None,
