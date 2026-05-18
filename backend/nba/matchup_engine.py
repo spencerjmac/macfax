@@ -363,13 +363,13 @@ def compute_series_probability(
     """
     Compute 7-game series win probabilities using DP over 2-2-1-1-1 format.
 
-    series_home: 'a' = Team A has home court (G1,G2,G6,G7 at A).
+    series_home: 'a' = Team A has home court (G1,G2,G5,G7 at A; G3,G4,G6 at B).
                  'b' = Team B has home court.
     """
     if series_home == "a":
-        game_sites = ["home", "home", "away", "away", "away", "home", "home"]
+        game_sites = ["home", "home", "away", "away", "home", "away", "home"]
     else:
-        game_sites = ["away", "away", "home", "home", "home", "away", "away"]
+        game_sites = ["away", "away", "home", "home", "away", "home", "away"]
 
     def p_a(g: int) -> float:
         return prob_a_home if game_sites[g] == "home" else prob_a_away
