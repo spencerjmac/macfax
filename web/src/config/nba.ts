@@ -71,7 +71,7 @@ export const NBA_METRIC_DEFINITIONS: Record<string, NBAMetricMeta> = {
   ffi: {
     key: 'ffi',
     label: 'FFI',
-    tooltip: 'Four Factor Index — weighted composite of eFG margin, TOV edge, OREB edge, and FTA margin. PROVISIONAL until backtested.',
+    tooltip: 'Four Factor Index — weighted composite of eFG margin, TOV edge, OREB edge, and FTA margin.',
     format: 'number1',
     better: 'higher',
     showRank: true,

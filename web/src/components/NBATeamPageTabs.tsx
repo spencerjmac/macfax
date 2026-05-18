@@ -335,7 +335,7 @@ export default function NBATeamPageTabs({ slug, seasonYear, ratings, games }: NB
               <RatingRow label="Adj Net Rating" value={ratings.adj_net} tooltip="Adj Off minus Adj Def" />
               <RatingRow label="Pace (poss/game)" value={ratings.pace} />
               {ratings.ffi != null && (
-                <RatingRow label="FFI (provisional)" value={ratings.ffi} tooltip="Four Factor Index — PROVISIONAL" />
+                <RatingRow label="FFI" value={ratings.ffi} tooltip="Four Factor Index — weighted composite of eFG margin, TOV edge, OREB edge, and FTA margin" />
               )}
             </div>
           ) : (

@@ -141,7 +141,7 @@ export default async function NBARankingsPage({ searchParams }: NBAPageProps) {
             <span className="font-semibold text-text-primary">FFI</span>
             <span className="text-text-muted ml-2">
               Four Factor Index — composite of eFG%, turnover rate, rebound rate, and FT rate edges.
-              Weights are provisional pending NBA backtesting.
+              Weights derived from 11-season OLS regression (2016–2026).
             </span>
           </div>
           <div>

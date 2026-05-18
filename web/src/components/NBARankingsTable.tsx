@@ -14,7 +14,6 @@ import {
 } from '@tanstack/react-table';
 import Link from 'next/link';
 import clsx from 'clsx';
-import { TriangleAlert } from 'lucide-react';
 import HeaderWithTooltip from './HeaderWithTooltip';
 import { NBATeamSeasonRatings, NBASeasonInfo } from '@/types/nba';
 import { NBA_METRIC_DEFINITIONS, NBAMetricMeta } from '@/config/nba';
@@ -355,15 +354,6 @@ export default function NBARankingsTable({
 
   return (
     <div className="space-y-4">
-      {/* FFI provisional notice */}
-      <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-800">
-        <TriangleAlert className="w-4 h-4 mt-0.5 shrink-0" />
-        <span>
-          <strong>FFI is provisional</strong> — weights have not been backtested on NBA data.
-          Do not use FFI for comparative analysis until Phase 3 validation is complete.
-        </span>
-      </div>
-
       {/* Filters */}
       <div className="flex flex-wrap gap-4 items-center">
         {seasons.length > 1 && (
