@@ -13,7 +13,7 @@ import logging
 import statistics
 from typing import Dict, List, Optional
 
-from django.db.models import Avg, Count
+from django.db.models import Avg, Count, Q
 
 logger = logging.getLogger(__name__)
 
@@ -255,8 +255,9 @@ def compute_nba_adjusted_variance(
 
 def compute_nba_recent_form(team, season, nat_avg_ortg: float, hca_points: float, sigma: float) -> Dict:
     """
-    Pull last 10 regular-season NBATeamGameStats and compute recent form summary.
+    Pull last 10 NBATeamGameStats (regular season + playoffs) and compute recent form summary.
     Returns adjusted variance (opponent-adjusted residuals) where possible.
+    Playoff games are included so form reflects current performance, not months-old regular-season data.
     """
     from nba.models import NBATeamGameStats
 
@@ -264,9 +265,10 @@ def compute_nba_recent_form(team, season, nat_avg_ortg: float, hca_points: float
         NBATeamGameStats.objects.filter(
             team=team,
             game__season=season,
-            game__counts_toward_regular_season=True,
             pts__isnull=False,
             opp_pts__isnull=False,
+        ).filter(
+            Q(game__counts_toward_regular_season=True) | Q(game__season_type="playoffs")
         )
         .select_related("game", "team")
         .order_by("-game__date")[:10]
@@ -299,6 +301,7 @@ def compute_nba_recent_form(team, season, nat_avg_ortg: float, hca_points: float
             "result": "W" if margin > 0 else "L",
             "score": f"{stat.pts}-{opp_pts}",
             "margin": margin,
+            "game_type": stat.game.season_type,
         })
 
     wins = sum(1 for m in margins if m > 0)
