@@ -170,7 +170,8 @@ def forecast_game(
     nat_avg_ortg: float,
     hca_points: float,
     sigma: float,
-    site: str = 'neutral'
+    site: str = 'neutral',
+    ols_scale: Optional[float] = None,
 ) -> Dict:
     """
     Complete game forecast using multiplicative efficiency model.
@@ -208,7 +209,16 @@ def forecast_game(
     # 3. Convert to points (neutral site)
     pts_a_neutral = exp_oe_a * (pace / 100)
     pts_b_neutral = exp_oe_b * (pace / 100)
-    
+
+    # Apply OLS β₁ scale correction at neutral-site level.
+    # β₁ < 1.0 means predicted margins are compressed vs actual outcomes.
+    # Dividing by β₁ un-compresses the margin while preserving total points.
+    # Applied before HCA so pts_a_neutral/pts_b_neutral stay consistent for series DP.
+    if ols_scale is not None and 0.5 < ols_scale < 1.5:
+        _mid = (pts_a_neutral + pts_b_neutral) / 2.0
+        pts_a_neutral = _mid + (pts_a_neutral - _mid) / ols_scale
+        pts_b_neutral = _mid + (pts_b_neutral - _mid) / ols_scale
+
     # 4. Apply HCA adjustment
     pts_a, pts_b = apply_hca_adjustment(pts_a_neutral, pts_b_neutral, site, hca_points)
     

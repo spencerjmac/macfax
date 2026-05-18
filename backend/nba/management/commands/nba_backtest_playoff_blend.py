@@ -158,10 +158,12 @@ class Command(BaseCommand):
         nat_avg_ortg = params["nat_avg_ortg"]
         hca_points = params["hca_points"]
         sigma = params["sigma"]
+        ols_model_scale = params["ols_model_scale"]
 
         self.stdout.write(
             f"\nModel params: HCA={hca_points:.2f}  σ={sigma:.2f}  "
             f"nat_avg_ortg={nat_avg_ortg:.1f}"
+            + (f"  β₁={ols_model_scale:.3f}" if ols_model_scale else "  β₁=none")
         )
 
         # ── Per-game evaluation ───────────────────────────────────────────────
@@ -206,6 +208,7 @@ class Command(BaseCommand):
                 hca_points=hca_points,
                 sigma=sigma,
                 site="home",
+                ols_scale=ols_model_scale,
             )
             p_reg = fc_reg["prob_a"]
 
@@ -242,6 +245,7 @@ class Command(BaseCommand):
                 hca_points=hca_points,
                 sigma=sigma,
                 site="home",
+                ols_scale=ols_model_scale,
             )
             p_blend = fc_blend["prob_a"]
 

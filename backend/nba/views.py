@@ -290,8 +290,9 @@ _BLEND_FIELDS = (
 def _get_blended_ratings(reg, po_ratings):
     """
     Blend regular-season ratings toward playoff ratings in memory (no .save()).
-    Weight: w = min(po.games / (po.games + 5.0), 0.7).
-    Returns reg unchanged if po_ratings is None or has 0 games.
+    Guard: returns reg unchanged if po_ratings is None or po.games < 4.
+    Weight: w = min(po.games / (po.games + 8.0), 0.7).
+      → 4 games: w=0.33 | 8 games: w=0.50 | 17 games: w=0.68 (cap=0.70)
 
     Derived margin fields (efg_margin, tov_edge, oreb_edge, fta_margin) are
     recomputed from blended raws. rank_adj_net and rank_ffi are nulled because
@@ -441,6 +442,7 @@ class NBAMatchupView(APIView):
         sigma = params["sigma"]
         nat_avg_ortg = params["nat_avg_ortg"]
         ols_r_squared = params["ols_r_squared"]
+        ols_model_scale = params["ols_model_scale"]
 
         # National four-factor averages (percentage-point scale)
         # Guard: never let zero/None reach the shared engine — use NBA defaults, not NCAA ones
@@ -483,6 +485,7 @@ class NBAMatchupView(APIView):
             hca_points=hca_points,
             sigma=sigma,
             site=site,
+            ols_scale=ols_model_scale,
         )
 
         # Score sanity: neutral-site pts should be within ±15% of nat_avg_ortg × (pace/100)
@@ -600,11 +603,14 @@ class NBAMatchupView(APIView):
             pass
 
         if _has_coefs:
+            # Coefficients are trained on decimal-scale margins (e.g. 0.03 for a 3pp edge).
+            # ff_edges are in percentage points (from get_nba_four_factors_pct × 100).
+            # Divide by 100 to restore decimal scale before multiplying by coefficients.
             _pts_breakdown = compute_points_from_four_factors(
-                efg_edge=ff_edges["efg_edge"],
-                tov_edge=ff_edges["tov_edge"],
-                orb_edge=ff_edges["orb_edge"],
-                ftr_edge=ff_edges["ftr_edge"],
+                efg_edge=ff_edges["efg_edge"] / 100,
+                tov_edge=ff_edges["tov_edge"] / 100,
+                orb_edge=ff_edges["orb_edge"] / 100,
+                ftr_edge=ff_edges["ftr_edge"] / 100,
                 coef_efg=_cal.ffi_raw_coef_efg,
                 coef_tov=_cal.ffi_raw_coef_tov,
                 coef_orb=_cal.ffi_raw_coef_oreb,
@@ -613,10 +619,10 @@ class NBAMatchupView(APIView):
                 pace=forecast["pace"],
             )
             _top_drivers = identify_top_drivers(
-                efg_edge=ff_edges["efg_edge"],
-                tov_edge=ff_edges["tov_edge"],
-                orb_edge=ff_edges["orb_edge"],
-                ftr_edge=ff_edges["ftr_edge"],
+                efg_edge=ff_edges["efg_edge"] / 100,
+                tov_edge=ff_edges["tov_edge"] / 100,
+                orb_edge=ff_edges["orb_edge"] / 100,
+                ftr_edge=ff_edges["ftr_edge"] / 100,
                 coef_efg=_cal.ffi_raw_coef_efg,
                 coef_tov=_cal.ffi_raw_coef_tov,
                 coef_orb=_cal.ffi_raw_coef_oreb,
@@ -672,6 +678,7 @@ class NBAMatchupView(APIView):
                 "hca_points": round(hca_points, 2),
                 "prediction_sigma": round(sigma, 2),
                 "nat_avg_ortg": round(nat_avg_ortg, 1),
+                "ols_model_scale": round(ols_model_scale, 3) if ols_model_scale is not None else None,
                 "playoff_blend": use_playoff_blend,
                 "coefficients": {
                     "efg":       round(_cal.ffi_raw_coef_efg,  3) if _has_coefs else None,

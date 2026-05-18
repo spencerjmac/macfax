@@ -44,16 +44,17 @@ def get_nba_model_params(season) -> Dict:
     hca_points = NBA_HCA_DEFAULT
     sigma = NBA_SIGMA_DEFAULT
     ols_r_squared = None
+    ols_model_scale = None
 
     try:
         cal = NBAModelCalibration.objects.get(season=season)
         if cal.empirical_hca is not None:
             hca_points = cal.empirical_hca
-        # prediction_sigma = std dev of OLS residuals in game points (correct unit for CDF)
-        # ols_model_scale is the β₁ slope coefficient — NOT sigma — do not use it here
         if cal.prediction_sigma is not None:
             sigma = cal.prediction_sigma
         ols_r_squared = cal.ols_r_squared
+        if cal.ols_model_scale is not None and 0.5 < cal.ols_model_scale < 1.5:
+            ols_model_scale = cal.ols_model_scale
     except NBAModelCalibration.DoesNotExist:
         pass
 
@@ -100,6 +101,7 @@ def get_nba_model_params(season) -> Dict:
         "sigma": sigma,
         "nat_avg_ortg": nat_avg_ortg,
         "ols_r_squared": ols_r_squared,
+        "ols_model_scale": ols_model_scale,
     }
 
 
