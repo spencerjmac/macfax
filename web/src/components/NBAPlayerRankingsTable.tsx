@@ -43,8 +43,10 @@ const NBA_TRAD_SECONDARY = new Set(['fg_pct', 'fg3_pct', 'ft_pct', 'oreb_pg', 'd
 const NBA_ADV_PRIMARY  = ['ts_pct', 'efg_pct', 'usg_pct', 'oreb_pct', 'dreb_pct', 'ast_pct', 'tov_pct', 'ast_to', 'pie'];
 const NBA_ADV_EXTRAS   = ['stl_pct', 'blk_pct'];
 
-// Impact primary columns (excluding on-court groups which are handled separately)
-const NBA_IMP_PRIMARY  = ['box_bpr', 'box_obpr', 'box_dbpr', 'mpir', 'o_mpir', 'd_mpir'];
+// Impact primary columns — final BPR (prior-informed RAPM) displayed first
+const NBA_IMP_PRIMARY  = ['bpr', 'obpr', 'dbpr', 'mpir', 'o_mpir', 'd_mpir'];
+// Box BPR (intermediate prior) — optional/secondary for transparency
+const NBA_IMP_BOX_KEYS = ['box_bpr', 'box_obpr', 'box_dbpr'];
 const NBA_IMP_ADJ_KEYS = ['on_court_adj_o', 'on_court_adj_d', 'on_court_adj_em']; // secondary
 const NBA_IMP_RAW_KEYS = ['on_court_ortg', 'on_court_drtg', 'on_court_net'];       // optional
 
@@ -94,7 +96,7 @@ export default function NBAPlayerRankingsTable({ data, seasonDisplay, seasonType
   const tabDefaultSort: Record<TabId, SortingState> = {
     traditional: [{ id: 'pts',     desc: true }],
     advanced:    [{ id: 'ts_pct',  desc: true }],
-    impact:      [{ id: 'box_bpr', desc: true }],
+    impact:      [{ id: 'bpr', desc: true }],
   };
 
   // Auto-redirect away from Impact when switching to playoffs
@@ -141,7 +143,7 @@ export default function NBAPlayerRankingsTable({ data, seasonDisplay, seasonType
   const allKeys = [
     ...NBA_TRAD_PRIMARY, ...NBA_TRAD_EXTRAS, 'plus_minus',
     ...NBA_ADV_PRIMARY, ...NBA_ADV_EXTRAS,
-    ...NBA_IMP_PRIMARY, ...NBA_IMP_ADJ_KEYS, ...NBA_IMP_RAW_KEYS, 'on_court_poss',
+    ...NBA_IMP_PRIMARY, ...NBA_IMP_BOX_KEYS, ...NBA_IMP_ADJ_KEYS, ...NBA_IMP_RAW_KEYS, 'on_court_poss',
   ];
 
   const metricRanks = useMemo(() => {
@@ -344,10 +346,15 @@ export default function NBAPlayerRankingsTable({ data, seasonDisplay, seasonType
       const adjOnCourtVisible = NBA_IMP_ADJ_KEYS.every((k) => optionalCols.has(k));
       const rawOnCourtVisible = NBA_IMP_RAW_KEYS.every((k) => optionalCols.has(k));
 
+      const boxBprVisible = NBA_IMP_BOX_KEYS.filter((k) => optionalCols.has(k));
+
       return [
         invisible('imp-base', [rankColumn, ...baseColumns, possCol]),
-        createGroup('imp-bpr',  'Box BPR',  NBA_IMP_PRIMARY.slice(0, 3)),
-        createGroup('imp-mpir', 'MPIR',     NBA_IMP_PRIMARY.slice(3)),
+        createGroup('imp-bpr',  'BPR',   NBA_IMP_PRIMARY.slice(0, 3)),
+        createGroup('imp-mpir', 'MPIR',  NBA_IMP_PRIMARY.slice(3)),
+        ...(boxBprVisible.length > 0
+          ? [createGroup('imp-box-bpr', 'Box BPR', boxBprVisible)]
+          : []),
         ...(adjOnCourtVisible
           ? [createGroup('imp-adj-oc', 'Adj On-Court', NBA_IMP_ADJ_KEYS, ['Adj O', 'Adj D', 'Adj EM'])]
           : []),
@@ -374,7 +381,7 @@ export default function NBAPlayerRankingsTable({ data, seasonDisplay, seasonType
   // ── Extras per tab (for the column picker UI) ────────────────────────────
   const extrasForTab = activeTab === 'traditional' ? NBA_TRAD_EXTRAS
     : activeTab === 'advanced' ? NBA_ADV_EXTRAS
-    : [...NBA_IMP_ADJ_KEYS, ...NBA_IMP_RAW_KEYS];
+    : [...NBA_IMP_BOX_KEYS, ...NBA_IMP_ADJ_KEYS, ...NBA_IMP_RAW_KEYS];
 
   const toggleExtra = (key: string) => {
     setOptionalCols((prev) => {
@@ -513,8 +520,9 @@ export default function NBAPlayerRankingsTable({ data, seasonDisplay, seasonType
         <div className="flex items-start gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
           <span className="shrink-0 mt-0.5">ℹ</span>
           <span>
-            <strong>Box BPR</strong> is a Ridge regression model predicting on-court impact from per-100-poss box stats and role archetype — Stage 1 proxy trained on MPIR targets.{' '}
+            <strong>BPR</strong> (Bayesian Performance Rating) is a context-adjusted lineup impact metric — career-stabilized box stats regularized toward 3-year lineup RAPM. Measures impact on current team, not pure skill in isolation.{' '}
             <strong>MPIR</strong> (Macfax Player Impact Rating) is NBA.com{"'"}s Bayesian-stabilised on-court efficiency recentred on league average.{' '}
+            <strong>Box BPR</strong> is the intermediate box-score prior (toggle on for transparency).{' '}
             <strong>Adj On-Court</strong> are Bayesian-stabilised on-court efficiency ratings (toggle Raw On-Court for unadjusted).
           </span>
         </div>

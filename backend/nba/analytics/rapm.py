@@ -22,6 +22,16 @@ NBA-specific differences vs NCAA:
   - Observations built from NBAPlayerGameStint rows grouped by (game, stint_index)
   - pbp_quality_flag=True games excluded from RAPM training
   - Lambda candidates start at 500 as anchor; CV typically selects lower for NBA
+
+2026 PBP DATA FIX (applied May 2026):
+  Root cause: repeated nba_sync_play_by_play --force runs accumulated
+  duplicate NBAPlayerGameStint rows with different stint_index values
+  (bulk_create with update_conflicts=True on unique=(player,game,stint_index)
+  leaves orphan rows when stint_index shifts between syncs). Result:
+  582K raw stints, only 0.78% formed valid 5v5 observations (4,534 vs
+  expected 25,000+), causing 2026 RAPM coefficients to shrink to near zero.
+  Fix: deleted all 2026 stints, re-synced once from NBA.com API.
+  Post-fix: 27,575 valid 2026 observations matching prior seasons.
 """
 
 from __future__ import annotations

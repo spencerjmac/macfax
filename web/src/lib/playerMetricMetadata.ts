@@ -312,7 +312,7 @@ export const NBA_IMPACT_METRICS: PlayerMetricMeta[] = [
   // ── BPR (prior-informed RAPM — primary displayed rating) ─────────────────────
   {
     key: 'bpr',   label: 'BPR',   group: 'BPR',
-    tooltip: 'Bayesian Performance Rating (OBPR + DBPR). Box-score prior regularized toward 3-year lineup RAPM. Team-quality-adjusted individual impact in pts/100 possessions above league average.',
+    tooltip: 'Bayesian Performance Rating (OBPR + DBPR). Career-stabilized box stats regularized toward single-season RAPM. Context-adjusted impact in pts/100 poss above league average — reflects role and team quality, not pure skill in isolation.',
     format: 'number2', better: 'higher', showRank: true, heatmap: true, tier: 'primary',
   },
   {

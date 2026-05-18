@@ -1,19 +1,41 @@
 """
 Management command: nba_compute_final_bpr
 
-Computes the final displayed BPR for NBA players using prior-informed RAPM:
-  - Prior mean: box_obpr / box_dbpr (per-player, from nba_compute_box_bpr)
-  - Data: 3-year pooled lineup stints (same window as nba_compute_baseline_rapm)
-  - Regularization: minutes-stratified λ (stars get lower λ, fringe players higher)
+Computes the final displayed BPR using prior-informed RAPM
+(LEBRON-style box prior + lineup data). Results written to
+NBAPlayerSeasonStats.obpr / .dbpr / .bpr.
 
-This is the LEBRON-style "Box prior Regularized On-off" approach. Results are
-written to NBAPlayerSeasonStats.obpr / .dbpr / .bpr — the fields the frontend
-should display instead of box_bpr.
+CURRENT PRODUCTION STATE:
+
+Lambda configuration: B_moderate (active default)
+  ≥2000 min (stars):    λ=200
+  ≥1200 min (starters): λ=400
+  ≥600 min (rotation):  λ=700
+  <600 min (fringe):    λ=1200
+
+Lambda rationale:
+  Asymmetric tuning was tested (loosen stars, tighten role players)
+  but made results worse — looser lambda lets RAPM push stars further
+  down when their lineup stints underperform. B_moderate is the
+  validated default.
+
+Prior: box_obpr / box_dbpr from nba_compute_box_bpr (career-stabilized)
+Data: 3-year pooled stints for final prior-informed RAPM
+
+Known properties:
+  - Context-adjusted lineup metric, not a pure skill estimate
+  - Stars on underperforming teams rated lower than pure skill
+  - SGA, Wembanyama correctly in top 5
+
+Known limitations:
+  - Single-season RAPM noise can inflate role players in lucky lineups
+  - Multi-year pooled RAPM partially mitigated by single-season
+    baseline targets feeding the box prior
 
 Run order:
-  1. nba_compute_baseline_rapm --season YYYY --rapm-years YYYY-2 YYYY-1 YYYY
+  1. nba_compute_baseline_rapm --season YYYY   (single season, no --rapm-years)
   2. nba_compute_box_bpr --season YYYY
-  3. nba_compute_final_bpr --season YYYY          ← this command
+  3. nba_compute_final_bpr --season YYYY       ← this command
 
 Usage:
   python manage.py nba_compute_final_bpr --season 2026

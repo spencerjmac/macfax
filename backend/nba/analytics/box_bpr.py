@@ -1,21 +1,47 @@
 """
-box_bpr.py — NBA Box-score Bayesian Performance Rating.
+box_bpr.py — NBA Box-score Bayesian Performance Rating (Box Prior).
 
 Trains two Ridge regression models (offensive and defensive) that map
 per-100-possession box-score features to on-court impact targets, then
 generates box_obpr / box_dbpr for each qualified player.
 
-Stage 1 training targets: o_mpir / d_mpir (NBA.com E_OFF/DEF_RATING
-residuals relative to league average). These are the best available
-proxy until RAPM stint data is added in Stage 2, at which point we
-retrain with baseline_obpr / baseline_dbpr targets.
+CURRENT PRODUCTION STATE (2025-26 season):
+
+Training targets:
+  Stage 1: o_mpir / d_mpir (NBA.com E_OFF/DEF_RATING residuals)
+  Stage 2: baseline_obpr / baseline_dbpr (single-season RAPM targets)
+  RAPM-only training: players without RAPM coverage excluded from
+  training set (predicted only). See rapm_pids parameter.
+
+Career stabilization (Phase 1 + Phase 2):
+  Rate stats stabilized (Tier 1): ts_pct, fg3_pct, ft_pct, ast_pct,
+    stl_pct, blk_pct, oreb_pct — possession-weighted career average
+    blended with current season using full career weight.
+  Counting stats stabilized (Tier 2, role-discounted): pts100, ast100,
+    stl100, blk100, dreb100, oreb100, tov100, fga100, fg3a100, fta100
+    — career average blended at 50% weight vs current season.
+  Not stabilized (Tier 3 — current context only): on_court_adj_o/d/em,
+    d_mpir, o_mpir, mpir, per-game counting stats, on_off_delta,
+    opp_quality, team residual features.
+  Career data window: 2016 to target season (up to 10 seasons).
+
+Regularization:
+  Alpha pinned: off=5.0, def=10.0 (not CV-selected).
+  Rationale: CV selected wildly different alphas year-to-year
+  (range 5-200) causing prior scale instability. Fixed alpha
+  ensures consistent prior scale across all seasons.
+
+Known properties:
+  - Context-adjusted: players on winning lineups rated higher
+  - Intentionally differs from BPM (pure box score)
+  - Stars on underperforming teams rated lower than pure skill
+    would suggest — this is expected behavior, not a bug
 
 Compared with NCAA box_bpr.py:
   - No pf100 / pf_per_min — personal fouls not stored in NBAPlayerSeasonStats
-  - No on_court_tov_edge / on_court_reb_edge — NBA stints not yet available
   - d_mpir and on_court_adj_d added as first-class defensive signals
   - Archetypes encoded as 6-dim one-hot (vs NCAA tag-based separate models)
-  - on_court_poss used for both off and def possession denominators (proxy)
+  - on_court_poss used for both off and def possession denominators
   - MIN_POSS = 500 (vs NCAA 100) — 82-game season yields larger samples
 """
 

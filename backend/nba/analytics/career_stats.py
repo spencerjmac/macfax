@@ -1,6 +1,20 @@
 """
 career_stats.py — Career-stabilized stat estimates for NBA box BPR.
 
+PRODUCTION STATUS: Active (Phase 1 + Phase 2)
+
+Phase 1 (rate stats): ts_pct, fg3_pct, ft_pct, ast_pct, stl_pct,
+  blk_pct, oreb_pct, efg_pct, usg_pct, tov_pct, dreb_pct
+  Full possession-weighted career average blended with current season.
+
+Phase 2 (counting stats, role-discounted): per-100 counting stats
+  Career average applied at 50% weight (ROLE_DISCOUNT=0.5) to allow
+  genuine role changes to influence the metric while reducing noise.
+
+Career window: 2016 to target season.
+Traded player handling: GP-weighted average for rate stats,
+  max(on_court_poss) for possession counts (poss duplicated across rows).
+
 Rate stat formula (Phase 1):
   stabilized = (career_avg * career_poss + current * current_poss)
                / (career_poss + current_poss)
