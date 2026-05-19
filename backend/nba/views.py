@@ -130,6 +130,7 @@ class NBATeamDetailView(APIView):
             return Response({"detail": "Team not found."}, status=status.HTTP_404_NOT_FOUND)
 
         season_year = request.query_params.get("season")
+        season_type = request.query_params.get("season_type", "regular")
         if season_year:
             try:
                 season = NBASeason.objects.get(year=season_year)
@@ -139,15 +140,12 @@ class NBATeamDetailView(APIView):
                     status=status.HTTP_404_NOT_FOUND,
                 )
         else:
-            try:
-                season = NBASeason.objects.get(is_current=True)
-            except NBASeason.DoesNotExist:
-                season = None
+            season = NBASeason.objects.filter(is_current=True).order_by("-year").first()
 
         ratings = None
         if season:
             try:
-                r = NBATeamSeasonRatings.objects.get(team=team, season=season)
+                r = NBATeamSeasonRatings.objects.get(team=team, season=season, season_type=season_type)
                 ratings = NBATeamSeasonRatingsSerializer(r).data
             except NBATeamSeasonRatings.DoesNotExist:
                 pass
