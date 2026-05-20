@@ -22,6 +22,7 @@ NBA PIPELINE
     7. nba_sync_play_by_play  — PBP ingestion into NBAPlayerGameStint
     8. nba_compute_baseline_rapm — fit baseline RAPM, write baseline_obpr/dbpr
     9. nba_compute_box_bpr (re-run) — retrain box BPR with RAPM targets
+   10. nba_compute_final_bpr  — prior-informed RAPM, writes final bpr/obpr/dbpr
 
 Usage
 ─────
@@ -182,21 +183,28 @@ class Command(BaseCommand):
                 "nba_sync_play_by_play",
                 {"season": season_year, "workers": pbp_workers},
                 steps,
-                label="[PBP-1/3]",
+                label="[PBP-1/4]",
             )
             self._run_step(
                 "NBA compute baseline RAPM",
                 "nba_compute_baseline_rapm",
                 {"season": season_year},
                 steps,
-                label="[PBP-2/3]",
+                label="[PBP-2/4]",
             )
             self._run_step(
                 "NBA compute box BPR (RAPM targets)",
                 "nba_compute_box_bpr",
                 {"season": season_year},
                 steps,
-                label="[PBP-3/3]",
+                label="[PBP-3/4]",
+            )
+            self._run_step(
+                "NBA compute final BPR (prior-informed RAPM)",
+                "nba_compute_final_bpr",
+                {"season": season_year},
+                steps,
+                label="[PBP-4/4]",
             )
 
         # Summary

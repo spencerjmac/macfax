@@ -1,9 +1,18 @@
 """
 Update all NBA player data for a season.
 
+Pipeline sequence:
+  1. nba_sync_team_logs      — per-player box scores from NBA.com
+  2. nba_compute_player_stats — roll up season averages
+  3. nba_sync_player_advanced — advanced + impact stats from NBA.com
+  4. nba_compute_box_bpr     — career-stabilized box BPR prior
+  5. nba_compute_final_bpr   — prior-informed RAPM, writes final bpr/obpr/dbpr
+
 Dependency:
   NBA team data must already be computed for the season. Run update_nba_teams
   first so games, team logs, and ratings are available.
+  Steps 4-5 require baseline_obpr/dbpr from nba_compute_baseline_rapm
+  (run update_nba_all --with-pbp to regenerate RAPM targets if needed).
 
 Usage:
   python manage.py update_nba_players --season 2026
@@ -19,7 +28,7 @@ from django.utils import timezone
 
 from ncaa.management.commands._pipeline_base import BasePipelineCommand
 
-TOTAL_STEPS = 3
+TOTAL_STEPS = 5
 
 
 class Command(BasePipelineCommand):
@@ -84,6 +93,22 @@ class Command(BasePipelineCommand):
             steps,
             fatal=False,
             label=f"[3/{TOTAL_STEPS}]",
+        )
+        self._run_step(
+            "NBA compute box BPR",
+            "nba_compute_box_bpr",
+            {"season": season_year},
+            steps,
+            fatal=False,
+            label=f"[4/{TOTAL_STEPS}]",
+        )
+        self._run_step(
+            "NBA compute final BPR",
+            "nba_compute_final_bpr",
+            {"season": season_year},
+            steps,
+            fatal=False,
+            label=f"[5/{TOTAL_STEPS}]",
         )
 
         end_time = timezone.now()
