@@ -12,6 +12,7 @@ import type {
   VizScatterData,
   NCAAPlayerSeasonStats,
 } from '@/types';
+import type { GameDetailResponse } from '@/types/games';
 import type {
   RosterOutlookData,
   ScenarioRequest,
@@ -238,5 +239,9 @@ export const api = {
     return fetchJson<ValidationRecentGamesResponse>(
       buildUrl('/validation/recent-games/', { season, limit })
     );
+  },
+
+  async getGameDetail(gameId: number | string): Promise<GameDetailResponse> {
+    return fetchJson<GameDetailResponse>(buildUrl(`/games/${gameId}/detail/`));
   },
 };

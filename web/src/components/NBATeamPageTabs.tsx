@@ -424,9 +424,11 @@ export default function NBATeamPageTabs({ slug, seasonYear, ratings, games }: NB
                           : 'L'
                         : null;
                     return (
-                      <tr key={game.id} className="border-b border-ui-border/50 hover:bg-ui-surface/50">
+                      <tr key={game.id} className="border-b border-ui-border/50 hover:bg-ui-surface/50 cursor-pointer">
                         <td className="py-2 px-3 text-text-muted">
-                          {new Date(game.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          <Link href={`/nba/games/${game.game_id}`} className="hover:text-brand transition-colors">
+                            {new Date(game.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          </Link>
                         </td>
                         <td className="py-2 px-3">
                           <span className="text-text-muted text-xs mr-1">{isHome ? 'vs.' : '@'}</span>

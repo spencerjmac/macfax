@@ -152,6 +152,9 @@ class NBAGame(models.Model):
         help_text="True when > 5% of stints fail 10-player validation — excluded from RAPM",
     )
 
+    # AI-generated insights (cached after first generation)
+    game_insights = models.TextField(null=True, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

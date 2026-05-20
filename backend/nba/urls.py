@@ -19,6 +19,7 @@ from .views import (
     NBAMatchupView,
     NBAModelCalibrationView,
 )
+from .game_detail_views import nba_game_detail
 
 router = DefaultRouter()
 router.register(r"seasons", NBASeasonViewSet, basename="nba-season")
@@ -34,4 +35,5 @@ urlpatterns = [
     path("health/", NBAHealthView.as_view(), name="nba-health"),
     path("model-calibration/", NBAModelCalibrationView.as_view(), name="nba-model-calibration"),
     path("matchup/", NBAMatchupView.as_view(), name="nba-matchup"),
+    path("games/<str:game_id>/detail/", nba_game_detail, name="nba-game-detail"),
 ]

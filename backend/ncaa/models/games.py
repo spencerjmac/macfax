@@ -212,6 +212,9 @@ class Game(models.Model):
     # Raw API response for audit
     raw_json = models.JSONField(null=True, blank=True, help_text="Raw API response")
 
+    # AI-generated insights (cached after first generation)
+    game_insights = models.TextField(null=True, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

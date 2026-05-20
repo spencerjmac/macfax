@@ -1038,6 +1038,7 @@ class GameLogSerializer(serializers.ModelSerializer):
     quadrant = serializers.SerializerMethodField()
     game_date = serializers.DateField(source="game.game_date", read_only=True)
     went_to_ot = serializers.BooleanField(source="game.went_to_ot", read_only=True)
+    game_id = serializers.IntegerField(source="game.id", read_only=True)
 
     # Possessions
     poss_team = serializers.FloatField(read_only=True)
@@ -1110,6 +1111,7 @@ class GameLogSerializer(serializers.ModelSerializer):
         fields = [
             # Game info
             "id",
+            "game_id",
             "game_date",
             "team_name",
             "opponent_name",

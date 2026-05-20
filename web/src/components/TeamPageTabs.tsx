@@ -950,14 +950,27 @@ function GameLogTab({ team }: { team: TeamSeason }) {
                 key={game.id || index}
                 className={clsx(
                   'border-t border-ui-border transition-colors',
-                  isNonD1 ? 'bg-ui-surface/50' : 'hover:bg-ui-surface-dark/50'
+                  isNonD1 ? 'bg-ui-surface/50' : 'hover:bg-ui-surface-dark/50',
+                  game.game_id && 'cursor-pointer'
                 )}
               >
                 <td className="px-4 py-3 text-sm">
-                  {new Date(game.game_date).toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                  })}
+                  {game.game_id ? (
+                    <Link
+                      href={`/ncaa/games/${game.game_id}`}
+                      className="hover:text-brand transition-colors"
+                    >
+                      {new Date(game.game_date).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                      })}
+                    </Link>
+                  ) : (
+                    new Date(game.game_date).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                    })
+                  )}
                 </td>
                 <td className="px-4 py-3 text-sm font-medium">
                   {game.opponent_name}

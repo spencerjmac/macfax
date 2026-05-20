@@ -26,6 +26,7 @@ from .auth_views import csrf, login_view, logout_view, me
 from .outlook_views import RosterOutlookView, ScenarioProjectionView, PlayerSearchView, PlaceholderListView
 from .scenario_views import ScenarioComputeView, ScenarioSaveView, ScenarioDetailView, ScenarioListView
 from .validation_views import ValidationSummaryView, ValidationWeeklyView, ValidationRecentGamesView
+from .game_detail_views import ncaa_game_detail
 
 router = DefaultRouter()
 router.register(r"seasons", SeasonViewSet, basename="season")
@@ -65,4 +66,6 @@ urlpatterns = [
     path("validation/summary/",       ValidationSummaryView.as_view(),      name="validation-summary"),
     path("validation/weekly/",        ValidationWeeklyView.as_view(),       name="validation-weekly"),
     path("validation/recent-games/",  ValidationRecentGamesView.as_view(),  name="validation-recent-games"),
+    # Game detail
+    path("games/<int:game_id>/detail/", ncaa_game_detail, name="ncaa-game-detail"),
 ]

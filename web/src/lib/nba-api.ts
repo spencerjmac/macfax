@@ -15,6 +15,7 @@ import type {
   NBAModelCalibration,
   NBAPlayerSeasonStats,
 } from '@/types/nba';
+import type { GameDetailResponse } from '@/types/games';
 
 const API_BASE_URL = (process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8000').replace(/\/$/, '');
 const NBA_API_ROOT = `${API_BASE_URL}/api/nba`;
@@ -108,5 +109,9 @@ export const nbaApi = {
   }): Promise<NBAPlayerSeasonStats[]> {
     const data = await fetchJson<unknown>(buildUrl('/players/', params));
     return Array.isArray(data) ? (data as NBAPlayerSeasonStats[]) : [];
+  },
+
+  async getGameDetail(gameId: number | string): Promise<GameDetailResponse> {
+    return fetchJson<GameDetailResponse>(buildUrl(`/games/${gameId}/detail/`));
   },
 };
