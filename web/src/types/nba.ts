@@ -136,6 +136,18 @@ export interface NBAPlayer {
   current_team: number | null;
   current_team_name: string | null;
   current_team_slug: string | null;
+  // Career-level BPR aggregates (written by nba_compute_career_bpr)
+  peak_bpr: number | null;
+  career_bpr: number | null;
+}
+
+export interface TeamRosterValueResponse {
+  team: string;
+  team_slug: string;
+  season: number;
+  season_display: string;
+  team_wins_added_total: number;
+  players: NBAPlayerSeasonStats[];
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -427,6 +439,12 @@ export interface NBAPlayerSeasonStats {
   obpr: number | null;
   dbpr: number | null;
   bpr: number | null;
+  // Replacement-adjusted BPR — 0 = replacement level, computed at API time, never stored
+  bpr_replacement_adjusted: number | null;
+  obpr_replacement_adjusted: number | null;
+  dbpr_replacement_adjusted: number | null;
+  // Wins above replacement player — derived at compute time
+  wins_added: number | null;
   // Box BPR (intermediate)
   box_obpr: number | null;
   box_dbpr: number | null;

@@ -17,6 +17,7 @@ import {
 import clsx from 'clsx';
 import HeaderWithTooltip from './HeaderWithTooltip';
 import { computeRanks, getPercentileColor } from '@/lib/rankingUtils';
+import { getBPRTier, fmtSigned } from '@/lib/bprTiers';
 import {
   PLAYER_TRADITIONAL_METRICS,
   NBA_ADVANCED_METRICS,
@@ -253,7 +254,12 @@ export default function NBAPlayerRankingsTable({ data, seasonDisplay, seasonType
                 onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
               />
             </div>
-            <span className="font-medium text-sm">{info.getValue<string>()}</span>
+            <Link
+              href={`/nba/players/${row.player_id}`}
+              className="font-medium text-sm hover:underline underline-offset-2"
+            >
+              {info.getValue<string>()}
+            </Link>
           </div>
         );
       },
@@ -348,8 +354,33 @@ export default function NBAPlayerRankingsTable({ data, seasonDisplay, seasonType
 
       const boxBprVisible = NBA_IMP_BOX_KEYS.filter((k) => optionalCols.has(k));
 
+      const winsAddedCol: ColumnDef<NBAPlayerSeasonStats> = {
+        id: 'wins_added',
+        accessorKey: 'wins_added',
+        header: () => (
+          <HeaderWithTooltip
+            label="W.Add"
+            better="higher"
+            tooltip="Wins Added above replacement · (BPR + 2.0) × MPG/48 × GP/56 · Replacement level = BPR −2.0"
+          />
+        ),
+        cell: (info) => {
+          const v = info.getValue<number | null>();
+          if (v == null) return <span className="text-text-muted font-mono text-xs">—</span>;
+          const tier = getBPRTier(v);
+          return (
+            <span className={clsx('font-mono text-xs font-semibold tabular-nums', tier.color)}>
+              {fmtSigned(v, 1)}
+            </span>
+          );
+        },
+        sortDescFirst: true,
+        size: 64,
+      };
+
       return [
         invisible('imp-base', [rankColumn, ...baseColumns, possCol]),
+        winsAddedCol,
         createGroup('imp-bpr',  'BPR',   NBA_IMP_PRIMARY.slice(0, 3)),
         createGroup('imp-mpir', 'MPIR',  NBA_IMP_PRIMARY.slice(3)),
         ...(boxBprVisible.length > 0

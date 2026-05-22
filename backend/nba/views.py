@@ -8,7 +8,7 @@ Phase 2: Populated by nba_sync_* management commands + real ingestion.
 import logging
 
 from django.core.cache import cache
-from django.db.models import Q
+from django.db.models import Q, Sum
 from rest_framework import viewsets, status
 
 _log = logging.getLogger(__name__)
@@ -725,6 +725,8 @@ class NBALeaguePlayersView(APIView):
         "mpir", "-mpir", "o_mpir", "-o_mpir", "d_mpir", "-d_mpir",
         # Final BPR (prior-informed RAPM)
         "bpr", "-bpr", "obpr", "-obpr", "dbpr", "-dbpr",
+        # Wins above replacement
+        "wins_added", "-wins_added",
         # Box BPR (intermediate)
         "box_bpr", "-box_bpr", "box_obpr", "-box_obpr", "box_dbpr", "-box_dbpr",
         # Baseline RAPM
@@ -764,4 +766,93 @@ class NBALeaguePlayersView(APIView):
         )
 
         return Response(NBAPlayerSeasonStatsSerializer(players, many=True).data)
+
+
+# ── Player Value Framework ─────────────────────────────────────────────────────
+
+class NBAPlayerCompareView(APIView):
+    """
+    GET /api/nba/players/compare/?ids=<id1>,<id2>,...&season=2026
+
+    Returns stats for 2-4 players side-by-side.
+    ids: comma-separated NBA.com player_ids.
+    Includes wins_added, bpr_replacement_adjusted, peak_bpr, career_bpr.
+    """
+
+    def get(self, request):
+        ids_param = request.query_params.get("ids", "")
+        season_param = request.query_params.get("season")
+        season_type = request.query_params.get("season_type", "regular")
+
+        try:
+            player_ids = [int(i.strip()) for i in ids_param.split(",") if i.strip()]
+        except ValueError:
+            return Response({"detail": "Invalid ids param — must be comma-separated integers."}, status=400)
+
+        if not player_ids or len(player_ids) > 4:
+            return Response({"detail": "Provide 1–4 player ids."}, status=400)
+
+        if season_param:
+            try:
+                season = NBASeason.objects.get(year=int(season_param))
+            except (NBASeason.DoesNotExist, ValueError):
+                return Response({"detail": "Season not found."}, status=404)
+        else:
+            season = NBASeason.objects.filter(is_current=True).first() or NBASeason.objects.order_by("-year").first()
+            if season is None:
+                return Response([], status=200)
+
+        players = (
+            NBAPlayerSeasonStats.objects
+            .filter(player__player_id__in=player_ids, season=season, season_type=season_type)
+            .select_related("player", "team", "season")
+        )
+
+        return Response(NBAPlayerSeasonStatsSerializer(players, many=True).data)
+
+
+class NBATeamRosterValueView(APIView):
+    """
+    GET /api/nba/teams/<slug>/roster-value/?season=2026
+
+    Returns all rostered players with wins_added + replacement-adjusted BPR.
+    Response envelope includes team_wins_added_total.
+    """
+
+    def get(self, request, slug: str):
+        season_param = request.query_params.get("season")
+        season_type = request.query_params.get("season_type", "regular")
+
+        try:
+            team = NBATeam.objects.get(slug=slug)
+        except NBATeam.DoesNotExist:
+            return Response({"detail": "Team not found."}, status=404)
+
+        if season_param:
+            try:
+                season = NBASeason.objects.get(year=int(season_param))
+            except (NBASeason.DoesNotExist, ValueError):
+                return Response({"detail": "Season not found."}, status=404)
+        else:
+            season = NBASeason.objects.filter(is_current=True).first() or NBASeason.objects.order_by("-year").first()
+            if season is None:
+                return Response({"detail": "No season data."}, status=404)
+
+        players_qs = (
+            NBAPlayerSeasonStats.objects
+            .filter(team=team, season=season, season_type=season_type)
+            .select_related("player", "team", "season")
+            .order_by("-wins_added")
+        )
+
+        total_wins = players_qs.aggregate(total=Sum("wins_added"))["total"] or 0.0
+
+        return Response({
+            "team": team.name,
+            "team_slug": team.slug,
+            "season": season.year,
+            "season_display": season.display_name,
+            "team_wins_added_total": round(total_wins, 2),
+            "players": NBAPlayerSeasonStatsSerializer(players_qs, many=True).data,
+        })
 

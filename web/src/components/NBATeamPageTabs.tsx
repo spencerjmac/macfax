@@ -5,7 +5,8 @@ import clsx from 'clsx';
 import Link from 'next/link';
 import { NBA_TEAM_TABS } from '@/config/nba';
 import { nbaApi } from '@/lib/nba-api';
-import type { NBATeamSeasonRatings, NBAGame, NBAPlayerSeasonStats } from '@/types/nba';
+import type { NBATeamSeasonRatings, NBAGame, NBAPlayerSeasonStats, TeamRosterValueResponse } from '@/types/nba';
+import { TeamRosterValueView } from './TeamRosterValueView';
 
 interface NBATeamPageTabsProps {
   slug: string;
@@ -146,14 +147,22 @@ export default function NBATeamPageTabs({ slug, seasonYear, ratings, games }: NB
   const [players, setPlayers] = useState<NBAPlayerSeasonStats[] | null>(null);
   const [playersLoading, setPlayersLoading] = useState(false);
   const [playersError, setPlayersError] = useState<string | null>(null);
+  const [rosterValue, setRosterValue] = useState<TeamRosterValueResponse | null>(null);
 
   useEffect(() => {
     if (activeTab !== 'players') return;
     if (players !== null) return; // already loaded
     setPlayersLoading(true);
     setPlayersError(null);
-    nbaApi.getTeamRoster(slug, seasonYear)
-      .then((data) => setPlayers(data))
+    // Fetch box-score roster + wins-added roster value in parallel
+    Promise.all([
+      nbaApi.getTeamRoster(slug, seasonYear),
+      nbaApi.getTeamRosterValue(slug, seasonYear).catch(() => null),
+    ])
+      .then(([rosterData, valueData]) => {
+        setPlayers(rosterData);
+        setRosterValue(valueData);
+      })
       .catch((err: unknown) => {
         const msg = err instanceof Error ? err.message : 'Failed to load roster';
         setPlayersError(msg);
@@ -485,6 +494,17 @@ export default function NBATeamPageTabs({ slug, seasonYear, ratings, games }: NB
                   nba_compute_player_stats --season {seasonYear ?? 2026}
                 </code>
               </p>
+            </div>
+          )}
+          {!playersLoading && rosterValue && rosterValue.players.length > 0 && (
+            <div className="mb-6">
+              <TeamRosterValueView
+                teamName={rosterValue.team}
+                teamSlug={slug}
+                seasonDisplay={rosterValue.season_display}
+                totalWinsAdded={rosterValue.team_wins_added_total}
+                players={rosterValue.players}
+              />
             </div>
           )}
           {!playersLoading && players && players.length > 0 && (

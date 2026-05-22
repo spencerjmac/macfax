@@ -6,7 +6,8 @@ Pipeline sequence:
   2. nba_compute_player_stats — roll up season averages
   3. nba_sync_player_advanced — advanced + impact stats from NBA.com
   4. nba_compute_box_bpr     — career-stabilized box BPR prior
-  5. nba_compute_final_bpr   — prior-informed RAPM, writes final bpr/obpr/dbpr
+  5. nba_compute_final_bpr   — prior-informed RAPM, writes final bpr/obpr/dbpr/wins_added
+  6. nba_compute_career_bpr  — writes peak_bpr / career_bpr to NBAPlayer
 
 Dependency:
   NBA team data must already be computed for the season. Run update_nba_teams
@@ -28,7 +29,7 @@ from django.utils import timezone
 
 from ncaa.management.commands._pipeline_base import BasePipelineCommand
 
-TOTAL_STEPS = 5
+TOTAL_STEPS = 6
 
 
 class Command(BasePipelineCommand):
@@ -109,6 +110,14 @@ class Command(BasePipelineCommand):
             steps,
             fatal=False,
             label=f"[5/{TOTAL_STEPS}]",
+        )
+        self._run_step(
+            "NBA compute career BPR (peak + career averages)",
+            "nba_compute_career_bpr",
+            {},
+            steps,
+            fatal=False,
+            label=f"[6/{TOTAL_STEPS}]",
         )
 
         end_time = timezone.now()

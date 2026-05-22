@@ -204,7 +204,14 @@ class Command(BaseCommand):
                 "nba_compute_final_bpr",
                 {"season": season_year},
                 steps,
-                label="[PBP-4/4]",
+                label="[PBP-4/5]",
+            )
+            self._run_step(
+                "NBA compute career BPR (peak + career averages)",
+                "nba_compute_career_bpr",
+                {},
+                steps,
+                label="[PBP-5/5]",
             )
 
         # Summary

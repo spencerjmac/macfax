@@ -242,6 +242,11 @@ class NBAPlayer(models.Model):
         blank=True,
         related_name="current_players",
     )
+    # Career-level aggregates — written by nba_compute_career_bpr command
+    # Computed across all qualifying seasons (≥500 min) from stored bpr values
+    peak_bpr   = models.FloatField(null=True, blank=True, help_text="Best single-season BPR (≥500 min qualifier)")
+    career_bpr = models.FloatField(null=True, blank=True, help_text="Minutes-weighted career average BPR")
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -541,6 +546,10 @@ class NBAPlayerSeasonStats(models.Model):
     obpr = models.FloatField(null=True, blank=True, help_text="Final offensive BPR (prior-informed RAPM)")
     dbpr = models.FloatField(null=True, blank=True, help_text="Final defensive BPR (prior-informed RAPM)")
     bpr  = models.FloatField(null=True, blank=True, help_text="Final total BPR (obpr + dbpr)")
+
+    # Wins above replacement — derived from BPR at write time, never fed back into model
+    # Formula: (bpr + 2.0) × (mpg / 48) × (gp / 56)  — replacement level = BPR -2.0
+    wins_added = models.FloatField(null=True, blank=True, help_text="Wins above replacement player")
 
     class Meta:
         constraints = [

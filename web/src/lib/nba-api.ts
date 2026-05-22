@@ -14,6 +14,7 @@ import type {
   NBAMatchupResult,
   NBAModelCalibration,
   NBAPlayerSeasonStats,
+  TeamRosterValueResponse,
 } from '@/types/nba';
 import type { GameDetailResponse } from '@/types/games';
 
@@ -113,5 +114,16 @@ export const nbaApi = {
 
   async getGameDetail(gameId: number | string): Promise<GameDetailResponse> {
     return fetchJson<GameDetailResponse>(buildUrl(`/games/${gameId}/detail/`));
+  },
+
+  /** Compare 2–4 players side-by-side for a given season. */
+  async comparePlayers(ids: number[], season?: number, season_type?: string): Promise<NBAPlayerSeasonStats[]> {
+    const data = await fetchJson<unknown>(buildUrl('/players/compare/', { ids: ids.join(','), season, season_type }));
+    return Array.isArray(data) ? (data as NBAPlayerSeasonStats[]) : [];
+  },
+
+  /** Roster wins-added summary for a team in a given season. */
+  async getTeamRosterValue(slug: string, season?: number, season_type?: string): Promise<TeamRosterValueResponse> {
+    return fetchJson<TeamRosterValueResponse>(buildUrl(`/teams/${slug}/roster-value/`, { season, season_type }));
   },
 };

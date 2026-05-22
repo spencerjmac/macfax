@@ -76,6 +76,7 @@ class NBAPlayerSerializer(serializers.ModelSerializer):
         fields = [
             "id", "player_id", "name", "is_active",
             "current_team", "current_team_name", "current_team_slug",
+            "peak_bpr", "career_bpr",
         ]
 
 
@@ -85,6 +86,22 @@ class NBAPlayerSeasonStatsSerializer(serializers.ModelSerializer):
     team_name = serializers.CharField(source="team.name", read_only=True, allow_null=True)
     team_slug = serializers.CharField(source="team.slug", read_only=True, allow_null=True)
     season_display = serializers.CharField(source="season.display_name", read_only=True)
+
+    # Replacement-adjusted BPR — computed at serialization time, never stored
+    # Replacement level = BPR -2.0 (freely available player, industry standard)
+    # Displayed as 0 = replacement, positive = above replacement
+    bpr_replacement_adjusted  = serializers.SerializerMethodField()
+    obpr_replacement_adjusted = serializers.SerializerMethodField()
+    dbpr_replacement_adjusted = serializers.SerializerMethodField()
+
+    def get_bpr_replacement_adjusted(self, obj) -> float | None:
+        return round(obj.bpr + 2.0, 3) if obj.bpr is not None else None
+
+    def get_obpr_replacement_adjusted(self, obj) -> float | None:
+        return round(obj.obpr + 1.0, 3) if obj.obpr is not None else None
+
+    def get_dbpr_replacement_adjusted(self, obj) -> float | None:
+        return round(obj.dbpr + 1.0, 3) if obj.dbpr is not None else None
 
     class Meta:
         model = NBAPlayerSeasonStats
@@ -109,6 +126,10 @@ class NBAPlayerSeasonStatsSerializer(serializers.ModelSerializer):
             "stl_pct", "blk_pct",
             # Final BPR (prior-informed RAPM — displayed)
             "obpr", "dbpr", "bpr",
+            # Replacement-adjusted BPR — 0 = replacement level, computed at serialization
+            "bpr_replacement_adjusted", "obpr_replacement_adjusted", "dbpr_replacement_adjusted",
+            # Wins above replacement — derived at compute time from BPR + playing time
+            "wins_added",
             # Box BPR (intermediate — not displayed directly)
             "box_obpr", "box_dbpr", "box_bpr", "nba_archetype",
             # Baseline RAPM

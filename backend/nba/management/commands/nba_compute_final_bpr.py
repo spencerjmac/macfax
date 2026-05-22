@@ -80,6 +80,9 @@ METRICS_CSV     = SCRIPT_DIR / "metrics_output" / "nba_metrics_2025_26.csv"
 OUTPUT_DIR      = SCRIPT_DIR / "metrics_output"
 DEFAULT_LAMBDA  = 1000.0
 DEFAULT_RAPM_WINDOW = 3
+WINS_ADDED_DENOMINATOR = 56.0  # pts/win coefficient for RAPM-scale BPR → wins conversion
+                                # wins_added = (bpr + 2.0) × (mpg/48) × (gp/56)
+                                # Tunable: 56 ≈ player-scale, 33 = team point-margin scale (too high)
 LEBRON_PRIOR_W       = 0.5   # weight given to O-LEBRON in offensive prior blend
 LEBRON_PRIOR_DEF_W   = 0.5   # weight given to D-LEBRON in defensive prior blend
                               # Tested 0.2: hurt star stability (0.462→0.436) more than helped Giannis (+0.17).
@@ -758,11 +761,22 @@ class Command(BaseCommand):
                 continue
             o = final_obpr[nba_id]
             d = final_dbpr.get(nba_id, 0.0)
+            total_bpr = o + d
             row.obpr = round(o, 3)
             row.dbpr = round(d, 3)
-            row.bpr  = round(o + d, 3)
+            row.bpr  = round(total_bpr, 3)
             row.bpr_last_updated = now
-            row.save(update_fields=["obpr", "dbpr", "bpr", "bpr_last_updated"])
+            # wins_added = (bpr + 2.0) × (mpg / 48) × (gp / WINS_ADDED_DENOMINATOR)
+            # replacement level = BPR -2.0 (freely available player), denominator tunable
+            mpg = row.mpg or 0.0
+            gp  = row.gp  or 0
+            if mpg > 0 and gp > 0:
+                row.wins_added = round(
+                    (total_bpr + 2.0) * (mpg / 48.0) * (gp / WINS_ADDED_DENOMINATOR), 2
+                )
+            else:
+                row.wins_added = None
+            row.save(update_fields=["obpr", "dbpr", "bpr", "bpr_last_updated", "wins_added"])
             updated += 1
         self.stdout.write(self.style.SUCCESS(
             f"[OK] Final BPR written: {updated} updated, {skipped} skipped"

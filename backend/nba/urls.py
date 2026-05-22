@@ -18,6 +18,8 @@ from .views import (
     NBAHealthView,
     NBAMatchupView,
     NBAModelCalibrationView,
+    NBAPlayerCompareView,
+    NBATeamRosterValueView,
 )
 from .game_detail_views import nba_game_detail
 
@@ -32,6 +34,8 @@ urlpatterns = [
     path("team/<slug:slug>/", NBATeamDetailView.as_view(), name="nba-team-detail"),
     path("team/<slug:slug>/players/", NBATeamRosterView.as_view(), name="nba-team-roster"),
     path("players/", NBALeaguePlayersView.as_view(), name="nba-players"),
+    path("players/compare/", NBAPlayerCompareView.as_view(), name="nba-player-compare"),
+    path("teams/<slug:slug>/roster-value/", NBATeamRosterValueView.as_view(), name="nba-team-roster-value"),
     path("health/", NBAHealthView.as_view(), name="nba-health"),
     path("model-calibration/", NBAModelCalibrationView.as_view(), name="nba-model-calibration"),
     path("matchup/", NBAMatchupView.as_view(), name="nba-matchup"),
