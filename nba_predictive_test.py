@@ -41,7 +41,7 @@ OUTPUT_DIR.mkdir(exist_ok=True)
 
 # Known retrodiction RMSEs for reference column
 RETRO_RMSE = {
-    "BPR": 5.636, "BPM": 3.559, "OBPM": 6.097, "DBPM": 6.518,
+    "BPR": 5.636, "BOX_BPR": float("nan"), "BPM": 3.559, "OBPM": 6.097, "DBPM": 6.518,
     "WS48": 3.243, "WS": 3.432, "VORP": 3.617, "PER": 5.368,
 }
 
@@ -55,7 +55,7 @@ HEADERS = {
 BBREF_TO_DB = {"BRK": "BKN", "CHO": "CHA", "PHO": "PHX"}
 
 # AVG and SUM metrics (same as retrodiction script)
-AVG_METRICS = ["BPM", "OBPM", "DBPM", "WS48", "PER", "BPR"]
+AVG_METRICS = ["BPM", "OBPM", "DBPM", "WS48", "PER", "BPR", "BOX_BPR"]
 SUM_METRICS = ["WS", "VORP"]
 ALL_METRICS = AVG_METRICS + SUM_METRICS
 
@@ -203,7 +203,7 @@ def scrape_bbref_advanced(season_end_year: int) -> pd.DataFrame | None:
 # ── DB data loading ────────────────────────────────────────────────────────────
 
 def load_bpr_from_db(season_year: int) -> pd.DataFrame:
-    """Load final BPR + team from DB, keyed by NBA.com player_id."""
+    """Load final BPR + box_bpr + team from DB, keyed by NBA.com player_id."""
     from nba.models import NBAPlayerSeasonStats
     rows = list(
         NBAPlayerSeasonStats.objects.filter(
@@ -214,6 +214,7 @@ def load_bpr_from_db(season_year: int) -> pd.DataFrame:
             "player__name", "player__player_id",
             "team__abbreviation",
             "bpr", "obpr", "dbpr",
+            "box_bpr", "box_obpr", "box_dbpr",
             "mpg", "gp",
         )
     )
@@ -223,6 +224,7 @@ def load_bpr_from_db(season_year: int) -> pd.DataFrame:
         "team__abbreviation": "team_db",
     })
     df["minutes_bpr"] = df["mpg"].fillna(0) * df["gp"].fillna(0)
+    df["BOX_BPR"] = df["box_bpr"]
     df["season"] = season_year
     return df
 
@@ -272,10 +274,11 @@ def merge_bpr_onto_players(
     bbref_df: pd.DataFrame,
     bpr_df: pd.DataFrame,
 ) -> pd.DataFrame:
-    """Fuzzy-match BPR onto BBref player rows by name."""
+    """Fuzzy-match BPR + BOX_BPR onto BBref player rows by name."""
     bpr_df["_norm"] = bpr_df["player_name"].map(norm_name)
     bpr_norm_list = bpr_df["_norm"].tolist()
-    bpr_vals, bpr_mins = [], []
+    bpr_vals, box_bpr_vals, bpr_mins = [], [], []
+    has_box = "BOX_BPR" in bpr_df.columns
     for _, row in bbref_df.iterrows():
         key = norm_name(row["player_name"])
         res = rfprocess.extractOne(key, bpr_norm_list, scorer=fuzz.WRatio, score_cutoff=82)
@@ -283,11 +286,14 @@ def merge_bpr_onto_players(
             match_row = bpr_df.iloc[res[2]]
             bpr_vals.append(match_row["bpr"])
             bpr_mins.append(match_row["minutes_bpr"])
+            box_bpr_vals.append(match_row["BOX_BPR"] if has_box else np.nan)
         else:
             bpr_vals.append(np.nan)
             bpr_mins.append(np.nan)
+            box_bpr_vals.append(np.nan)
     df = bbref_df.copy()
     df["BPR"] = bpr_vals
+    df["BOX_BPR"] = box_bpr_vals
     df["minutes_bpr"] = bpr_mins
     return df
 
@@ -315,7 +321,7 @@ def aggregate_to_teams(players: pd.DataFrame) -> pd.DataFrame:
             if col not in grp.columns:
                 row[col] = np.nan
                 continue
-            min_col = "minutes_bpr" if col == "BPR" and "minutes_bpr" in grp.columns else "minutes"
+            min_col = "minutes_bpr" if col in ("BPR", "BOX_BPR") and "minutes_bpr" in grp.columns else "minutes"
             valid = grp[[min_col, col]].dropna()
             if len(valid) == 0 or valid[min_col].sum() == 0:
                 row[col] = np.nan
@@ -413,7 +419,7 @@ def compute_star_stability(
     across seasons 2022-2026.
     """
     seasons = [2022, 2023, 2024, 2025, 2026]
-    metrics_to_check = ["BPM", "WS48", "PER", "VORP", "BPR"]
+    metrics_to_check = ["BPM", "WS48", "PER", "VORP", "BPR", "BOX_BPR"]
 
     # Build per-player per-season values
     player_vals: dict[str, dict[str, list[float]]] = {

@@ -5,32 +5,42 @@ Computes the final displayed BPR using prior-informed RAPM
 (LEBRON-style box prior + lineup data). Results written to
 NBAPlayerSeasonStats.obpr / .dbpr / .bpr.
 
-CURRENT PRODUCTION STATE:
+CURRENT PRODUCTION STATE (validated 2022-2026):
 
-Lambda configuration: B_moderate (active default)
-  ≥2000 min (stars):    λ=200
-  ≥1200 min (starters): λ=400
-  ≥600 min (rotation):  λ=700
-  <600 min (fringe):    λ=1200
+box_bpr training: 0.3 RAPM + 0.7 LEBRON targets (LEBRON_BLEND_W=0.7 in nba_compute_box_bpr)
+  Box BPM corr: 0.794 (was 0.672 at 0.3 blend)
 
-Lambda rationale:
-  Asymmetric tuning was tested (loosen stars, tighten role players)
-  but made results worse — looser lambda lets RAPM push stars further
-  down when their lineup stints underperform. B_moderate is the
-  validated default.
+Lambda configuration: A_conservative + LEBRON-adjusted
+  Base tiers (A_conservative):
+    ≥2000 min (stars):    λ=400
+    ≥1200 min (starters): λ=700
+    ≥600 min (rotation):  λ=1000
+    <600 min (fringe):    λ=1400
+  LEBRON adjustment (scale=0.7):
+    λ_adjusted = base * min(1 + 0.7 * max(0, 7.0 - LEBRON_total), 4x)
+    Stars (LEBRON≥7): unchanged — free to use RAPM signal
+    Role players (LEBRON≈1-3): lambda scaled 2-4x — anchored to box prior
 
-Prior: box_obpr / box_dbpr from nba_compute_box_bpr (career-stabilized)
+Prior: 50% LEBRON + 50% box_obpr/box_dbpr (blended from lebron-data-{year}.csv)
 Data: 3-year pooled stints for final prior-informed RAPM
 
+Validation results (2022-2026):
+  Star stability YoY r:  0.508  (was 0.268 originally — no longer flagged unstable)
+  Avg predictive r:      0.523  (was 0.510)
+  Pair 1 (2022-23→24):   0.547  (beats BOX_BPR at 0.519)
+  Pair 2 (2023-24→25):   0.593
+  Pair 3 (2024-25→26):   0.429
+
 Known properties:
-  - Context-adjusted lineup metric, not a pure skill estimate
-  - Stars on underperforming teams rated lower than pure skill
-  - SGA, Wembanyama correctly in top 5
+  - 2026: Wemby #1, SGA #2, Jokić #3, Jrue #4
+  - 2025: Jokić #1, Giannis #2, Wemby #4
+  - LEBRON-adjusted lambda anchors role players on elite teams
+  - Higher LEBRON box blend (0.7) makes stars stable year-to-year
 
 Known limitations:
-  - Single-season RAPM noise can inflate role players in lucky lineups
-  - Multi-year pooled RAPM partially mitigated by single-season
-    baseline targets feeding the box prior
+  - Jrue Holiday (#4) / Queta (#6) still team-context inflated (Portland/Boston)
+  - Giannis 2026 low by BPM — accurate: MPG dropped 34→29, LEBRON WAR 13→4.8
+  - Star stability (0.508) still below BPM (0.755) — structural RAPM floor
 
 Run order:
   1. nba_compute_baseline_rapm --season YYYY   (single season, no --rapm-years)
@@ -70,6 +80,14 @@ METRICS_CSV     = SCRIPT_DIR / "metrics_output" / "nba_metrics_2025_26.csv"
 OUTPUT_DIR      = SCRIPT_DIR / "metrics_output"
 DEFAULT_LAMBDA  = 1000.0
 DEFAULT_RAPM_WINDOW = 3
+LEBRON_PRIOR_W       = 0.5   # weight given to O-LEBRON in offensive prior blend
+LEBRON_PRIOR_DEF_W   = 0.5   # weight given to D-LEBRON in defensive prior blend
+                              # Tested 0.2: hurt star stability (0.462→0.436) more than helped Giannis (+0.17).
+                              # Keeping symmetric at 0.5 — D-LEBRON is multi-year stabilized, good anchor.
+LEBRON_LAMBDA_SCALE  = 0.7   # scales λ UP for low-LEBRON role players: lam = base * (1 + scale * max(0, 7-LEBRON))
+                              # Validated: 0.3→0.5→0.7→1.0 all monotonically improved stability (0.431→0.462→0.480→0.481)
+                              # 0.7 chosen: below 4x cap for most moderate players, cleaner than 1.0
+LEBRON_LAMBDA_CAP    = 7.0   # LEBRON total above which no extra λ applied (true stars)
 
 
 # Minutes-stratified lambda tiers: (≥2000, ≥1200, ≥600, <600)
@@ -95,12 +113,33 @@ def _build_lambda_array(
     player_season_keys: list[tuple[int, int]],
     minutes_by_nba_id: dict[int, float],
     tiers: tuple[float, float, float, float],
+    lebron_map: dict[int, tuple[float, float]] | None = None,
+    lebron_scale: float = 0.0,
+    lebron_cap: float = 7.0,
 ) -> np.ndarray:
-    """Per-player lambda array, shape (2*N,) — off then def, same λ per player."""
+    """
+    Per-player lambda array, shape (2*N,) — off then def, same λ per player.
+
+    lebron_map: {nba_id: (o_lebron, d_lebron)} — when provided and lebron_scale > 0,
+      scales λ UP for low-LEBRON players (role players on good teams) to anchor them
+      near their box prior.  Stars (high LEBRON) keep the base λ for RAPM freedom.
+
+    LEBRON-adjusted lambda formula:
+      lam = base * (1 + lebron_scale * max(0, lebron_cap - total_lebron))
+      capped at 4x base.
+    """
     n = len(player_season_keys)
     arr = np.zeros(2 * n)
     for i, (pid, _yr) in enumerate(player_season_keys):
-        lam = _stratified_lambda(minutes_by_nba_id.get(pid, 0.0), tiers)
+        base = _stratified_lambda(minutes_by_nba_id.get(pid, 0.0), tiers)
+        if lebron_map and lebron_scale > 0 and pid in lebron_map:
+            o_leb, d_leb = lebron_map[pid]
+            total_leb = o_leb + d_leb
+            excess = max(0.0, lebron_cap - total_leb)
+            multiplier = min(1.0 + lebron_scale * excess, 4.0)
+            lam = base * multiplier
+        else:
+            lam = base
         arr[i] = lam
         arr[n + i] = lam
     return arr
@@ -111,6 +150,37 @@ def _norm_name(s: str) -> str:
     s = s.encode("ascii", errors="ignore").decode()
     return re.sub(r"\s+", " ", re.sub(r"[^a-z ]", "", s)).strip()
 
+
+def _load_lebron_priors(season_year: int, nba_ids: list[int]) -> dict[int, tuple[float, float]]:
+    """
+    Load O-LEBRON / D-LEBRON from lebron-data-{year}.csv, keyed by NBA.com player_id.
+    The CSV _id column IS the NBA.com player_id — no fuzzy matching needed.
+    Returns {nba_id: (o_lebron, d_lebron)}.  Falls back to {} if CSV missing.
+    Available for seasons 2016-2026.
+    """
+    try:
+        import pandas as pd
+    except ImportError:
+        return {}
+
+    csv_path = SCRIPT_DIR / f"lebron-data-{season_year}.csv"
+    if not csv_path.exists():
+        return {}
+
+    df = pd.read_csv(csv_path)
+    df = df.rename(columns={"_id": "nba_id", "O-LEBRON": "O_LEBRON", "D-LEBRON": "D_LEBRON"})
+    df = df.dropna(subset=["O_LEBRON", "D_LEBRON", "nba_id"])
+    df["nba_id"] = df["nba_id"].astype(int)
+    # If same player on multiple rows (rare), keep highest-MPG row
+    df = df.sort_values("MPG", ascending=False).drop_duplicates("nba_id", keep="first")
+
+    id_set = set(nba_ids)
+    result: dict[int, tuple[float, float]] = {}
+    for _, row in df.iterrows():
+        nba_id = int(row["nba_id"])
+        if nba_id in id_set:
+            result[nba_id] = (float(row["O_LEBRON"]), float(row["D_LEBRON"]))
+    return result
 
 
 def _load_bpm_map() -> dict[str, float]:
@@ -235,6 +305,21 @@ class Command(BaseCommand):
             # Note: empirically inert at λ≥1000 (regularization dominates). Exposed for experiments only.
             help="Per-year multiplier for cross-season decay (default 1.0 = off; tested 0.25–1.0, all identical).",
         )
+        parser.add_argument(
+            "--lebron-prior-weight", type=float, default=LEBRON_PRIOR_W,
+            help=f"Blend weight for LEBRON in prior (0=pure box_bpr, 1=pure LEBRON, default {LEBRON_PRIOR_W}). "
+                 "Uses lebron-data-{{year}}.csv. LEBRON stabilizes stars, reduces role-player inflation.",
+        )
+        parser.add_argument(
+            "--lebron-lambda-scale", type=float, default=LEBRON_LAMBDA_SCALE,
+            help=f"Scales λ UP for low-LEBRON role players: lam = base * (1 + scale * max(0, cap - LEBRON)). "
+                 f"Default {LEBRON_LAMBDA_SCALE}. 0 = disabled. Higher = stronger anchoring for non-stars.",
+        )
+        parser.add_argument(
+            "--lebron-prior-def-weight", type=float, default=LEBRON_PRIOR_DEF_W,
+            help=f"LEBRON blend weight for DEFENSIVE prior only (default {LEBRON_PRIOR_DEF_W}). "
+                 "Lower than offensive weight because D-LEBRON is noisier (can mislabel elite defenders).",
+        )
 
     def handle(self, *args, **options):
         season_year: int = options["season"]
@@ -245,9 +330,12 @@ class Command(BaseCommand):
         _whl = options.get("within_season_half_life")
         within_season_half_life: float | None = None if (_whl is not None and _whl <= 0) else _whl
         cross_season_decay: float = options["cross_season_decay"]
+        lebron_prior_w: float = options.get("lebron_prior_weight", LEBRON_PRIOR_W)
+        lebron_prior_def_w: float = options.get("lebron_prior_def_weight", LEBRON_PRIOR_DEF_W)
+        lebron_lambda_scale: float = options.get("lebron_lambda_scale", LEBRON_LAMBDA_SCALE)
 
         if sweep:
-            self._run_sweep(season_year, rapm_window, within_season_half_life, cross_season_decay)
+            self._run_sweep(season_year, rapm_window, within_season_half_life, cross_season_decay, lebron_prior_w)
             return
 
         self.stdout.write(f"\n[FINAL BPR] Season {season_year}  λ={lambda_val}  window={rapm_window}yr")
@@ -257,20 +345,58 @@ class Command(BaseCommand):
         # ── 1. Load box_bpr priors ─────────────────────────────────────────────
         prior_obpr, prior_dbpr, minutes_by_nba_id = self._load_priors(season_year)
 
-        # Build lambda_by_nba_id using B_moderate tiers as default for non-sweep runs
-        # (falls back to lambda_val only if --lambda-val explicitly set away from default)
+        # ── 1b. Load LEBRON map and blend into priors ─────────────────────────
+        # LEBRON map is also used for LEBRON-adjusted lambda (see 1c)
+        lebron_map_raw = _load_lebron_priors(season_year, list(prior_obpr.keys()))
+        if lebron_prior_w > 0 and lebron_map_raw:
+            prior_obpr, prior_dbpr = self._blend_lebron_priors(
+                season_year, prior_obpr, prior_dbpr, lebron_prior_w,
+                def_weight=lebron_prior_def_w, lebron_map=lebron_map_raw
+            )
+        elif lebron_prior_w > 0:
+            prior_obpr, prior_dbpr = self._blend_lebron_priors(
+                season_year, prior_obpr, prior_dbpr, lebron_prior_w,
+                def_weight=lebron_prior_def_w
+            )
+
+        # ── 1c. Build LEBRON-adjusted lambda array ────────────────────────────
+        # A_conservative (400/700/1000/1400) selected by sweep: best BPM correlation (0.480)
+        # LEBRON-adjusted: scales λ UP for low-LEBRON role players, keeps base for stars.
+        # This prevents context-inflation for role players on good teams (e.g. Jrue on POR).
         if lambda_val == DEFAULT_LAMBDA:
-            lambda_by_nba_id = {
-                pid: _stratified_lambda(minutes_by_nba_id.get(pid, 0.0), LAMBDA_TIERS["B_moderate"])
-                for pid in prior_obpr
-            }
-            self.stdout.write("Using B_moderate stratified λ (200/400/700/1200 by minutes tier)")
+            # Build player_season_keys in the order needed by _build_lambda_array
+            # (called again after loading stints, but we need it before stints for the msg)
+            self.stdout.write("Using A_conservative stratified λ (400/700/1000/1400 by minutes tier)", )
+            if lebron_lambda_scale > 0 and lebron_map_raw:
+                self.stdout.write(
+                    f"  LEBRON-adjusted λ: scale={lebron_lambda_scale} "
+                    f"(role players anchored, stars free)"
+                )
+            lambda_by_nba_id = None  # rebuilt using player_season_keys after stints load
+            _use_a_conservative = True
         else:
             lambda_by_nba_id = None
+            _use_a_conservative = False
             self.stdout.write(f"Using uniform λ={lambda_val}")
 
         # ── 2. Load stints ─────────────────────────────────────────────────────
         observations, player_season_index, n_ps = self._load_stints(season_year, rapm_window)
+
+        # ── 2b. Build LEBRON-adjusted lambda array ─────────────────────────────
+        if _use_a_conservative:
+            player_season_keys = sorted(player_season_index, key=player_season_index.get)
+            lam_arr = _build_lambda_array(
+                player_season_keys,
+                minutes_by_nba_id,
+                LAMBDA_TIERS["A_conservative"],
+                lebron_map=lebron_map_raw if lebron_lambda_scale > 0 else None,
+                lebron_scale=lebron_lambda_scale,
+                lebron_cap=LEBRON_LAMBDA_CAP,
+            )
+            lambda_by_nba_id = {
+                pid: float(lam_arr[i])
+                for i, (pid, _yr) in enumerate(player_season_keys)
+            }
 
         # ── 3. Fit ─────────────────────────────────────────────────────────────
         self.stdout.write("Fitting prior-informed RAPM...")
@@ -304,11 +430,16 @@ class Command(BaseCommand):
         self, season_year: int, rapm_window: int,
         within_season_half_life: float | None = None,
         cross_season_decay: float = 1.0,
+        lebron_prior_w: float = LEBRON_PRIOR_W,
     ) -> None:
         self.stdout.write(f"\n[SWEEP] Season {season_year} — testing {len(LAMBDA_TIERS)} lambda configs")
 
         # Load shared data once
         prior_obpr, prior_dbpr, minutes_by_nba_id = self._load_priors(season_year)
+        if lebron_prior_w > 0:
+            prior_obpr, prior_dbpr = self._blend_lebron_priors(
+                season_year, prior_obpr, prior_dbpr, lebron_prior_w
+            )
         observations, player_season_index, n_ps = self._load_stints(season_year, rapm_window)
 
         bpm_map  = _load_bpm_map()
@@ -514,6 +645,49 @@ class Command(BaseCommand):
             f"(stars ≥2000 min: {sum(1 for m in minutes_by_nba_id.values() if m >= 2000)})"
         )
         return prior_obpr, prior_dbpr, minutes_by_nba_id
+
+    def _blend_lebron_priors(
+        self,
+        season_year: int,
+        prior_obpr: dict[int, float],
+        prior_dbpr: dict[int, float],
+        weight: float,
+        def_weight: float = LEBRON_PRIOR_DEF_W,
+        lebron_map: dict[int, tuple[float, float]] | None = None,
+    ) -> tuple[dict[int, float], dict[int, float]]:
+        """
+        Blend LEBRON into box_bpr priors with separate weights for offense and defense.
+
+          prior_obpr[pid] = weight     * O_LEBRON + (1-weight)     * box_obpr
+          prior_dbpr[pid] = def_weight * D_LEBRON + (1-def_weight) * box_dbpr
+
+        Defensive weight is lower than offensive (def_weight=0.2 default) because:
+        - D-LEBRON is noisier and can mislabel elite defenders
+        - Example: Giannis D-LEBRON=-0.363 in 2026, but his box DBPR is positive
+        - Box DREB%, BLK%, STL% are more reliable defensive signals than LEBRON
+
+        LEBRON keyed by NBA.com player_id (_id column in CSV) — exact match, no fuzzy.
+        """
+        if lebron_map is None:
+            lebron_map = _load_lebron_priors(season_year, list(prior_obpr.keys()))
+        if not lebron_map:
+            self.stdout.write(f"  LEBRON prior: no data for {season_year}, using box priors only")
+            return prior_obpr, prior_dbpr
+
+        n_blended = 0
+        new_obpr = dict(prior_obpr)
+        new_dbpr = dict(prior_dbpr)
+        for pid, (o_leb, d_leb) in lebron_map.items():
+            if pid in prior_obpr:
+                new_obpr[pid] = weight     * o_leb + (1 - weight)     * prior_obpr[pid]
+                new_dbpr[pid] = def_weight * d_leb + (1 - def_weight) * prior_dbpr[pid]
+                n_blended += 1
+
+        self.stdout.write(
+            f"  LEBRON prior blend (off={weight:.0%}/def={def_weight:.0%} LEBRON): "
+            f"{n_blended} players blended, {len(prior_obpr) - n_blended} box only"
+        )
+        return new_obpr, new_dbpr
 
     def _load_stints(self, season_year: int, rapm_window: int) -> tuple[list, dict, int]:
         rapm_years = list(range(season_year - rapm_window + 1, season_year + 1))

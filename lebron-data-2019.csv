@@ -1,0 +1,406 @@
+nba_id,Player,Seasons,Team,Pos,MPG,LEBRON,O-LEBRON,D-LEBRON,WAR,OffRole,DefRole
+1713,Vince Carter,2019,ATL,PF,17.504,-1.611,-1.469,-0.142,0.649,Movement Shooter,Helper
+1717,Dirk Nowitzki,2019,DAL,PF,15.593,-0.937,-0.473,-0.463,0.738,Versatile Big,Helper
+2037,Jamal Crawford,2019,PHO,SG,18.734,-3.448,-0.711,-2.737,-0.823,Shot Creator,Low Activity
+2199,Tyson Chandler,2019,PHO/LAL,C,15.908,-1.119,-2.359,1.24,0.708,Roll + Cut Big,Anchor Big
+2200,Pau Gasol,2019,SAS/MIL,C,12.019,1.304,-0.217,1.521,0.864,Post Scorer,Anchor Big
+2225,Tony Parker,2019,CHO,PG,17.908,-1.928,-0.551,-1.377,0.284,Slasher,Low Activity
+2403,Nene,2019,HOU,C,12.995,-1.452,-1.834,0.382,0.323,Roll + Cut Big,Mobile Big
+2544,Lebron James,2019,LAL,SF,35.226,4.589,4.067,0.522,8.664,Shot Creator,Helper
+2546,Carmelo Anthony,2019,HOU,PF,29.415,-1.925,-0.907,-1.018,0.084,Shot Creator,Wing Stopper
+2548,Dwyane Wade,2019,MIA,SG,26.184,-2.004,-0.199,-1.804,0.441,Shot Creator,Low Activity
+2585,Zaza Pachulia,2019,DET,C,12.913,-1.114,-1.856,0.742,0.713,Roll + Cut Big,Anchor Big
+2594,Kyle Korver,2019,CLE/UTA,PF,19.056,-0.388,0.022,-0.411,1.716,Off Screen Shooter,Low Activity
+2730,Dwight Howard,2019,WAS,C,25.507,-0.545,-1.367,0.822,0.272,Post Scorer,Anchor Big
+2733,Shaun Livingston,2019,GSW,PG,15.108,-2.071,-1.391,-0.679,0.184,Shot Creator,Point of Attack
+2734,Devin Harris,2019,DAL,PG,15.744,-0.512,0.074,-0.586,1.291,Movement Shooter,Low Activity
+2736,Luol Deng,2019,MIN,SF,17.284,-0.538,-0.318,-0.22,0.452,Versatile Big,Helper
+2738,Andre Iguodala,2019,GSW,SF,23.205,1.364,0.014,1.351,3.841,Stationary Shooter,Wing Stopper
+2747,Jr Smith,2019,CLE,SG,20.209,-0.692,-1.428,0.737,0.242,Off Screen Shooter,Helper
+2772,Trevor Ariza,2019,PHO/WAS,SF,34.042,-1.797,-1.04,-0.757,0.864,Movement Shooter,Wing Stopper
+101107,Marvin Williams,2019,CHO,PF,28.441,0.456,-0.104,0.56,3.926,Movement Shooter,Helper
+101108,Chris Paul,2019,HOU,PG,32.013,2.964,1.922,1.042,6.433,Shot Creator,Chaser
+101109,Raymond Felton,2019,OKC,PG,11.495,-1.986,-0.832,-1.154,0.093,Secondary Ball Handler,Point of Attack
+101123,Gerald Green,2019,HOU,SG,20.177,-2.076,0.263,-2.339,0.276,Movement Shooter,Low Activity
+101133,Ian Mahinmi,2019,WAS,C,14.64,0.036,-1.246,1.282,0.779,Roll + Cut Big,Anchor Big
+101139,Cj Miles,2019,TOR/MEM,SF,16.16,-2.175,-1.122,-1.052,0.106,Off Screen Shooter,Low Activity
+101141,Ersan Ilyasova,2019,MIL,PF,18.378,0.514,-0.2,0.714,2.313,Stretch Big,Helper
+101150,Lou Williams,2019,LAC,SG,26.571,0.208,3.014,-2.806,3.344,Slasher,Low Activity
+101161,Amir Johnson,2019,PHI,C,10.376,-1.082,-1.381,0.299,0.441,Roll + Cut Big,Anchor Big
+101162,Marcin Gortat,2019,LAC,C,15.968,-1.082,-1.921,0.839,0.625,Roll + Cut Big,Anchor Big
+101181,Jose Calderon,2019,DET,PG,12.898,-2.678,-2.302,-0.376,-0.126,Primary Ball Handler,Low Activity
+200746,Lamarcus Aldridge,2019,SAS,C,33.171,1.509,1.003,0.506,6.795,Post Scorer,Anchor Big
+200752,Rudy Gay,2019,SAS,PF,26.7,0.557,-0.125,0.682,3.514,Shot Creator,Wing Stopper
+200755,Jj Redick,2019,PHI,SG,31.307,-0.351,1.147,-1.498,3.12,Off Screen Shooter,Low Activity
+200757,Thabo Sefolosha,2019,UTA,SF,12.172,-0.251,-1.635,1.384,0.838,Stationary Shooter,Low Activity
+200765,Rajon Rondo,2019,LAL,PG,29.753,-1.985,-1.187,-0.798,0.337,Primary Ball Handler,Chaser
+200768,Kyle Lowry,2019,TOR,PG,34.052,3.025,2.195,0.83,7.754,Primary Ball Handler,Chaser
+200782,P.J. Tucker,2019,HOU,PF,34.172,0.014,-1.452,1.466,4.345,Stationary Shooter,Wing Stopper
+200794,Paul Millsap,2019,DEN,PF,27.065,2.097,0.708,1.389,5.512,Shot Creator,Helper
+200826,J.J. Barea,2019,DAL,PG,19.787,0.953,1.908,-0.955,1.629,Primary Ball Handler,Point of Attack
+201142,Kevin Durant,2019,GSW,SF,34.635,4.809,4.01,0.799,12.44,Shot Creator,Wing Stopper
+201143,Al Horford,2019,BOS,C,29.012,1.259,0.289,0.97,4.667,Post Scorer,Anchor Big
+201144,Mike Conley,2019,MEM,PG,33.452,3.38,3.705,-0.325,8.726,Primary Ball Handler,Point of Attack
+201145,Jeff Green,2019,WAS,PF,27.229,-1.528,-0.221,-1.307,1.137,Movement Shooter,Helper
+201147,Corey Brewer,2019,PHI/SAC,SF,15.855,-0.004,-0.581,0.577,0.756,Movement Shooter,Chaser
+201149,Joakim Noah,2019,MEM,C,16.489,1.681,-0.087,1.767,1.829,Roll + Cut Big,Anchor Big
+201152,Thaddeus Young,2019,IND,PF,30.727,1.706,0.297,1.409,6.613,Post Scorer,Helper
+201158,Marco Belinelli,2019,SAS,SG,22.98,-1.457,-0.236,-1.221,1.068,Movement Shooter,Low Activity
+201162,Jared Dudley,2019,BRK,PF,20.67,-0.787,-1.253,0.466,1.251,Stationary Shooter,Helper
+201163,Wilson Chandler,2019,PHI/LAC,SF,23.064,-1.181,-1.557,0.375,0.903,Shot Creator,Wing Stopper
+201188,Marc Gasol,2019,MEM/TOR,C,30.836,1.52,-0.594,2.114,6.178,Versatile Big,Anchor Big
+201229,Anthony Tolliver,2019,MIN,PF,16.419,-1.56,-1.086,-0.474,0.556,Movement Shooter,Low Activity
+201563,Michael Beasley,2019,LAL,PF,10.672,-0.542,-0.059,-0.484,0.329,Shot Creator,Helper
+201565,Derrick Rose,2019,MIN,PG,27.062,-0.81,1.319,-2.128,1.395,Shot Creator,Chaser
+201566,Russell Westbrook,2019,OKC,PG,36.022,4.42,3.441,0.979,11.49,Shot Creator,Point of Attack
+201567,Kevin Love,2019,CLE,PF,27.18,2.853,2.234,0.618,2.029,Versatile Big,Helper
+201568,Danilo Gallinari,2019,LAC,SF,30.284,2.278,2.301,-0.022,6.232,Shot Creator,Helper
+201569,Eric Gordon,2019,HOU,SG,31.735,0.406,1.519,-1.113,3.902,Movement Shooter,Chaser
+201571,D.J. Augustin,2019,ORL,PG,28.013,0.354,0.692,-0.338,4.026,Primary Ball Handler,Point of Attack
+201572,Brook Lopez,2019,MIL,C,28.663,2.841,-0.179,3.02,7.862,Stationary Shooter,Anchor Big
+201573,Jerryd Bayless,2019,MIN,PG,19.323,-2.096,-0.451,-1.645,0.115,Primary Ball Handler,Point of Attack
+201577,Robin Lopez,2019,CHI,C,21.701,-2.622,-1.616,-1.007,-0.263,Post Scorer,Anchor Big
+201580,Javale Mcgee,2019,LAL,C,22.277,0.882,-0.373,1.255,3.542,Roll + Cut Big,Anchor Big
+201583,Ryan Anderson,2019,PHO/MIA,PF,12.853,-2.539,-1.416,-1.122,-0.035,Movement Shooter,Low Activity
+201584,Courtney Lee,2019,NYK/DAL,SG,12.595,-0.661,-0.868,0.207,0.475,Secondary Ball Handler,Chaser
+201585,Kosta Koufos,2019,SAC,C,11.943,-0.2,-1.647,1.447,0.707,Roll + Cut Big,Anchor Big
+201586,Serge Ibaka,2019,TOR,C,27.169,0.912,0.647,0.265,4.301,Roll + Cut Big,Anchor Big
+201587,Nicolas Batum,2019,CHO,SF,31.386,-0.797,-0.877,0.08,2.399,Movement Shooter,Wing Stopper
+201588,George Hill,2019,CLE/MIL,PG,21.707,0.018,-0.095,0.113,2.023,Secondary Ball Handler,Point of Attack
+201599,Deandre Jordan,2019,DAL/NYK,C,29.671,-0.854,-2.114,1.26,2.01,Post Scorer,Anchor Big
+201609,Goran Dragic,2019,MIA,PG,27.517,0.142,0.553,-0.412,1.619,Primary Ball Handler,Point of Attack
+201933,Blake Griffin,2019,DET,PF,34.966,1.773,1.468,0.305,7.081,Shot Creator,Helper
+201935,James Harden,2019,HOU,PG,36.753,5.43,6.421,-0.99,14.255,Shot Creator,Helper
+201936,Tyreke Evans,2019,IND,SG,20.318,-0.728,-0.18,-0.547,1.493,Shot Creator,Chaser
+201937,Ricky Rubio,2019,UTA,PG,27.926,1.05,0.303,0.747,4.234,Primary Ball Handler,Point of Attack
+201939,Stephen Curry,2019,GSW,PG,33.787,4.179,4.7,-0.521,9.844,Primary Ball Handler,Chaser
+201942,Demar Derozan,2019,SAS,SG,34.912,1.023,0.507,0.516,5.946,Shot Creator,Chaser
+201949,James Johnson,2019,MIA,PF,21.161,-1.525,-1.726,0.201,0.633,Shot Creator,Wing Stopper
+201950,Jrue Holiday,2019,NOP,SG,35.851,3.07,3.187,-0.117,8.483,Shot Creator,Point of Attack
+201952,Jeff Teague,2019,MIN,PG,30.097,0.963,1.247,-0.284,2.747,Shot Creator,Point of Attack
+201954,Darren Collison,2019,IND,PG,28.202,0.438,0.608,-0.17,3.92,Primary Ball Handler,Point of Attack
+201956,Omri Casspi,2019,MEM,SF,14.458,-0.56,-1.193,0.632,0.611,Athletic Finisher,Helper
+201959,Taj Gibson,2019,MIN,PF,24.093,-0.05,-0.039,-0.011,2.545,Post Scorer,Mobile Big
+201960,Demarre Carroll,2019,BRK,PF,25.424,-0.159,0.169,-0.328,2.449,Movement Shooter,Helper
+201961,Wayne Ellington,2019,MIA/DET,SG,24.47,0.681,0.8,-0.119,2.579,Off Screen Shooter,Chaser
+201967,Dante Cunningham,2019,SAS,PF,14.506,-1.444,-2.09,0.646,0.554,Stationary Shooter,Wing Stopper
+201973,Jonas Jerebko,2019,GSW,PF,16.685,0.698,0.461,0.237,2.436,Stationary Shooter,Low Activity
+201976,Patrick Beverley,2019,LAC,PG,27.4,1.26,0.438,0.822,5.058,Primary Ball Handler,Point of Attack
+201980,Danny Green,2019,TOR,SG,27.694,1.004,0.159,0.844,4.873,Off Screen Shooter,Wing Stopper
+201988,Patty Mills,2019,SAS,PG,23.265,0.164,1.235,-1.071,3.147,Primary Ball Handler,Point of Attack
+202066,Garrett Temple,2019,MEM/LAC,SG,27.207,-1.604,-2.056,0.452,1.005,Movement Shooter,Wing Stopper
+202083,Wesley Matthews,2019,DAL/NYK/IND,SF,30.305,-1.612,-0.569,-1.043,1.019,Off Screen Shooter,Wing Stopper
+202322,John Wall,2019,WAS,PG,34.495,0.941,0.951,-0.01,2.383,Shot Creator,Point of Attack
+202323,Evan Turner,2019,POR,PG,21.996,-0.561,-0.656,0.095,1.885,Shot Creator,Wing Stopper
+202324,Derrick Favors,2019,UTA,C,23.243,2.935,0.872,2.063,6.087,Roll + Cut Big,Anchor Big
+202325,Wesley Johnson,2019,NOP/WAS,SF,14.051,-2.152,-2.094,-0.058,0.074,Movement Shooter,Wing Stopper
+202326,Demarcus Cousins,2019,GSW,C,25.686,2.051,0.699,1.353,2.219,Post Scorer,Anchor Big
+202328,Greg Monroe,2019,TOR/BOS/PHI,C,11.16,-1.089,-0.728,-0.362,0.397,Post Scorer,Anchor Big
+202329,Al-Farouq Aminu,2019,POR,PF,28.294,1.26,-0.146,1.406,5.424,Stationary Shooter,Wing Stopper
+202330,Gordon Hayward,2019,BOS,PF,25.879,0.91,0.517,0.393,3.984,Secondary Ball Handler,Low Activity
+202331,Paul George,2019,OKC,SF,36.902,5.182,3.798,1.383,13.714,Shot Creator,Wing Stopper
+202334,Ed Davis,2019,BRK,C,17.853,1.143,-0.913,2.057,3.312,Roll + Cut Big,Anchor Big
+202335,Patrick Patterson,2019,OKC,PF,13.66,-3.01,-1.757,-1.253,-0.353,Stretch Big,Helper
+202339,Eric Bledsoe,2019,MIL,PG,29.126,3.481,2.466,1.014,8.61,Primary Ball Handler,Point of Attack
+202340,Avery Bradley,2019,LAC/MEM,SG,30.244,-3.582,-2.248,-1.334,-1.466,Movement Shooter,Wing Stopper
+202355,Hassan Whiteside,2019,MIA,C,23.254,3.136,0.957,2.179,5.982,Post Scorer,Anchor Big
+202357,Nemanja Bjelica,2019,SAC,PF,23.22,0.991,-0.162,1.154,3.918,Stretch Big,Helper
+202362,Lance Stephenson,2019,LAL,SG,16.511,-2.539,-1.284,-1.254,-0.124,Shot Creator,Low Activity
+202391,Jeremy Lin,2019,ATL/TOR,PG,19.41,-1.541,-0.746,-0.796,0.766,Primary Ball Handler,Point of Attack
+202397,Ish Smith,2019,DET,PG,22.34,-1.465,-0.627,-0.838,0.729,Slasher,Point of Attack
+202498,Lance Thomas,2019,NYK,PF,17.029,-3.341,-2.816,-0.525,-0.485,Stationary Shooter,Helper
+202681,Kyrie Irving,2019,BOS,PG,33.045,3.25,3.131,0.119,8.07,Shot Creator,Point of Attack
+202683,Enes Freedom,2019,NYK/POR,C,24.472,1.504,1.962,-0.457,4.141,Post Scorer,Anchor Big
+202684,Tristan Thompson,2019,CLE,C,27.855,-0.445,-0.377,-0.069,1.497,Post Scorer,Anchor Big
+202685,Jonas Valančiūnas,2019,TOR/MEM,C,22.269,0.823,0.273,0.551,2.271,Post Scorer,Anchor Big
+202687,Bismack Biyombo,2019,CHO,C,14.491,-1.126,-1.86,0.734,0.629,Roll + Cut Big,Anchor Big
+202688,Brandon Knight,2019,HOU/CLE,PG,18.885,-1.769,-1.312,-0.457,0.284,Primary Ball Handler,Chaser
+202689,Kemba Walker,2019,CHO,PG,34.91,2.8,3.888,-1.088,9.618,Primary Ball Handler,Point of Attack
+202691,Klay Thompson,2019,GSW,SG,34.004,0.485,1.067,-0.583,4.932,Off Screen Shooter,Wing Stopper
+202692,Alec Burks,2019,UTA/CLE/SAC,SG,21.483,-1.007,-0.313,-0.694,1.213,Secondary Ball Handler,Chaser
+202693,Markieff Morris,2019,WAS/OKC,PF,21.907,-0.787,-0.704,-0.083,1.304,Versatile Big,Mobile Big
+202694,Marcus Morris Sr.,2019,BOS,PF,27.874,-0.467,-0.414,-0.053,2.582,Shot Creator,Helper
+202695,Kawhi Leonard,2019,TOR,SF,34.004,4.046,3.536,0.51,8.448,Shot Creator,Wing Stopper
+202696,Nikola Vučević,2019,ORL,C,31.379,3.292,1.519,1.773,9.216,Post Scorer,Anchor Big
+202697,Iman Shumpert,2019,SAC/HOU,SG,23.884,-1.87,-1.449,-0.421,0.475,Movement Shooter,Wing Stopper
+202699,Tobias Harris,2019,LAC/PHI,PF,34.731,0.548,1.166,-0.619,5.414,Shot Creator,Wing Stopper
+202702,Kenneth Faried,2019,BRK/HOU,C,19.681,0.269,0.66,-0.391,1.251,Roll + Cut Big,Mobile Big
+202703,Nikola Mirotic,2019,NOP/MIL,PF,27.068,0.283,0.901,-0.618,2.151,Movement Shooter,Helper
+202704,Reggie Jackson,2019,DET,PG,27.914,-0.549,0.314,-0.863,2.704,Primary Ball Handler,Point of Attack
+202705,Marshon Brooks,2019,MEM,SG,13.336,-2.052,-0.759,-1.293,0.078,Shot Creator,Chaser
+202709,Cory Joseph,2019,IND,PG,25.164,1.226,-0.092,1.317,4.837,Primary Ball Handler,Point of Attack
+202710,Jimmy Butler Iii,2019,MIN/PHI,SG,33.615,1.836,1.952,-0.115,5.99,Shot Creator,Wing Stopper
+202711,Bojan Bogdanović,2019,IND,SF,31.765,-0.238,0.667,-0.905,3.566,Off Screen Shooter,Low Activity
+202714,Shelvin Mack,2019,MEM/CHO,PG,21.871,-2.778,-1.517,-1.262,-0.328,Primary Ball Handler,Point of Attack
+202718,Chandler Parsons,2019,MEM,SF,19.835,-2.037,-1.544,-0.493,0.105,Secondary Ball Handler,Low Activity
+202722,Davis Bertans,2019,SAS,PF,21.471,1.034,-0.158,1.193,3.622,Movement Shooter,Helper
+202734,E'Twaun Moore,2019,NOP,SG,27.604,-2.803,-1.194,-1.609,-0.407,Off Screen Shooter,Chaser
+203076,Anthony Davis,2019,NOP,C,33.035,6.725,4.411,2.314,10.562,Shot Creator,Anchor Big
+203077,Michael Kidd-Gilchrist,2019,CHO,PF,18.424,-0.228,-1.14,0.912,1.641,Athletic Finisher,Wing Stopper
+203078,Bradley Beal,2019,WAS,SG,36.924,1.085,2.327,-1.242,6.821,Primary Ball Handler,Chaser
+203079,Dion Waiters,2019,MIA,SG,25.862,-1.119,-0.43,-0.689,0.92,Shot Creator,Chaser
+203081,Damian Lillard,2019,POR,PG,35.473,4.705,5.166,-0.461,12.889,Shot Creator,Point of Attack
+203082,Terrence Ross,2019,ORL,SG,26.544,-0.434,0.109,-0.544,2.702,Off Screen Shooter,Low Activity
+203083,Andre Drummond,2019,DET,C,33.507,2.497,0.119,2.377,8.382,Post Scorer,Anchor Big
+203084,Harrison Barnes,2019,DAL/SAC,PF,32.892,-1.998,-0.652,-1.346,0.601,Shot Creator,Wing Stopper
+203085,Austin Rivers,2019,WAS/HOU,SG,26.68,-2.201,-1.077,-1.123,0.217,Shot Creator,Point of Attack
+203086,Meyers Leonard,2019,POR,C,14.387,-0.276,-0.565,0.288,1.194,Stretch Big,Anchor Big
+203087,Jeremy Lamb,2019,CHO,SG,28.483,1.214,0.859,0.355,5.258,Secondary Ball Handler,Chaser
+203090,Maurice Harkless,2019,POR,SF,23.587,0.412,-0.834,1.246,2.564,Versatile Big,Wing Stopper
+203095,Evan Fournier,2019,ORL,SG,31.522,0.107,0.088,0.018,4.115,Off Screen Shooter,Wing Stopper
+203098,John Jenkins,2019,WAS/NYK,SG,12.811,-2.616,-0.937,-1.679,-0.053,Off Screen Shooter,Low Activity
+203107,Tomas Satoransky,2019,WAS,PG,27.045,-0.055,0.017,-0.071,3.258,Primary Ball Handler,Point of Attack
+203109,Jae Crowder,2019,UTA,SF,27.073,0.65,0.685,-0.035,4.262,Movement Shooter,Helper
+203110,Draymond Green,2019,GSW,PF,31.284,1.046,-1.417,2.463,4.598,Stretch Big,Helper
+203114,Khris Middleton,2019,MIL,SF,31.085,1.728,1.297,0.431,6.392,Shot Creator,Helper
+203115,Will Barton,2019,DEN,SF,27.652,-1.424,-0.935,-0.49,0.725,Secondary Ball Handler,Wing Stopper
+203118,Mike Scott,2019,LAC/PHI,PF,17.667,-2.548,-1.264,-1.284,-0.162,Stationary Shooter,Helper
+203121,Darius Miller,2019,NOP,SF,25.471,-2.46,-0.334,-2.126,-0.105,Off Screen Shooter,Low Activity
+203145,Kent Bazemore,2019,ATL,SG,24.529,-1.82,-1.649,-0.171,0.579,Secondary Ball Handler,Wing Stopper
+203200,Justin Holiday,2019,CHI/MEM,SG,31.787,-1.674,-2.08,0.406,1.165,Off Screen Shooter,Wing Stopper
+203210,Jamychal Green,2019,MEM/LAC,PF,21.086,-0.698,-1.123,0.424,1.485,Versatile Big,Helper
+203382,Aron Baynes,2019,BOS,C,16.095,-0.733,-1.569,0.836,0.871,Roll + Cut Big,Anchor Big
+203457,Nerlens Noel,2019,OKC,C,13.707,0.753,-1.544,2.297,2.148,Roll + Cut Big,Mobile Big
+203458,Alex Len,2019,ATL,C,20.054,-0.362,-0.6,0.239,2.014,Stretch Big,Anchor Big
+203459,Allen Crabbe,2019,BRK,SG,26.35,-2.182,-1.705,-0.476,0.135,Off Screen Shooter,Chaser
+203468,Cj Mccollum,2019,POR,SG,33.932,0.827,1.625,-0.799,4.949,Primary Ball Handler,Chaser
+203469,Cody Zeller,2019,CHO,C,25.367,0.293,-0.608,0.901,2.156,Roll + Cut Big,Anchor Big
+203471,Dennis Schröder,2019,OKC,PG,29.289,-0.911,0.448,-1.359,2.186,Primary Ball Handler,Point of Attack
+203473,Dewayne Dedmon,2019,ATL,C,25.143,0.45,-1.106,1.555,2.955,Stretch Big,Anchor Big
+203476,Gorgui Dieng,2019,MIN,C,13.567,0.003,-1.393,1.396,1.592,Athletic Finisher,Anchor Big
+203477,Isaiah Canaan,2019,PHO/MIN/MIL,PG,20.928,-2.7,-1.447,-1.252,-0.134,Primary Ball Handler,Point of Attack
+203482,Kelly Olynyk,2019,MIA,PF,22.94,0.439,-0.552,0.991,3.316,Movement Shooter,Helper
+203484,Kentavious Caldwell-Pope,2019,LAL,SG,24.817,-1.228,-0.066,-1.162,1.501,Off Screen Shooter,Chaser
+203486,Mason Plumlee,2019,DEN,C,21.107,1.159,-0.354,1.513,3.982,Post Scorer,Mobile Big
+203487,Michael Carter-Williams,2019,HOU/ORL,PG,13.278,0.9,0.473,0.427,0.793,Primary Ball Handler,Point of Attack
+203488,Mike Muscala,2019,PHI/LAL,PF,20.404,-1.071,-1.259,0.187,1.097,Movement Shooter,Helper
+203490,Otto Porter Jr.,2019,WAS/CHI,SF,30.067,2.172,0.616,1.556,4.98,Movement Shooter,Helper
+203493,Reggie Bullock Jr.,2019,DET/LAL,SG,29.824,-1.081,-0.565,-0.516,1.566,Off Screen Shooter,Wing Stopper
+203496,Robert Covington,2019,PHI/MIN,SF,34.36,2.008,-0.453,2.461,3.43,Movement Shooter,Wing Stopper
+203497,Rudy Gobert,2019,UTA,C,31.812,4.64,1.17,3.47,11.602,Roll + Cut Big,Anchor Big
+203500,Steven Adams,2019,OKC,C,33.368,1.465,0.528,0.937,6.674,Post Scorer,Mobile Big
+203501,Tim Hardaway Jr.,2019,NYK/DAL,SG,31.641,-0.27,0.363,-0.633,2.806,Off Screen Shooter,Chaser
+203503,Tony Snell,2019,MIL,SF,17.617,-1.169,-0.601,-0.568,1.012,Movement Shooter,Low Activity
+203504,Trey Burke,2019,NYK/DAL,PG,19.388,-0.727,0.913,-1.64,1.198,Slasher,Point of Attack
+203506,Victor Oladipo,2019,IND,SG,31.853,1.982,1.323,0.658,3.251,Shot Creator,Wing Stopper
+203507,Giannis Antetokounmpo,2019,MIL,PF,32.755,7.398,4.328,3.07,14.325,Shot Creator,Helper
+203516,James Ennis Iii,2019,HOU/PHI,SF,21.199,-1.398,-0.975,-0.424,0.77,Stationary Shooter,Chaser
+203518,Alex Abrines,2019,OKC,SG,18.974,-2.803,-2.119,-0.684,-0.164,Movement Shooter,Low Activity
+203521,Matthew Dellavedova,2019,MIL/CLE,PG,16.92,-1.394,-0.446,-0.948,0.511,Primary Ball Handler,Point of Attack
+203524,Solomon Hill,2019,NOP,SF,19.966,-2.819,-2.003,-0.816,-0.254,Stationary Shooter,Wing Stopper
+203526,Raul Neto,2019,UTA,PG,12.8,-0.951,-0.065,-0.886,0.435,Secondary Ball Handler,Point of Attack
+203546,Ian Clark,2019,NOP,SG,16.209,-2.783,-1.039,-1.743,-0.258,Off Screen Shooter,Chaser
+203552,Seth Curry,2019,POR,SG,18.908,-1.371,-0.782,-0.589,0.902,Secondary Ball Handler,Point of Attack
+203584,Troy Daniels,2019,PHO,SG,14.897,-1.793,-0.476,-1.317,0.281,Off Screen Shooter,Low Activity
+203585,Rodney Mcgruder,2019,MIA,SG,23.48,-1.615,-1.141,-0.475,0.752,Movement Shooter,Point of Attack
+203613,Jonathon Simmons,2019,ORL/PHI,SG,19.003,-2.702,-2.397,-0.306,-0.228,Secondary Ball Handler,Wing Stopper
+203894,Shabazz Napier,2019,BRK,PG,17.55,1.21,1.329,-0.118,2.294,Shot Creator,Point of Attack
+203895,Jordan Mcrae,2019,WAS,SG,12.326,-0.975,-0.461,-0.514,0.3,Secondary Ball Handler,Low Activity
+203897,Zach Lavine,2019,CHI,SG,34.459,-0.507,0.761,-1.269,2.625,Shot Creator,Chaser
+203901,Elfrid Payton,2019,NOP,PG,29.757,0.226,0.181,0.044,2.112,Slasher,Point of Attack
+203903,Jordan Clarkson,2019,CLE,SG,27.339,-2.986,0.015,-3.001,-0.875,Shot Creator,Low Activity
+203914,Gary Harris,2019,DEN,SG,28.759,-0.942,-0.153,-0.789,1.515,Movement Shooter,Wing Stopper
+203915,Spencer Dinwiddie,2019,BRK,PG,28.148,-0.113,1.221,-1.334,2.809,Shot Creator,Wing Stopper
+203917,Nik Stauskas,2019,POR/CLE,SG,14.921,-2.544,-1.241,-1.303,-0.115,Off Screen Shooter,Low Activity
+203918,Rodney Hood,2019,CLE/POR,SG,26.285,-0.467,0.148,-0.614,2.338,Shot Creator,Chaser
+203920,Khem Birch,2019,ORL,C,12.856,0.67,-0.509,1.18,1.274,Roll + Cut Big,Anchor Big
+203922,Glenn Robinson Iii,2019,DET,SF,12.98,-1.791,-2.262,0.471,0.227,Stationary Shooter,Helper
+203924,Jerami Grant,2019,OKC,PF,32.655,1.113,-0.309,1.423,5.933,Stretch Big,Helper
+203925,Joe Harris,2019,BRK,SG,30.177,-0.234,-0.111,-0.124,3.183,Off Screen Shooter,Chaser
+203926,Doug Mcdermott,2019,IND,SF,17.397,-2.039,-1.099,-0.941,0.282,Off Screen Shooter,Low Activity
+203932,Aaron Gordon,2019,ORL,PF,33.751,0.231,-0.592,0.823,4.457,Versatile Big,Wing Stopper
+203933,T.J. Warren,2019,PHO,SF,31.35,-1.123,-0.635,-0.487,1.087,Slasher,Wing Stopper
+203935,Marcus Smart,2019,BOS,SG,27.497,0.842,-0.322,1.164,4.606,Primary Ball Handler,Wing Stopper
+203937,Kyle Anderson,2019,MEM,SF,29.802,-1.129,-2.022,0.893,1.028,Roll + Cut Big,Wing Stopper
+203939,Dwight Powell,2019,DAL,C,21.59,1.607,1.12,0.487,4.31,Roll + Cut Big,Anchor Big
+203943,Noah Vonleh,2019,NYK,PF,25.32,-0.067,-1.709,1.642,2.579,Versatile Big,Helper
+203944,Julius Randle,2019,NOP,PF,30.572,0.392,1.227,-0.835,4.014,Shot Creator,Helper
+203952,Andrew Wiggins,2019,MIN,SF,34.833,-1.767,-0.164,-1.603,0.984,Shot Creator,Wing Stopper
+203953,Jabari Parker,2019,CHI/WAS,PF,26.942,-2.029,-1.336,-0.693,0.375,Shot Creator,Helper
+203954,Joel Embiid,2019,PHI,C,33.661,4.031,2.283,1.748,8.901,Post Scorer,Anchor Big
+203957,Danté Exum,2019,UTA,PG,15.811,-0.839,-0.343,-0.495,0.659,Slasher,Point of Attack
+203967,Dario Šarić,2019,PHI/MIN,PF,24.82,-0.707,-0.036,-0.672,2.167,Stretch Big,Helper
+203991,Clint Capela,2019,HOU,C,33.564,1.727,1.056,0.671,6.005,Roll + Cut Big,Mobile Big
+203992,Bogdan Bogdanović,2019,SAC,SG,27.816,-0.905,0.007,-0.912,1.847,Secondary Ball Handler,Chaser
+203994,Jusuf Nurkić,2019,POR,C,27.413,3.318,1.259,2.059,7.279,Post Scorer,Anchor Big
+203998,Bruno Caboclo,2019,MEM,PF,23.52,-0.674,-0.799,0.124,0.879,Movement Shooter,Helper
+203999,Nikola Jokić,2019,DEN,C,31.299,4.536,3.525,1.01,11.117,Post Scorer,Mobile Big
+204020,Tyler Johnson,2019,MIA/PHO,PG,26.825,-1.188,-0.652,-0.535,1.168,Movement Shooter,Point of Attack
+204025,Tim Frazier,2019,NOP/MIL,PG,18.977,-1.571,-0.818,-0.753,0.575,Primary Ball Handler,Point of Attack
+204038,Langston Galloway,2019,DET,SG,21.813,-1.264,-0.294,-0.97,1.246,Movement Shooter,Wing Stopper
+204060,Joe Ingles,2019,UTA,PF,31.312,1.732,0.605,1.127,6.865,Secondary Ball Handler,Wing Stopper
+204456,T.J. Mcconnell,2019,PHI,PG,19.345,-0.234,-0.044,-0.19,2.041,Primary Ball Handler,Point of Attack
+1626143,Jahlil Okafor,2019,NOP,C,15.845,-0.639,-0.551,-0.087,1.05,Post Scorer,Anchor Big
+1626144,Emmanuel Mudiay,2019,NYK,PG,27.239,-2.852,-0.958,-1.895,-0.498,Slasher,Point of Attack
+1626145,Tyus Jones,2019,MIN,PG,22.948,0.369,0.28,0.09,2.784,Primary Ball Handler,Point of Attack
+1626149,Montrezl Harrell,2019,LAC,C,26.32,1.045,1.252,-0.207,4.804,Post Scorer,Anchor Big
+1626153,Delon Wright,2019,TOR/MEM,PG,22.644,0.809,0.482,0.327,3.519,Primary Ball Handler,Chaser
+1626155,Sam Dekker,2019,CLE/WAS,PF,16.778,-0.449,-0.102,-0.347,0.984,Athletic Finisher,Low Activity
+1626156,D'Angelo Russell,2019,BRK,PG,30.223,1.11,1.783,-0.673,5.555,Primary Ball Handler,Point of Attack
+1626157,Karl-Anthony Towns,2019,MIN,C,33.048,3.671,3.475,0.196,9.946,Shot Creator,Anchor Big
+1626158,Richaun Holmes,2019,PHO,C,16.91,-0.458,-0.84,0.383,1.469,Roll + Cut Big,Anchor Big
+1626159,Justise Winslow,2019,MIA,SF,29.69,0.006,-1.055,1.061,3.029,Primary Ball Handler,Wing Stopper
+1626161,Willie Cauley-Stein,2019,SAC,C,27.317,1.508,-0.121,1.629,5.594,Post Scorer,Mobile Big
+1626162,Kelly Oubre Jr.,2019,WAS/PHO,SF,27.866,-0.694,-0.297,-0.396,2.089,Movement Shooter,Chaser
+1626163,Frank Kaminsky,2019,CHO,C,16.059,0.275,0.705,-0.43,1.3,Stretch Big,Helper
+1626164,Devin Booker,2019,PHO,SG,34.846,-1.572,1.931,-3.503,1.146,Shot Creator,Chaser
+1626166,Cameron Payne,2019,CHI/CLE,PG,17.805,-1.955,-1.636,-0.319,0.189,Primary Ball Handler,Point of Attack
+1626167,Myles Turner,2019,IND,C,28.636,2.266,-0.866,3.132,6.397,Roll + Cut Big,Mobile Big
+1626168,Trey Lyles,2019,DEN,PF,17.494,-0.836,-0.472,-0.364,1.112,Versatile Big,Helper
+1626169,Stanley Johnson,2019,DET/NOP,SF,18.292,-2.657,-2.678,0.021,-0.224,Movement Shooter,Wing Stopper
+1626170,Jerian Grant,2019,ORL,PG,15.646,-1.714,-1.7,-0.014,0.395,Primary Ball Handler,Point of Attack
+1626171,Bobby Portis,2019,CHI/WAS,PF,25.964,-1.051,-0.494,-0.557,1.108,Versatile Big,Mobile Big
+1626172,Kevon Looney,2019,GSW,C,18.518,1.15,0.925,0.225,3.4,Roll + Cut Big,Mobile Big
+1626174,Christian Wood,2019,MIL/NOP,PF,11.92,-0.155,-0.187,0.033,0.361,Shot Creator,Anchor Big
+1626178,Rondae Hollis-Jefferson,2019,BRK,SF,20.916,-0.236,-0.973,0.736,1.711,Athletic Finisher,Helper
+1626179,Terry Rozier,2019,BOS,PG,22.674,-0.64,-0.6,-0.039,2.01,Primary Ball Handler,Point of Attack
+1626181,Norman Powell,2019,TOR,SG,18.773,-0.849,-0.37,-0.479,1.11,Secondary Ball Handler,Chaser
+1626184,Chasson Randle,2019,WAS,PG,15.16,-1.87,-0.589,-1.281,0.238,Primary Ball Handler,Point of Attack
+1626188,Quinn Cook,2019,GSW,PG,14.306,-2.281,-0.68,-1.601,0.058,Secondary Ball Handler,Point of Attack
+1626192,Pat Connaughton,2019,MIL,SG,20.674,-0.041,0.515,-0.557,1.91,Stationary Shooter,Chaser
+1626195,Willy Hernangomez,2019,CHO,C,14,0.103,0.553,-0.45,1.307,Roll + Cut Big,Anchor Big
+1626196,Josh Richardson,2019,MIA,SG,34.787,0.83,0.228,0.602,5.297,Primary Ball Handler,Point of Attack
+1626203,Treveon Graham,2019,BRK,SG,20.438,-0.837,-1.138,0.3,0.71,Movement Shooter,Wing Stopper
+1626204,Larry Nance Jr.,2019,CLE,C,26.798,0.15,-0.57,0.72,2.945,Roll + Cut Big,Anchor Big
+1626209,Mario Hezonja,2019,NYK,SF,20.797,-1,-1.085,0.085,1.069,Secondary Ball Handler,Wing Stopper
+1626220,Royce O'Neale,2019,UTA,SF,20.378,-1.251,-2.152,0.901,1.207,Stationary Shooter,Wing Stopper
+1626224,Cedi Osman,2019,CLE,SF,32.157,-2.664,-1.412,-1.252,-0.465,Secondary Ball Handler,Wing Stopper
+1626245,Cristiano Felicio,2019,CHI,C,12.439,-2.582,-1.328,-1.254,-0.103,Roll + Cut Big,Mobile Big
+1626246,Boban Marjanović,2019,LAC/PHI,C,11.736,1.319,0.939,0.38,1.637,Post Scorer,Anchor Big
+1626257,Salah Mejri,2019,DAL,C,11.087,0.336,-0.819,1.155,0.703,Stretch Big,Anchor Big
+1627395,Julian Washburn,2019,MEM,SF,14.104,-1.389,-1.444,0.055,0.161,Movement Shooter,Wing Stopper
+1627732,Ben Simmons,2019,PHI,PG,34.181,1.646,1.261,0.385,7.069,Post Scorer,Wing Stopper
+1627733,Dragan Bender,2019,PHO,PF,17.962,-1.843,-1.808,-0.035,0.279,Stretch Big,Helper
+1627734,Domantas Sabonis,2019,IND,C,24.844,1.777,0.63,1.147,4.969,Post Scorer,Mobile Big
+1627736,Malik Beasley,2019,DEN,SG,23.193,-0.863,0.277,-1.14,1.834,Movement Shooter,Chaser
+1627737,Marquese Chriss,2019,HOU/CLE,PF,11.6,-1.036,-1.104,0.068,0.43,Stretch Big,Anchor Big
+1627739,Kris Dunn,2019,CHI,PG,30.205,-1.53,-1.751,0.221,0.752,Slasher,Point of Attack
+1627740,Henry Ellenson,2019,DET/NYK,PF,13.638,-0.299,-0.475,0.176,0.349,Versatile Big,Helper
+1627741,Buddy Hield,2019,SAC,SG,31.888,-0.169,1.318,-1.487,3.741,Off Screen Shooter,Chaser
+1627742,Brandon Ingram,2019,LAL,SF,33.855,-1.588,-0.423,-1.165,0.886,Shot Creator,Wing Stopper
+1627745,Damian Jones,2019,GSW,C,17.067,-0.598,-1.732,1.133,0.471,Roll + Cut Big,Mobile Big
+1627747,Caris Levert,2019,BRK,SF,26.572,0.39,0.869,-0.479,1.911,Shot Creator,Point of Attack
+1627748,Thon Maker,2019,MIL/DET,PF,15.191,-1.058,-1.445,0.387,0.825,Stationary Shooter,Anchor Big
+1627750,Jamal Murray,2019,DEN,PG,32.632,0.795,1.512,-0.717,5.049,Primary Ball Handler,Chaser
+1627751,Jakob Poeltl,2019,SAS,C,16.528,1.129,-0.238,1.367,2.903,Roll + Cut Big,Anchor Big
+1627752,Taurean Prince,2019,ATL,SF,28.223,-2.181,-1.417,-0.764,0.185,Secondary Ball Handler,Wing Stopper
+1627759,Jaylen Brown,2019,BOS,SG,25.856,-0.318,-0.65,0.332,2.55,Stationary Shooter,Wing Stopper
+1627761,Deandre' Bembry,2019,ATL,SG,23.552,-1.915,-2.14,0.224,0.562,Athletic Finisher,Wing Stopper
+1627763,Malcolm Brogdon,2019,MIL,SG,28.62,1.637,1.422,0.215,4.785,Primary Ball Handler,Chaser
+1627767,Cheick Diallo,2019,NOP,PF,13.993,-1.104,-1.662,0.558,0.733,Roll + Cut Big,Anchor Big
+1627772,Daniel Hamilton,2019,ATL,SG,10.744,-1.303,-1.009,-0.293,0.141,Secondary Ball Handler,Wing Stopper
+1627774,Jake Layman,2019,POR,SF,18.687,-0.967,-1.123,0.156,1.205,Movement Shooter,Low Activity
+1627775,Patrick Mccaw,2019,CLE/TOR,SG,13.697,-2.178,-2.283,0.105,0.048,Stationary Shooter,Chaser
+1627782,Wayne Selden,2019,MEM/CHI,SG,19.18,-2.334,-1.339,-0.995,0.03,Movement Shooter,Helper
+1627783,Pascal Siakam,2019,TOR,PF,31.846,1.697,0.81,0.887,6.753,Shot Creator,Wing Stopper
+1627786,Troy Williams,2019,SAC,SF,14.855,-1.659,-1.766,0.106,0.142,Movement Shooter,Chaser
+1627788,Furkan Korkmaz,2019,PHI,SG,14.15,-0.497,0.031,-0.528,0.826,Movement Shooter,Chaser
+1627789,Timothe Luwawu-Cabarrot,2019,OKC/CHI,SF,13.383,-2.238,-1.552,-0.686,0.055,Stationary Shooter,Low Activity
+1627790,Ante Zizic,2019,CLE,C,18.34,-1.278,-1.4,0.122,0.763,Post Scorer,Anchor Big
+1627812,Yogi Ferrell,2019,SAC,PG,15.023,-1.32,-0.499,-0.821,0.723,Primary Ball Handler,Point of Attack
+1627814,Damion Lee,2019,GSW,SG,11.723,-2.246,-1.026,-1.219,0.029,Off Screen Shooter,Low Activity
+1627816,Alex Poythress,2019,ATL,PF,14.52,-1.453,-1.434,-0.018,0.18,Athletic Finisher,Mobile Big
+1627820,Tyrone Wallace,2019,LAC,PG,10.124,-2.453,-2.138,-0.315,-0.035,Secondary Ball Handler,Point of Attack
+1627823,Juancho Hernangomez,2019,DEN,PF,19.403,-0.818,-0.802,-0.016,1.366,Movement Shooter,Helper
+1627826,Ivica Zubac,2019,LAL/LAC,C,17.615,-0.262,-1.239,0.977,1.423,Post Scorer,Anchor Big
+1627827,Dorian Finney-Smith,2019,DAL,SF,24.508,-1.239,-0.784,-0.454,1.45,Movement Shooter,Wing Stopper
+1627832,Fred Vanvleet,2019,TOR,PG,27.504,0.701,0.689,0.011,3.522,Primary Ball Handler,Point of Attack
+1627846,Abdel Nader,2019,OKC,SF,11.37,-3.405,-2.613,-0.792,-0.457,Stationary Shooter,Low Activity
+1627853,Ryan Arcidiacono,2019,CHI,PG,24.213,-0.55,-0.677,0.127,2.316,Primary Ball Handler,Point of Attack
+1627854,Bryn Forbes,2019,SAS,SG,27.957,-0.876,-1.121,0.245,2.218,Secondary Ball Handler,Chaser
+1627863,Danuel House Jr.,2019,HOU,SF,25.094,-1.627,-0.337,-1.29,0.468,Movement Shooter,Helper
+1627883,Jalen Jones,2019,CLE,SF,13.381,-0.5,-1.232,0.733,0.26,Stationary Shooter,Helper
+1627884,Derrick Jones Jr.,2019,MIA,SF,19.224,-0.063,-0.343,0.28,1.73,Athletic Finisher,Wing Stopper
+1627885,Shaquille Harrison,2019,CHI,SG,19.587,-1.763,-2.234,0.471,0.557,Slasher,Point of Attack
+1627936,Alex Caruso,2019,LAL,PG,21.243,-0.357,-0.145,-0.211,0.694,Primary Ball Handler,Point of Attack
+1628021,David Nwaba,2019,CLE,SF,19.298,-0.349,-1.13,0.781,1.292,Athletic Finisher,Helper
+1628035,Alfonzo Mckinnie,2019,GSW,SF,13.937,-1.627,-0.941,-0.685,0.48,Stationary Shooter,Low Activity
+1628365,Markelle Fultz,2019,PHI,SG,22.466,-1.91,-1.876,-0.034,0.126,Slasher,Point of Attack
+1628366,Lonzo Ball,2019,LAL,PG,30.268,-0.058,-0.921,0.862,2.139,Primary Ball Handler,Point of Attack
+1628367,Josh Jackson,2019,PHO,SG,25.015,-3.038,-2.342,-0.696,-0.845,Secondary Ball Handler,Helper
+1628368,De'Aaron Fox,2019,SAC,PG,31.431,1.064,1.149,-0.085,5.699,Slasher,Point of Attack
+1628369,Jayson Tatum,2019,BOS,SF,31.071,1.424,0.164,1.26,6.072,Shot Creator,Chaser
+1628370,Malik Monk,2019,CHO,SG,17.233,-1.819,-0.677,-1.142,0.445,Movement Shooter,Low Activity
+1628371,Jonathan Isaac,2019,ORL,PF,26.616,0.621,-1.082,1.703,3.89,Stationary Shooter,Helper
+1628372,Dennis Smith Jr.,2019,DAL/NYK,PG,28.462,-1.976,-1.439,-0.536,0.38,Primary Ball Handler,Point of Attack
+1628373,Frank Ntilikina,2019,NYK,PG,21.015,-2.157,-2.333,0.177,0.122,Primary Ball Handler,Point of Attack
+1628374,Lauri Markkanen,2019,CHI,PF,32.35,0.401,1.022,-0.621,3.036,Movement Shooter,Helper
+1628378,Donovan Mitchell,2019,UTA,SG,33.744,1.141,0.999,0.142,5.948,Primary Ball Handler,Chaser
+1628379,Luke Kennard,2019,DET,SG,22.804,-1.948,-0.882,-1.066,0.387,Secondary Ball Handler,Low Activity
+1628380,Zach Collins,2019,POR,C,17.608,-1.243,-1.682,0.439,0.987,Versatile Big,Anchor Big
+1628381,John Collins,2019,ATL,PF,29.977,-0.032,1.356,-1.389,2.78,Roll + Cut Big,Helper
+1628382,Justin Jackson,2019,SAC/DAL,SF,19.917,-2.133,-1.059,-1.074,0.243,Stationary Shooter,Chaser
+1628384,Og Anunoby,2019,TOR,SF,20.183,-1.282,-1.401,0.119,0.949,Stationary Shooter,Helper
+1628385,Harry Giles Iii,2019,SAC,PF,14.139,-2.119,-1.709,-0.41,0.131,Post Scorer,Anchor Big
+1628386,Jarrett Allen,2019,BRK,C,26.201,0.68,-0.295,0.975,4.166,Roll + Cut Big,Anchor Big
+1628389,Bam Adebayo,2019,MIA,C,23.325,1.218,-1.344,2.562,4.474,Roll + Cut Big,Anchor Big
+1628390,Terrance Ferguson,2019,OKC,SG,26.095,-1.624,-1.479,-0.144,0.927,Stationary Shooter,Chaser
+1628391,D.J. Wilson,2019,MIL,PF,18.374,-0.398,-0.701,0.303,1.13,Stretch Big,Helper
+1628395,Jordan Bell,2019,GSW,C,11.591,-0.596,-1.308,0.712,0.907,Roll + Cut Big,Mobile Big
+1628397,Ivan Rabb,2019,MEM,PF,14.71,-1.064,-1.415,0.351,0.609,Post Scorer,Anchor Big
+1628398,Kyle Kuzma,2019,LAL,PF,33.051,-0.22,0.78,-1,3.233,Shot Creator,Helper
+1628400,Semi Ojeleye,2019,BOS,PF,10.613,-2.124,-1.283,-0.841,0.093,Stationary Shooter,Helper
+1628401,Derrick White,2019,SAS,PG,25.79,0.903,-0.502,1.405,3.687,Slasher,Point of Attack
+1628402,Frank Jackson,2019,NOP,PG,19.161,-3.135,-1.161,-1.974,-0.572,Movement Shooter,Chaser
+1628404,Josh Hart,2019,LAL,SG,25.593,-1.314,-1.617,0.303,1.168,Off Screen Shooter,Wing Stopper
+1628407,Dwayne Bacon,2019,CHO,SG,17.641,-1.804,-0.947,-0.857,0.276,Secondary Ball Handler,Wing Stopper
+1628411,Wes Iwundu,2019,ORL,SF,18.134,-2.609,-2.535,-0.074,-0.191,Athletic Finisher,Chaser
+1628412,Frank Mason Iii,2019,SAC,PG,11.459,-1.071,-0.353,-0.718,0.366,Secondary Ball Handler,Point of Attack
+1628413,Jonah Bolden,2019,PHI,PF,14.514,-1.068,-1.329,0.262,0.538,Stationary Shooter,Helper
+1628415,Dillon Brooks,2019,MEM,SF,18.328,-2.359,-1.755,-0.604,0.002,Movement Shooter,Chaser
+1628416,Tyler Dorsey,2019,ATL/MEM,SG,14.538,-1.403,-0.363,-1.04,0.435,Movement Shooter,Low Activity
+1628417,Jaron Blossomgame,2019,CLE,SF,16.265,-0.82,-1.067,0.246,0.441,Stretch Big,Helper
+1628418,Thomas Bryant,2019,WAS,C,20.782,0.936,0.548,0.388,3.225,Roll + Cut Big,Mobile Big
+1628420,Monté Morris,2019,DEN,PG,24.027,0.37,0.902,-0.532,3.516,Primary Ball Handler,Point of Attack
+1628422,Damyean Dotson,2019,NYK,SG,27.448,-3.36,-1.546,-1.814,-1.264,Off Screen Shooter,Chaser
+1628425,Sterling Brown,2019,MIL,SG,17.832,-1.673,-1.066,-0.608,0.463,Movement Shooter,Low Activity
+1628436,Luke Kornet,2019,NYK,C,17.044,0.475,-0.53,1.005,1.453,Stretch Big,Helper
+1628443,Kadeem Allen,2019,NYK,PG,21.871,-0.448,0.069,-0.517,0.519,Slasher,Point of Attack
+1628464,Daniel Theis,2019,BOS,C,13.752,1.093,0.175,0.918,2.049,Roll + Cut Big,Mobile Big
+1628467,Maxi Kleber,2019,DAL,PF,21.155,0.679,-0.348,1.026,2.984,Stationary Shooter,Wing Stopper
+1628469,Antonio Blakeney,2019,CHI,SG,14.543,-3.583,-1.719,-1.864,-0.638,Shot Creator,Low Activity
+1628470,Torrey Craig,2019,DEN,SF,20.039,-0.907,-0.955,0.048,1.424,Stationary Shooter,Point of Attack
+1628515,Isaiah Briscoe,2019,ORL,PG,14.339,-2.724,-2.629,-0.095,-0.128,Primary Ball Handler,Point of Attack
+1628960,Grayson Allen,2019,UTA,SG,10.955,-3.134,-0.994,-2.139,-0.203,Secondary Ball Handler,Low Activity
+1628963,Marvin Bagley Iii,2019,SAC,PF,25.282,-1.643,0.065,-1.708,0.732,Shot Creator,Helper
+1628964,Mo Bamba,2019,ORL,C,16.301,-0.421,-2.227,1.806,0.97,Athletic Finisher,Anchor Big
+1628966,Keita Bates-Diop,2019,MIN,SF,16.778,-1.748,-1.423,-0.325,0.201,Movement Shooter,Chaser
+1628969,Mikal Bridges,2019,PHO,SF,29.475,-1.214,-1.168,-0.046,1.805,Movement Shooter,Wing Stopper
+1628970,Miles Bridges,2019,CHO,SF,21.205,-0.56,-0.673,0.113,1.992,Movement Shooter,Helper
+1628971,Bruce Brown,2019,DET,SG,19.584,-2.363,-3.139,0.776,0.004,Athletic Finisher,Point of Attack
+1628972,Troy Brown Jr.,2019,WAS,SF,14.033,-0.692,-0.248,-0.444,0.794,Athletic Finisher,Chaser
+1628973,Jalen Brunson,2019,DAL,PG,21.798,-1.042,-0.302,-0.74,1.367,Primary Ball Handler,Point of Attack
+1628975,Jevon Carter,2019,MEM,PG,14.785,-1.927,-1.731,-0.196,0.163,Secondary Ball Handler,Point of Attack
+1628976,Wendell Carter Jr.,2019,CHI,C,25.223,-0.042,-2.063,2.022,1.681,Post Scorer,Mobile Big
+1628977,Hamidou Diallo,2019,OKC,SG,10.318,-2.364,-1.559,-0.805,0.001,Athletic Finisher,Wing Stopper
+1628978,Donte Divincenzo,2019,MIL,SG,15.231,-1.436,-1.14,-0.296,0.247,Movement Shooter,Chaser
+1628983,Shai Gilgeous-Alexander,2019,LAC,PG,26.512,-1.385,-2.067,0.682,1.381,Slasher,Point of Attack
+1628984,Devonte' Graham,2019,CHO,PG,14.696,-0.652,0.43,-1.082,0.753,Shot Creator,Point of Attack
+1628988,Aaron Holiday,2019,IND,PG,12.916,-1.962,-0.955,-1.008,0.168,Secondary Ball Handler,Point of Attack
+1628989,Kevin Huerter,2019,ATL,SG,27.313,-1.084,-0.702,-0.382,1.703,Secondary Ball Handler,Chaser
+1628990,Chandler Hutchison,2019,CHI,SF,20.331,-2.259,-2.668,0.409,0.062,Athletic Finisher,Helper
+1628991,Jaren Jackson Jr.,2019,MEM,PF,26.117,-0.828,-1.818,0.99,1.513,Post Scorer,Helper
+1628995,Kevin Knox Ii,2019,NYK,PF,28.773,-5.397,-2.641,-2.756,-4.035,Movement Shooter,Low Activity
+1629001,De'Anthony Melton,2019,PHO,PG,19.677,-0.949,-1.877,0.929,0.905,Primary Ball Handler,Point of Attack
+1629003,Shake Milton,2019,PHI,SG,13.411,-1.424,-0.673,-0.751,0.164,Movement Shooter,Low Activity
+1629004,Svi Mykhailiuk,2019,LAL/DET,SF,10.478,-2.841,-1.363,-1.477,-0.133,Off Screen Shooter,Low Activity
+1629006,Josh Okogie,2019,MIN,SG,23.582,-0.062,-0.886,0.824,2.619,Stationary Shooter,Wing Stopper
+1629011,Mitchell Robinson,2019,NYK,C,20.599,0.922,-1.101,2.023,2.918,Roll + Cut Big,Anchor Big
+1629012,Collin Sexton,2019,CLE,PG,31.769,-3.674,-1.34,-2.334,-2.155,Shot Creator,Point of Attack
+1629013,Landry Shamet,2019,PHI/LAC,SG,22.808,-1.45,-0.464,-0.986,1.068,Off Screen Shooter,Chaser
+1629016,Omari Spellman,2019,ATL,PF,17.491,-1.769,-1.283,-0.486,0.31,Stretch Big,Helper
+1629019,Allonzo Trier,2019,NYK,SG,22.789,-3.948,-1.712,-2.236,-1.454,Shot Creator,Low Activity
+1629021,Moritz Wagner,2019,LAL,C,10.376,-1.476,-1.671,0.195,0.257,Stretch Big,Helper
+1629026,Kenrich Williams,2019,NOP,SF,23.461,-0.212,-0.787,0.575,1.514,Movement Shooter,Wing Stopper
+1629027,Trae Young,2019,ATL,PG,30.905,-1.628,0.795,-2.423,1.194,Primary Ball Handler,Point of Attack
+1629028,Deandre Ayton,2019,PHO,C,30.742,-0.496,-0.654,0.159,2.656,Post Scorer,Anchor Big
+1629029,Luka Dončić,2019,DAL,SG,32.193,1.385,1.705,-0.32,5.674,Shot Creator,Low Activity
+1629033,Theo Pinson,2019,BRK,SG,11.742,-0.716,-0.595,-0.121,0.227,Shot Creator,Chaser
+1629059,Elie Okobo,2019,PHO,PG,18.08,-2.956,-1.96,-0.996,-0.36,Primary Ball Handler,Point of Attack
+1629066,Rodions Kurucs,2019,BRK,SF,20.535,-1.018,-1.057,0.039,1.132,Movement Shooter,Helper
+1629102,Brandon Sampson,2019,CHI,SG,15.307,-2.054,-1.747,-0.307,0.043,Movement Shooter,Low Activity
+1629109,Gary Clark,2019,HOU,PF,12.56,-1.606,-1.252,-0.354,0.315,Stationary Shooter,Helper
+1629121,Jaylen Adams,2019,ATL,PG,12.576,-2.135,-1.759,-0.376,0.064,Primary Ball Handler,Point of Attack
+1629140,Johnathan Williams,2019,LAL,C,15.487,-0.644,-0.159,-0.485,0.416,Roll + Cut Big,Mobile Big
+1629151,Ryan Broekhoff,2019,DAL,SG,10.797,-1.715,-0.642,-1.073,0.191,Off Screen Shooter,Low Activity
+1629244,Cam Reynolds,2019,MIN,SG,13.654,-1.638,-0.82,-0.818,0.122,Movement Shooter,Chaser

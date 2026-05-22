@@ -2,5 +2,6 @@ metric,star_yoy_r
 PER,0.853
 BPM,0.755
 WS48,0.602
-BPR,0.235
+BPR,0.508
+BOX_BPR,0.507
 VORP,0.233

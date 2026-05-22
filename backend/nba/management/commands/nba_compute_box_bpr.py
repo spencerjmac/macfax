@@ -6,8 +6,11 @@ players in a season using Ridge regression on per-100-possession
 box-score features.
 
 Training targets (in priority order):
-  1. baseline_obpr / baseline_dbpr from RAPM (team-quality-adjusted, preferred)
-  2. o_mpir / d_mpir (NBA.com E_OFF/DEF_RATING residuals, fallback)
+  1. baseline_obpr / baseline_dbpr from RAPM + LEBRON blend (when metrics CSV exists)
+     blend = 0.7 × RAPM + 0.3 × O_LEBRON/D_LEBRON
+     LEBRON blend pulls star targets higher, reduces role-player context inflation
+  2. baseline_obpr / baseline_dbpr from RAPM only (when no LEBRON data)
+  3. o_mpir / d_mpir (NBA.com E_OFF/DEF_RATING residuals, fallback)
 
 Run nba_compute_baseline_rapm before this command to enable RAPM targets.
 
@@ -19,6 +22,7 @@ Usage:
 """
 
 import logging
+import re
 from pathlib import Path
 
 from django.core.management.base import BaseCommand, CommandError
@@ -32,9 +36,59 @@ from nba.analytics.box_bpr import (
     train_nba_box_bpr,
 )
 from nba.analytics.career_stats import build_career_stats_map
-from nba.models import NBAPlayerSeasonStats
+from nba.models import NBAPlayer, NBAPlayerSeasonStats
 
 logger = logging.getLogger(__name__)
+
+SCRIPT_DIR      = Path(__file__).parent.parent.parent.parent.parent   # project root
+METRICS_DIR     = SCRIPT_DIR / "metrics_output"
+LEBRON_BLEND_W  = 0.7    # weight given to LEBRON in the target blend (0.3 RAPM + 0.7 LEBRON)
+
+
+def _norm_name(s: str) -> str:
+    s = str(s).lower().encode("ascii", "ignore").decode()
+    return re.sub(r"[^a-z ]", "", s).strip()
+
+
+def _load_lebron_targets(season_year: int, player_pks: list[int]) -> dict[int, tuple[float, float]]:
+    """
+    Load O-LEBRON / D-LEBRON directly from lebron-data-{year}.csv and match to NBAPlayer PKs.
+    Returns {player_pk: (o_lebron, d_lebron)} — only players with both values.
+    Falls back to empty dict if CSV not found.
+    Available for seasons 2016-2026.
+    """
+    try:
+        import pandas as pd
+        from rapidfuzz import fuzz, process as rfp
+    except ImportError:
+        return {}
+
+    csv_path = SCRIPT_DIR / f"lebron-data-{season_year}.csv"
+    if not csv_path.exists():
+        return {}
+
+    df = pd.read_csv(csv_path)
+    # Raw column names: Player, O-LEBRON, D-LEBRON, nba_id
+    df = df.rename(columns={"Player": "player_name", "O-LEBRON": "O_LEBRON", "D-LEBRON": "D_LEBRON"})
+    df = df.sort_values("MPG", ascending=False).drop_duplicates("player_name", keep="first")
+    df = df.dropna(subset=["O_LEBRON", "D_LEBRON"])
+
+    lebron_norms = df["player_name"].apply(_norm_name).tolist()
+
+    # Build pk → norm_name for players in this season
+    pk_to_norm = {
+        p.pk: _norm_name(p.name)
+        for p in NBAPlayer.objects.filter(pk__in=player_pks).only("pk", "name")
+    }
+
+    result: dict[int, tuple[float, float]] = {}
+    for pk, norm in pk_to_norm.items():
+        match = rfp.extractOne(norm, lebron_norms, scorer=fuzz.WRatio, score_cutoff=82)
+        if match:
+            row = df.iloc[match[2]]
+            result[pk] = (float(row["O_LEBRON"]), float(row["D_LEBRON"]))
+
+    return result
 
 
 class Command(BaseCommand):
@@ -170,6 +224,35 @@ class Command(BaseCommand):
             raise CommandError(
                 "Insufficient targets (<30). Run nba_sync_player_advanced "
                 "or nba_compute_baseline_rapm first."
+            )
+
+        # ── 3b. Blend LEBRON into RAPM targets ────────────────────────────────
+        # For players with RAPM targets: target = 0.7 × RAPM + 0.3 × LEBRON
+        # Pulls star targets higher (LEBRON rates Jokić/SGA higher than single-season RAPM)
+        # Moderates role player inflation (LEBRON less susceptible to lineup-context noise)
+        # Only applied when a season-specific metrics CSV exists.
+        all_pks = [p["player_id"] for p in stats_values]
+        lebron_map = _load_lebron_targets(season_year, all_pks)
+
+        n_blended = 0
+        if lebron_map:
+            for pid in list(rapm_pids):  # only blend for RAPM-trained players
+                if pid in lebron_map:
+                    o_leb, d_leb = lebron_map[pid]
+                    if pid in target_obpr:
+                        target_obpr[pid] = (1 - LEBRON_BLEND_W) * target_obpr[pid] + LEBRON_BLEND_W * o_leb
+                    if pid in target_dbpr:
+                        target_dbpr[pid] = (1 - LEBRON_BLEND_W) * target_dbpr[pid] + LEBRON_BLEND_W * d_leb
+                    n_blended += 1
+
+        if lebron_map:
+            self.stdout.write(
+                f"  LEBRON blend applied: {n_blended} players "
+                f"({1-LEBRON_BLEND_W:.0%}×RAPM + {LEBRON_BLEND_W:.0%}×LEBRON) | no-match: {len(rapm_pids) - n_blended} players (pure RAPM)"
+            )
+        else:
+            self.stdout.write(
+                f"  LEBRON blend: skipped (no metrics CSV for {season_year})"
             )
 
         # ── 4. Train / predict ────────────────────────────────────────────────
