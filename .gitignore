@@ -82,3 +82,7 @@ backend/core/management/commands/backtest_recency.py
 
 lightbulb.py
 macfax.dump
+
+# MPS scrape caches and backups
+mps/data/supplement_cache/
+mps/data/*.bak

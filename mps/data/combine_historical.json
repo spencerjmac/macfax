@@ -1,0 +1,5730 @@
+{
+  "fetched_at": "2026-05-27T16:21:12.240510+00:00",
+  "seasons": [
+    "2010",
+    "2011",
+    "2012",
+    "2013",
+    "2014",
+    "2015",
+    "2016",
+    "2017",
+    "2018",
+    "2019",
+    "2020",
+    "2021",
+    "2022"
+  ],
+  "data": {
+    "2010": {
+      "Solomon Alabi": {
+        "height_in": 83.5,
+        "wingspan_in": 89.0,
+        "standing_reach_in": 113.0,
+        "weight_lbs": 237.4,
+        "max_vertical_in": 26.0
+      },
+      "Cole Aldrich": {
+        "height_in": 81.0,
+        "wingspan_in": 88.75,
+        "standing_reach_in": 111.5,
+        "weight_lbs": 236.0,
+        "max_vertical_in": 28.0
+      },
+      "Al-Farouq Aminu": {
+        "height_in": 79.25,
+        "wingspan_in": 87.25,
+        "standing_reach_in": 108.5,
+        "weight_lbs": 216.0,
+        "max_vertical_in": 33.5
+      },
+      "James Anderson": {
+        "height_in": 76.75,
+        "wingspan_in": 80.5,
+        "standing_reach_in": 104.0,
+        "weight_lbs": 207.6,
+        "max_vertical_in": 35.5
+      },
+      "Luke Babbitt": {
+        "height_in": 79.5,
+        "wingspan_in": 83.25,
+        "standing_reach_in": 104.5,
+        "weight_lbs": 217.8,
+        "max_vertical_in": 37.5
+      },
+      "Eric Bledsoe": {
+        "height_in": 72.25,
+        "wingspan_in": 79.5,
+        "standing_reach_in": 98.0,
+        "weight_lbs": 191.6,
+        "max_vertical_in": null
+      },
+      "Trevor Booker": {
+        "height_in": 78.25,
+        "wingspan_in": 81.75,
+        "standing_reach_in": 106.0,
+        "weight_lbs": 235.8,
+        "max_vertical_in": 36.0
+      },
+      "Craig Brackins": {
+        "height_in": 80.5,
+        "wingspan_in": 84.0,
+        "standing_reach_in": 109.0,
+        "weight_lbs": 229.0,
+        "max_vertical_in": 35.0
+      },
+      "Avery Bradley": {
+        "height_in": 74.0,
+        "wingspan_in": 79.25,
+        "standing_reach_in": 98.5,
+        "weight_lbs": 180.4,
+        "max_vertical_in": 37.5
+      },
+      "Derrick Caracter": {
+        "height_in": 80.25,
+        "wingspan_in": 84.25,
+        "standing_reach_in": 107.5,
+        "weight_lbs": 280.0,
+        "max_vertical_in": 30.5
+      },
+      "Sherron Collins": {
+        "height_in": 70.25,
+        "wingspan_in": 74.5,
+        "standing_reach_in": 94.0,
+        "weight_lbs": 217.2,
+        "max_vertical_in": 33.0
+      },
+      "DeMarcus Cousins": {
+        "height_in": 81.5,
+        "wingspan_in": 89.75,
+        "standing_reach_in": 113.0,
+        "weight_lbs": 291.8,
+        "max_vertical_in": 27.5
+      },
+      "Jordan Crawford": {
+        "height_in": 75.0,
+        "wingspan_in": 79.0,
+        "standing_reach_in": 101.0,
+        "weight_lbs": 198.4,
+        "max_vertical_in": 34.5
+      },
+      "Ed Davis": {
+        "height_in": 81.0,
+        "wingspan_in": 84.0,
+        "standing_reach_in": 108.0,
+        "weight_lbs": 226.6,
+        "max_vertical_in": 36.0
+      },
+      "Devin Ebanks": {
+        "height_in": 79.0,
+        "wingspan_in": 84.25,
+        "standing_reach_in": 107.5,
+        "weight_lbs": 207.8,
+        "max_vertical_in": 32.0
+      },
+      "Derrick Favors": {
+        "height_in": 80.75,
+        "wingspan_in": 88.0,
+        "standing_reach_in": 110.0,
+        "weight_lbs": 245.2,
+        "max_vertical_in": 35.5
+      },
+      "Keith Gallon": {
+        "height_in": 80.5,
+        "wingspan_in": 88.5,
+        "standing_reach_in": 109.5,
+        "weight_lbs": 301.8,
+        "max_vertical_in": 28.5
+      },
+      "Charles Garcia": {
+        "height_in": 80.25,
+        "wingspan_in": 85.75,
+        "standing_reach_in": 107.5,
+        "weight_lbs": 231.6,
+        "max_vertical_in": 30.5
+      },
+      "Paul George": {
+        "height_in": 79.75,
+        "wingspan_in": 83.25,
+        "standing_reach_in": 107.0,
+        "weight_lbs": 214.4,
+        "max_vertical_in": null
+      },
+      "Luke Harangody": {
+        "height_in": 78.0,
+        "wingspan_in": 81.5,
+        "standing_reach_in": 106.0,
+        "weight_lbs": 240.2,
+        "max_vertical_in": 28.5
+      },
+      "Manny Harris": {
+        "height_in": 76.0,
+        "wingspan_in": 79.25,
+        "standing_reach_in": 102.0,
+        "weight_lbs": 185.1,
+        "max_vertical_in": null
+      },
+      "Gordon Hayward": {
+        "height_in": 78.75,
+        "wingspan_in": 79.75,
+        "standing_reach_in": 103.0,
+        "weight_lbs": 211.0,
+        "max_vertical_in": 34.5
+      },
+      "Lazar Hayward": {
+        "height_in": 76.5,
+        "wingspan_in": 84.75,
+        "standing_reach_in": 102.0,
+        "weight_lbs": 225.8,
+        "max_vertical_in": 36.0
+      },
+      "Xavier Henry": {
+        "height_in": 77.25,
+        "wingspan_in": 83.25,
+        "standing_reach_in": 105.0,
+        "weight_lbs": 210.2,
+        "max_vertical_in": 36.5
+      },
+      "Darington Hobson": {
+        "height_in": 77.25,
+        "wingspan_in": 81.25,
+        "standing_reach_in": 104.5,
+        "weight_lbs": 203.6,
+        "max_vertical_in": 34.0
+      },
+      "Damion James": {
+        "height_in": 78.25,
+        "wingspan_in": 84.75,
+        "standing_reach_in": 107.0,
+        "weight_lbs": 226.6,
+        "max_vertical_in": 33.0
+      },
+      "Wesley Johnson": {
+        "height_in": 78.25,
+        "wingspan_in": 85.0,
+        "standing_reach_in": 106.0,
+        "weight_lbs": 206.4,
+        "max_vertical_in": 37.0
+      },
+      "Armon Johnson": {
+        "height_in": 74.0,
+        "wingspan_in": 80.0,
+        "standing_reach_in": 99.5,
+        "weight_lbs": 195.2,
+        "max_vertical_in": 38.5
+      },
+      "Dominique Jones": {
+        "height_in": 75.25,
+        "wingspan_in": 81.25,
+        "standing_reach_in": 101.0,
+        "weight_lbs": 216.0,
+        "max_vertical_in": 32.5
+      },
+      "Jerome Jordan": {
+        "height_in": 83.5,
+        "wingspan_in": 89.25,
+        "standing_reach_in": 113.0,
+        "weight_lbs": 244.2,
+        "max_vertical_in": null
+      },
+      "Sylven Landesberg": {
+        "height_in": 76.75,
+        "wingspan_in": 81.0,
+        "standing_reach_in": 100.5,
+        "weight_lbs": 210.0,
+        "max_vertical_in": 32.0
+      },
+      "Gani Lawal": {
+        "height_in": 79.5,
+        "wingspan_in": 84.0,
+        "standing_reach_in": 107.5,
+        "weight_lbs": 233.4,
+        "max_vertical_in": 31.5
+      },
+      "Greg Monroe": {
+        "height_in": 81.75,
+        "wingspan_in": 86.25,
+        "standing_reach_in": 108.5,
+        "weight_lbs": 246.6,
+        "max_vertical_in": 29.0
+      },
+      "Daniel Orton": {
+        "height_in": 80.75,
+        "wingspan_in": 88.25,
+        "standing_reach_in": 110.5,
+        "weight_lbs": 269.2,
+        "max_vertical_in": 30.5
+      },
+      "Artsiom Parakhouski": {
+        "height_in": 82.25,
+        "wingspan_in": 85.0,
+        "standing_reach_in": 109.5,
+        "weight_lbs": 268.2,
+        "max_vertical_in": 26.5
+      },
+      "Patrick Patterson": {
+        "height_in": 80.0,
+        "wingspan_in": 85.25,
+        "standing_reach_in": 107.0,
+        "weight_lbs": 239.6,
+        "max_vertical_in": 33.5
+      },
+      "Dexter Pittman": {
+        "height_in": 81.5,
+        "wingspan_in": 90.0,
+        "standing_reach_in": 111.0,
+        "weight_lbs": 302.6,
+        "max_vertical_in": null
+      },
+      "Andy Rautins": {
+        "height_in": 76.25,
+        "wingspan_in": 79.0,
+        "standing_reach_in": 100.0,
+        "weight_lbs": 191.6,
+        "max_vertical_in": 30.5
+      },
+      "Ryan Richards": {
+        "height_in": 82.5,
+        "wingspan_in": 85.5,
+        "standing_reach_in": 110.0,
+        "weight_lbs": 230.2,
+        "max_vertical_in": 28.5
+      },
+      "Stanley Robinson": {
+        "height_in": 78.5,
+        "wingspan_in": 84.0,
+        "standing_reach_in": 107.5,
+        "weight_lbs": 213.2,
+        "max_vertical_in": 37.5
+      },
+      "Larry Sanders": {
+        "height_in": 81.25,
+        "wingspan_in": 89.75,
+        "standing_reach_in": 112.0,
+        "weight_lbs": 222.4,
+        "max_vertical_in": 28.0
+      },
+      "Jon Scheyer": {
+        "height_in": 76.75,
+        "wingspan_in": 75.25,
+        "standing_reach_in": 99.0,
+        "weight_lbs": 180.0,
+        "max_vertical_in": null
+      },
+      "Lance Stephenson": {
+        "height_in": 76.5,
+        "wingspan_in": 82.5,
+        "standing_reach_in": 103.0,
+        "weight_lbs": 227.0,
+        "max_vertical_in": 33.0
+      },
+      "Mikhail Torrance": {
+        "height_in": 76.0,
+        "wingspan_in": 79.5,
+        "standing_reach_in": 103.0,
+        "weight_lbs": 208.8,
+        "max_vertical_in": 32.0
+      },
+      "Evan Turner": {
+        "height_in": 77.75,
+        "wingspan_in": 80.0,
+        "standing_reach_in": 103.5,
+        "weight_lbs": 213.8,
+        "max_vertical_in": 34.5
+      },
+      "Ekpe Udoh": {
+        "height_in": 80.75,
+        "wingspan_in": 88.5,
+        "standing_reach_in": 106.5,
+        "weight_lbs": 237.4,
+        "max_vertical_in": 33.5
+      },
+      "Jarvis Varnado": {
+        "height_in": 80.25,
+        "wingspan_in": 87.5,
+        "standing_reach_in": 109.5,
+        "weight_lbs": 210.2,
+        "max_vertical_in": 32.5
+      },
+      "Greivis Vasquez": {
+        "height_in": 77.0,
+        "wingspan_in": 79.0,
+        "standing_reach_in": 101.0,
+        "weight_lbs": 210.8,
+        "max_vertical_in": null
+      },
+      "John Wall": {
+        "height_in": 74.75,
+        "wingspan_in": 81.25,
+        "standing_reach_in": 101.5,
+        "weight_lbs": 195.6,
+        "max_vertical_in": 39.0
+      },
+      "Willie Warren": {
+        "height_in": 74.5,
+        "wingspan_in": 78.0,
+        "standing_reach_in": 99.5,
+        "weight_lbs": 208.4,
+        "max_vertical_in": 31.5
+      },
+      "Terrico White": {
+        "height_in": 75.75,
+        "wingspan_in": 81.0,
+        "standing_reach_in": 101.0,
+        "weight_lbs": 202.6,
+        "max_vertical_in": 40.0
+      },
+      "Hassan Whiteside": {
+        "height_in": 82.5,
+        "wingspan_in": 91.0,
+        "standing_reach_in": 113.0,
+        "weight_lbs": 226.6,
+        "max_vertical_in": 31.5
+      }
+    },
+    "2011": {
+      "Keith Benson": {
+        "height_in": 82.0,
+        "wingspan_in": 87.75,
+        "standing_reach_in": 109.5,
+        "weight_lbs": 217.0,
+        "max_vertical_in": 36.0
+      },
+      "Marshon Brooks": {
+        "height_in": 76.25,
+        "wingspan_in": 85.0,
+        "standing_reach_in": 101.0,
+        "weight_lbs": 194.6,
+        "max_vertical_in": 38.5
+      },
+      "Alec Burks": {
+        "height_in": 77.0,
+        "wingspan_in": 82.0,
+        "standing_reach_in": 103.5,
+        "weight_lbs": 192.6,
+        "max_vertical_in": 36.0
+      },
+      "Jimmy Butler": {
+        "height_in": 78.0,
+        "wingspan_in": 79.5,
+        "standing_reach_in": 101.5,
+        "weight_lbs": 222.2,
+        "max_vertical_in": 39.0
+      },
+      "Norris Cole": {
+        "height_in": 72.25,
+        "wingspan_in": 74.25,
+        "standing_reach_in": 95.5,
+        "weight_lbs": 174.4,
+        "max_vertical_in": 38.5
+      },
+      "Jon Diebler": {
+        "height_in": 77.25,
+        "wingspan_in": 78.0,
+        "standing_reach_in": 99.0,
+        "weight_lbs": 196.6,
+        "max_vertical_in": 35.0
+      },
+      "Michael Dunigan": {
+        "height_in": 80.5,
+        "wingspan_in": 87.25,
+        "standing_reach_in": 107.5,
+        "weight_lbs": 237.6,
+        "max_vertical_in": 34.5
+      },
+      "LaceDarius Dunn": {
+        "height_in": 75.0,
+        "wingspan_in": 78.25,
+        "standing_reach_in": 101.0,
+        "weight_lbs": 187.8,
+        "max_vertical_in": 31.0
+      },
+      "Kenneth Faried": {
+        "height_in": 78.0,
+        "wingspan_in": 84.0,
+        "standing_reach_in": 108.0,
+        "weight_lbs": 224.6,
+        "max_vertical_in": 35.0
+      },
+      "James Fredette": {
+        "height_in": 72.75,
+        "wingspan_in": 76.5,
+        "standing_reach_in": 96.5,
+        "weight_lbs": 196.0,
+        "max_vertical_in": 33.0
+      },
+      "Andrew Goudelock": {
+        "height_in": 73.25,
+        "wingspan_in": 76.25,
+        "standing_reach_in": 96.5,
+        "weight_lbs": 197.6,
+        "max_vertical_in": 37.0
+      },
+      "Jordan Hamilton": {
+        "height_in": 78.75,
+        "wingspan_in": 81.5,
+        "standing_reach_in": 104.0,
+        "weight_lbs": 228.4,
+        "max_vertical_in": 32.0
+      },
+      "Justin Harper": {
+        "height_in": 80.0,
+        "wingspan_in": 83.75,
+        "standing_reach_in": 106.0,
+        "weight_lbs": 228.0,
+        "max_vertical_in": 33.0
+      },
+      "Tobias Harris": {
+        "height_in": 78.5,
+        "wingspan_in": 83.0,
+        "standing_reach_in": 103.5,
+        "weight_lbs": 222.8,
+        "max_vertical_in": 37.5
+      },
+      "Tyler Honeycutt": {
+        "height_in": 78.75,
+        "wingspan_in": 81.0,
+        "standing_reach_in": 105.0,
+        "weight_lbs": 186.8,
+        "max_vertical_in": 37.0
+      },
+      "Scotty Hopson": {
+        "height_in": 77.75,
+        "wingspan_in": 82.5,
+        "standing_reach_in": 103.5,
+        "weight_lbs": 204.6,
+        "max_vertical_in": 36.0
+      },
+      "Kyrie Irving": {
+        "height_in": 73.75,
+        "wingspan_in": 76.0,
+        "standing_reach_in": 99.0,
+        "weight_lbs": 191.0,
+        "max_vertical_in": null
+      },
+      "Rick Jackson": {
+        "height_in": 80.25,
+        "wingspan_in": 86.0,
+        "standing_reach_in": 106.5,
+        "weight_lbs": 241.8,
+        "max_vertical_in": 33.0
+      },
+      "Charles Jenkins": {
+        "height_in": 73.5,
+        "wingspan_in": 79.5,
+        "standing_reach_in": 96.5,
+        "weight_lbs": 216.4,
+        "max_vertical_in": 34.0
+      },
+      "JaJuan Johnson": {
+        "height_in": 81.0,
+        "wingspan_in": 86.0,
+        "standing_reach_in": 107.5,
+        "weight_lbs": 219.8,
+        "max_vertical_in": 38.0
+      },
+      "Cory Joseph": {
+        "height_in": 74.0,
+        "wingspan_in": 77.5,
+        "standing_reach_in": 99.0,
+        "weight_lbs": 186.2,
+        "max_vertical_in": 35.0
+      },
+      "Enes Kanter": {
+        "height_in": 81.75,
+        "wingspan_in": 85.5,
+        "standing_reach_in": 109.5,
+        "weight_lbs": 259.2,
+        "max_vertical_in": 32.5
+      },
+      "Brandon Knight": {
+        "height_in": 73.5,
+        "wingspan_in": 78.75,
+        "standing_reach_in": 98.5,
+        "weight_lbs": 176.8,
+        "max_vertical_in": 37.5
+      },
+      "Malcolm Lee": {
+        "height_in": 76.0,
+        "wingspan_in": 81.75,
+        "standing_reach_in": 101.5,
+        "weight_lbs": 198.2,
+        "max_vertical_in": 35.5
+      },
+      "Kawhi Leonard": {
+        "height_in": 78.0,
+        "wingspan_in": 87.0,
+        "standing_reach_in": 106.0,
+        "weight_lbs": 227.4,
+        "max_vertical_in": 32.0
+      },
+      "Travis Leslie": {
+        "height_in": 75.0,
+        "wingspan_in": 82.5,
+        "standing_reach_in": 103.0,
+        "weight_lbs": 205.0,
+        "max_vertical_in": 40.5
+      },
+      "Jon Leuer": {
+        "height_in": 82.0,
+        "wingspan_in": 84.0,
+        "standing_reach_in": 105.5,
+        "weight_lbs": 223.2,
+        "max_vertical_in": 36.5
+      },
+      "DeAndre Liggins": {
+        "height_in": 77.0,
+        "wingspan_in": 83.0,
+        "standing_reach_in": 103.5,
+        "weight_lbs": 202.2,
+        "max_vertical_in": 31.0
+      },
+      "David Lighty": {
+        "height_in": 76.75,
+        "wingspan_in": 80.0,
+        "standing_reach_in": 101.0,
+        "weight_lbs": 216.2,
+        "max_vertical_in": 33.0
+      },
+      "Shelvin Mack": {
+        "height_in": 73.0,
+        "wingspan_in": 79.5,
+        "standing_reach_in": 96.5,
+        "weight_lbs": 209.0,
+        "max_vertical_in": 39.0
+      },
+      "Demetri McCamey": {
+        "height_in": 73.75,
+        "wingspan_in": 78.25,
+        "standing_reach_in": 99.5,
+        "weight_lbs": 204.0,
+        "max_vertical_in": 33.0
+      },
+      "E'Twaun Moore": {
+        "height_in": 74.5,
+        "wingspan_in": 81.5,
+        "standing_reach_in": 99.5,
+        "weight_lbs": 191.4,
+        "max_vertical_in": 34.5
+      },
+      "Markieff Morris": {
+        "height_in": 79.75,
+        "wingspan_in": 82.75,
+        "standing_reach_in": 106.5,
+        "weight_lbs": 240.8,
+        "max_vertical_in": 31.5
+      },
+      "Marcus Morris": {
+        "height_in": 79.0,
+        "wingspan_in": 82.0,
+        "standing_reach_in": 105.5,
+        "weight_lbs": 229.6,
+        "max_vertical_in": 33.0
+      },
+      "Darius Morris": {
+        "height_in": 75.25,
+        "wingspan_in": 79.5,
+        "standing_reach_in": 102.0,
+        "weight_lbs": 190.0,
+        "max_vertical_in": 32.0
+      },
+      "Chandler Parsons": {
+        "height_in": 80.75,
+        "wingspan_in": 81.5,
+        "standing_reach_in": 104.5,
+        "weight_lbs": 221.2,
+        "max_vertical_in": 31.5
+      },
+      "Jereme Richmond": {
+        "height_in": 78.0,
+        "wingspan_in": 82.25,
+        "standing_reach_in": 106.5,
+        "weight_lbs": 207.2,
+        "max_vertical_in": 33.5
+      },
+      "Josh Selby": {
+        "height_in": 73.75,
+        "wingspan_in": 77.25,
+        "standing_reach_in": 98.0,
+        "weight_lbs": 194.6,
+        "max_vertical_in": 42.0
+      },
+      "Iman Shumpert": {
+        "height_in": 76.25,
+        "wingspan_in": 81.5,
+        "standing_reach_in": 99.5,
+        "weight_lbs": 221.8,
+        "max_vertical_in": 42.0
+      },
+      "Kyle Singler": {
+        "height_in": 79.5,
+        "wingspan_in": 82.1,
+        "standing_reach_in": 106.0,
+        "weight_lbs": 228.0,
+        "max_vertical_in": 30.0
+      },
+      "Chris Singleton": {
+        "height_in": 79.75,
+        "wingspan_in": 85.0,
+        "standing_reach_in": 103.5,
+        "weight_lbs": 230.2,
+        "max_vertical_in": 37.5
+      },
+      "Jamie Skeen": {
+        "height_in": 78.5,
+        "wingspan_in": 85.25,
+        "standing_reach_in": 106.5,
+        "weight_lbs": 241.6,
+        "max_vertical_in": 30.5
+      },
+      "Gregory Smith": {
+        "height_in": 80.0,
+        "wingspan_in": 86.5,
+        "standing_reach_in": 106.5,
+        "weight_lbs": 252.8,
+        "max_vertical_in": 36.0
+      },
+      "Nolan Smith": {
+        "height_in": 73.5,
+        "wingspan_in": 77.5,
+        "standing_reach_in": 99.0,
+        "weight_lbs": 187.6,
+        "max_vertical_in": 34.0
+      },
+      "Malcolm Thomas": {
+        "height_in": 79.5,
+        "wingspan_in": 84.5,
+        "standing_reach_in": 107.5,
+        "weight_lbs": 223.0,
+        "max_vertical_in": 36.5
+      },
+      "Isaiah Thomas": {
+        "height_in": 68.75,
+        "wingspan_in": 73.75,
+        "standing_reach_in": 91.5,
+        "weight_lbs": 186.0,
+        "max_vertical_in": 40.0
+      },
+      "Trey Thompkins": {
+        "height_in": 80.5,
+        "wingspan_in": 85.0,
+        "standing_reach_in": 107.5,
+        "weight_lbs": 239.0,
+        "max_vertical_in": 30.5
+      },
+      "Tristan Thompson": {
+        "height_in": 79.5,
+        "wingspan_in": 85.25,
+        "standing_reach_in": 108.5,
+        "weight_lbs": 227.4,
+        "max_vertical_in": 35.0
+      },
+      "Klay Thompson": {
+        "height_in": 77.75,
+        "wingspan_in": 81.0,
+        "standing_reach_in": 103.5,
+        "weight_lbs": 205.6,
+        "max_vertical_in": 31.5
+      },
+      "Jeremy Tyler": {
+        "height_in": 81.0,
+        "wingspan_in": 89.0,
+        "standing_reach_in": 110.5,
+        "weight_lbs": 262.4,
+        "max_vertical_in": 33.5
+      },
+      "Nikola Vucevic": {
+        "height_in": 82.25,
+        "wingspan_in": 88.5,
+        "standing_reach_in": 112.5,
+        "weight_lbs": 259.8,
+        "max_vertical_in": 25.0
+      },
+      "Kemba Walker": {
+        "height_in": 71.5,
+        "wingspan_in": 75.5,
+        "standing_reach_in": 91.5,
+        "weight_lbs": 184.0,
+        "max_vertical_in": 39.5
+      },
+      "Derrick Williams": {
+        "height_in": 79.25,
+        "wingspan_in": 85.5,
+        "standing_reach_in": 108.0,
+        "weight_lbs": 248.4,
+        "max_vertical_in": 34.5
+      },
+      "Jordan Williams": {
+        "height_in": 79.75,
+        "wingspan_in": 84.25,
+        "standing_reach_in": 106.5,
+        "weight_lbs": 247.2,
+        "max_vertical_in": 30.5
+      }
+    },
+    "2012": {
+      "Quincy Acy": {
+        "height_in": 78.5,
+        "wingspan_in": 86.75,
+        "standing_reach_in": 106.5,
+        "weight_lbs": 223.8,
+        "max_vertical_in": 37.0
+      },
+      "Harrison Barnes": {
+        "height_in": 79.0,
+        "wingspan_in": 83.25,
+        "standing_reach_in": 101.5,
+        "weight_lbs": 227.8,
+        "max_vertical_in": 39.5
+      },
+      "Will Barton": {
+        "height_in": 77.0,
+        "wingspan_in": 81.75,
+        "standing_reach_in": 102.5,
+        "weight_lbs": 174.4,
+        "max_vertical_in": 34.0
+      },
+      "Bradley Beal": {
+        "height_in": 75.25,
+        "wingspan_in": 80.0,
+        "standing_reach_in": 100.0,
+        "weight_lbs": 201.8,
+        "max_vertical_in": 39.0
+      },
+      "J'Covan Brown": {
+        "height_in": 73.0,
+        "wingspan_in": 77.25,
+        "standing_reach_in": 96.0,
+        "weight_lbs": 202.4,
+        "max_vertical_in": 29.5
+      },
+      "William Buford": {
+        "height_in": 76.0,
+        "wingspan_in": 81.5,
+        "standing_reach_in": 102.0,
+        "weight_lbs": 214.6,
+        "max_vertical_in": 32.5
+      },
+      "Jae Crowder": {
+        "height_in": 76.75,
+        "wingspan_in": 81.25,
+        "standing_reach_in": 99.5,
+        "weight_lbs": 241.2,
+        "max_vertical_in": 34.5
+      },
+      "Jared Cunningham": {
+        "height_in": 75.5,
+        "wingspan_in": 78.5,
+        "standing_reach_in": 98.0,
+        "weight_lbs": 187.6,
+        "max_vertical_in": null
+      },
+      "Anthony Davis": {
+        "height_in": 81.25,
+        "wingspan_in": 89.5,
+        "standing_reach_in": 108.0,
+        "weight_lbs": 221.8,
+        "max_vertical_in": null
+      },
+      "Marcus Denmon": {
+        "height_in": 74.25,
+        "wingspan_in": 77.0,
+        "standing_reach_in": 94.5,
+        "weight_lbs": 188.2,
+        "max_vertical_in": 40.0
+      },
+      "Andre Drummond": {
+        "height_in": 81.75,
+        "wingspan_in": 90.25,
+        "standing_reach_in": 109.5,
+        "weight_lbs": 278.6,
+        "max_vertical_in": 33.5
+      },
+      "Kim English": {
+        "height_in": 76.5,
+        "wingspan_in": 78.5,
+        "standing_reach_in": 98.0,
+        "weight_lbs": 192.0,
+        "max_vertical_in": 36.5
+      },
+      "Festus Ezeli": {
+        "height_in": 81.75,
+        "wingspan_in": 89.75,
+        "standing_reach_in": 108.0,
+        "weight_lbs": 264.2,
+        "max_vertical_in": 33.5
+      },
+      "Drew Gordon": {
+        "height_in": 80.0,
+        "wingspan_in": 83.5,
+        "standing_reach_in": 103.5,
+        "weight_lbs": 239.0,
+        "max_vertical_in": 34.0
+      },
+      "Draymond Green": {
+        "height_in": 77.75,
+        "wingspan_in": 85.25,
+        "standing_reach_in": 105.0,
+        "weight_lbs": 235.6,
+        "max_vertical_in": 33.0
+      },
+      "JaMychal Green": {
+        "height_in": 80.0,
+        "wingspan_in": 86.25,
+        "standing_reach_in": 106.5,
+        "weight_lbs": 217.4,
+        "max_vertical_in": 32.5
+      },
+      "Maurice Harkless": {
+        "height_in": 79.25,
+        "wingspan_in": 84.0,
+        "standing_reach_in": 102.5,
+        "weight_lbs": 206.6,
+        "max_vertical_in": 37.0
+      },
+      "John Henson": {
+        "height_in": 81.0,
+        "wingspan_in": 89.0,
+        "standing_reach_in": 112.0,
+        "weight_lbs": 216.0,
+        "max_vertical_in": 30.0
+      },
+      "Tu Holloway": {
+        "height_in": 70.5,
+        "wingspan_in": 77.5,
+        "standing_reach_in": 94.5,
+        "weight_lbs": 186.8,
+        "max_vertical_in": 35.0
+      },
+      "Robbie Hummel": {
+        "height_in": 79.25,
+        "wingspan_in": 80.5,
+        "standing_reach_in": 102.0,
+        "weight_lbs": 218.0,
+        "max_vertical_in": 30.0
+      },
+      "Bernard James": {
+        "height_in": 80.75,
+        "wingspan_in": 87.0,
+        "standing_reach_in": 108.5,
+        "weight_lbs": 229.8,
+        "max_vertical_in": 32.5
+      },
+      "John Jenkins": {
+        "height_in": 75.25,
+        "wingspan_in": 80.5,
+        "standing_reach_in": 98.0,
+        "weight_lbs": 212.0,
+        "max_vertical_in": 36.5
+      },
+      "Orlando Johnson": {
+        "height_in": 75.75,
+        "wingspan_in": 83.25,
+        "standing_reach_in": 99.0,
+        "weight_lbs": 223.8,
+        "max_vertical_in": 39.5
+      },
+      "Darius Johnson-Odom": {
+        "height_in": 73.5,
+        "wingspan_in": 79.0,
+        "standing_reach_in": 96.0,
+        "weight_lbs": 212.0,
+        "max_vertical_in": 41.5
+      },
+      "Terrence Jones": {
+        "height_in": 80.25,
+        "wingspan_in": 86.25,
+        "standing_reach_in": 107.0,
+        "weight_lbs": 252.0,
+        "max_vertical_in": 34.5
+      },
+      "Perry Jones": {
+        "height_in": 82.25,
+        "wingspan_in": 85.75,
+        "standing_reach_in": 107.0,
+        "weight_lbs": 233.8,
+        "max_vertical_in": 38.5
+      },
+      "Kevin Jones": {
+        "height_in": 78.25,
+        "wingspan_in": 85.5,
+        "standing_reach_in": 105.0,
+        "weight_lbs": 251.2,
+        "max_vertical_in": 32.5
+      },
+      "Kris Joseph": {
+        "height_in": 78.0,
+        "wingspan_in": 83.0,
+        "standing_reach_in": 104.0,
+        "weight_lbs": 215.0,
+        "max_vertical_in": 35.0
+      },
+      "Michael Kidd-Gilchrist": {
+        "height_in": 77.75,
+        "wingspan_in": 84.0,
+        "standing_reach_in": 104.5,
+        "weight_lbs": 232.8,
+        "max_vertical_in": 35.5
+      },
+      "Jeremy Lamb": {
+        "height_in": 76.0,
+        "wingspan_in": 83.0,
+        "standing_reach_in": 102.0,
+        "weight_lbs": 179.2,
+        "max_vertical_in": 38.0
+      },
+      "Doron Lamb": {
+        "height_in": 75.25,
+        "wingspan_in": 78.75,
+        "standing_reach_in": 98.5,
+        "weight_lbs": 199.4,
+        "max_vertical_in": 33.5
+      },
+      "Meyers Leonard": {
+        "height_in": 83.75,
+        "wingspan_in": 87.0,
+        "standing_reach_in": 108.0,
+        "weight_lbs": 249.8,
+        "max_vertical_in": 32.5
+      },
+      "Damian Lillard": {
+        "height_in": 73.75,
+        "wingspan_in": 79.75,
+        "standing_reach_in": 95.5,
+        "weight_lbs": 188.8,
+        "max_vertical_in": 39.5
+      },
+      "Scott Machado": {
+        "height_in": 73.0,
+        "wingspan_in": 76.0,
+        "standing_reach_in": 94.5,
+        "weight_lbs": 205.8,
+        "max_vertical_in": 32.5
+      },
+      "Kendall Marshall": {
+        "height_in": 75.25,
+        "wingspan_in": 77.5,
+        "standing_reach_in": 96.0,
+        "weight_lbs": 198.4,
+        "max_vertical_in": 37.0
+      },
+      "Fab Melo": {
+        "height_in": 82.75,
+        "wingspan_in": 86.5,
+        "standing_reach_in": 110.0,
+        "weight_lbs": 255.0,
+        "max_vertical_in": 31.0
+      },
+      "Khris Middleton": {
+        "height_in": 78.75,
+        "wingspan_in": 82.75,
+        "standing_reach_in": 103.0,
+        "weight_lbs": 216.2,
+        "max_vertical_in": 31.0
+      },
+      "Quincy Miller": {
+        "height_in": 80.75,
+        "wingspan_in": 85.25,
+        "standing_reach_in": 105.0,
+        "weight_lbs": 218.7,
+        "max_vertical_in": 36.0
+      },
+      "Darius Miller": {
+        "height_in": 78.0,
+        "wingspan_in": 81.0,
+        "standing_reach_in": 101.0,
+        "weight_lbs": 233.4,
+        "max_vertical_in": 37.0
+      },
+      "Tony Mitchell": {
+        "height_in": 77.25,
+        "wingspan_in": 82.0,
+        "standing_reach_in": 100.0,
+        "weight_lbs": 216.4,
+        "max_vertical_in": 40.0
+      },
+      "Arnett Moultrie": {
+        "height_in": 81.5,
+        "wingspan_in": 86.25,
+        "standing_reach_in": 106.5,
+        "weight_lbs": 232.8,
+        "max_vertical_in": 37.5
+      },
+      "Kevin Murphy": {
+        "height_in": 77.0,
+        "wingspan_in": 78.75,
+        "standing_reach_in": 99.0,
+        "weight_lbs": 194.0,
+        "max_vertical_in": 36.5
+      },
+      "Andrew Nicholson": {
+        "height_in": 80.5,
+        "wingspan_in": 88.0,
+        "standing_reach_in": 107.0,
+        "weight_lbs": 234.0,
+        "max_vertical_in": 30.5
+      },
+      "Kyle O'Quinn": {
+        "height_in": 80.5,
+        "wingspan_in": 88.75,
+        "standing_reach_in": 106.5,
+        "weight_lbs": 240.8,
+        "max_vertical_in": 31.5
+      },
+      "Miles Plumlee": {
+        "height_in": 82.5,
+        "wingspan_in": 84.75,
+        "standing_reach_in": 105.5,
+        "weight_lbs": 252.4,
+        "max_vertical_in": 40.5
+      },
+      "Austin Rivers": {
+        "height_in": 75.5,
+        "wingspan_in": 79.25,
+        "standing_reach_in": 96.5,
+        "weight_lbs": 202.8,
+        "max_vertical_in": 37.5
+      },
+      "Thomas Robinson": {
+        "height_in": 79.75,
+        "wingspan_in": 87.25,
+        "standing_reach_in": 106.0,
+        "weight_lbs": 244.2,
+        "max_vertical_in": 35.5
+      },
+      "Terrence Ross": {
+        "height_in": 78.0,
+        "wingspan_in": 79.25,
+        "standing_reach_in": 100.5,
+        "weight_lbs": 196.6,
+        "max_vertical_in": 37.5
+      },
+      "Tomas Satoransky": {
+        "height_in": 78.5,
+        "wingspan_in": 79.25,
+        "standing_reach_in": 100.0,
+        "weight_lbs": 200.6,
+        "max_vertical_in": null
+      },
+      "Mike Scott": {
+        "height_in": 79.25,
+        "wingspan_in": 82.75,
+        "standing_reach_in": 104.0,
+        "weight_lbs": 240.8,
+        "max_vertical_in": 32.5
+      },
+      "Henry Sims": {
+        "height_in": 82.0,
+        "wingspan_in": 88.0,
+        "standing_reach_in": 108.0,
+        "weight_lbs": 241.2,
+        "max_vertical_in": 29.5
+      },
+      "Jared Sullinger": {
+        "height_in": 79.75,
+        "wingspan_in": 85.25,
+        "standing_reach_in": 105.5,
+        "weight_lbs": 268.2,
+        "max_vertical_in": 31.0
+      },
+      "Jordan Taylor": {
+        "height_in": 73.0,
+        "wingspan_in": 75.0,
+        "standing_reach_in": 92.5,
+        "weight_lbs": 192.8,
+        "max_vertical_in": 36.5
+      },
+      "Jeff Taylor": {
+        "height_in": 78.0,
+        "wingspan_in": 78.25,
+        "standing_reach_in": 101.5,
+        "weight_lbs": 212.8,
+        "max_vertical_in": 40.0
+      },
+      "Tyshawn Taylor": {
+        "height_in": 74.75,
+        "wingspan_in": 78.25,
+        "standing_reach_in": 97.5,
+        "weight_lbs": 177.0,
+        "max_vertical_in": 36.5
+      },
+      "Marquis Teague": {
+        "height_in": 73.0,
+        "wingspan_in": 79.25,
+        "standing_reach_in": 96.5,
+        "weight_lbs": 179.8,
+        "max_vertical_in": 40.5
+      },
+      "Hollis Thompson": {
+        "height_in": 78.75,
+        "wingspan_in": 81.5,
+        "standing_reach_in": 102.5,
+        "weight_lbs": 206.0,
+        "max_vertical_in": 36.5
+      },
+      "Dion Waiters": {
+        "height_in": 74.5,
+        "wingspan_in": 79.25,
+        "standing_reach_in": 98.0,
+        "weight_lbs": 221.0,
+        "max_vertical_in": null
+      },
+      "Royce White": {
+        "height_in": 79.0,
+        "wingspan_in": 84.0,
+        "standing_reach_in": 104.5,
+        "weight_lbs": 260.6,
+        "max_vertical_in": null
+      },
+      "Tony Wroten": {
+        "height_in": 76.75,
+        "wingspan_in": 81.0,
+        "standing_reach_in": 101.0,
+        "weight_lbs": 203.2,
+        "max_vertical_in": 35.5
+      },
+      "Tyler Zeller": {
+        "height_in": 83.25,
+        "wingspan_in": 84.0,
+        "standing_reach_in": 104.5,
+        "weight_lbs": 247.4,
+        "max_vertical_in": 34.0
+      }
+    },
+    "2013": {
+      "Steven Adams": {
+        "height_in": 82.75,
+        "wingspan_in": 88.5,
+        "standing_reach_in": 109.5,
+        "weight_lbs": 254.5,
+        "max_vertical_in": 33.0
+      },
+      "Vander Blue": {
+        "height_in": 75.5,
+        "wingspan_in": 78.0,
+        "standing_reach_in": 100.5,
+        "weight_lbs": 197.4,
+        "max_vertical_in": 37.5
+      },
+      "Lorenzo Brown": {
+        "height_in": 76.0,
+        "wingspan_in": 79.0,
+        "standing_reach_in": 100.0,
+        "weight_lbs": 189.2,
+        "max_vertical_in": 34.0
+      },
+      "Reggie Bullock": {
+        "height_in": 77.75,
+        "wingspan_in": 80.75,
+        "standing_reach_in": 102.0,
+        "weight_lbs": 199.8,
+        "max_vertical_in": 36.5
+      },
+      "Trey Burke": {
+        "height_in": 71.75,
+        "wingspan_in": 77.5,
+        "standing_reach_in": 97.5,
+        "weight_lbs": 187.0,
+        "max_vertical_in": 36.5
+      },
+      "Kentavious Caldwell-Pope": {
+        "height_in": 76.5,
+        "wingspan_in": 80.0,
+        "standing_reach_in": 100.5,
+        "weight_lbs": 203.6,
+        "max_vertical_in": 34.5
+      },
+      "Isaiah Canaan": {
+        "height_in": 71.0,
+        "wingspan_in": 76.5,
+        "standing_reach_in": 94.5,
+        "weight_lbs": 188.4,
+        "max_vertical_in": 40.5
+      },
+      "Jackie Carmichael": {
+        "height_in": 79.5,
+        "wingspan_in": 85.5,
+        "standing_reach_in": 107.0,
+        "weight_lbs": 241.2,
+        "max_vertical_in": 32.0
+      },
+      "Michael Carter-Williams": {
+        "height_in": 76.75,
+        "wingspan_in": 79.25,
+        "standing_reach_in": 101.0,
+        "weight_lbs": 184.4,
+        "max_vertical_in": 41.0
+      },
+      "Will Clyburn": {
+        "height_in": 77.75,
+        "wingspan_in": 84.25,
+        "standing_reach_in": 105.0,
+        "weight_lbs": 210.4,
+        "max_vertical_in": 34.5
+      },
+      "Robert Covington": {
+        "height_in": 78.25,
+        "wingspan_in": 85.75,
+        "standing_reach_in": 106.0,
+        "weight_lbs": 208.6,
+        "max_vertical_in": 36.0
+      },
+      "Allen Crabbe": {
+        "height_in": 77.25,
+        "wingspan_in": 83.25,
+        "standing_reach_in": 103.5,
+        "weight_lbs": 197.4,
+        "max_vertical_in": 36.0
+      },
+      "Seth Curry": {
+        "height_in": 73.0,
+        "wingspan_in": 76.0,
+        "standing_reach_in": 97.5,
+        "weight_lbs": 179.2,
+        "max_vertical_in": null
+      },
+      "Brandon Davies": {
+        "height_in": 80.5,
+        "wingspan_in": 85.5,
+        "standing_reach_in": 108.5,
+        "weight_lbs": 241.8,
+        "max_vertical_in": 31.5
+      },
+      "Dewayne Dedmon": {
+        "height_in": 82.0,
+        "wingspan_in": 88.0,
+        "standing_reach_in": 109.0,
+        "weight_lbs": 238.8,
+        "max_vertical_in": 32.5
+      },
+      "Gorgui Dieng": {
+        "height_in": 81.75,
+        "wingspan_in": 87.5,
+        "standing_reach_in": 111.5,
+        "weight_lbs": 229.6,
+        "max_vertical_in": null
+      },
+      "James Ennis": {
+        "height_in": 77.75,
+        "wingspan_in": 83.5,
+        "standing_reach_in": 104.5,
+        "weight_lbs": 200.8,
+        "max_vertical_in": 36.5
+      },
+      "Carrick Felix": {
+        "height_in": 76.75,
+        "wingspan_in": 81.25,
+        "standing_reach_in": 103.5,
+        "weight_lbs": 202.6,
+        "max_vertical_in": 38.5
+      },
+      "Jamaal Franklin": {
+        "height_in": 76.0,
+        "wingspan_in": 83.25,
+        "standing_reach_in": 103.5,
+        "weight_lbs": 190.8,
+        "max_vertical_in": null
+      },
+      "Rudy Gobert": {
+        "height_in": 84.5,
+        "wingspan_in": 92.5,
+        "standing_reach_in": 115.0,
+        "weight_lbs": 237.6,
+        "max_vertical_in": 29.0
+      },
+      "Archie Goodwin": {
+        "height_in": 75.75,
+        "wingspan_in": 81.5,
+        "standing_reach_in": 102.0,
+        "weight_lbs": 189.0,
+        "max_vertical_in": 36.0
+      },
+      "Erick Green": {
+        "height_in": 73.5,
+        "wingspan_in": 77.75,
+        "standing_reach_in": 98.0,
+        "weight_lbs": 178.2,
+        "max_vertical_in": null
+      },
+      "Tim Hardaway Jr.": {
+        "height_in": 76.5,
+        "wingspan_in": 79.0,
+        "standing_reach_in": 101.0,
+        "weight_lbs": 199.4,
+        "max_vertical_in": 37.5
+      },
+      "Solomon Hill": {
+        "height_in": 77.5,
+        "wingspan_in": 81.0,
+        "standing_reach_in": 103.0,
+        "weight_lbs": 226.0,
+        "max_vertical_in": 37.5
+      },
+      "Richard Howell": {
+        "height_in": 78.25,
+        "wingspan_in": 82.25,
+        "standing_reach_in": 105.5,
+        "weight_lbs": 249.6,
+        "max_vertical_in": null
+      },
+      "Colton Iverson": {
+        "height_in": 82.5,
+        "wingspan_in": 86.0,
+        "standing_reach_in": 110.0,
+        "weight_lbs": 262.8,
+        "max_vertical_in": 30.0
+      },
+      "Pierre Jackson": {
+        "height_in": 69.5,
+        "wingspan_in": 70.0,
+        "standing_reach_in": 90.0,
+        "weight_lbs": 176.0,
+        "max_vertical_in": null
+      },
+      "Grant Jerrett": {
+        "height_in": 80.75,
+        "wingspan_in": 86.0,
+        "standing_reach_in": 109.0,
+        "weight_lbs": 232.0,
+        "max_vertical_in": 34.0
+      },
+      "Myck Kabongo": {
+        "height_in": 73.25,
+        "wingspan_in": 78.25,
+        "standing_reach_in": 98.0,
+        "weight_lbs": 180.4,
+        "max_vertical_in": 33.5
+      },
+      "Kenny Kadji": {
+        "height_in": 80.75,
+        "wingspan_in": 87.0,
+        "standing_reach_in": 106.5,
+        "weight_lbs": 241.6,
+        "max_vertical_in": 38.0
+      },
+      "Ryan Kelly": {
+        "height_in": 81.75,
+        "wingspan_in": 83.5,
+        "standing_reach_in": 110.0,
+        "weight_lbs": 228.0,
+        "max_vertical_in": null
+      },
+      "Shane Larkin": {
+        "height_in": 70.25,
+        "wingspan_in": 70.75,
+        "standing_reach_in": 89.5,
+        "weight_lbs": 170.8,
+        "max_vertical_in": 44.0
+      },
+      "Ricky Ledo": {
+        "height_in": 76.75,
+        "wingspan_in": 79.25,
+        "standing_reach_in": 102.5,
+        "weight_lbs": 197.2,
+        "max_vertical_in": 33.5
+      },
+      "Alex Len": {
+        "height_in": null,
+        "wingspan_in": 87.5,
+        "standing_reach_in": null,
+        "weight_lbs": null,
+        "max_vertical_in": null
+      },
+      "CJ Leslie": {
+        "height_in": 79.5,
+        "wingspan_in": 86.25,
+        "standing_reach_in": 104.5,
+        "weight_lbs": 209.2,
+        "max_vertical_in": 40.5
+      },
+      "Trevor Mbakwe": {
+        "height_in": 78.75,
+        "wingspan_in": 88.0,
+        "standing_reach_in": 106.5,
+        "weight_lbs": 235.8,
+        "max_vertical_in": 36.5
+      },
+      "Ray McCallum": {
+        "height_in": 72.25,
+        "wingspan_in": 75.25,
+        "standing_reach_in": 96.5,
+        "weight_lbs": 191.4,
+        "max_vertical_in": 40.0
+      },
+      "CJ McCollum": {
+        "height_in": 74.25,
+        "wingspan_in": 78.25,
+        "standing_reach_in": 96.5,
+        "weight_lbs": 197.0,
+        "max_vertical_in": 38.5
+      },
+      "Ben McLemore": {
+        "height_in": 75.5,
+        "wingspan_in": 79.75,
+        "standing_reach_in": 100.5,
+        "weight_lbs": 189.2,
+        "max_vertical_in": 42.0
+      },
+      "Tony Mitchell": {
+        "height_in": 79.5,
+        "wingspan_in": 86.5,
+        "standing_reach_in": 106.5,
+        "weight_lbs": 236.4,
+        "max_vertical_in": 38.0
+      },
+      "Shabazz Muhammad": {
+        "height_in": 76.75,
+        "wingspan_in": 83.0,
+        "standing_reach_in": 104.5,
+        "weight_lbs": 221.8,
+        "max_vertical_in": 37.0
+      },
+      "Erik Murphy": {
+        "height_in": 80.75,
+        "wingspan_in": 82.5,
+        "standing_reach_in": 108.0,
+        "weight_lbs": 239.8,
+        "max_vertical_in": 29.5
+      },
+      "Mike Muscala": {
+        "height_in": 82.25,
+        "wingspan_in": 85.0,
+        "standing_reach_in": 108.0,
+        "weight_lbs": 230.2,
+        "max_vertical_in": 33.5
+      },
+      "Nerlens Noel": {
+        "height_in": 82.0,
+        "wingspan_in": 87.75,
+        "standing_reach_in": 110.0,
+        "weight_lbs": 206.4,
+        "max_vertical_in": null
+      },
+      "Victor Oladipo": {
+        "height_in": 75.25,
+        "wingspan_in": 81.25,
+        "standing_reach_in": 100.5,
+        "weight_lbs": 213.2,
+        "max_vertical_in": 42.0
+      },
+      "Kelly Olynyk": {
+        "height_in": 82.75,
+        "wingspan_in": 81.75,
+        "standing_reach_in": 108.0,
+        "weight_lbs": 234.0,
+        "max_vertical_in": 29.5
+      },
+      "Brandon Paul": {
+        "height_in": 74.75,
+        "wingspan_in": 82.25,
+        "standing_reach_in": 98.0,
+        "weight_lbs": 201.0,
+        "max_vertical_in": 39.5
+      },
+      "Norvel Pelle": {
+        "height_in": 81.5,
+        "wingspan_in": 86.5,
+        "standing_reach_in": 109.0,
+        "weight_lbs": 207.2,
+        "max_vertical_in": 34.5
+      },
+      "Mason Plumlee": {
+        "height_in": 83.25,
+        "wingspan_in": 83.0,
+        "standing_reach_in": 108.0,
+        "weight_lbs": 238.2,
+        "max_vertical_in": 36.0
+      },
+      "Otto Porter": {
+        "height_in": 79.5,
+        "wingspan_in": 85.5,
+        "standing_reach_in": 105.5,
+        "weight_lbs": 197.6,
+        "max_vertical_in": 36.0
+      },
+      "Phil Pressey": {
+        "height_in": 69.5,
+        "wingspan_in": 74.25,
+        "standing_reach_in": 92.0,
+        "weight_lbs": 177.0,
+        "max_vertical_in": 38.5
+      },
+      "Glen Rice": {
+        "height_in": 76.5,
+        "wingspan_in": 81.25,
+        "standing_reach_in": 101.5,
+        "weight_lbs": 210.8,
+        "max_vertical_in": 40.5
+      },
+      "Andre Roberson": {
+        "height_in": 78.25,
+        "wingspan_in": 83.0,
+        "standing_reach_in": 104.5,
+        "weight_lbs": 205.8,
+        "max_vertical_in": 36.5
+      },
+      "Dennis Schroder": {
+        "height_in": 73.0,
+        "wingspan_in": 79.75,
+        "standing_reach_in": 98.0,
+        "weight_lbs": 164.8,
+        "max_vertical_in": 34.0
+      },
+      "Peyton Siva": {
+        "height_in": 71.5,
+        "wingspan_in": 75.0,
+        "standing_reach_in": 93.0,
+        "weight_lbs": 180.6,
+        "max_vertical_in": 41.5
+      },
+      "Tony Snell": {
+        "height_in": 78.0,
+        "wingspan_in": 83.5,
+        "standing_reach_in": 105.5,
+        "weight_lbs": 198.2,
+        "max_vertical_in": 36.5
+      },
+      "James Southerland": {
+        "height_in": 79.0,
+        "wingspan_in": 85.0,
+        "standing_reach_in": 106.0,
+        "weight_lbs": 220.6,
+        "max_vertical_in": 32.0
+      },
+      "Deshaun Thomas": {
+        "height_in": 77.0,
+        "wingspan_in": 82.0,
+        "standing_reach_in": 104.0,
+        "weight_lbs": 219.8,
+        "max_vertical_in": 32.0
+      },
+      "Adonis Thomas": {
+        "height_in": 76.75,
+        "wingspan_in": 85.0,
+        "standing_reach_in": 99.0,
+        "weight_lbs": 231.8,
+        "max_vertical_in": 40.5
+      },
+      "Jeff Withey": {
+        "height_in": 82.75,
+        "wingspan_in": 86.0,
+        "standing_reach_in": 110.5,
+        "weight_lbs": 221.8,
+        "max_vertical_in": 29.0
+      },
+      "Nate Wolters": {
+        "height_in": 75.5,
+        "wingspan_in": 75.75,
+        "standing_reach_in": 98.0,
+        "weight_lbs": 196.4,
+        "max_vertical_in": null
+      },
+      "BJ Young": {
+        "height_in": 74.25,
+        "wingspan_in": 80.25,
+        "standing_reach_in": 99.0,
+        "weight_lbs": 178.8,
+        "max_vertical_in": null
+      },
+      "Cody Zeller": {
+        "height_in": 82.75,
+        "wingspan_in": 82.75,
+        "standing_reach_in": 106.0,
+        "weight_lbs": 230.0,
+        "max_vertical_in": 37.5
+      }
+    },
+    "2014": {
+      "Jordan Adams": {
+        "height_in": 75.5,
+        "wingspan_in": 82.0,
+        "standing_reach_in": 102.0,
+        "weight_lbs": 208.8,
+        "max_vertical_in": 29.5
+      },
+      "Kyle Anderson": {
+        "height_in": 79.5,
+        "wingspan_in": 86.75,
+        "standing_reach_in": 107.5,
+        "weight_lbs": 230.1,
+        "max_vertical_in": null
+      },
+      "Thanasis Antetokounmpo": {
+        "height_in": 77.25,
+        "wingspan_in": 84.0,
+        "standing_reach_in": 104.5,
+        "weight_lbs": 205.2,
+        "max_vertical_in": 39.5
+      },
+      "Jordan Bachynski": {
+        "height_in": 85.25,
+        "wingspan_in": 88.0,
+        "standing_reach_in": 108.5,
+        "weight_lbs": 254.1,
+        "max_vertical_in": 33.0
+      },
+      "Cameron Bairstow": {
+        "height_in": 80.75,
+        "wingspan_in": 84.75,
+        "standing_reach_in": 107.0,
+        "weight_lbs": 252.4,
+        "max_vertical_in": 33.5
+      },
+      "Khem Birch": {
+        "height_in": 79.5,
+        "wingspan_in": 85.0,
+        "standing_reach_in": 107.0,
+        "weight_lbs": 208.8,
+        "max_vertical_in": 35.5
+      },
+      "Markel Brown": {
+        "height_in": 74.5,
+        "wingspan_in": 80.75,
+        "standing_reach_in": 100.0,
+        "weight_lbs": 184.4,
+        "max_vertical_in": 43.5
+      },
+      "Jabari Brown": {
+        "height_in": 75.0,
+        "wingspan_in": 80.25,
+        "standing_reach_in": 100.0,
+        "weight_lbs": 201.9,
+        "max_vertical_in": 32.0
+      },
+      "Alec Brown": {
+        "height_in": 84.25,
+        "wingspan_in": 85.5,
+        "standing_reach_in": 109.0,
+        "weight_lbs": 231.2,
+        "max_vertical_in": 30.0
+      },
+      "Deonte Burton": {
+        "height_in": 72.0,
+        "wingspan_in": 79.0,
+        "standing_reach_in": 97.5,
+        "weight_lbs": 192.8,
+        "max_vertical_in": 39.5
+      },
+      "Semaj Christon": {
+        "height_in": 73.5,
+        "wingspan_in": 78.5,
+        "standing_reach_in": 99.0,
+        "weight_lbs": 186.0,
+        "max_vertical_in": 36.5
+      },
+      "Jordan Clarkson": {
+        "height_in": 75.25,
+        "wingspan_in": 80.0,
+        "standing_reach_in": 98.0,
+        "weight_lbs": 186.3,
+        "max_vertical_in": 38.5
+      },
+      "Aaron Craft": {
+        "height_in": 72.75,
+        "wingspan_in": 74.0,
+        "standing_reach_in": 94.5,
+        "weight_lbs": 191.6,
+        "max_vertical_in": 32.0
+      },
+      "DeAndre Daniels": {
+        "height_in": 79.25,
+        "wingspan_in": 86.0,
+        "standing_reach_in": 106.5,
+        "weight_lbs": 196.0,
+        "max_vertical_in": 32.0
+      },
+      "Spencer Dinwiddie": {
+        "height_in": 76.5,
+        "wingspan_in": 80.25,
+        "standing_reach_in": 103.0,
+        "weight_lbs": 204.9,
+        "max_vertical_in": null
+      },
+      "Cleanthony Early": {
+        "height_in": 78.0,
+        "wingspan_in": 82.75,
+        "standing_reach_in": 101.5,
+        "weight_lbs": 209.4,
+        "max_vertical_in": 40.0
+      },
+      "Melvin Ejim": {
+        "height_in": 77.25,
+        "wingspan_in": 83.25,
+        "standing_reach_in": 103.5,
+        "weight_lbs": 218.5,
+        "max_vertical_in": 35.0
+      },
+      "Tyler Ennis": {
+        "height_in": 73.0,
+        "wingspan_in": 79.25,
+        "standing_reach_in": 98.0,
+        "weight_lbs": 181.5,
+        "max_vertical_in": 36.0
+      },
+      "Dante Exum": {
+        "height_in": 76.5,
+        "wingspan_in": 81.5,
+        "standing_reach_in": 103.0,
+        "weight_lbs": 196.3,
+        "max_vertical_in": 34.5
+      },
+      "C.J. Fair": {
+        "height_in": 78.5,
+        "wingspan_in": 81.5,
+        "standing_reach_in": 104.0,
+        "weight_lbs": 218.1,
+        "max_vertical_in": 35.0
+      },
+      "Aaron Gordon": {
+        "height_in": 79.5,
+        "wingspan_in": 83.75,
+        "standing_reach_in": 105.0,
+        "weight_lbs": 220.1,
+        "max_vertical_in": 39.0
+      },
+      "Jerami Grant": {
+        "height_in": 78.5,
+        "wingspan_in": 86.75,
+        "standing_reach_in": 107.0,
+        "weight_lbs": 214.0,
+        "max_vertical_in": null
+      },
+      "P.J. Hairston": {
+        "height_in": 76.25,
+        "wingspan_in": 81.0,
+        "standing_reach_in": 101.0,
+        "weight_lbs": 228.8,
+        "max_vertical_in": 37.0
+      },
+      "Gary Harris": {
+        "height_in": 74.5,
+        "wingspan_in": 78.75,
+        "standing_reach_in": 96.0,
+        "weight_lbs": 204.8,
+        "max_vertical_in": null
+      },
+      "Joe Harris": {
+        "height_in": 76.75,
+        "wingspan_in": 78.0,
+        "standing_reach_in": 100.0,
+        "weight_lbs": 215.0,
+        "max_vertical_in": 33.5
+      },
+      "Rodney Hood": {
+        "height_in": 79.25,
+        "wingspan_in": 80.5,
+        "standing_reach_in": 103.0,
+        "weight_lbs": 208.2,
+        "max_vertical_in": 36.0
+      },
+      "Cory Jefferson": {
+        "height_in": 79.75,
+        "wingspan_in": 84.5,
+        "standing_reach_in": 105.0,
+        "weight_lbs": 218.4,
+        "max_vertical_in": 37.5
+      },
+      "Nick Johnson": {
+        "height_in": 73.5,
+        "wingspan_in": 79.25,
+        "standing_reach_in": 96.5,
+        "weight_lbs": 198.0,
+        "max_vertical_in": 41.5
+      },
+      "Sean Kilpatrick": {
+        "height_in": 74.5,
+        "wingspan_in": 79.0,
+        "standing_reach_in": 99.0,
+        "weight_lbs": 218.7,
+        "max_vertical_in": null
+      },
+      "Alex Kirk": {
+        "height_in": 81.25,
+        "wingspan_in": 87.5,
+        "standing_reach_in": 109.5,
+        "weight_lbs": 252.0,
+        "max_vertical_in": 31.5
+      },
+      "Zach LaVine": {
+        "height_in": 76.5,
+        "wingspan_in": 80.25,
+        "standing_reach_in": 100.0,
+        "weight_lbs": 180.9,
+        "max_vertical_in": 41.5
+      },
+      "Devyn Marble": {
+        "height_in": 77.0,
+        "wingspan_in": 81.0,
+        "standing_reach_in": 102.0,
+        "weight_lbs": 192.4,
+        "max_vertical_in": 35.0
+      },
+      "James McAdoo": {
+        "height_in": 79.5,
+        "wingspan_in": 86.25,
+        "standing_reach_in": 106.5,
+        "weight_lbs": 227.6,
+        "max_vertical_in": 34.0
+      },
+      "K.J. McDaniels": {
+        "height_in": 76.5,
+        "wingspan_in": 83.25,
+        "standing_reach_in": 102.0,
+        "weight_lbs": 195.6,
+        "max_vertical_in": 37.0
+      },
+      "Doug McDermott": {
+        "height_in": 78.25,
+        "wingspan_in": 81.25,
+        "standing_reach_in": 103.0,
+        "weight_lbs": 218.0,
+        "max_vertical_in": 36.5
+      },
+      "Jordan McRae": {
+        "height_in": 75.75,
+        "wingspan_in": 84.5,
+        "standing_reach_in": 104.0,
+        "weight_lbs": 179.4,
+        "max_vertical_in": 34.5
+      },
+      "Shabazz Napier": {
+        "height_in": 71.0,
+        "wingspan_in": 75.25,
+        "standing_reach_in": 93.0,
+        "weight_lbs": 175.2,
+        "max_vertical_in": 37.5
+      },
+      "Johnny O\u2019Bryant III": {
+        "height_in": 79.25,
+        "wingspan_in": 86.25,
+        "standing_reach_in": 105.0,
+        "weight_lbs": 256.8,
+        "max_vertical_in": 35.5
+      },
+      "Lamar Patterson": {
+        "height_in": 76.0,
+        "wingspan_in": 83.0,
+        "standing_reach_in": 101.0,
+        "weight_lbs": 226.0,
+        "max_vertical_in": 32.5
+      },
+      "Adreian Payne": {
+        "height_in": 81.0,
+        "wingspan_in": 88.0,
+        "standing_reach_in": 109.0,
+        "weight_lbs": 238.5,
+        "max_vertical_in": null
+      },
+      "Elfrid Payton": {
+        "height_in": 74.5,
+        "wingspan_in": 80.0,
+        "standing_reach_in": 98.5,
+        "weight_lbs": 185.4,
+        "max_vertical_in": 35.5
+      },
+      "Dwight Powell": {
+        "height_in": 81.5,
+        "wingspan_in": 84.5,
+        "standing_reach_in": 105.0,
+        "weight_lbs": 234.4,
+        "max_vertical_in": 35.0
+      },
+      "Julius Randle": {
+        "height_in": 79.75,
+        "wingspan_in": 84.0,
+        "standing_reach_in": 105.5,
+        "weight_lbs": 249.7,
+        "max_vertical_in": 35.5
+      },
+      "Glenn Robinson III": {
+        "height_in": 77.5,
+        "wingspan_in": 82.0,
+        "standing_reach_in": 100.5,
+        "weight_lbs": 211.4,
+        "max_vertical_in": 41.5
+      },
+      "LaQuinton Ross": {
+        "height_in": 78.5,
+        "wingspan_in": 85.75,
+        "standing_reach_in": 106.0,
+        "weight_lbs": 238.7,
+        "max_vertical_in": 31.0
+      },
+      "Marcus Smart": {
+        "height_in": 74.0,
+        "wingspan_in": 81.25,
+        "standing_reach_in": 99.0,
+        "weight_lbs": 227.2,
+        "max_vertical_in": 36.0
+      },
+      "Russ Smith": {
+        "height_in": 71.5,
+        "wingspan_in": 75.5,
+        "standing_reach_in": 95.0,
+        "weight_lbs": 160.0,
+        "max_vertical_in": 34.0
+      },
+      "Nik Stauskas": {
+        "height_in": 77.25,
+        "wingspan_in": 79.75,
+        "standing_reach_in": 102.0,
+        "weight_lbs": 206.9,
+        "max_vertical_in": 35.5
+      },
+      "Jarnell Stokes": {
+        "height_in": 79.0,
+        "wingspan_in": 85.25,
+        "standing_reach_in": 103.5,
+        "weight_lbs": 262.8,
+        "max_vertical_in": 36.0
+      },
+      "Xavier Thames": {
+        "height_in": 74.25,
+        "wingspan_in": 76.0,
+        "standing_reach_in": 96.0,
+        "weight_lbs": 187.0,
+        "max_vertical_in": 32.5
+      },
+      "Noah Vonleh": {
+        "height_in": 80.0,
+        "wingspan_in": 88.25,
+        "standing_reach_in": 108.0,
+        "weight_lbs": 247.1,
+        "max_vertical_in": 37.0
+      },
+      "T.J. Warren": {
+        "height_in": 79.0,
+        "wingspan_in": 82.25,
+        "standing_reach_in": 104.0,
+        "weight_lbs": 220.2,
+        "max_vertical_in": 35.5
+      },
+      "C.J. Wilcox": {
+        "height_in": 75.5,
+        "wingspan_in": 81.75,
+        "standing_reach_in": 100.5,
+        "weight_lbs": 201.0,
+        "max_vertical_in": 37.5
+      },
+      "Kendall Williams": {
+        "height_in": 74.25,
+        "wingspan_in": 77.5,
+        "standing_reach_in": 99.0,
+        "weight_lbs": 183.0,
+        "max_vertical_in": 33.0
+      },
+      "James Young": {
+        "height_in": 77.25,
+        "wingspan_in": 84.0,
+        "standing_reach_in": 104.0,
+        "weight_lbs": 213.3,
+        "max_vertical_in": 35.5
+      },
+      "Patric Young": {
+        "height_in": 80.5,
+        "wingspan_in": 85.75,
+        "standing_reach_in": 103.5,
+        "weight_lbs": 246.8,
+        "max_vertical_in": 37.5
+      }
+    },
+    "2015": {
+      "Cliff Alexander": {
+        "height_in": 79.25,
+        "wingspan_in": 87.5,
+        "standing_reach_in": 109.5,
+        "weight_lbs": 239.2,
+        "max_vertical_in": null
+      },
+      "Justin Anderson": {
+        "height_in": 77.25,
+        "wingspan_in": 83.75,
+        "standing_reach_in": 101.0,
+        "weight_lbs": 230.6,
+        "max_vertical_in": 43.0
+      },
+      "Brandon Ashley": {
+        "height_in": 79.25,
+        "wingspan_in": 87.75,
+        "standing_reach_in": 105.0,
+        "weight_lbs": 228.0,
+        "max_vertical_in": 35.5
+      },
+      "Ryan Boatright": {
+        "height_in": 70.0,
+        "wingspan_in": 72.5,
+        "standing_reach_in": 92.5,
+        "weight_lbs": 169.6,
+        "max_vertical_in": 41.0
+      },
+      "Devin Booker": {
+        "height_in": 76.5,
+        "wingspan_in": 80.25,
+        "standing_reach_in": 102.5,
+        "weight_lbs": 205.8,
+        "max_vertical_in": 34.5
+      },
+      "Anthony Brown": {
+        "height_in": 77.75,
+        "wingspan_in": 83.0,
+        "standing_reach_in": 104.5,
+        "weight_lbs": 211.0,
+        "max_vertical_in": 34.5
+      },
+      "Willie Cauley-Stein": {
+        "height_in": 83.25,
+        "wingspan_in": 87.0,
+        "standing_reach_in": 111.0,
+        "weight_lbs": 242.4,
+        "max_vertical_in": null
+      },
+      "Rakeem Christmas": {
+        "height_in": 80.25,
+        "wingspan_in": 89.25,
+        "standing_reach_in": 110.5,
+        "weight_lbs": 242.6,
+        "max_vertical_in": 32.0
+      },
+      "Pat Connaughton": {
+        "height_in": 76.0,
+        "wingspan_in": 80.0,
+        "standing_reach_in": 96.0,
+        "weight_lbs": 215.0,
+        "max_vertical_in": 44.0
+      },
+      "Quinn Cook": {
+        "height_in": 72.25,
+        "wingspan_in": 76.0,
+        "standing_reach_in": 96.5,
+        "weight_lbs": 179.0,
+        "max_vertical_in": 31.0
+      },
+      "Branden Dawson": {
+        "height_in": 77.5,
+        "wingspan_in": 83.0,
+        "standing_reach_in": 105.0,
+        "weight_lbs": 230.2,
+        "max_vertical_in": 34.5
+      },
+      "Sam Dekker": {
+        "height_in": 79.75,
+        "wingspan_in": 83.5,
+        "standing_reach_in": 106.0,
+        "weight_lbs": 218.6,
+        "max_vertical_in": 34.5
+      },
+      "Michael Frazier II": {
+        "height_in": 75.75,
+        "wingspan_in": 80.0,
+        "standing_reach_in": 101.5,
+        "weight_lbs": 199.4,
+        "max_vertical_in": 35.0
+      },
+      "Treveon Graham": {
+        "height_in": 76.0,
+        "wingspan_in": 82.5,
+        "standing_reach_in": 103.0,
+        "weight_lbs": 219.4,
+        "max_vertical_in": 31.5
+      },
+      "Jerian Grant": {
+        "height_in": 75.25,
+        "wingspan_in": 79.5,
+        "standing_reach_in": 100.0,
+        "weight_lbs": 198.0,
+        "max_vertical_in": null
+      },
+      "Olivier Hanlan": {
+        "height_in": 75.25,
+        "wingspan_in": 78.0,
+        "standing_reach_in": 100.0,
+        "weight_lbs": 185.8,
+        "max_vertical_in": 34.0
+      },
+      "Montrezl Harrell": {
+        "height_in": 79.0,
+        "wingspan_in": 88.25,
+        "standing_reach_in": 109.0,
+        "weight_lbs": 253.4,
+        "max_vertical_in": null
+      },
+      "Andrew Harrison": {
+        "height_in": 76.5,
+        "wingspan_in": 81.0,
+        "standing_reach_in": 100.0,
+        "weight_lbs": 213.2,
+        "max_vertical_in": 33.0
+      },
+      "Aaron Harrison": {
+        "height_in": 76.5,
+        "wingspan_in": 80.25,
+        "standing_reach_in": 100.5,
+        "weight_lbs": 209.2,
+        "max_vertical_in": 34.5
+      },
+      "Tyler Harvey": {
+        "height_in": 74.75,
+        "wingspan_in": 77.5,
+        "standing_reach_in": 98.5,
+        "weight_lbs": 181.4,
+        "max_vertical_in": 28.5
+      },
+      "Corey Hawkins": {
+        "height_in": 72.75,
+        "wingspan_in": 80.0,
+        "standing_reach_in": 99.5,
+        "weight_lbs": 191.8,
+        "max_vertical_in": 34.0
+      },
+      "Rondae Hollis-Jefferson": {
+        "height_in": 77.5,
+        "wingspan_in": 86.0,
+        "standing_reach_in": 104.0,
+        "weight_lbs": 210.8,
+        "max_vertical_in": 38.0
+      },
+      "Richaun Holmes": {
+        "height_in": 80.25,
+        "wingspan_in": 85.5,
+        "standing_reach_in": 108.0,
+        "weight_lbs": 242.8,
+        "max_vertical_in": 36.0
+      },
+      "Jonathan Holmes": {
+        "height_in": 80.25,
+        "wingspan_in": 83.5,
+        "standing_reach_in": 107.5,
+        "weight_lbs": 242.2,
+        "max_vertical_in": 31.0
+      },
+      "R.J. Hunter": {
+        "height_in": 76.5,
+        "wingspan_in": 82.5,
+        "standing_reach_in": 104.0,
+        "weight_lbs": 185.0,
+        "max_vertical_in": 33.5
+      },
+      "Vince Hunter": {
+        "height_in": 78.75,
+        "wingspan_in": 83.0,
+        "standing_reach_in": 104.5,
+        "weight_lbs": 208.4,
+        "max_vertical_in": 37.5
+      },
+      "Stanley Johnson": {
+        "height_in": 77.0,
+        "wingspan_in": 83.5,
+        "standing_reach_in": 102.0,
+        "weight_lbs": 241.8,
+        "max_vertical_in": null
+      },
+      "Dakari Johnson": {
+        "height_in": 83.0,
+        "wingspan_in": 86.0,
+        "standing_reach_in": 112.0,
+        "weight_lbs": 264.6,
+        "max_vertical_in": 25.0
+      },
+      "Tyus Jones": {
+        "height_in": 72.5,
+        "wingspan_in": 77.0,
+        "standing_reach_in": 97.0,
+        "weight_lbs": 184.6,
+        "max_vertical_in": 32.5
+      },
+      "Frank Kaminsky": {
+        "height_in": 83.75,
+        "wingspan_in": 83.0,
+        "standing_reach_in": 109.5,
+        "weight_lbs": 231.2,
+        "max_vertical_in": null
+      },
+      "Kevon Looney": {
+        "height_in": 80.0,
+        "wingspan_in": 87.5,
+        "standing_reach_in": 110.0,
+        "weight_lbs": 222.4,
+        "max_vertical_in": null
+      },
+      "Trey Lyles": {
+        "height_in": 81.0,
+        "wingspan_in": 85.5,
+        "standing_reach_in": 108.0,
+        "weight_lbs": 241.2,
+        "max_vertical_in": null
+      },
+      "Jarell Martin": {
+        "height_in": 80.0,
+        "wingspan_in": 81.0,
+        "standing_reach_in": 106.5,
+        "weight_lbs": 238.6,
+        "max_vertical_in": 35.0
+      },
+      "TJ McConnell": {
+        "height_in": 72.5,
+        "wingspan_in": 74.0,
+        "standing_reach_in": 96.5,
+        "weight_lbs": 187.8,
+        "max_vertical_in": 31.5
+      },
+      "Chris McCullough": {
+        "height_in": 80.25,
+        "wingspan_in": 87.25,
+        "standing_reach_in": 109.0,
+        "weight_lbs": 199.0,
+        "max_vertical_in": null
+      },
+      "Jordan Mickey": {
+        "height_in": 79.0,
+        "wingspan_in": 87.25,
+        "standing_reach_in": 106.0,
+        "weight_lbs": 238.0,
+        "max_vertical_in": 37.5
+      },
+      "Larry Nance": {
+        "height_in": 79.5,
+        "wingspan_in": 85.5,
+        "standing_reach_in": 108.0,
+        "weight_lbs": 226.6,
+        "max_vertical_in": 37.5
+      },
+      "Kelly Oubre": {
+        "height_in": 77.75,
+        "wingspan_in": 86.25,
+        "standing_reach_in": 102.5,
+        "weight_lbs": 202.8,
+        "max_vertical_in": 37.0
+      },
+      "Cameron Payne": {
+        "height_in": 72.75,
+        "wingspan_in": 79.25,
+        "standing_reach_in": 97.5,
+        "weight_lbs": 182.8,
+        "max_vertical_in": 35.5
+      },
+      "Terran Petteway": {
+        "height_in": 76.75,
+        "wingspan_in": 83.25,
+        "standing_reach_in": 104.5,
+        "weight_lbs": 209.2,
+        "max_vertical_in": 31.0
+      },
+      "Bobby Portis": {
+        "height_in": 81.5,
+        "wingspan_in": 86.0,
+        "standing_reach_in": 108.5,
+        "weight_lbs": 246.2,
+        "max_vertical_in": 31.5
+      },
+      "Norman Powell": {
+        "height_in": 75.0,
+        "wingspan_in": 82.75,
+        "standing_reach_in": 102.5,
+        "weight_lbs": 215.4,
+        "max_vertical_in": 40.5
+      },
+      "Michael Qualls": {
+        "height_in": 76.0,
+        "wingspan_in": 84.25,
+        "standing_reach_in": 104.5,
+        "weight_lbs": 201.4,
+        "max_vertical_in": 39.5
+      },
+      "Chasson Randle": {
+        "height_in": 72.25,
+        "wingspan_in": 79.0,
+        "standing_reach_in": 96.5,
+        "weight_lbs": 178.8,
+        "max_vertical_in": 39.5
+      },
+      "Terry Rozier": {
+        "height_in": 72.5,
+        "wingspan_in": 80.25,
+        "standing_reach_in": 98.5,
+        "weight_lbs": 190.2,
+        "max_vertical_in": 38.0
+      },
+      "D\u2019Angelo Russell": {
+        "height_in": 75.25,
+        "wingspan_in": 81.75,
+        "standing_reach_in": 102.0,
+        "weight_lbs": 193.4,
+        "max_vertical_in": null
+      },
+      "Keifer Sykes": {
+        "height_in": 70.5,
+        "wingspan_in": 74.0,
+        "standing_reach_in": 93.0,
+        "weight_lbs": 167.2,
+        "max_vertical_in": 43.0
+      },
+      "Marcus Thornton": {
+        "height_in": 73.75,
+        "wingspan_in": 79.75,
+        "standing_reach_in": 97.5,
+        "weight_lbs": 177.4,
+        "max_vertical_in": 43.0
+      },
+      "J.P. Tokoto": {
+        "height_in": 77.25,
+        "wingspan_in": 82.0,
+        "standing_reach_in": 100.5,
+        "weight_lbs": 195.8,
+        "max_vertical_in": 40.0
+      },
+      "Myles Turner": {
+        "height_in": 81.75,
+        "wingspan_in": 88.0,
+        "standing_reach_in": 112.0,
+        "weight_lbs": 238.6,
+        "max_vertical_in": null
+      },
+      "Robert Upshaw": {
+        "height_in": 82.75,
+        "wingspan_in": 89.5,
+        "standing_reach_in": 113.0,
+        "weight_lbs": 258.2,
+        "max_vertical_in": null
+      },
+      "Rashad Vaughn": {
+        "height_in": 75.75,
+        "wingspan_in": 79.0,
+        "standing_reach_in": 101.0,
+        "weight_lbs": 198.6,
+        "max_vertical_in": 34.0
+      },
+      "Chris Walker": {
+        "height_in": 80.75,
+        "wingspan_in": 86.75,
+        "standing_reach_in": 108.0,
+        "weight_lbs": 208.0,
+        "max_vertical_in": 37.0
+      },
+      "Dez Wells": {
+        "height_in": 75.0,
+        "wingspan_in": 81.5,
+        "standing_reach_in": 100.5,
+        "weight_lbs": 208.8,
+        "max_vertical_in": 39.0
+      },
+      "Alan Williams": {
+        "height_in": 79.25,
+        "wingspan_in": 85.75,
+        "standing_reach_in": 106.5,
+        "weight_lbs": 261.4,
+        "max_vertical_in": 28.5
+      },
+      "Justise Winslow": {
+        "height_in": 76.5,
+        "wingspan_in": 82.25,
+        "standing_reach_in": 104.5,
+        "weight_lbs": 221.8,
+        "max_vertical_in": null
+      },
+      "Christian Wood": {
+        "height_in": 81.25,
+        "wingspan_in": 87.25,
+        "standing_reach_in": 111.5,
+        "weight_lbs": 216.0,
+        "max_vertical_in": null
+      },
+      "Delon Wright": {
+        "height_in": 76.25,
+        "wingspan_in": 79.5,
+        "standing_reach_in": 101.5,
+        "weight_lbs": 181.4,
+        "max_vertical_in": 31.0
+      }
+    },
+    "2016": {
+      "Ron Baker": {
+        "height_in": 75.25,
+        "wingspan_in": 81.75,
+        "standing_reach_in": 97.5,
+        "weight_lbs": 212.4,
+        "max_vertical_in": 35.5
+      },
+      "Wade Baldwin IV": {
+        "height_in": 74.5,
+        "wingspan_in": 83.25,
+        "standing_reach_in": 100.0,
+        "weight_lbs": 201.8,
+        "max_vertical_in": 38.0
+      },
+      "Cat Barber": {
+        "height_in": 73.5,
+        "wingspan_in": 77.5,
+        "standing_reach_in": 95.5,
+        "weight_lbs": 173.0,
+        "max_vertical_in": null
+      },
+      "Malik Beasley": {
+        "height_in": 75.5,
+        "wingspan_in": 79.0,
+        "standing_reach_in": 100.5,
+        "weight_lbs": 189.8,
+        "max_vertical_in": null
+      },
+      "DeAndre Bembry": {
+        "height_in": 76.25,
+        "wingspan_in": 81.25,
+        "standing_reach_in": 101.0,
+        "weight_lbs": 206.6,
+        "max_vertical_in": 38.0
+      },
+      "Ben Bentil": {
+        "height_in": 79.25,
+        "wingspan_in": 85.5,
+        "standing_reach_in": 105.0,
+        "weight_lbs": 229.2,
+        "max_vertical_in": 33.0
+      },
+      "Jaron Blossomgame": {
+        "height_in": 78.25,
+        "wingspan_in": 82.0,
+        "standing_reach_in": 102.0,
+        "weight_lbs": 213.6,
+        "max_vertical_in": 41.0
+      },
+      "Joel Bolomboy": {
+        "height_in": 79.5,
+        "wingspan_in": 85.75,
+        "standing_reach_in": 103.5,
+        "weight_lbs": 224.4,
+        "max_vertical_in": 40.5
+      },
+      "Malcolm Brogdon": {
+        "height_in": 75.75,
+        "wingspan_in": 82.5,
+        "standing_reach_in": 98.0,
+        "weight_lbs": 223.0,
+        "max_vertical_in": 35.5
+      },
+      "Jaylen Brown": {
+        "height_in": 77.25,
+        "wingspan_in": 83.75,
+        "standing_reach_in": 102.5,
+        "weight_lbs": 222.8,
+        "max_vertical_in": null
+      },
+      "Marquese Chriss": {
+        "height_in": 80.75,
+        "wingspan_in": 84.25,
+        "standing_reach_in": 105.0,
+        "weight_lbs": 233.0,
+        "max_vertical_in": 38.5
+      },
+      "Elgin Cook": {
+        "height_in": 77.0,
+        "wingspan_in": 82.0,
+        "standing_reach_in": 100.5,
+        "weight_lbs": 209.8,
+        "max_vertical_in": null
+      },
+      "Isaiah Cousins": {
+        "height_in": 75.25,
+        "wingspan_in": 78.25,
+        "standing_reach_in": 98.5,
+        "weight_lbs": 194.0,
+        "max_vertical_in": 37.0
+      },
+      "Deyonta Davis": {
+        "height_in": 81.25,
+        "wingspan_in": 86.5,
+        "standing_reach_in": 108.5,
+        "weight_lbs": 237.2,
+        "max_vertical_in": null
+      },
+      "Cheick Diallo": {
+        "height_in": 79.5,
+        "wingspan_in": 88.5,
+        "standing_reach_in": 107.5,
+        "weight_lbs": 218.6,
+        "max_vertical_in": 35.0
+      },
+      "Kris Dunn": {
+        "height_in": 75.0,
+        "wingspan_in": 81.5,
+        "standing_reach_in": 100.0,
+        "weight_lbs": null,
+        "max_vertical_in": null
+      },
+      "Henry Ellenson": {
+        "height_in": 82.0,
+        "wingspan_in": 86.25,
+        "standing_reach_in": 108.0,
+        "weight_lbs": 242.0,
+        "max_vertical_in": null
+      },
+      "Perry Ellis": {
+        "height_in": 79.0,
+        "wingspan_in": 82.25,
+        "standing_reach_in": 102.0,
+        "weight_lbs": 217.8,
+        "max_vertical_in": 38.0
+      },
+      "Kay Felder": {
+        "height_in": 68.25,
+        "wingspan_in": 74.5,
+        "standing_reach_in": 88.5,
+        "weight_lbs": 177.2,
+        "max_vertical_in": 44.0
+      },
+      "Dorian Finney-Smith": {
+        "height_in": 78.5,
+        "wingspan_in": 83.75,
+        "standing_reach_in": 105.5,
+        "weight_lbs": 212.6,
+        "max_vertical_in": 35.5
+      },
+      "Michael Gbinije": {
+        "height_in": 77.5,
+        "wingspan_in": 79.5,
+        "standing_reach_in": 101.0,
+        "weight_lbs": 204.6,
+        "max_vertical_in": 37.5
+      },
+      "Daniel Hamilton": {
+        "height_in": 78.25,
+        "wingspan_in": 81.0,
+        "standing_reach_in": 103.5,
+        "weight_lbs": 197.0,
+        "max_vertical_in": 29.0
+      },
+      "Josh Hart": {
+        "height_in": 76.0,
+        "wingspan_in": 80.5,
+        "standing_reach_in": 99.5,
+        "weight_lbs": 203.6,
+        "max_vertical_in": 38.5
+      },
+      "Nigel Hayes": {
+        "height_in": 78.25,
+        "wingspan_in": 87.0,
+        "standing_reach_in": 107.5,
+        "weight_lbs": 245.0,
+        "max_vertical_in": 28.5
+      },
+      "Buddy Hield": {
+        "height_in": 75.75,
+        "wingspan_in": 81.25,
+        "standing_reach_in": 101.0,
+        "weight_lbs": 212.4,
+        "max_vertical_in": null
+      },
+      "Justin Jackson": {
+        "height_in": 79.0,
+        "wingspan_in": 82.75,
+        "standing_reach_in": 103.5,
+        "weight_lbs": 193.4,
+        "max_vertical_in": 34.5
+      },
+      "Demetrius Jackson": {
+        "height_in": 72.0,
+        "wingspan_in": 77.5,
+        "standing_reach_in": 93.0,
+        "weight_lbs": 193.8,
+        "max_vertical_in": 43.5
+      },
+      "Brice Johnson": {
+        "height_in": 81.0,
+        "wingspan_in": 84.5,
+        "standing_reach_in": 106.5,
+        "weight_lbs": 208.6,
+        "max_vertical_in": 38.0
+      },
+      "Damian Jones": {
+        "height_in": 82.25,
+        "wingspan_in": 87.75,
+        "standing_reach_in": 107.0,
+        "weight_lbs": 243.6,
+        "max_vertical_in": 37.0
+      },
+      "Skal Labissiere": {
+        "height_in": 82.5,
+        "wingspan_in": 86.5,
+        "standing_reach_in": 105.5,
+        "weight_lbs": 215.8,
+        "max_vertical_in": null
+      },
+      "Jake Layman": {
+        "height_in": 80.0,
+        "wingspan_in": 81.25,
+        "standing_reach_in": 102.0,
+        "weight_lbs": 208.6,
+        "max_vertical_in": 39.5
+      },
+      "Caris LeVert": {
+        "height_in": 77.75,
+        "wingspan_in": 82.0,
+        "standing_reach_in": 101.0,
+        "weight_lbs": 191.0,
+        "max_vertical_in": null
+      },
+      "Marcus Lee": {
+        "height_in": 81.0,
+        "wingspan_in": 87.0,
+        "standing_reach_in": 107.5,
+        "weight_lbs": 211.0,
+        "max_vertical_in": 35.5
+      },
+      "Thon Maker": {
+        "height_in": 83.75,
+        "wingspan_in": 87.0,
+        "standing_reach_in": 110.5,
+        "weight_lbs": 216.0,
+        "max_vertical_in": 36.5
+      },
+      "Patrick McCaw": {
+        "height_in": 77.25,
+        "wingspan_in": 82.0,
+        "standing_reach_in": 100.5,
+        "weight_lbs": 180.8,
+        "max_vertical_in": 38.0
+      },
+      "Malik Newman": {
+        "height_in": 74.25,
+        "wingspan_in": 77.75,
+        "standing_reach_in": 97.5,
+        "weight_lbs": 182.2,
+        "max_vertical_in": 35.5
+      },
+      "Georges Niang": {
+        "height_in": 78.75,
+        "wingspan_in": 82.0,
+        "standing_reach_in": 103.0,
+        "weight_lbs": 230.8,
+        "max_vertical_in": 31.0
+      },
+      "Chinanu Onuaku": {
+        "height_in": 81.0,
+        "wingspan_in": 86.75,
+        "standing_reach_in": 108.5,
+        "weight_lbs": 245.2,
+        "max_vertical_in": 33.5
+      },
+      "Marcus Paige": {
+        "height_in": 72.5,
+        "wingspan_in": 78.25,
+        "standing_reach_in": 97.0,
+        "weight_lbs": 163.8,
+        "max_vertical_in": 39.5
+      },
+      "Gary Payton II": {
+        "height_in": 74.0,
+        "wingspan_in": 80.0,
+        "standing_reach_in": 99.5,
+        "weight_lbs": 183.8,
+        "max_vertical_in": 38.5
+      },
+      "Jakob Poeltl": {
+        "height_in": 84.25,
+        "wingspan_in": 86.75,
+        "standing_reach_in": 111.5,
+        "weight_lbs": 239.0,
+        "max_vertical_in": null
+      },
+      "Taurean Prince": {
+        "height_in": 78.5,
+        "wingspan_in": 83.5,
+        "standing_reach_in": 102.0,
+        "weight_lbs": 220.2,
+        "max_vertical_in": 36.0
+      },
+      "Zhou Qi": {
+        "height_in": 85.25,
+        "wingspan_in": 91.75,
+        "standing_reach_in": 112.5,
+        "weight_lbs": 218.2,
+        "max_vertical_in": 32.0
+      },
+      "Malachi Richardson": {
+        "height_in": 76.75,
+        "wingspan_in": 84.0,
+        "standing_reach_in": 101.5,
+        "weight_lbs": 199.6,
+        "max_vertical_in": 38.0
+      },
+      "Wayne Selden": {
+        "height_in": 76.25,
+        "wingspan_in": 82.5,
+        "standing_reach_in": 101.0,
+        "weight_lbs": 232.4,
+        "max_vertical_in": null
+      },
+      "Pascal Siakam": {
+        "height_in": 80.25,
+        "wingspan_in": 87.25,
+        "standing_reach_in": 107.5,
+        "weight_lbs": 226.6,
+        "max_vertical_in": 36.5
+      },
+      "Diamond Stone": {
+        "height_in": 81.0,
+        "wingspan_in": 86.75,
+        "standing_reach_in": 108.5,
+        "weight_lbs": 254.4,
+        "max_vertical_in": 29.5
+      },
+      "Caleb Swanigan": {
+        "height_in": 79.5,
+        "wingspan_in": 87.5,
+        "standing_reach_in": 107.0,
+        "weight_lbs": 246.6,
+        "max_vertical_in": 29.0
+      },
+      "Melo Trimble": {
+        "height_in": 73.25,
+        "wingspan_in": 74.0,
+        "standing_reach_in": 92.5,
+        "weight_lbs": 191.8,
+        "max_vertical_in": 35.5
+      },
+      "Tyler Ulis": {
+        "height_in": 68.75,
+        "wingspan_in": 74.0,
+        "standing_reach_in": 88.5,
+        "weight_lbs": 149.2,
+        "max_vertical_in": 38.0
+      },
+      "Jarrod Uthoff": {
+        "height_in": 80.5,
+        "wingspan_in": 83.5,
+        "standing_reach_in": 104.0,
+        "weight_lbs": 214.4,
+        "max_vertical_in": 34.5
+      },
+      "Denzel Valentine": {
+        "height_in": 76.0,
+        "wingspan_in": 82.75,
+        "standing_reach_in": 102.0,
+        "weight_lbs": 210.4,
+        "max_vertical_in": 32.0
+      },
+      "Isaiah Whitehead": {
+        "height_in": 75.25,
+        "wingspan_in": 80.75,
+        "standing_reach_in": 100.0,
+        "weight_lbs": 210.0,
+        "max_vertical_in": 35.5
+      },
+      "Troy Williams": {
+        "height_in": 77.75,
+        "wingspan_in": 80.25,
+        "standing_reach_in": 102.0,
+        "weight_lbs": 217.8,
+        "max_vertical_in": 36.0
+      },
+      "Kyle Wiltjer": {
+        "height_in": 80.75,
+        "wingspan_in": 84.25,
+        "standing_reach_in": 102.5,
+        "weight_lbs": 242.8,
+        "max_vertical_in": 35.5
+      },
+      "Stephen Zimmerman": {
+        "height_in": 82.25,
+        "wingspan_in": 87.25,
+        "standing_reach_in": 108.5,
+        "weight_lbs": 234.0,
+        "max_vertical_in": 31.0
+      }
+    },
+    "2017": {
+      "Edrice Adebayo": {
+        "height_in": 80.75,
+        "wingspan_in": 86.75,
+        "standing_reach_in": 108.0,
+        "weight_lbs": 242.6,
+        "max_vertical_in": 38.5
+      },
+      "Rawle Alkins": {
+        "height_in": 74.5,
+        "wingspan_in": 80.75,
+        "standing_reach_in": 99.0,
+        "weight_lbs": 222.6,
+        "max_vertical_in": 40.5
+      },
+      "Jarrett Allen": {
+        "height_in": 81.0,
+        "wingspan_in": 89.25,
+        "standing_reach_in": 109.5,
+        "weight_lbs": 233.6,
+        "max_vertical_in": 35.5
+      },
+      "Kadeem Allen": {
+        "height_in": 73.0,
+        "wingspan_in": 81.25,
+        "standing_reach_in": 99.5,
+        "weight_lbs": 192.4,
+        "max_vertical_in": 35.5
+      },
+      "Ike Anigbogu": {
+        "height_in": 80.5,
+        "wingspan_in": 90.25,
+        "standing_reach_in": 110.5,
+        "weight_lbs": 252.2,
+        "max_vertical_in": 32.5
+      },
+      "OG Anunoby": {
+        "height_in": 78.25,
+        "wingspan_in": 86.25,
+        "standing_reach_in": 107.5,
+        "weight_lbs": 232.4,
+        "max_vertical_in": null
+      },
+      "Jamel Artis": {
+        "height_in": 77.5,
+        "wingspan_in": 82.0,
+        "standing_reach_in": 105.0,
+        "weight_lbs": 213.2,
+        "max_vertical_in": 31.0
+      },
+      "Dwayne Bacon": {
+        "height_in": 76.75,
+        "wingspan_in": 82.0,
+        "standing_reach_in": 103.5,
+        "weight_lbs": 221.6,
+        "max_vertical_in": 36.5
+      },
+      "V.J. Beachem": {
+        "height_in": 78.25,
+        "wingspan_in": 82.25,
+        "standing_reach_in": 104.5,
+        "weight_lbs": 193.4,
+        "max_vertical_in": 37.0
+      },
+      "Jordan Bell": {
+        "height_in": 79.0,
+        "wingspan_in": 83.75,
+        "standing_reach_in": 104.5,
+        "weight_lbs": 223.6,
+        "max_vertical_in": 38.0
+      },
+      "Jaron Blossomgame": {
+        "height_in": 77.75,
+        "wingspan_in": 82.0,
+        "standing_reach_in": 104.5,
+        "weight_lbs": 218.6,
+        "max_vertical_in": 35.5
+      },
+      "Chris Boucher": {
+        "height_in": 80.0,
+        "wingspan_in": 88.0,
+        "standing_reach_in": 110.5,
+        "weight_lbs": 182.2,
+        "max_vertical_in": null
+      },
+      "Tony Bradley": {
+        "height_in": 81.25,
+        "wingspan_in": 89.0,
+        "standing_reach_in": 112.5,
+        "weight_lbs": 248.8,
+        "max_vertical_in": 27.5
+      },
+      "Isaiah Briscoe": {
+        "height_in": 73.25,
+        "wingspan_in": 81.0,
+        "standing_reach_in": 99.5,
+        "weight_lbs": 222.4,
+        "max_vertical_in": 33.5
+      },
+      "Dillon Brooks": {
+        "height_in": 77.0,
+        "wingspan_in": 78.0,
+        "standing_reach_in": 100.5,
+        "weight_lbs": 220.2,
+        "max_vertical_in": 37.5
+      },
+      "Thomas Bryant": {
+        "height_in": 81.5,
+        "wingspan_in": 90.0,
+        "standing_reach_in": 112.5,
+        "weight_lbs": 247.8,
+        "max_vertical_in": 33.0
+      },
+      "Zach Collins": {
+        "height_in": 82.25,
+        "wingspan_in": 85.0,
+        "standing_reach_in": 111.0,
+        "weight_lbs": 232.2,
+        "max_vertical_in": null
+      },
+      "John Collins": {
+        "height_in": 80.25,
+        "wingspan_in": 83.25,
+        "standing_reach_in": 106.5,
+        "weight_lbs": 225.2,
+        "max_vertical_in": 37.5
+      },
+      "Hamidou Diallo": {
+        "height_in": 75.75,
+        "wingspan_in": 83.25,
+        "standing_reach_in": 101.5,
+        "weight_lbs": 197.4,
+        "max_vertical_in": 44.5
+      },
+      "Tyler Dorsey": {
+        "height_in": 75.0,
+        "wingspan_in": 77.25,
+        "standing_reach_in": 99.5,
+        "weight_lbs": 182.6,
+        "max_vertical_in": 36.0
+      },
+      "Damyean Dotson": {
+        "height_in": 76.5,
+        "wingspan_in": 81.0,
+        "standing_reach_in": 100.0,
+        "weight_lbs": 205.2,
+        "max_vertical_in": 38.0
+      },
+      "PJ Dozier": {
+        "height_in": 77.25,
+        "wingspan_in": 83.0,
+        "standing_reach_in": 101.0,
+        "weight_lbs": 200.6,
+        "max_vertical_in": 39.0
+      },
+      "Jawun Evans": {
+        "height_in": 70.75,
+        "wingspan_in": 77.5,
+        "standing_reach_in": 95.0,
+        "weight_lbs": 185.2,
+        "max_vertical_in": 33.5
+      },
+      "Terrance Ferguson": {
+        "height_in": 77.5,
+        "wingspan_in": 80.75,
+        "standing_reach_in": 103.0,
+        "weight_lbs": 184.4,
+        "max_vertical_in": 38.0
+      },
+      "De\u2019Aaron Fox": {
+        "height_in": 74.0,
+        "wingspan_in": 78.5,
+        "standing_reach_in": 100.0,
+        "weight_lbs": 169.6,
+        "max_vertical_in": null
+      },
+      "Markelle Fultz": {
+        "height_in": null,
+        "wingspan_in": null,
+        "standing_reach_in": null,
+        "weight_lbs": null,
+        "max_vertical_in": null
+      },
+      "Harry Giles": {
+        "height_in": 81.25,
+        "wingspan_in": 87.25,
+        "standing_reach_in": 109.5,
+        "weight_lbs": 232.0,
+        "max_vertical_in": 32.5
+      },
+      "Josh Hart": {
+        "height_in": 75.75,
+        "wingspan_in": 80.25,
+        "standing_reach_in": 101.0,
+        "weight_lbs": 209.2,
+        "max_vertical_in": 35.5
+      },
+      "Nigel Hayes": {
+        "height_in": 78.25,
+        "wingspan_in": 87.25,
+        "standing_reach_in": 104.5,
+        "weight_lbs": 254.2,
+        "max_vertical_in": 33.5
+      },
+      "Isaiah Hicks": {
+        "height_in": 79.25,
+        "wingspan_in": 84.5,
+        "standing_reach_in": 105.0,
+        "weight_lbs": 233.4,
+        "max_vertical_in": 37.0
+      },
+      "Wesley Iwundu": {
+        "height_in": 77.5,
+        "wingspan_in": 85.0,
+        "standing_reach_in": 105.5,
+        "weight_lbs": 193.4,
+        "max_vertical_in": 36.0
+      },
+      "Frank Jackson": {
+        "height_in": 74.0,
+        "wingspan_in": 79.5,
+        "standing_reach_in": 98.0,
+        "weight_lbs": 201.6,
+        "max_vertical_in": 42.0
+      },
+      "Justin Jackson (UMD)": {
+        "height_in": 77.75,
+        "wingspan_in": 87.25,
+        "standing_reach_in": 107.0,
+        "weight_lbs": 219.4,
+        "max_vertical_in": 31.5
+      },
+      "Justin Jackson (UNC)": {
+        "height_in": 79.0,
+        "wingspan_in": 83.0,
+        "standing_reach_in": 104.5,
+        "weight_lbs": 200.8,
+        "max_vertical_in": 35.5
+      },
+      "Peter Jok": {
+        "height_in": 76.25,
+        "wingspan_in": 80.0,
+        "standing_reach_in": 102.0,
+        "weight_lbs": 202.4,
+        "max_vertical_in": 31.0
+      },
+      "Luke Kennard": {
+        "height_in": 76.5,
+        "wingspan_in": 77.25,
+        "standing_reach_in": 98.5,
+        "weight_lbs": 196.2,
+        "max_vertical_in": null
+      },
+      "Kyle Kuzma": {
+        "height_in": 80.0,
+        "wingspan_in": 84.25,
+        "standing_reach_in": 107.5,
+        "weight_lbs": 222.6,
+        "max_vertical_in": 34.0
+      },
+      "TJ Leaf": {
+        "height_in": 80.75,
+        "wingspan_in": 83.0,
+        "standing_reach_in": 107.0,
+        "weight_lbs": 222.2,
+        "max_vertical_in": 34.5
+      },
+      "Tyler Lydon": {
+        "height_in": 80.25,
+        "wingspan_in": 84.0,
+        "standing_reach_in": 107.5,
+        "weight_lbs": 215.0,
+        "max_vertical_in": 33.5
+      },
+      "Frank Mason III": {
+        "height_in": 71.0,
+        "wingspan_in": 75.25,
+        "standing_reach_in": 94.0,
+        "weight_lbs": 188.8,
+        "max_vertical_in": 41.0
+      },
+      "Kennedy Meeks": {
+        "height_in": 80.75,
+        "wingspan_in": 85.0,
+        "standing_reach_in": 106.0,
+        "weight_lbs": 276.6,
+        "max_vertical_in": 30.5
+      },
+      "Donovan Mitchell": {
+        "height_in": 73.25,
+        "wingspan_in": 82.0,
+        "standing_reach_in": 97.0,
+        "weight_lbs": 211.4,
+        "max_vertical_in": 40.5
+      },
+      "Monte Morris": {
+        "height_in": 73.25,
+        "wingspan_in": 76.0,
+        "standing_reach_in": 96.5,
+        "weight_lbs": 175.2,
+        "max_vertical_in": 33.5
+      },
+      "Johnathan Motley": {
+        "height_in": 79.75,
+        "wingspan_in": 88.0,
+        "standing_reach_in": 108.0,
+        "weight_lbs": 238.2,
+        "max_vertical_in": null
+      },
+      "Svi Mykhailiuk": {
+        "height_in": 78.5,
+        "wingspan_in": 77.0,
+        "standing_reach_in": 100.0,
+        "weight_lbs": 219.6,
+        "max_vertical_in": 33.0
+      },
+      "Semi Ojeleye": {
+        "height_in": 77.25,
+        "wingspan_in": 81.75,
+        "standing_reach_in": 102.0,
+        "weight_lbs": 241.4,
+        "max_vertical_in": 40.5
+      },
+      "Cameron Oliver": {
+        "height_in": 79.0,
+        "wingspan_in": 85.25,
+        "standing_reach_in": 106.5,
+        "weight_lbs": 238.6,
+        "max_vertical_in": 39.5
+      },
+      "Justin Patton": {
+        "height_in": 82.0,
+        "wingspan_in": 87.0,
+        "standing_reach_in": 111.5,
+        "weight_lbs": 229.0,
+        "max_vertical_in": 30.5
+      },
+      "Alec Peters": {
+        "height_in": 79.25,
+        "wingspan_in": 82.75,
+        "standing_reach_in": 105.0,
+        "weight_lbs": 232.0,
+        "max_vertical_in": null
+      },
+      "Ivan Rabb": {
+        "height_in": 80.75,
+        "wingspan_in": 85.5,
+        "standing_reach_in": 109.0,
+        "weight_lbs": 219.6,
+        "max_vertical_in": 32.5
+      },
+      "Davon Reed": {
+        "height_in": 76.5,
+        "wingspan_in": 84.0,
+        "standing_reach_in": 102.0,
+        "weight_lbs": 206.2,
+        "max_vertical_in": 36.0
+      },
+      "Devin Robinson": {
+        "height_in": 79.0,
+        "wingspan_in": 84.75,
+        "standing_reach_in": 106.0,
+        "weight_lbs": 189.6,
+        "max_vertical_in": 41.5
+      },
+      "Kobi Simmons": {
+        "height_in": 75.25,
+        "wingspan_in": 78.0,
+        "standing_reach_in": 99.0,
+        "weight_lbs": 166.2,
+        "max_vertical_in": 38.5
+      },
+      "Edmond Sumner": {
+        "height_in": 76.0,
+        "wingspan_in": 81.0,
+        "standing_reach_in": 102.5,
+        "weight_lbs": 176.4,
+        "max_vertical_in": null
+      },
+      "Caleb Swanigan": {
+        "height_in": 79.5,
+        "wingspan_in": 87.0,
+        "standing_reach_in": 108.0,
+        "weight_lbs": 245.6,
+        "max_vertical_in": null
+      },
+      "Sindarius Thornwell": {
+        "height_in": 75.5,
+        "wingspan_in": 82.0,
+        "standing_reach_in": 103.0,
+        "weight_lbs": 211.6,
+        "max_vertical_in": 30.5
+      },
+      "Melo Trimble": {
+        "height_in": 73.25,
+        "wingspan_in": 74.0,
+        "standing_reach_in": 95.5,
+        "weight_lbs": 195.2,
+        "max_vertical_in": 32.0
+      },
+      "Moritz Wagner": {
+        "height_in": 82.0,
+        "wingspan_in": 84.0,
+        "standing_reach_in": 108.0,
+        "weight_lbs": 231.2,
+        "max_vertical_in": 32.5
+      },
+      "Derrick Walton Jr.": {
+        "height_in": 71.0,
+        "wingspan_in": 74.5,
+        "standing_reach_in": 95.0,
+        "weight_lbs": 188.6,
+        "max_vertical_in": 32.5
+      },
+      "Thomas Welsh": {
+        "height_in": 83.5,
+        "wingspan_in": 84.0,
+        "standing_reach_in": 109.5,
+        "weight_lbs": 254.0,
+        "max_vertical_in": null
+      },
+      "Derrick White": {
+        "height_in": 75.25,
+        "wingspan_in": 79.5,
+        "standing_reach_in": 101.5,
+        "weight_lbs": 189.8,
+        "max_vertical_in": 36.5
+      },
+      "Nigel Williams-Goss": {
+        "height_in": 73.5,
+        "wingspan_in": 79.25,
+        "standing_reach_in": 99.0,
+        "weight_lbs": 190.2,
+        "max_vertical_in": 34.5
+      },
+      "D.J. Wilson": {
+        "height_in": 80.75,
+        "wingspan_in": 87.0,
+        "standing_reach_in": 109.5,
+        "weight_lbs": 234.4,
+        "max_vertical_in": null
+      },
+      "Omer Yurtseven": {
+        "height_in": 82.5,
+        "wingspan_in": 85.0,
+        "standing_reach_in": 108.5,
+        "weight_lbs": 248.4,
+        "max_vertical_in": 31.5
+      }
+    },
+    "2018": {
+      "Rawle Alkins": {
+        "height_in": 74.75,
+        "wingspan_in": 80.75,
+        "standing_reach_in": 99.0,
+        "weight_lbs": 217.4,
+        "max_vertical_in": 40.5
+      },
+      "Grayson Allen": {
+        "height_in": 75.0,
+        "wingspan_in": 79.25,
+        "standing_reach_in": 97.0,
+        "weight_lbs": 198.0,
+        "max_vertical_in": 40.5
+      },
+      "Kostas Antetokounmpo": {
+        "height_in": 81.0,
+        "wingspan_in": 86.25,
+        "standing_reach_in": 110.0,
+        "weight_lbs": 194.8,
+        "max_vertical_in": 35.0
+      },
+      "Udoka Azubuike": {
+        "height_in": 82.0,
+        "wingspan_in": 91.0,
+        "standing_reach_in": 112.5,
+        "weight_lbs": 273.8,
+        "max_vertical_in": 31.5
+      },
+      "Mohamed Bamba": {
+        "height_in": 83.25,
+        "wingspan_in": 94.0,
+        "standing_reach_in": 115.5,
+        "weight_lbs": 225.6,
+        "max_vertical_in": null
+      },
+      "Jaylen Barford": {
+        "height_in": 73.25,
+        "wingspan_in": 75.5,
+        "standing_reach_in": 96.5,
+        "weight_lbs": 207.6,
+        "max_vertical_in": 33.0
+      },
+      "Keita Bates-Diop": {
+        "height_in": 79.25,
+        "wingspan_in": 87.25,
+        "standing_reach_in": 106.5,
+        "weight_lbs": 223.8,
+        "max_vertical_in": 35.0
+      },
+      "Tyus Battle": {
+        "height_in": 77.0,
+        "wingspan_in": 81.0,
+        "standing_reach_in": 102.0,
+        "weight_lbs": 200.2,
+        "max_vertical_in": 37.5
+      },
+      "Brian Bowen": {
+        "height_in": 78.25,
+        "wingspan_in": 82.25,
+        "standing_reach_in": 103.5,
+        "weight_lbs": 202.0,
+        "max_vertical_in": 34.0
+      },
+      "Miles Bridges": {
+        "height_in": 77.25,
+        "wingspan_in": 81.5,
+        "standing_reach_in": 103.5,
+        "weight_lbs": 220.4,
+        "max_vertical_in": null
+      },
+      "Bruce Brown": {
+        "height_in": 75.5,
+        "wingspan_in": 81.0,
+        "standing_reach_in": 98.5,
+        "weight_lbs": 194.6,
+        "max_vertical_in": 38.0
+      },
+      "Troy Brown": {
+        "height_in": 77.75,
+        "wingspan_in": 82.25,
+        "standing_reach_in": 105.0,
+        "weight_lbs": 208.0,
+        "max_vertical_in": 33.0
+      },
+      "Jalen Brunson": {
+        "height_in": 73.0,
+        "wingspan_in": 76.0,
+        "standing_reach_in": 96.0,
+        "weight_lbs": 198.4,
+        "max_vertical_in": 37.0
+      },
+      "Tony Carr": {
+        "height_in": 75.0,
+        "wingspan_in": 80.25,
+        "standing_reach_in": 100.0,
+        "weight_lbs": 198.8,
+        "max_vertical_in": 31.5
+      },
+      "Jevon Carter": {
+        "height_in": 72.25,
+        "wingspan_in": 76.25,
+        "standing_reach_in": 95.0,
+        "weight_lbs": 196.2,
+        "max_vertical_in": 36.5
+      },
+      "Wendell Carter": {
+        "height_in": 80.75,
+        "wingspan_in": 88.5,
+        "standing_reach_in": 109.0,
+        "weight_lbs": 251.4,
+        "max_vertical_in": null
+      },
+      "Donte DiVincenzo": {
+        "height_in": 75.5,
+        "wingspan_in": 78.0,
+        "standing_reach_in": 97.5,
+        "weight_lbs": 200.6,
+        "max_vertical_in": 42.0
+      },
+      "Hamidou Diallo": {
+        "height_in": 76.25,
+        "wingspan_in": 83.5,
+        "standing_reach_in": 103.0,
+        "weight_lbs": 197.0,
+        "max_vertical_in": 40.5
+      },
+      "Trevon Duval": {
+        "height_in": 73.5,
+        "wingspan_in": 80.25,
+        "standing_reach_in": 97.5,
+        "weight_lbs": 191.0,
+        "max_vertical_in": 41.5
+      },
+      "Carsen Edwards": {
+        "height_in": 70.75,
+        "wingspan_in": 78.25,
+        "standing_reach_in": 94.5,
+        "weight_lbs": 195.6,
+        "max_vertical_in": 34.5
+      },
+      "Jacob Evans": {
+        "height_in": 76.25,
+        "wingspan_in": 81.25,
+        "standing_reach_in": 102.5,
+        "weight_lbs": 199.6,
+        "max_vertical_in": 35.5
+      },
+      "Keenan Evans": {
+        "height_in": 73.5,
+        "wingspan_in": 77.25,
+        "standing_reach_in": 98.0,
+        "weight_lbs": 183.2,
+        "max_vertical_in": null
+      },
+      "Bruno Fernando": {
+        "height_in": 80.75,
+        "wingspan_in": 88.25,
+        "standing_reach_in": 109.0,
+        "weight_lbs": 233.2,
+        "max_vertical_in": 35.0
+      },
+      "Melvin Frazier": {
+        "height_in": 76.5,
+        "wingspan_in": 85.75,
+        "standing_reach_in": 105.0,
+        "weight_lbs": 198.2,
+        "max_vertical_in": 40.5
+      },
+      "Shai Gilgeous-Alexander": {
+        "height_in": 76.5,
+        "wingspan_in": 83.5,
+        "standing_reach_in": 104.0,
+        "weight_lbs": 180.0,
+        "max_vertical_in": null
+      },
+      "Devonte Graham": {
+        "height_in": 72.25,
+        "wingspan_in": 78.25,
+        "standing_reach_in": 96.0,
+        "weight_lbs": 186.4,
+        "max_vertical_in": 37.0
+      },
+      "Isaac Haas": {
+        "height_in": 85.25,
+        "wingspan_in": 89.0,
+        "standing_reach_in": 111.5,
+        "weight_lbs": 303.0,
+        "max_vertical_in": null
+      },
+      "Devon Hall": {
+        "height_in": 76.25,
+        "wingspan_in": 79.75,
+        "standing_reach_in": 102.0,
+        "weight_lbs": 206.4,
+        "max_vertical_in": 31.0
+      },
+      "Jaylen Hands": {
+        "height_in": 73.5,
+        "wingspan_in": 77.5,
+        "standing_reach_in": 98.0,
+        "weight_lbs": 179.0,
+        "max_vertical_in": 39.5
+      },
+      "Kevin Hervey": {
+        "height_in": 78.5,
+        "wingspan_in": 87.5,
+        "standing_reach_in": 107.0,
+        "weight_lbs": 211.6,
+        "max_vertical_in": 32.0
+      },
+      "Aaron Holiday": {
+        "height_in": 71.75,
+        "wingspan_in": 79.5,
+        "standing_reach_in": 97.0,
+        "weight_lbs": 187.0,
+        "max_vertical_in": 33.0
+      },
+      "Kevin Huerter": {
+        "height_in": 78.25,
+        "wingspan_in": 79.5,
+        "standing_reach_in": 101.5,
+        "weight_lbs": 194.0,
+        "max_vertical_in": 38.0
+      },
+      "Jaren Jackson": {
+        "height_in": 81.75,
+        "wingspan_in": 89.25,
+        "standing_reach_in": 110.0,
+        "weight_lbs": 236.0,
+        "max_vertical_in": null
+      },
+      "Justin Jackson": {
+        "height_in": 78.0,
+        "wingspan_in": 87.0,
+        "standing_reach_in": 105.0,
+        "weight_lbs": 229.4,
+        "max_vertical_in": null
+      },
+      "Alize Johnson": {
+        "height_in": 79.25,
+        "wingspan_in": 80.75,
+        "standing_reach_in": 103.0,
+        "weight_lbs": 216.6,
+        "max_vertical_in": 31.0
+      },
+      "George King": {
+        "height_in": 76.75,
+        "wingspan_in": 83.5,
+        "standing_reach_in": 101.5,
+        "weight_lbs": 218.6,
+        "max_vertical_in": 39.0
+      },
+      "Kevin Knox": {
+        "height_in": 79.75,
+        "wingspan_in": 83.75,
+        "standing_reach_in": 108.0,
+        "weight_lbs": 212.6,
+        "max_vertical_in": null
+      },
+      "Sagaba Konate": {
+        "height_in": 78.5,
+        "wingspan_in": 84.0,
+        "standing_reach_in": 106.5,
+        "weight_lbs": 246.0,
+        "max_vertical_in": 35.0
+      },
+      "Caleb Martin": {
+        "height_in": 76.75,
+        "wingspan_in": 82.0,
+        "standing_reach_in": 101.5,
+        "weight_lbs": 195.8,
+        "max_vertical_in": 36.5
+      },
+      "Cody Martin": {
+        "height_in": 76.75,
+        "wingspan_in": 82.25,
+        "standing_reach_in": 102.5,
+        "weight_lbs": 188.6,
+        "max_vertical_in": 36.5
+      },
+      "Yante Maten": {
+        "height_in": 79.25,
+        "wingspan_in": 84.5,
+        "standing_reach_in": 107.5,
+        "weight_lbs": 246.2,
+        "max_vertical_in": 31.5
+      },
+      "Brandon McCoy": {
+        "height_in": 83.5,
+        "wingspan_in": 86.0,
+        "standing_reach_in": 110.5,
+        "weight_lbs": 250.4,
+        "max_vertical_in": 32.0
+      },
+      "DeAnthony Melton": {
+        "height_in": 74.25,
+        "wingspan_in": 80.5,
+        "standing_reach_in": 99.5,
+        "weight_lbs": 193.2,
+        "max_vertical_in": 36.5
+      },
+      "Chimezie Metu": {
+        "height_in": 80.5,
+        "wingspan_in": 84.5,
+        "standing_reach_in": 108.0,
+        "weight_lbs": 219.6,
+        "max_vertical_in": 36.0
+      },
+      "Shake Milton": {
+        "height_in": 76.5,
+        "wingspan_in": 84.75,
+        "standing_reach_in": 99.5,
+        "weight_lbs": 207.2,
+        "max_vertical_in": 33.0
+      },
+      "Sviatoslav Mykhailiuk": {
+        "height_in": 78.5,
+        "wingspan_in": 76.75,
+        "standing_reach_in": 100.0,
+        "weight_lbs": 211.6,
+        "max_vertical_in": 37.0
+      },
+      "Malik Newman": {
+        "height_in": 74.5,
+        "wingspan_in": 77.5,
+        "standing_reach_in": 98.5,
+        "weight_lbs": 189.2,
+        "max_vertical_in": 33.5
+      },
+      "Josh Okogie": {
+        "height_in": 75.0,
+        "wingspan_in": 84.0,
+        "standing_reach_in": 102.0,
+        "weight_lbs": 210.8,
+        "max_vertical_in": 42.0
+      },
+      "Theo Pinson": {
+        "height_in": 77.0,
+        "wingspan_in": 82.75,
+        "standing_reach_in": 103.5,
+        "weight_lbs": 211.2,
+        "max_vertical_in": 34.0
+      },
+      "Jontay Porter": {
+        "height_in": 82.0,
+        "wingspan_in": 84.25,
+        "standing_reach_in": 109.0,
+        "weight_lbs": 236.0,
+        "max_vertical_in": 31.0
+      },
+      "Michael Porter": {
+        "height_in": 81.5,
+        "wingspan_in": 84.25,
+        "standing_reach_in": 108.5,
+        "weight_lbs": 211.0,
+        "max_vertical_in": null
+      },
+      "Billy Preston": {
+        "height_in": 80.75,
+        "wingspan_in": 86.0,
+        "standing_reach_in": 108.0,
+        "weight_lbs": 222.4,
+        "max_vertical_in": 33.0
+      },
+      "Jerome Robinson": {
+        "height_in": 76.0,
+        "wingspan_in": 79.25,
+        "standing_reach_in": 98.0,
+        "weight_lbs": 188.4,
+        "max_vertical_in": null
+      },
+      "Collin Sexton": {
+        "height_in": 72.5,
+        "wingspan_in": 79.25,
+        "standing_reach_in": 98.5,
+        "weight_lbs": 183.0,
+        "max_vertical_in": null
+      },
+      "Landry Shamet": {
+        "height_in": 76.0,
+        "wingspan_in": 78.75,
+        "standing_reach_in": 100.0,
+        "weight_lbs": 188.6,
+        "max_vertical_in": 39.5
+      },
+      "Anfernee Simons": {
+        "height_in": 74.25,
+        "wingspan_in": 81.25,
+        "standing_reach_in": 99.5,
+        "weight_lbs": 183.2,
+        "max_vertical_in": 41.5
+      },
+      "Zhaire Smith": {
+        "height_in": 74.75,
+        "wingspan_in": 81.75,
+        "standing_reach_in": 100.0,
+        "weight_lbs": 198.6,
+        "max_vertical_in": 41.5
+      },
+      "Ray Spalding": {
+        "height_in": 81.0,
+        "wingspan_in": 88.75,
+        "standing_reach_in": 109.0,
+        "weight_lbs": 215.4,
+        "max_vertical_in": 32.0
+      },
+      "Omari Spellman": {
+        "height_in": 80.0,
+        "wingspan_in": 86.0,
+        "standing_reach_in": 107.5,
+        "weight_lbs": 253.8,
+        "max_vertical_in": 35.5
+      },
+      "Khyri Thomas": {
+        "height_in": 74.5,
+        "wingspan_in": 82.5,
+        "standing_reach_in": 101.0,
+        "weight_lbs": 198.8,
+        "max_vertical_in": 35.0
+      },
+      "Gary Trent": {
+        "height_in": 76.25,
+        "wingspan_in": 80.75,
+        "standing_reach_in": 98.0,
+        "weight_lbs": 204.2,
+        "max_vertical_in": 39.5
+      },
+      "Allonzo Trier": {
+        "height_in": 75.75,
+        "wingspan_in": 78.75,
+        "standing_reach_in": 98.0,
+        "weight_lbs": 198.0,
+        "max_vertical_in": 40.0
+      },
+      "Moritz Wagner": {
+        "height_in": 82.5,
+        "wingspan_in": 84.0,
+        "standing_reach_in": 108.0,
+        "weight_lbs": 241.4,
+        "max_vertical_in": 34.0
+      },
+      "Lonnie Walker": {
+        "height_in": 75.75,
+        "wingspan_in": 82.25,
+        "standing_reach_in": 99.5,
+        "weight_lbs": 196.2,
+        "max_vertical_in": 40.0
+      },
+      "PJ Washington": {
+        "height_in": 78.5,
+        "wingspan_in": 86.5,
+        "standing_reach_in": 107.0,
+        "weight_lbs": 223.0,
+        "max_vertical_in": 34.0
+      },
+      "Austin Wiley": {
+        "height_in": 80.25,
+        "wingspan_in": 89.0,
+        "standing_reach_in": 111.0,
+        "weight_lbs": 249.4,
+        "max_vertical_in": 33.5
+      },
+      "Kris Wilkes": {
+        "height_in": 78.5,
+        "wingspan_in": 82.25,
+        "standing_reach_in": 103.5,
+        "weight_lbs": 205.0,
+        "max_vertical_in": 35.5
+      },
+      "Kenrich Williams": {
+        "height_in": 78.0,
+        "wingspan_in": 79.25,
+        "standing_reach_in": 103.5,
+        "weight_lbs": 200.4,
+        "max_vertical_in": 33.0
+      },
+      "Trae Young": {
+        "height_in": 72.5,
+        "wingspan_in": 75.0,
+        "standing_reach_in": 95.5,
+        "weight_lbs": 177.8,
+        "max_vertical_in": null
+      }
+    },
+    "2019": {
+      "Nickeil Alexander-Walker": {
+        "height_in": 76.25,
+        "wingspan_in": 81.5,
+        "standing_reach_in": 102.0,
+        "weight_lbs": 203.8,
+        "max_vertical_in": null
+      },
+      "RJ Barrett": {
+        "height_in": null,
+        "wingspan_in": null,
+        "standing_reach_in": null,
+        "weight_lbs": null,
+        "max_vertical_in": null
+      },
+      "Charles Bassey": {
+        "height_in": 80.75,
+        "wingspan_in": 87.5,
+        "standing_reach_in": 109.5,
+        "weight_lbs": 239.0,
+        "max_vertical_in": 33.0
+      },
+      "Darius Bazley": {
+        "height_in": 79.75,
+        "wingspan_in": 84.0,
+        "standing_reach_in": 107.0,
+        "weight_lbs": 208.4,
+        "max_vertical_in": 37.0
+      },
+      "Bol Bol": {
+        "height_in": 84.75,
+        "wingspan_in": 91.0,
+        "standing_reach_in": 115.5,
+        "weight_lbs": 208.0,
+        "max_vertical_in": null
+      },
+      "Jordan Bone": {
+        "height_in": 73.5,
+        "wingspan_in": 75.25,
+        "standing_reach_in": 95.0,
+        "weight_lbs": 179.0,
+        "max_vertical_in": 42.5
+      },
+      "Brian Bowen II": {
+        "height_in": 78.25,
+        "wingspan_in": 82.0,
+        "standing_reach_in": 103.0,
+        "weight_lbs": 200.0,
+        "max_vertical_in": 35.5
+      },
+      "Ky Bowman": {
+        "height_in": 73.0,
+        "wingspan_in": 79.0,
+        "standing_reach_in": 98.0,
+        "weight_lbs": 181.2,
+        "max_vertical_in": 33.0
+      },
+      "Ignas Brazdeikis": {
+        "height_in": 77.75,
+        "wingspan_in": 81.25,
+        "standing_reach_in": 102.0,
+        "weight_lbs": 220.8,
+        "max_vertical_in": 36.5
+      },
+      "O'Shae Brissett": {
+        "height_in": 79.0,
+        "wingspan_in": 84.0,
+        "standing_reach_in": 104.0,
+        "weight_lbs": 203.2,
+        "max_vertical_in": 37.5
+      },
+      "Moses Brown": {
+        "height_in": 85.25,
+        "wingspan_in": 88.75,
+        "standing_reach_in": 113.0,
+        "weight_lbs": 237.2,
+        "max_vertical_in": 31.0
+      },
+      "Brandon Clarke": {
+        "height_in": 79.25,
+        "wingspan_in": 80.25,
+        "standing_reach_in": 102.0,
+        "weight_lbs": 207.2,
+        "max_vertical_in": 40.5
+      },
+      "Nicolas Claxton": {
+        "height_in": 82.0,
+        "wingspan_in": 86.5,
+        "standing_reach_in": 110.0,
+        "weight_lbs": 216.6,
+        "max_vertical_in": 36.5
+      },
+      "Tyler Cook": {
+        "height_in": 79.25,
+        "wingspan_in": 84.5,
+        "standing_reach_in": 106.5,
+        "weight_lbs": 245.4,
+        "max_vertical_in": 32.0
+      },
+      "Jarrett Culver": {
+        "height_in": 77.25,
+        "wingspan_in": 81.5,
+        "standing_reach_in": 100.5,
+        "weight_lbs": 194.2,
+        "max_vertical_in": null
+      },
+      "Terence Davis": {
+        "height_in": 75.0,
+        "wingspan_in": 80.75,
+        "standing_reach_in": 101.0,
+        "weight_lbs": 192.4,
+        "max_vertical_in": 34.0
+      },
+      "Luguentz Dort": {
+        "height_in": 74.75,
+        "wingspan_in": 80.5,
+        "standing_reach_in": 99.5,
+        "weight_lbs": 222.2,
+        "max_vertical_in": 38.0
+      },
+      "Devon Dotson": {
+        "height_in": 72.0,
+        "wingspan_in": 75.25,
+        "standing_reach_in": 95.5,
+        "weight_lbs": 178.6,
+        "max_vertical_in": 38.5
+      },
+      "Carsen Edwards": {
+        "height_in": 70.75,
+        "wingspan_in": 78.0,
+        "standing_reach_in": 94.5,
+        "weight_lbs": 199.4,
+        "max_vertical_in": 34.0
+      },
+      "Tacko Fall": {
+        "height_in": 89.25,
+        "wingspan_in": 98.25,
+        "standing_reach_in": 122.5,
+        "weight_lbs": 288.8,
+        "max_vertical_in": 26.5
+      },
+      "Bruno Fernando": {
+        "height_in": 80.75,
+        "wingspan_in": 87.25,
+        "standing_reach_in": 110.0,
+        "weight_lbs": 237.0,
+        "max_vertical_in": 33.5
+      },
+      "Daniel Gafford": {
+        "height_in": 81.25,
+        "wingspan_in": 86.5,
+        "standing_reach_in": 110.0,
+        "weight_lbs": 237.6,
+        "max_vertical_in": 36.5
+      },
+      "Darius Garland": {
+        "height_in": null,
+        "wingspan_in": null,
+        "standing_reach_in": null,
+        "weight_lbs": null,
+        "max_vertical_in": null
+      },
+      "Quentin Grimes": {
+        "height_in": 76.0,
+        "wingspan_in": 79.75,
+        "standing_reach_in": 100.5,
+        "weight_lbs": 209.6,
+        "max_vertical_in": 36.0
+      },
+      "Kyle Guy": {
+        "height_in": 72.75,
+        "wingspan_in": 76.5,
+        "standing_reach_in": 95.5,
+        "weight_lbs": 167.8,
+        "max_vertical_in": 36.5
+      },
+      "Jaylen Hands": {
+        "height_in": 73.5,
+        "wingspan_in": 77.5,
+        "standing_reach_in": 97.0,
+        "weight_lbs": 180.4,
+        "max_vertical_in": 41.5
+      },
+      "Jared Harper": {
+        "height_in": 69.75,
+        "wingspan_in": 77.5,
+        "standing_reach_in": 94.0,
+        "weight_lbs": 169.2,
+        "max_vertical_in": 40.5
+      },
+      "Jaxson Hayes": {
+        "height_in": 82.25,
+        "wingspan_in": 87.5,
+        "standing_reach_in": 110.5,
+        "weight_lbs": 218.6,
+        "max_vertical_in": 34.5
+      },
+      "Dewan Hernandez": {
+        "height_in": 81.0,
+        "wingspan_in": 85.75,
+        "standing_reach_in": 107.0,
+        "weight_lbs": 232.8,
+        "max_vertical_in": 35.5
+      },
+      "Tyler Herro": {
+        "height_in": 76.5,
+        "wingspan_in": 75.25,
+        "standing_reach_in": 100.5,
+        "weight_lbs": 192.4,
+        "max_vertical_in": null
+      },
+      "Jalen Hoard": {
+        "height_in": 79.25,
+        "wingspan_in": 84.75,
+        "standing_reach_in": 105.5,
+        "weight_lbs": 212.6,
+        "max_vertical_in": 35.5
+      },
+      "Talen Horton-Tucker": {
+        "height_in": 74.5,
+        "wingspan_in": 85.25,
+        "standing_reach_in": 103.0,
+        "weight_lbs": 235.4,
+        "max_vertical_in": 34.5
+      },
+      "De'Andre Hunter": {
+        "height_in": null,
+        "wingspan_in": null,
+        "standing_reach_in": null,
+        "weight_lbs": null,
+        "max_vertical_in": null
+      },
+      "DaQuan Jeffries": {
+        "height_in": 76.0,
+        "wingspan_in": 83.25,
+        "standing_reach_in": 104.0,
+        "weight_lbs": 215.6,
+        "max_vertical_in": null
+      },
+      "Ty Jerome": {
+        "height_in": 76.25,
+        "wingspan_in": 76.0,
+        "standing_reach_in": 98.0,
+        "weight_lbs": 194.4,
+        "max_vertical_in": 31.5
+      },
+      "Keldon Johnson": {
+        "height_in": 76.75,
+        "wingspan_in": 81.25,
+        "standing_reach_in": 104.0,
+        "weight_lbs": 216.4,
+        "max_vertical_in": null
+      },
+      "Cameron Johnson": {
+        "height_in": 79.0,
+        "wingspan_in": 82.0,
+        "standing_reach_in": 103.0,
+        "weight_lbs": 205.2,
+        "max_vertical_in": 36.5
+      },
+      "Mfiondu Kabengele": {
+        "height_in": 80.75,
+        "wingspan_in": 87.0,
+        "standing_reach_in": 109.5,
+        "weight_lbs": 256.2,
+        "max_vertical_in": 35.5
+      },
+      "Louis King": {
+        "height_in": 78.75,
+        "wingspan_in": 84.25,
+        "standing_reach_in": 104.5,
+        "weight_lbs": 195.2,
+        "max_vertical_in": 33.0
+      },
+      "Romeo Langford": {
+        "height_in": 76.5,
+        "wingspan_in": 83.0,
+        "standing_reach_in": 103.0,
+        "weight_lbs": null,
+        "max_vertical_in": null
+      },
+      "Dedric Lawson": {
+        "height_in": 79.0,
+        "wingspan_in": 86.25,
+        "standing_reach_in": 107.5,
+        "weight_lbs": 233.0,
+        "max_vertical_in": 26.0
+      },
+      "Jalen Lecque": {
+        "height_in": 74.5,
+        "wingspan_in": 80.5,
+        "standing_reach_in": 98.5,
+        "weight_lbs": 185.2,
+        "max_vertical_in": 43.0
+      },
+      "Nassir Little": {
+        "height_in": 76.5,
+        "wingspan_in": 85.25,
+        "standing_reach_in": 104.5,
+        "weight_lbs": 224.2,
+        "max_vertical_in": 38.5
+      },
+      "Terance Mann": {
+        "height_in": 76.75,
+        "wingspan_in": 79.75,
+        "standing_reach_in": 101.0,
+        "weight_lbs": 204.6,
+        "max_vertical_in": 38.5
+      },
+      "Cody Martin": {
+        "height_in": 76.75,
+        "wingspan_in": 82.25,
+        "standing_reach_in": 102.5,
+        "weight_lbs": 192.2,
+        "max_vertical_in": 35.5
+      },
+      "Charles Matthews": {
+        "height_in": 77.0,
+        "wingspan_in": 81.5,
+        "standing_reach_in": 103.0,
+        "weight_lbs": 194.8,
+        "max_vertical_in": 37.5
+      },
+      "Jalen McDaniels": {
+        "height_in": 80.25,
+        "wingspan_in": 84.25,
+        "standing_reach_in": 105.5,
+        "weight_lbs": 191.6,
+        "max_vertical_in": 33.5
+      },
+      "Ja Morant": {
+        "height_in": null,
+        "wingspan_in": null,
+        "standing_reach_in": null,
+        "weight_lbs": null,
+        "max_vertical_in": null
+      },
+      "Zach Norvell Jr.": {
+        "height_in": 76.5,
+        "wingspan_in": 78.0,
+        "standing_reach_in": 101.0,
+        "weight_lbs": 206.4,
+        "max_vertical_in": 30.0
+      },
+      "Jaylen Nowell": {
+        "height_in": 75.25,
+        "wingspan_in": 79.25,
+        "standing_reach_in": 98.0,
+        "weight_lbs": 202.4,
+        "max_vertical_in": 38.5
+      },
+      "Jordan Nwora": {
+        "height_in": 77.75,
+        "wingspan_in": 82.5,
+        "standing_reach_in": 103.0,
+        "weight_lbs": 220.0,
+        "max_vertical_in": null
+      },
+      "Chuma Okeke": {
+        "height_in": null,
+        "wingspan_in": null,
+        "standing_reach_in": null,
+        "weight_lbs": null,
+        "max_vertical_in": null
+      },
+      "KZ Okpala": {
+        "height_in": 79.25,
+        "wingspan_in": 85.75,
+        "standing_reach_in": 106.5,
+        "weight_lbs": 209.6,
+        "max_vertical_in": 37.0
+      },
+      "Miye Oni": {
+        "height_in": 76.25,
+        "wingspan_in": 82.75,
+        "standing_reach_in": 100.5,
+        "weight_lbs": 205.6,
+        "max_vertical_in": 38.5
+      },
+      "Eric Paschall": {
+        "height_in": 78.0,
+        "wingspan_in": 87.75,
+        "standing_reach_in": 103.5,
+        "weight_lbs": 254.4,
+        "max_vertical_in": 38.0
+      },
+      "Reggie Perry": {
+        "height_in": 80.0,
+        "wingspan_in": 84.5,
+        "standing_reach_in": 106.0,
+        "weight_lbs": 250.8,
+        "max_vertical_in": 31.5
+      },
+      "Shamorie Ponds": {
+        "height_in": 71.5,
+        "wingspan_in": 75.5,
+        "standing_reach_in": 96.5,
+        "weight_lbs": 180.0,
+        "max_vertical_in": 37.0
+      },
+      "Jordan Poole": {
+        "height_in": 75.5,
+        "wingspan_in": 78.75,
+        "standing_reach_in": 99.5,
+        "weight_lbs": 190.8,
+        "max_vertical_in": 35.5
+      },
+      "Jontay Porter": {
+        "height_in": 81.75,
+        "wingspan_in": 84.0,
+        "standing_reach_in": 109.5,
+        "weight_lbs": 210.4,
+        "max_vertical_in": null
+      },
+      "Kevin Porter Jr.": {
+        "height_in": 76.0,
+        "wingspan_in": 81.0,
+        "standing_reach_in": 103.0,
+        "weight_lbs": 212.6,
+        "max_vertical_in": 34.0
+      },
+      "Neemias Queta": {
+        "height_in": 82.75,
+        "wingspan_in": 88.25,
+        "standing_reach_in": 111.5,
+        "weight_lbs": 225.8,
+        "max_vertical_in": 32.5
+      },
+      "Cameron Reddish": {
+        "height_in": 78.5,
+        "wingspan_in": 84.5,
+        "standing_reach_in": 105.5,
+        "weight_lbs": 207.8,
+        "max_vertical_in": null
+      },
+      "Naz Reid": {
+        "height_in": 80.25,
+        "wingspan_in": 87.25,
+        "standing_reach_in": 109.0,
+        "weight_lbs": 255.8,
+        "max_vertical_in": 32.5
+      },
+      "Isaiah Roby": {
+        "height_in": 79.25,
+        "wingspan_in": 85.0,
+        "standing_reach_in": 106.0,
+        "weight_lbs": 214.0,
+        "max_vertical_in": 35.5
+      },
+      "Luka Samanic": {
+        "height_in": 81.5,
+        "wingspan_in": 82.5,
+        "standing_reach_in": 107.0,
+        "weight_lbs": 227.2,
+        "max_vertical_in": 38.0
+      },
+      "Admiral Schofield": {
+        "height_in": 76.0,
+        "wingspan_in": 81.75,
+        "standing_reach_in": 102.5,
+        "weight_lbs": 240.6,
+        "max_vertical_in": 34.0
+      },
+      "Marial Shayok": {
+        "height_in": 76.5,
+        "wingspan_in": 84.25,
+        "standing_reach_in": 103.5,
+        "weight_lbs": 196.8,
+        "max_vertical_in": 36.5
+      },
+      "Simisola Shittu": {
+        "height_in": 80.5,
+        "wingspan_in": 85.25,
+        "standing_reach_in": 106.0,
+        "weight_lbs": 227.2,
+        "max_vertical_in": 35.5
+      },
+      "Killian Tillie": {
+        "height_in": null,
+        "wingspan_in": null,
+        "standing_reach_in": null,
+        "weight_lbs": null,
+        "max_vertical_in": null
+      },
+      "P.J. Washington": {
+        "height_in": 78.5,
+        "wingspan_in": 86.5,
+        "standing_reach_in": 106.5,
+        "weight_lbs": 230.4,
+        "max_vertical_in": null
+      },
+      "Tremont Waters": {
+        "height_in": 69.5,
+        "wingspan_in": 74.25,
+        "standing_reach_in": 93.5,
+        "weight_lbs": 172.4,
+        "max_vertical_in": 40.5
+      },
+      "Quinndary Weatherspoon": {
+        "height_in": 75.0,
+        "wingspan_in": 81.0,
+        "standing_reach_in": 100.0,
+        "weight_lbs": 206.6,
+        "max_vertical_in": 38.0
+      },
+      "Coby White": {
+        "height_in": 75.5,
+        "wingspan_in": 77.0,
+        "standing_reach_in": 97.5,
+        "weight_lbs": 191.4,
+        "max_vertical_in": null
+      },
+      "Kris Wilkes": {
+        "height_in": 78.25,
+        "wingspan_in": 82.75,
+        "standing_reach_in": 103.0,
+        "weight_lbs": 208.8,
+        "max_vertical_in": 35.0
+      },
+      "Grant Williams": {
+        "height_in": 77.75,
+        "wingspan_in": 81.75,
+        "standing_reach_in": 104.5,
+        "weight_lbs": 240.2,
+        "max_vertical_in": 31.5
+      },
+      "Zion Williamson": {
+        "height_in": null,
+        "wingspan_in": null,
+        "standing_reach_in": null,
+        "weight_lbs": null,
+        "max_vertical_in": null
+      },
+      "Dylan Windler": {
+        "height_in": 78.25,
+        "wingspan_in": 82.0,
+        "standing_reach_in": 104.5,
+        "weight_lbs": 195.8,
+        "max_vertical_in": 37.5
+      }
+    },
+    "2020": {
+      "Precious Achiuwa": {
+        "height_in": 79.5,
+        "wingspan_in": 84.75,
+        "standing_reach_in": 108.5,
+        "weight_lbs": 234.0,
+        "max_vertical_in": null
+      },
+      "Ty-Shon Alexander": {
+        "height_in": 74.0,
+        "wingspan_in": 80.0,
+        "standing_reach_in": 100.0,
+        "weight_lbs": 200.8,
+        "max_vertical_in": 33.0
+      },
+      "Udoka Azubuike": {
+        "height_in": 82.0,
+        "wingspan_in": 91.25,
+        "standing_reach_in": 109.0,
+        "weight_lbs": 259.5,
+        "max_vertical_in": 41.0
+      },
+      "Tyler Bey": {
+        "height_in": 78.0,
+        "wingspan_in": 85.25,
+        "standing_reach_in": 105.5,
+        "weight_lbs": 212.8,
+        "max_vertical_in": 43.5
+      },
+      "Yoeli Childs": {
+        "height_in": 78.0,
+        "wingspan_in": 83.5,
+        "standing_reach_in": 106.0,
+        "weight_lbs": 226.4,
+        "max_vertical_in": 38.5
+      },
+      "Mamadi Diakite": {
+        "height_in": 80.5,
+        "wingspan_in": 87.75,
+        "standing_reach_in": 107.0,
+        "weight_lbs": 222.1,
+        "max_vertical_in": 37.0
+      },
+      "Devon Dotson": {
+        "height_in": 72.5,
+        "wingspan_in": 75.0,
+        "standing_reach_in": 95.0,
+        "weight_lbs": 185.2,
+        "max_vertical_in": 40.5
+      },
+      "Paul Eboua": {
+        "height_in": 78.0,
+        "wingspan_in": 87.5,
+        "standing_reach_in": 108.0,
+        "weight_lbs": 222.2,
+        "max_vertical_in": 35.5
+      },
+      "CJ Elleby": {
+        "height_in": 77.5,
+        "wingspan_in": 79.25,
+        "standing_reach_in": 100.5,
+        "weight_lbs": 198.6,
+        "max_vertical_in": 36.5
+      },
+      "Trent Forrest": {
+        "height_in": 75.5,
+        "wingspan_in": 79.5,
+        "standing_reach_in": 102.5,
+        "weight_lbs": 203.0,
+        "max_vertical_in": 34.5
+      },
+      "Josh Green": {
+        "height_in": 76.5,
+        "wingspan_in": 81.75,
+        "standing_reach_in": 101.5,
+        "weight_lbs": 214.0,
+        "max_vertical_in": 39.5
+      },
+      "Ashton Hagans": {
+        "height_in": 73.5,
+        "wingspan_in": 80.0,
+        "standing_reach_in": 99.5,
+        "weight_lbs": 193.0,
+        "max_vertical_in": 36.5
+      },
+      "Joshua Hall": {
+        "height_in": 78.0,
+        "wingspan_in": 83.0,
+        "standing_reach_in": 104.5,
+        "weight_lbs": 196.6,
+        "max_vertical_in": 37.5
+      },
+      "Jalen Harris": {
+        "height_in": 74.75,
+        "wingspan_in": 79.0,
+        "standing_reach_in": 97.5,
+        "weight_lbs": 193.4,
+        "max_vertical_in": 42.5
+      },
+      "Markus Howard": {
+        "height_in": 69.5,
+        "wingspan_in": 72.25,
+        "standing_reach_in": 91.5,
+        "weight_lbs": 170.8,
+        "max_vertical_in": 35.5
+      },
+      "Elijah Hughes": {
+        "height_in": 76.75,
+        "wingspan_in": 79.5,
+        "standing_reach_in": 101.5,
+        "weight_lbs": 229.0,
+        "max_vertical_in": null
+      },
+      "Isaiah Joe": {
+        "height_in": 75.0,
+        "wingspan_in": 79.5,
+        "standing_reach_in": 101.0,
+        "weight_lbs": 170.4,
+        "max_vertical_in": null
+      },
+      "Mason Jones": {
+        "height_in": 75.75,
+        "wingspan_in": 79.0,
+        "standing_reach_in": 102.5,
+        "weight_lbs": 207.2,
+        "max_vertical_in": 31.0
+      },
+      "Nathan Knight": {
+        "height_in": 80.0,
+        "wingspan_in": 86.0,
+        "standing_reach_in": 109.5,
+        "weight_lbs": 235.0,
+        "max_vertical_in": 31.5
+      },
+      "Theo Maledon": {
+        "height_in": 76.0,
+        "wingspan_in": 80.75,
+        "standing_reach_in": 100.5,
+        "weight_lbs": 187.4,
+        "max_vertical_in": null
+      },
+      "Karim Mane": {
+        "height_in": 77.0,
+        "wingspan_in": 83.0,
+        "standing_reach_in": 102.0,
+        "weight_lbs": 196.0,
+        "max_vertical_in": 36.0
+      },
+      "Naji Marshall": {
+        "height_in": 77.75,
+        "wingspan_in": 84.75,
+        "standing_reach_in": 102.5,
+        "weight_lbs": 233.5,
+        "max_vertical_in": 35.0
+      },
+      "Kenyon Martin Jr.": {
+        "height_in": 78.0,
+        "wingspan_in": 79.25,
+        "standing_reach_in": 102.0,
+        "weight_lbs": 213.2,
+        "max_vertical_in": 38.5
+      },
+      "Skylar Mays": {
+        "height_in": 75.0,
+        "wingspan_in": 78.0,
+        "standing_reach_in": 99.0,
+        "weight_lbs": 204.0,
+        "max_vertical_in": 37.5
+      },
+      "Zeke Nnaji": {
+        "height_in": 81.25,
+        "wingspan_in": 86.0,
+        "standing_reach_in": 105.5,
+        "weight_lbs": 246.8,
+        "max_vertical_in": 38.0
+      },
+      "Jordan Nwora": {
+        "height_in": 77.75,
+        "wingspan_in": 82.25,
+        "standing_reach_in": 104.0,
+        "weight_lbs": 223.0,
+        "max_vertical_in": 35.0
+      },
+      "Reggie Perry": {
+        "height_in": 80.25,
+        "wingspan_in": 84.25,
+        "standing_reach_in": 106.5,
+        "weight_lbs": 249.6,
+        "max_vertical_in": 33.5
+      },
+      "Myles Powell": {
+        "height_in": 72.5,
+        "wingspan_in": 79.0,
+        "standing_reach_in": 99.0,
+        "weight_lbs": 194.0,
+        "max_vertical_in": null
+      },
+      "Immanuel Quickley": {
+        "height_in": 74.0,
+        "wingspan_in": 80.25,
+        "standing_reach_in": 99.0,
+        "weight_lbs": 185.8,
+        "max_vertical_in": 35.5
+      },
+      "Jahmi'us Ramsey": {
+        "height_in": 74.5,
+        "wingspan_in": 78.0,
+        "standing_reach_in": 100.5,
+        "weight_lbs": 193.4,
+        "max_vertical_in": null
+      },
+      "Paul Reed Jr.": {
+        "height_in": 80.5,
+        "wingspan_in": 86.0,
+        "standing_reach_in": 109.5,
+        "weight_lbs": 219.2,
+        "max_vertical_in": 37.5
+      },
+      "Nick Richards": {
+        "height_in": 82.5,
+        "wingspan_in": 86.25,
+        "standing_reach_in": 110.0,
+        "weight_lbs": 241.6,
+        "max_vertical_in": 34.0
+      },
+      "Grant Riller": {
+        "height_in": 72.25,
+        "wingspan_in": 77.25,
+        "standing_reach_in": 96.5,
+        "weight_lbs": 178.4,
+        "max_vertical_in": 39.5
+      },
+      "Jayden Scrubb": {
+        "height_in": 77.0,
+        "wingspan_in": 81.5,
+        "standing_reach_in": 104.5,
+        "weight_lbs": 185.2,
+        "max_vertical_in": null
+      },
+      "Jalen Smith": {
+        "height_in": 81.25,
+        "wingspan_in": 86.25,
+        "standing_reach_in": 110.0,
+        "weight_lbs": 224.6,
+        "max_vertical_in": null
+      },
+      "Cassius Stanley": {
+        "height_in": 77.0,
+        "wingspan_in": 79.0,
+        "standing_reach_in": 99.5,
+        "weight_lbs": 201.6,
+        "max_vertical_in": 44.0
+      },
+      "Lamar Stevens": {
+        "height_in": 77.75,
+        "wingspan_in": 81.0,
+        "standing_reach_in": 101.0,
+        "weight_lbs": 228.0,
+        "max_vertical_in": 41.0
+      },
+      "Isaiah Stewart": {
+        "height_in": 79.25,
+        "wingspan_in": 88.75,
+        "standing_reach_in": 108.5,
+        "weight_lbs": 243.0,
+        "max_vertical_in": null
+      },
+      "Tyrell Terry": {
+        "height_in": 73.5,
+        "wingspan_in": 73.75,
+        "standing_reach_in": 96.0,
+        "weight_lbs": 170.0,
+        "max_vertical_in": 34.0
+      },
+      "Killian Tillie": {
+        "height_in": 80.75,
+        "wingspan_in": 80.0,
+        "standing_reach_in": 106.0,
+        "weight_lbs": 221.6,
+        "max_vertical_in": 32.0
+      },
+      "Xavier Tillman Sr.": {
+        "height_in": 79.5,
+        "wingspan_in": 86.0,
+        "standing_reach_in": 106.0,
+        "weight_lbs": 266.5,
+        "max_vertical_in": 32.5
+      },
+      "Kaleb Wesson": {
+        "height_in": 81.25,
+        "wingspan_in": 87.5,
+        "standing_reach_in": 111.5,
+        "weight_lbs": 252.6,
+        "max_vertical_in": 27.0
+      },
+      "Kahlil Whitney": {
+        "height_in": 77.5,
+        "wingspan_in": 84.25,
+        "standing_reach_in": 105.5,
+        "weight_lbs": 205.0,
+        "max_vertical_in": 39.0
+      },
+      "Cassius Winston": {
+        "height_in": 72.5,
+        "wingspan_in": 78.0,
+        "standing_reach_in": 97.0,
+        "weight_lbs": 196.0,
+        "max_vertical_in": 28.0
+      },
+      "Robert Woodard II": {
+        "height_in": 77.5,
+        "wingspan_in": 86.0,
+        "standing_reach_in": 105.5,
+        "weight_lbs": 230.2,
+        "max_vertical_in": 38.0
+      }
+    },
+    "2021": {
+      "Max Abmas": {
+        "height_in": 70.5,
+        "wingspan_in": 73.75,
+        "standing_reach_in": 94.0,
+        "weight_lbs": 161.8,
+        "max_vertical_in": 32.5
+      },
+      "Ochai Agbaji": {
+        "height_in": 76.5,
+        "wingspan_in": 82.0,
+        "standing_reach_in": 103.5,
+        "weight_lbs": 214.4,
+        "max_vertical_in": 41.5
+      },
+      "Marcus Bagley": {
+        "height_in": 78.0,
+        "wingspan_in": 83.0,
+        "standing_reach_in": 102.5,
+        "weight_lbs": 216.8,
+        "max_vertical_in": 38.5
+      },
+      "Scottie Barnes": {
+        "height_in": 79.0,
+        "wingspan_in": 86.75,
+        "standing_reach_in": 108.0,
+        "weight_lbs": 225.4,
+        "max_vertical_in": 39.5
+      },
+      "Charles Bassey": {
+        "height_in": 81.25,
+        "wingspan_in": 87.0,
+        "standing_reach_in": 107.5,
+        "weight_lbs": 230.2,
+        "max_vertical_in": 36.0
+      },
+      "Brandon Boston Jr.": {
+        "height_in": 77.75,
+        "wingspan_in": 82.75,
+        "standing_reach_in": 104.0,
+        "weight_lbs": 188.0,
+        "max_vertical_in": null
+      },
+      "James Bouknight": {
+        "height_in": 75.5,
+        "wingspan_in": 80.25,
+        "standing_reach_in": 101.5,
+        "weight_lbs": 190.0,
+        "max_vertical_in": null
+      },
+      "Greg Brown III": {
+        "height_in": 79.25,
+        "wingspan_in": 84.25,
+        "standing_reach_in": 107.0,
+        "weight_lbs": 206.4,
+        "max_vertical_in": 39.0
+      },
+      "Jared Butler": {
+        "height_in": 74.25,
+        "wingspan_in": 76.0,
+        "standing_reach_in": 98.5,
+        "weight_lbs": 193.0,
+        "max_vertical_in": null
+      },
+      "Justin Champagnie": {
+        "height_in": 77.75,
+        "wingspan_in": 81.5,
+        "standing_reach_in": 104.0,
+        "weight_lbs": 206.4,
+        "max_vertical_in": 35.0
+      },
+      "Julian Champagnie": {
+        "height_in": 78.5,
+        "wingspan_in": 82.0,
+        "standing_reach_in": 106.5,
+        "weight_lbs": 217.4,
+        "max_vertical_in": 32.0
+      },
+      "Josh Christopher": {
+        "height_in": 75.25,
+        "wingspan_in": 81.25,
+        "standing_reach_in": 101.0,
+        "weight_lbs": 214.8,
+        "max_vertical_in": 37.5
+      },
+      "Sharife Cooper": {
+        "height_in": null,
+        "wingspan_in": null,
+        "standing_reach_in": null,
+        "weight_lbs": null,
+        "max_vertical_in": null
+      },
+      "Cade Cunningham": {
+        "height_in": null,
+        "wingspan_in": null,
+        "standing_reach_in": null,
+        "weight_lbs": null,
+        "max_vertical_in": null
+      },
+      "Ayo Dosunmu": {
+        "height_in": 75.5,
+        "wingspan_in": 82.25,
+        "standing_reach_in": 102.0,
+        "weight_lbs": 194.4,
+        "max_vertical_in": 33.5
+      },
+      "David Duke Jr.": {
+        "height_in": 76.25,
+        "wingspan_in": 80.75,
+        "standing_reach_in": 102.5,
+        "weight_lbs": 203.6,
+        "max_vertical_in": 39.0
+      },
+      "Kessler Edwards": {
+        "height_in": 79.0,
+        "wingspan_in": 83.25,
+        "standing_reach_in": 106.0,
+        "weight_lbs": 203.0,
+        "max_vertical_in": 37.0
+      },
+      "Luka Garza": {
+        "height_in": 82.0,
+        "wingspan_in": 85.5,
+        "standing_reach_in": 107.5,
+        "weight_lbs": 242.8,
+        "max_vertical_in": 29.5
+      },
+      "RaiQuan Gray": {
+        "height_in": 78.5,
+        "wingspan_in": 82.75,
+        "standing_reach_in": 105.0,
+        "weight_lbs": 268.6,
+        "max_vertical_in": 31.5
+      },
+      "Jalen Green": {
+        "height_in": null,
+        "wingspan_in": null,
+        "standing_reach_in": null,
+        "weight_lbs": null,
+        "max_vertical_in": null
+      },
+      "Quentin Grimes": {
+        "height_in": 76.0,
+        "wingspan_in": 80.0,
+        "standing_reach_in": 101.0,
+        "weight_lbs": 205.0,
+        "max_vertical_in": 38.5
+      },
+      "Sam Hauser": {
+        "height_in": 78.75,
+        "wingspan_in": 81.25,
+        "standing_reach_in": 102.0,
+        "weight_lbs": 217.4,
+        "max_vertical_in": 34.5
+      },
+      "Aaron Henry": {
+        "height_in": 76.5,
+        "wingspan_in": 82.75,
+        "standing_reach_in": 103.5,
+        "weight_lbs": 209.6,
+        "max_vertical_in": 35.0
+      },
+      "Ariel Hukporti": {
+        "height_in": 82.75,
+        "wingspan_in": 86.5,
+        "standing_reach_in": 111.5,
+        "weight_lbs": 246.0,
+        "max_vertical_in": 31.0
+      },
+      "Matt Hurt": {
+        "height_in": 80.5,
+        "wingspan_in": 81.5,
+        "standing_reach_in": 106.5,
+        "weight_lbs": 232.4,
+        "max_vertical_in": 32.5
+      },
+      "Nah'Shon Hyland": {
+        "height_in": 74.0,
+        "wingspan_in": 81.25,
+        "standing_reach_in": 101.5,
+        "weight_lbs": 169.0,
+        "max_vertical_in": 34.0
+      },
+      "Isaiah Jackson": {
+        "height_in": null,
+        "wingspan_in": null,
+        "standing_reach_in": null,
+        "weight_lbs": null,
+        "max_vertical_in": null
+      },
+      "David Johnson": {
+        "height_in": 75.25,
+        "wingspan_in": 82.5,
+        "standing_reach_in": 104.0,
+        "weight_lbs": 202.8,
+        "max_vertical_in": 39.0
+      },
+      "Jalen Johnson": {
+        "height_in": 79.75,
+        "wingspan_in": 84.25,
+        "standing_reach_in": 106.0,
+        "weight_lbs": 209.6,
+        "max_vertical_in": null
+      },
+      "Keon Johnson": {
+        "height_in": 75.5,
+        "wingspan_in": 79.25,
+        "standing_reach_in": 97.0,
+        "weight_lbs": 184.8,
+        "max_vertical_in": 48.0
+      },
+      "Herbert Jones": {
+        "height_in": 78.0,
+        "wingspan_in": 84.25,
+        "standing_reach_in": 106.0,
+        "weight_lbs": 206.4,
+        "max_vertical_in": 36.5
+      },
+      "Kai Jones": {
+        "height_in": 82.0,
+        "wingspan_in": 85.75,
+        "standing_reach_in": 110.5,
+        "weight_lbs": 221.4,
+        "max_vertical_in": null
+      },
+      "Carlik Jones": {
+        "height_in": 72.0,
+        "wingspan_in": 77.0,
+        "standing_reach_in": 97.5,
+        "weight_lbs": 173.6,
+        "max_vertical_in": 36.0
+      },
+      "Johnny Juzang": {
+        "height_in": 77.5,
+        "wingspan_in": 82.5,
+        "standing_reach_in": 100.5,
+        "weight_lbs": 209.0,
+        "max_vertical_in": 36.5
+      },
+      "Corey Kispert": {
+        "height_in": 78.0,
+        "wingspan_in": 79.0,
+        "standing_reach_in": 102.0,
+        "weight_lbs": 223.8,
+        "max_vertical_in": 37.5
+      },
+      "Jonathan Kuminga": {
+        "height_in": null,
+        "wingspan_in": null,
+        "standing_reach_in": null,
+        "weight_lbs": null,
+        "max_vertical_in": null
+      },
+      "AJ Lawson": {
+        "height_in": 77.5,
+        "wingspan_in": 78.75,
+        "standing_reach_in": 99.5,
+        "weight_lbs": 179.2,
+        "max_vertical_in": 41.0
+      },
+      "Scottie Lewis": {
+        "height_in": 76.0,
+        "wingspan_in": 84.0,
+        "standing_reach_in": 101.5,
+        "weight_lbs": 187.6,
+        "max_vertical_in": 42.0
+      },
+      "Isaiah Livers": {
+        "height_in": 77.75,
+        "wingspan_in": 81.25,
+        "standing_reach_in": 104.5,
+        "weight_lbs": 231.8,
+        "max_vertical_in": null
+      },
+      "Makur Maker": {
+        "height_in": 82.25,
+        "wingspan_in": 85.75,
+        "standing_reach_in": 112.0,
+        "weight_lbs": 232.2,
+        "max_vertical_in": 31.0
+      },
+      "Sandro Mamukelashvili": {
+        "height_in": 81.0,
+        "wingspan_in": 85.25,
+        "standing_reach_in": 106.5,
+        "weight_lbs": 239.8,
+        "max_vertical_in": 36.5
+      },
+      "Tre Mann": {
+        "height_in": 75.25,
+        "wingspan_in": 76.0,
+        "standing_reach_in": 98.5,
+        "weight_lbs": 177.6,
+        "max_vertical_in": null
+      },
+      "Matthew Mayer": {
+        "height_in": null,
+        "wingspan_in": null,
+        "standing_reach_in": null,
+        "weight_lbs": null,
+        "max_vertical_in": null
+      },
+      "Miles McBride": {
+        "height_in": 73.0,
+        "wingspan_in": 80.75,
+        "standing_reach_in": 99.5,
+        "weight_lbs": 195.2,
+        "max_vertical_in": 38.5
+      },
+      "Davion Mitchell": {
+        "height_in": 72.0,
+        "wingspan_in": 76.25,
+        "standing_reach_in": 96.5,
+        "weight_lbs": 202.4,
+        "max_vertical_in": null
+      },
+      "Evan Mobley": {
+        "height_in": null,
+        "wingspan_in": null,
+        "standing_reach_in": null,
+        "weight_lbs": null,
+        "max_vertical_in": null
+      },
+      "Isaiah Mobley": {
+        "height_in": 80.0,
+        "wingspan_in": 87.0,
+        "standing_reach_in": 107.5,
+        "weight_lbs": 238.0,
+        "max_vertical_in": 32.0
+      },
+      "Moses Moody": {
+        "height_in": 76.5,
+        "wingspan_in": 84.75,
+        "standing_reach_in": 105.0,
+        "weight_lbs": 210.6,
+        "max_vertical_in": null
+      },
+      "Trey Murphy III": {
+        "height_in": 79.5,
+        "wingspan_in": 84.0,
+        "standing_reach_in": 105.5,
+        "weight_lbs": 206.0,
+        "max_vertical_in": 38.0
+      },
+      "Daishen Nix": {
+        "height_in": 75.0,
+        "wingspan_in": 78.75,
+        "standing_reach_in": 100.0,
+        "weight_lbs": 225.6,
+        "max_vertical_in": 36.5
+      },
+      "John Petty Jr.": {
+        "height_in": 76.5,
+        "wingspan_in": 81.5,
+        "standing_reach_in": 103.5,
+        "weight_lbs": 186.2,
+        "max_vertical_in": 34.0
+      },
+      "Yves Pons": {
+        "height_in": 77.5,
+        "wingspan_in": 84.75,
+        "standing_reach_in": 104.0,
+        "weight_lbs": 206.4,
+        "max_vertical_in": 42.5
+      },
+      "Jason Preston": {
+        "height_in": 75.0,
+        "wingspan_in": 80.5,
+        "standing_reach_in": 100.5,
+        "weight_lbs": 180.6,
+        "max_vertical_in": 38.5
+      },
+      "Joshua Primo": {
+        "height_in": 76.0,
+        "wingspan_in": 81.25,
+        "standing_reach_in": 102.5,
+        "weight_lbs": 189.0,
+        "max_vertical_in": 37.5
+      },
+      "Roko Prkacin": {
+        "height_in": 79.5,
+        "wingspan_in": 83.0,
+        "standing_reach_in": 107.0,
+        "weight_lbs": 225.4,
+        "max_vertical_in": null
+      },
+      "Neemias Queta": {
+        "height_in": 83.25,
+        "wingspan_in": 88.0,
+        "standing_reach_in": 112.5,
+        "weight_lbs": 248.4,
+        "max_vertical_in": 33.0
+      },
+      "Austin Reaves": {
+        "height_in": 76.5,
+        "wingspan_in": 78.25,
+        "standing_reach_in": 101.0,
+        "weight_lbs": 197.2,
+        "max_vertical_in": 35.0
+      },
+      "Jeremiah Robinson-Earl": {
+        "height_in": 79.75,
+        "wingspan_in": 81.75,
+        "standing_reach_in": 105.5,
+        "weight_lbs": 242.4,
+        "max_vertical_in": 32.0
+      },
+      "Terrence Shannon Jr.": {
+        "height_in": 77.5,
+        "wingspan_in": 80.25,
+        "standing_reach_in": 100.0,
+        "weight_lbs": 206.6,
+        "max_vertical_in": 39.5
+      },
+      "Day'Ron Sharpe": {
+        "height_in": null,
+        "wingspan_in": null,
+        "standing_reach_in": null,
+        "weight_lbs": null,
+        "max_vertical_in": null
+      },
+      "Jericho Sims": {
+        "height_in": 81.0,
+        "wingspan_in": 87.25,
+        "standing_reach_in": 106.0,
+        "weight_lbs": 250.2,
+        "max_vertical_in": 44.5
+      },
+      "Jaden Springer": {
+        "height_in": 75.0,
+        "wingspan_in": 79.75,
+        "standing_reach_in": 99.0,
+        "weight_lbs": 202.0,
+        "max_vertical_in": 41.5
+      },
+      "DJ Steward": {
+        "height_in": 72.75,
+        "wingspan_in": 79.0,
+        "standing_reach_in": 98.5,
+        "weight_lbs": 162.2,
+        "max_vertical_in": 38.5
+      },
+      "Cam Thomas": {
+        "height_in": null,
+        "wingspan_in": null,
+        "standing_reach_in": null,
+        "weight_lbs": null,
+        "max_vertical_in": null
+      },
+      "JT Thor": {
+        "height_in": 80.5,
+        "wingspan_in": 87.25,
+        "standing_reach_in": 110.0,
+        "weight_lbs": 203.0,
+        "max_vertical_in": 35.0
+      },
+      "Isaiah Todd": {
+        "height_in": 80.75,
+        "wingspan_in": 85.25,
+        "standing_reach_in": 107.5,
+        "weight_lbs": 219.0,
+        "max_vertical_in": 35.5
+      },
+      "Duane Washington Jr.": {
+        "height_in": 74.25,
+        "wingspan_in": 79.75,
+        "standing_reach_in": 101.0,
+        "weight_lbs": 196.8,
+        "max_vertical_in": 35.5
+      },
+      "Trendon Watford": {
+        "height_in": 79.5,
+        "wingspan_in": 86.25,
+        "standing_reach_in": 105.0,
+        "weight_lbs": 237.4,
+        "max_vertical_in": 35.0
+      },
+      "Joe Wieskamp": {
+        "height_in": 77.75,
+        "wingspan_in": 83.0,
+        "standing_reach_in": 103.0,
+        "weight_lbs": 204.8,
+        "max_vertical_in": 42.0
+      },
+      "Aaron Wiggins": {
+        "height_in": 76.5,
+        "wingspan_in": 81.75,
+        "standing_reach_in": 103.0,
+        "weight_lbs": 190.0,
+        "max_vertical_in": 36.0
+      },
+      "Ziaire Williams": {
+        "height_in": 80.25,
+        "wingspan_in": 82.25,
+        "standing_reach_in": 106.5,
+        "weight_lbs": 188.4,
+        "max_vertical_in": 39.5
+      },
+      "Moses Wright": {
+        "height_in": 79.75,
+        "wingspan_in": 84.75,
+        "standing_reach_in": 107.0,
+        "weight_lbs": 225.8,
+        "max_vertical_in": 38.0
+      },
+      "McKinley Wright IV": {
+        "height_in": 71.25,
+        "wingspan_in": 77.25,
+        "standing_reach_in": 94.0,
+        "weight_lbs": 192.2,
+        "max_vertical_in": 38.0
+      },
+      "Marcus Zegarowski": {
+        "height_in": 72.75,
+        "wingspan_in": 74.75,
+        "standing_reach_in": 96.0,
+        "weight_lbs": 180.8,
+        "max_vertical_in": 35.5
+      }
+    },
+    "2022": {
+      "Ochai Agbaji": {
+        "height_in": 76.5,
+        "wingspan_in": 82.25,
+        "standing_reach_in": 104.0,
+        "weight_lbs": 216.8,
+        "max_vertical_in": 39.0
+      },
+      "Patrick Baldwin Jr.": {
+        "height_in": 81.25,
+        "wingspan_in": 85.75,
+        "standing_reach_in": 110.5,
+        "weight_lbs": 230.8,
+        "max_vertical_in": 26.5
+      },
+      "Paolo Banchero": {
+        "height_in": null,
+        "wingspan_in": null,
+        "standing_reach_in": null,
+        "weight_lbs": null,
+        "max_vertical_in": null
+      },
+      "Dominick Barlow": {
+        "height_in": 80.75,
+        "wingspan_in": 87.0,
+        "standing_reach_in": 108.5,
+        "weight_lbs": 221.0,
+        "max_vertical_in": 34.0
+      },
+      "MarJon Beauchamp": {
+        "height_in": 77.25,
+        "wingspan_in": 84.75,
+        "standing_reach_in": 106.0,
+        "weight_lbs": 196.6,
+        "max_vertical_in": null
+      },
+      "Hugo Besson": {
+        "height_in": 76.5,
+        "wingspan_in": 77.5,
+        "standing_reach_in": 102.0,
+        "weight_lbs": 180.4,
+        "max_vertical_in": 31.5
+      },
+      "Malaki Branham": {
+        "height_in": 76.0,
+        "wingspan_in": 82.0,
+        "standing_reach_in": 102.5,
+        "weight_lbs": 194.8,
+        "max_vertical_in": 35.0
+      },
+      "Christian Braun": {
+        "height_in": 77.5,
+        "wingspan_in": 78.5,
+        "standing_reach_in": 99.5,
+        "weight_lbs": 209.2,
+        "max_vertical_in": 40.0
+      },
+      "Kendall Brown": {
+        "height_in": 78.25,
+        "wingspan_in": 83.0,
+        "standing_reach_in": 103.0,
+        "weight_lbs": 201.2,
+        "max_vertical_in": 41.0
+      },
+      "John Butler Jr.": {
+        "height_in": 83.75,
+        "wingspan_in": 86.25,
+        "standing_reach_in": 112.0,
+        "weight_lbs": 174.4,
+        "max_vertical_in": 28.5
+      },
+      "Julian Champagnie": {
+        "height_in": 78.25,
+        "wingspan_in": 82.0,
+        "standing_reach_in": 107.0,
+        "weight_lbs": 212.4,
+        "max_vertical_in": 34.5
+      },
+      "Kennedy Chandler": {
+        "height_in": 71.5,
+        "wingspan_in": 77.25,
+        "standing_reach_in": 97.0,
+        "weight_lbs": 172.2,
+        "max_vertical_in": 41.5
+      },
+      "Max Christie": {
+        "height_in": 76.25,
+        "wingspan_in": 80.75,
+        "standing_reach_in": 102.5,
+        "weight_lbs": 189.2,
+        "max_vertical_in": 37.5
+      },
+      "Kofi Cockburn": {
+        "height_in": 83.0,
+        "wingspan_in": 88.25,
+        "standing_reach_in": 110.5,
+        "weight_lbs": 293.0,
+        "max_vertical_in": 32.5
+      },
+      "Dyson Daniels": {
+        "height_in": 78.0,
+        "wingspan_in": 82.5,
+        "standing_reach_in": 105.0,
+        "weight_lbs": 195.2,
+        "max_vertical_in": 34.0
+      },
+      "Johnny Davis": {
+        "height_in": 76.25,
+        "wingspan_in": 80.5,
+        "standing_reach_in": 103.5,
+        "weight_lbs": 196.4,
+        "max_vertical_in": null
+      },
+      "JD Davison": {
+        "height_in": 72.5,
+        "wingspan_in": 78.5,
+        "standing_reach_in": 99.5,
+        "weight_lbs": 191.8,
+        "max_vertical_in": 37.0
+      },
+      "Darius Days": {
+        "height_in": null,
+        "wingspan_in": null,
+        "standing_reach_in": null,
+        "weight_lbs": null,
+        "max_vertical_in": null
+      },
+      "Moussa Diabate": {
+        "height_in": 81.25,
+        "wingspan_in": 86.5,
+        "standing_reach_in": 109.5,
+        "weight_lbs": 216.6,
+        "max_vertical_in": 36.5
+      },
+      "Ousmane Dieng": {
+        "height_in": null,
+        "wingspan_in": null,
+        "standing_reach_in": null,
+        "weight_lbs": null,
+        "max_vertical_in": null
+      },
+      "Khalifa Diop": {
+        "height_in": null,
+        "wingspan_in": null,
+        "standing_reach_in": null,
+        "weight_lbs": null,
+        "max_vertical_in": null
+      },
+      "Jalen Duren": {
+        "height_in": null,
+        "wingspan_in": null,
+        "standing_reach_in": null,
+        "weight_lbs": null,
+        "max_vertical_in": null
+      },
+      "Tari Eason": {
+        "height_in": 78.75,
+        "wingspan_in": 86.0,
+        "standing_reach_in": 107.5,
+        "weight_lbs": 217.4,
+        "max_vertical_in": null
+      },
+      "Keon Ellis": {
+        "height_in": 75.5,
+        "wingspan_in": 80.5,
+        "standing_reach_in": 102.0,
+        "weight_lbs": 167.4,
+        "max_vertical_in": 35.5
+      },
+      "Michael Foster Jr.": {
+        "height_in": 79.75,
+        "wingspan_in": 84.25,
+        "standing_reach_in": 109.5,
+        "weight_lbs": 236.6,
+        "max_vertical_in": 32.5
+      },
+      "Collin Gillespie": {
+        "height_in": 73.5,
+        "wingspan_in": 76.0,
+        "standing_reach_in": 98.0,
+        "weight_lbs": 195.8,
+        "max_vertical_in": 33.0
+      },
+      "AJ Griffin": {
+        "height_in": null,
+        "wingspan_in": null,
+        "standing_reach_in": null,
+        "weight_lbs": null,
+        "max_vertical_in": null
+      },
+      "Jaden Hardy": {
+        "height_in": null,
+        "wingspan_in": null,
+        "standing_reach_in": null,
+        "weight_lbs": null,
+        "max_vertical_in": null
+      },
+      "Ron Harper Jr.": {
+        "height_in": 76.0,
+        "wingspan_in": 85.25,
+        "standing_reach_in": 105.5,
+        "weight_lbs": 240.4,
+        "max_vertical_in": 30.5
+      },
+      "Chet Holmgren": {
+        "height_in": null,
+        "wingspan_in": null,
+        "standing_reach_in": null,
+        "weight_lbs": null,
+        "max_vertical_in": null
+      },
+      "Harrison Ingram": {
+        "height_in": 77.25,
+        "wingspan_in": 84.25,
+        "standing_reach_in": 103.5,
+        "weight_lbs": 232.8,
+        "max_vertical_in": 35.0
+      },
+      "Jaden Ivey": {
+        "height_in": null,
+        "wingspan_in": null,
+        "standing_reach_in": null,
+        "weight_lbs": null,
+        "max_vertical_in": null
+      },
+      "Trayce Jackson-Davis": {
+        "height_in": null,
+        "wingspan_in": null,
+        "standing_reach_in": null,
+        "weight_lbs": null,
+        "max_vertical_in": null
+      },
+      "Nikola Jovic": {
+        "height_in": 81.5,
+        "wingspan_in": 84.25,
+        "standing_reach_in": 108.5,
+        "weight_lbs": 222.6,
+        "max_vertical_in": null
+      },
+      "Johnny Juzang": {
+        "height_in": 77.25,
+        "wingspan_in": 83.0,
+        "standing_reach_in": 102.5,
+        "weight_lbs": 208.6,
+        "max_vertical_in": 32.5
+      },
+      "Ismael Kamagate": {
+        "height_in": null,
+        "wingspan_in": null,
+        "standing_reach_in": null,
+        "weight_lbs": null,
+        "max_vertical_in": null
+      },
+      "Trevor Keels": {
+        "height_in": 75.25,
+        "wingspan_in": 79.25,
+        "standing_reach_in": 101.0,
+        "weight_lbs": 223.8,
+        "max_vertical_in": 31.0
+      },
+      "Walker Kessler": {
+        "height_in": 84.25,
+        "wingspan_in": 88.25,
+        "standing_reach_in": 113.0,
+        "weight_lbs": 256.0,
+        "max_vertical_in": null
+      },
+      "Christian Koloko": {
+        "height_in": 82.75,
+        "wingspan_in": 89.25,
+        "standing_reach_in": 113.0,
+        "weight_lbs": 221.0,
+        "max_vertical_in": 33.5
+      },
+      "Jake LaRavia": {
+        "height_in": 78.75,
+        "wingspan_in": 81.5,
+        "standing_reach_in": 104.0,
+        "weight_lbs": 227.2,
+        "max_vertical_in": 34.0
+      },
+      "Justin Lewis": {
+        "height_in": 78.25,
+        "wingspan_in": 86.5,
+        "standing_reach_in": 105.5,
+        "weight_lbs": 235.4,
+        "max_vertical_in": 35.0
+      },
+      "E.J. Liddell": {
+        "height_in": 77.5,
+        "wingspan_in": 83.75,
+        "standing_reach_in": 103.5,
+        "weight_lbs": 243.0,
+        "max_vertical_in": 38.0
+      },
+      "Kenneth Lofton Jr.": {
+        "height_in": null,
+        "wingspan_in": null,
+        "standing_reach_in": null,
+        "weight_lbs": null,
+        "max_vertical_in": null
+      },
+      "Tyrese Martin": {
+        "height_in": null,
+        "wingspan_in": null,
+        "standing_reach_in": null,
+        "weight_lbs": null,
+        "max_vertical_in": null
+      },
+      "Bennedict Mathurin": {
+        "height_in": 76.5,
+        "wingspan_in": 81.0,
+        "standing_reach_in": 104.0,
+        "weight_lbs": 204.6,
+        "max_vertical_in": null
+      },
+      "Matthew Mayer": {
+        "height_in": 80.0,
+        "wingspan_in": 82.5,
+        "standing_reach_in": 105.0,
+        "weight_lbs": 216.4,
+        "max_vertical_in": 31.5
+      },
+      "Bryce McGowens": {
+        "height_in": 77.25,
+        "wingspan_in": 80.75,
+        "standing_reach_in": 103.5,
+        "weight_lbs": 181.2,
+        "max_vertical_in": 34.0
+      },
+      "Leonard Miller": {
+        "height_in": 80.5,
+        "wingspan_in": 86.0,
+        "standing_reach_in": 106.5,
+        "weight_lbs": 211.0,
+        "max_vertical_in": 36.5
+      },
+      "Josh Minnott": {
+        "height_in": null,
+        "wingspan_in": null,
+        "standing_reach_in": null,
+        "weight_lbs": null,
+        "max_vertical_in": null
+      },
+      "Aminu Mohammed": {
+        "height_in": 75.5,
+        "wingspan_in": 83.0,
+        "standing_reach_in": 104.0,
+        "weight_lbs": 212.8,
+        "max_vertical_in": 36.0
+      },
+      "Iverson Molinar": {
+        "height_in": 74.25,
+        "wingspan_in": 80.0,
+        "standing_reach_in": 101.0,
+        "weight_lbs": 183.2,
+        "max_vertical_in": 38.0
+      },
+      "Jean Montero": {
+        "height_in": 73.0,
+        "wingspan_in": 77.25,
+        "standing_reach_in": 98.5,
+        "weight_lbs": 171.8,
+        "max_vertical_in": 37.0
+      },
+      "Wendell Moore": {
+        "height_in": 76.25,
+        "wingspan_in": 84.5,
+        "standing_reach_in": 101.0,
+        "weight_lbs": 217.2,
+        "max_vertical_in": 38.5
+      },
+      "Keegan Murray": {
+        "height_in": null,
+        "wingspan_in": null,
+        "standing_reach_in": null,
+        "weight_lbs": null,
+        "max_vertical_in": null
+      },
+      "Andrew Nembhard": {
+        "height_in": 75.0,
+        "wingspan_in": 77.75,
+        "standing_reach_in": 99.0,
+        "weight_lbs": 195.6,
+        "max_vertical_in": 35.0
+      },
+      "Scotty Pippen Jr.": {
+        "height_in": 72.0,
+        "wingspan_in": 77.75,
+        "standing_reach_in": 95.5,
+        "weight_lbs": 180.0,
+        "max_vertical_in": 37.5
+      },
+      "Gabriele Procida": {
+        "height_in": 77.75,
+        "wingspan_in": 80.0,
+        "standing_reach_in": 106.0,
+        "weight_lbs": 192.8,
+        "max_vertical_in": 35.0
+      },
+      "Jared Rhoden": {
+        "height_in": null,
+        "wingspan_in": null,
+        "standing_reach_in": null,
+        "weight_lbs": null,
+        "max_vertical_in": null
+      },
+      "Orlando Robinson": {
+        "height_in": 81.75,
+        "wingspan_in": 88.0,
+        "standing_reach_in": 111.0,
+        "weight_lbs": 244.4,
+        "max_vertical_in": 27.5
+      },
+      "David Roddy": {
+        "height_in": 76.5,
+        "wingspan_in": 83.5,
+        "standing_reach_in": 105.0,
+        "weight_lbs": 260.8,
+        "max_vertical_in": 35.5
+      },
+      "Ryan Rollins": {
+        "height_in": 74.0,
+        "wingspan_in": 81.75,
+        "standing_reach_in": 100.5,
+        "weight_lbs": 179.2,
+        "max_vertical_in": 36.5
+      },
+      "Marcus Sasser": {
+        "height_in": null,
+        "wingspan_in": null,
+        "standing_reach_in": null,
+        "weight_lbs": null,
+        "max_vertical_in": null
+      },
+      "Dereon Seabron": {
+        "height_in": 76.75,
+        "wingspan_in": 80.75,
+        "standing_reach_in": 103.5,
+        "weight_lbs": 182.4,
+        "max_vertical_in": 38.0
+      },
+      "Shaedon Sharpe": {
+        "height_in": 76.25,
+        "wingspan_in": 83.5,
+        "standing_reach_in": 103.5,
+        "weight_lbs": 198.0,
+        "max_vertical_in": null
+      },
+      "Jabari Smith": {
+        "height_in": null,
+        "wingspan_in": null,
+        "standing_reach_in": null,
+        "weight_lbs": null,
+        "max_vertical_in": null
+      },
+      "Terquavion Smith": {
+        "height_in": 74.25,
+        "wingspan_in": 78.5,
+        "standing_reach_in": 98.0,
+        "weight_lbs": 165.2,
+        "max_vertical_in": 38.5
+      },
+      "Jeremy Sochan": {
+        "height_in": null,
+        "wingspan_in": null,
+        "standing_reach_in": null,
+        "weight_lbs": null,
+        "max_vertical_in": null
+      },
+      "Matteo Spagnolo": {
+        "height_in": 76.0,
+        "wingspan_in": 80.0,
+        "standing_reach_in": 102.0,
+        "weight_lbs": 196.2,
+        "max_vertical_in": 31.5
+      },
+      "Julian Strawther": {
+        "height_in": 77.75,
+        "wingspan_in": 81.5,
+        "standing_reach_in": 104.5,
+        "weight_lbs": 207.6,
+        "max_vertical_in": 35.0
+      },
+      "Dalen Terry": {
+        "height_in": 78.0,
+        "wingspan_in": 84.75,
+        "standing_reach_in": 106.0,
+        "weight_lbs": 195.2,
+        "max_vertical_in": null
+      },
+      "Drew Timme": {
+        "height_in": 80.25,
+        "wingspan_in": 86.0,
+        "standing_reach_in": 107.5,
+        "weight_lbs": 231.6,
+        "max_vertical_in": 31.5
+      },
+      "Jabari Walker": {
+        "height_in": 78.75,
+        "wingspan_in": 82.75,
+        "standing_reach_in": 105.0,
+        "weight_lbs": 213.8,
+        "max_vertical_in": 32.5
+      },
+      "TyTy Washington Jr.": {
+        "height_in": 74.25,
+        "wingspan_in": 80.0,
+        "standing_reach_in": 99.5,
+        "weight_lbs": 196.4,
+        "max_vertical_in": null
+      },
+      "Peyton Watson": {
+        "height_in": 78.75,
+        "wingspan_in": 84.5,
+        "standing_reach_in": 107.5,
+        "weight_lbs": 203.4,
+        "max_vertical_in": 33.5
+      },
+      "Blake Wesley": {
+        "height_in": 75.0,
+        "wingspan_in": 81.25,
+        "standing_reach_in": 103.0,
+        "weight_lbs": 187.2,
+        "max_vertical_in": 36.0
+      },
+      "Trevion Williams": {
+        "height_in": 79.25,
+        "wingspan_in": 86.75,
+        "standing_reach_in": 108.5,
+        "weight_lbs": 264.6,
+        "max_vertical_in": 30.0
+      },
+      "Mark Williams": {
+        "height_in": 84.0,
+        "wingspan_in": 90.5,
+        "standing_reach_in": 117.0,
+        "weight_lbs": 242.4,
+        "max_vertical_in": null
+      },
+      "Jalen Williams": {
+        "height_in": 76.5,
+        "wingspan_in": 86.25,
+        "standing_reach_in": 105.5,
+        "weight_lbs": 209.2,
+        "max_vertical_in": 39.0
+      },
+      "Jaylin Williams": {
+        "height_in": 80.75,
+        "wingspan_in": 85.0,
+        "standing_reach_in": 108.5,
+        "weight_lbs": 236.6,
+        "max_vertical_in": 30.0
+      },
+      "Alondes Williams": {
+        "height_in": 75.75,
+        "wingspan_in": 79.0,
+        "standing_reach_in": 102.0,
+        "weight_lbs": 209.0,
+        "max_vertical_in": 35.5
+      },
+      "Bryson Williams": {
+        "height_in": null,
+        "wingspan_in": null,
+        "standing_reach_in": null,
+        "weight_lbs": null,
+        "max_vertical_in": null
+      },
+      "Jalen Wilson": {
+        "height_in": null,
+        "wingspan_in": null,
+        "standing_reach_in": null,
+        "weight_lbs": null,
+        "max_vertical_in": null
+      },
+      "Fanbo Zeng": {
+        "height_in": null,
+        "wingspan_in": null,
+        "standing_reach_in": null,
+        "weight_lbs": null,
+        "max_vertical_in": null
+      }
+    }
+  }
+}

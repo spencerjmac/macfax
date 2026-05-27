@@ -23,6 +23,8 @@ Run:
 
 from __future__ import annotations
 
+import json
+import re
 import warnings
 from datetime import date
 from pathlib import Path
@@ -47,6 +49,139 @@ OUTPUT_DIR = MPS_DIR / "output"
 OUTPUT_DIR.mkdir(exist_ok=True)
 
 DATASET = DATA_DIR / "mps_dataset_raw.csv"
+TANKATHON_CACHE = DATA_DIR / "tankathon_2026.json"
+
+# ── Tankathon integration ─────────────────────────────────────────────────────
+
+# Approximate normalization bounds for Tankathon-only stats (college basketball).
+# Updated after backtest_full.py runs with supplement CSV.
+_TANKATHON_NORMS: dict[str, tuple[float, float, float]] = {
+    # (mean, std, median) — college NCAA D1 typical ranges
+    "per":   (15.5, 5.0,  15.0),
+    "obpm":  ( 1.0, 4.0,   0.8),
+    "dbpm":  ( 0.5, 2.0,   0.5),
+    "ortg":  (108.0, 8.0, 108.0),
+}
+
+# Correlation-derived weights for Tankathon stats vs NBA vorp (approximate).
+# Will be replaced by backtest_full.py empirical weights once supplement runs.
+_TANKATHON_FEAT_WEIGHTS: dict[str, float] = {
+    "obpm": 0.12,   # closely tracks BPM but captures offensive vs defensive split
+    "dbpm": 0.08,
+    "per":  0.06,
+    "ortg": 0.04,
+}
+
+# Slug overrides for Tankathon name → slug mapping
+_TANKATHON_SLUG_OVERRIDES: dict[str, str] = {
+    "AJ Dybantsa":     "aj-dybantsa",
+    "LaBaron Philon":  "labaron-philon",
+    "Labaron Philon":  "labaron-philon",
+    "VJ Edgecombe":    "vj-edgecombe",
+    "Darius Acuff Jr.": "darius-acuff",
+    "Morez Johnson Jr.": "morez-johnson-jr",
+}
+
+
+def _load_tankathon() -> dict[str, dict]:
+    """Load Tankathon 2026 cache. Returns {slug: player_data} or {} if unavailable."""
+    if not TANKATHON_CACHE.exists():
+        return {}
+    try:
+        with TANKATHON_CACHE.open() as f:
+            obj = json.load(f)
+        players = obj.get("players", {})
+        # Backfill tankathon_rank from big_board position (handles old cache files
+        # written before rank extraction was added)
+        board = obj.get("big_board", [])
+        for i, entry in enumerate(board, start=1):
+            slug = entry.get("slug", "")
+            if slug in players and players[slug].get("tankathon_rank") is None:
+                players[slug]["tankathon_rank"] = i
+        if players:
+            print(f"  [Tankathon] Loaded {len(players)} players from cache")
+        return players
+    except Exception as exc:
+        print(f"  [Tankathon] Cache read error: {exc}")
+        return {}
+
+
+def _name_to_tankathon_slug(name: str) -> str:
+    """Convert player name to Tankathon URL slug."""
+    if name in _TANKATHON_SLUG_OVERRIDES:
+        return _TANKATHON_SLUG_OVERRIDES[name]
+    slug = name.lower()
+    slug = slug.replace(".", "").replace("'", "").replace("\u2019", "")
+    slug = re.sub(r"\s+", "-", slug.strip())
+    return re.sub(r"-+", "-", slug)
+
+
+def _lookup_tankathon(name: str, tankathon: dict[str, dict]) -> dict | None:
+    """Look up a player in Tankathon data by name → slug."""
+    if not tankathon:
+        return None
+    slug = _name_to_tankathon_slug(name)
+    if slug in tankathon:
+        return tankathon[slug]
+    # Fuzzy fallback: try common suffix stripping
+    slug_base = re.sub(r"-jr$|-sr$|-ii$|-iii$", "", slug)
+    if slug_base in tankathon:
+        return tankathon[slug_base]
+    return None
+
+
+def _extract_tankathon_stats(tdata: dict) -> dict:
+    """Flatten Tankathon player data dict into a flat stats dict."""
+    if not tdata:
+        return {}
+    out: dict = {}
+    pg  = tdata.get("per_game", {}) or {}
+    adv = tdata.get("advanced", {}) or {}
+    bio = tdata.get("bio", {}) or {}
+    cmb = tdata.get("combine", {}) or {}
+
+    # Per-game
+    for k in ("gp", "mp", "pts", "reb", "ast", "blk", "stl", "tov", "pf", "fg_pct", "fg3_pct", "ft_pct"):
+        if pg.get(k) is not None:
+            out[f"tank_{k}"] = pg[k]
+
+    # Advanced (keys already normalized in scraper)
+    for k in ("ts_pct", "per", "obpm", "dbpm", "ortg", "drtg", "bpm",
+              "usg_pct", "three_par", "fta_rate", "ast_over_tov", "ws_per_40",
+              "proj_nba_3p_pct", "ows", "dws"):
+        if adv.get(k) is not None:
+            out[f"tank_{k}"] = adv[k]
+
+    # Use Tankathon BPM as primary (same metric as CBB BPM)
+    if adv.get("bpm") is not None:
+        out["bpm_college"] = adv["bpm"]
+    if adv.get("ts_pct") is not None:
+        out["ts_pct"] = adv["ts_pct"]
+    if adv.get("usg_pct") is not None:
+        out["usg_pct"] = adv["usg_pct"]
+    if pg.get("ft_pct") is not None:
+        out["ft_pct"] = pg["ft_pct"]
+    if pg.get("gp") is not None:
+        out["games_played"] = pg["gp"]
+
+    # Bio
+    if bio.get("draft_age") is not None:
+        out["tank_draft_age"] = bio["draft_age"]
+
+    # Combine → for physical adjustment
+    combine_out: dict = {}
+    for k in ("height_in", "weight_lbs", "wingspan_in", "standing_reach_in",
+              "max_vertical_in", "lane_agility_s", "shuttle_s", "sprint_34_s",
+              "hand_length_in", "hand_width_in"):
+        if cmb.get(k) is not None:
+            combine_out[k] = cmb[k]
+    if bio.get("height_in") and "height_in" not in combine_out:
+        combine_out["height_in"] = bio["height_in"]
+    if bio.get("weight_lbs") and "weight_lbs" not in combine_out:
+        combine_out["weight_lbs"] = bio["weight_lbs"]
+
+    out["_tankathon_combine"] = combine_out
+    return out
 
 # ── Model constants (validated from backtest.py) ──────────────────────────────
 
@@ -234,7 +369,7 @@ PROSPECTS_2026 = [
     },
     {
         "player_name": "Henri Veesaar",
-        "birth_date":  "2006-01-01",   # ~ approximate
+        "birth_date":  "2004-03-28",   # ✓ confirmed
         "position":    "C",
         "college":     "North Carolina",
         "cbb_url":     _CBB.format(slug="henri-veesaar-1"),
@@ -242,7 +377,7 @@ PROSPECTS_2026 = [
     },
     {
         "player_name": "Malachi Moreno",
-        "birth_date":  "2006-01-01",   # ~ approximate
+        "birth_date":  "2006-10-24",   # ✓ confirmed
         "position":    "C",
         "college":     "Kentucky",
         "cbb_url":     _CBB.format(slug="malachi-moreno-1"),
@@ -250,15 +385,6 @@ PROSPECTS_2026 = [
         "withdrew":    True,           # returning to Kentucky per CBS Sports May 2026
     },
     # ── 2005-born tier ────────────────────────────────────────────────────────
-    {
-        "player_name": "Flory Bidunga",
-        "birth_date":  "2005-02-24",   # ✓ confirmed
-        "position":    "C",
-        "college":     "Kansas",
-        "cbb_url":     _CBB.format(slug="flory-bidunga-1"),
-        "combine":     None,
-        "withdrew":    True,           # returning to Louisville per CBS Sports May 2026
-    },
     {
         "player_name": "Labaron Philon",
         "birth_date":  "2005-11-24",   # ✓ confirmed
@@ -363,7 +489,7 @@ PROSPECTS_2026 = [
     },
     {
         "player_name": "Emanuel Sharp",
-        "birth_date":  "2005-01-01",   # ~ approximate
+        "birth_date":  "2004-03-07",   # ✓ confirmed
         "position":    "SG",
         "college":     "Houston",
         "cbb_url":     _CBB.format(slug="emanuel-sharp-1"),
@@ -371,7 +497,7 @@ PROSPECTS_2026 = [
     },
     {
         "player_name": "Izaiyah Nelson",
-        "birth_date":  "2005-01-01",   # ~ approximate
+        "birth_date":  "2003-10-01",   # ✓ confirmed
         "position":    "PG",
         "college":     "South Florida",
         "cbb_url":     _CBB.format(slug="izaiyah-nelson-1"),
@@ -431,7 +557,7 @@ PROSPECTS_2026 = [
     },
     {
         "player_name": "Otega Oweh",
-        "birth_date":  "2004-01-01",   # ~ approximate
+        "birth_date":  "2003-06-21",   # ✓ confirmed
         "position":    "SG",
         "college":     "Kentucky",
         "cbb_url":     _CBB.format(slug="otega-oweh-1"),
@@ -439,7 +565,7 @@ PROSPECTS_2026 = [
     },
     {
         "player_name": "Keyshawn Hall",
-        "birth_date":  "2004-01-01",   # ~ approximate
+        "birth_date":  "2003-04-09",   # ✓ confirmed
         "position":    "SF",
         "college":     "Auburn",
         "cbb_url":     _CBB.format(slug="keyshawn-hall-1"),
@@ -447,7 +573,7 @@ PROSPECTS_2026 = [
     },
     {
         "player_name": "Baba Miller",
-        "birth_date":  "2004-01-01",   # ~ approximate
+        "birth_date":  "2004-02-07",   # ✓ confirmed
         "position":    "PF",
         "college":     "Cincinnati",
         "cbb_url":     _CBB.format(slug="baba-miller-1"),
@@ -455,7 +581,7 @@ PROSPECTS_2026 = [
     },
     {
         "player_name": "Braden Smith",
-        "birth_date":  "2004-01-01",   # ~ approximate
+        "birth_date":  "2003-07-25",   # ✓ confirmed
         "position":    "PG",
         "college":     "Purdue",
         "cbb_url":     _CBB.format(slug="braden-smith-1"),
@@ -463,7 +589,7 @@ PROSPECTS_2026 = [
     },
     {
         "player_name": "Ebuka Okorie",   # legal name; was "Okpara" on some rosters
-        "birth_date":  "2004-01-01",   # ~ approximate
+        "birth_date":  "2007-04-10",   # ✓ confirmed
         "position":    "C",
         "college":     "Stanford",
         "cbb_url":     _CBB.format(slug="ebuka-okorie-1"),
@@ -471,7 +597,7 @@ PROSPECTS_2026 = [
     },
     {
         "player_name": "Ugonna Onyenso",
-        "birth_date":  "2004-01-01",   # ~ approximate
+        "birth_date":  "2003-09-25",   # ✓ confirmed
         "position":    "C",
         "college":     "Virginia",
         "cbb_url":     _CBB.format(slug="ugonna-onyenso-1"),
@@ -479,7 +605,7 @@ PROSPECTS_2026 = [
     },
     {
         "player_name": "Tounde Yessoufou",
-        "birth_date":  "2004-01-01",   # ~ approximate
+        "birth_date":  "2006-05-15",   # ✓ confirmed
         "position":    "SF",
         "college":     "Baylor",
         "cbb_url":     _CBB.format(slug="tounde-yessoufou-1"),
@@ -487,7 +613,7 @@ PROSPECTS_2026 = [
     },
     {
         "player_name": "Felix Okpara",
-        "birth_date":  "2004-01-01",   # ~ approximate
+        "birth_date":  "2004-04-20",   # ✓ confirmed
         "position":    "C",
         "college":     "Tennessee",
         "cbb_url":     _CBB.format(slug="felix-okpara-1"),
@@ -495,7 +621,7 @@ PROSPECTS_2026 = [
     },
     {
         "player_name": "Karim Lopez",
-        "birth_date":  "2005-01-01",   # ~ approximate
+        "birth_date":  "2007-04-12",   # ✓ confirmed
         "position":    "C",
         "college":     "International",
         "cbb_url":     None,
@@ -674,7 +800,7 @@ PROSPECTS_2026 = [
     },
     {
         "player_name": "Oscar Cluff",
-        "birth_date":  "2002-01-01",   # ~ approximate; ~24.5 at draft
+        "birth_date":  "2001-11-22",   # ✓ confirmed; ~24.5 at draft
         "position":    "C",
         "college":     "Purdue",
         "cbb_url":     _CBB.format(slug="oscar-cluff-1"),
@@ -919,6 +1045,10 @@ def score_all_prospects(prospects: list[dict]) -> pd.DataFrame:
     df_train = df_train[df_train.draft_year <= 2021].copy()
     params = TrainingParams(df_train)
 
+    # Load Tankathon 2026 data
+    print("\nLoading Tankathon 2026 data...")
+    tankathon = _load_tankathon()
+
     # Fetch 2025-26 program SRS
     print("\nFetching 2025-26 program SRS (sports-reference CBB)...")
     srs_2026 = scrape_program_srs(2026)
@@ -946,6 +1076,12 @@ def score_all_prospects(prospects: list[dict]) -> pd.DataFrame:
         withdrew      = bool(prospect.get("withdrew", False))
         prospect_note = prospect.get("note", "")
 
+        # Tankathon lookup (fallback data source + rank for divergence notes)
+        tdata          = _lookup_tankathon(name, tankathon)
+        tank_stats     = _extract_tankathon_stats(tdata) if tdata else {}
+        tankathon_rank = tdata.get("tankathon_rank") if tdata else None
+        _tank_combine  = tank_stats.pop("_tankathon_combine", {})
+
         # Combine data: API lookup merged with prospect-level manual override
         # combine_name field overrides the lookup name (e.g. Ebuka Okpara → Okorie)
         # COMBINE_NAME_OVERRIDES in combine_scraper handles nickname/legal-name gaps
@@ -953,7 +1089,7 @@ def score_all_prospects(prospects: list[dict]) -> pd.DataFrame:
         _lookup_name    = prospect.get("combine_name") or name
         _api_combine    = lookup_player(combine_lookup, _lookup_name)
         _manual_combine = prospect.get("combine") or {}
-        combine         = {**_api_combine, **_manual_combine} or None
+        combine         = {**_tank_combine, **_api_combine, **_manual_combine} or None
 
         # Draft age
         try:
@@ -968,7 +1104,8 @@ def score_all_prospects(prospects: list[dict]) -> pd.DataFrame:
         if not cbb_url:
             print(f"    No CBB URL — international/no data")
             rows.append(_null_row(name, pos, college, draft_age,
-                                  combine, "No college data", withdrew=withdrew))
+                                  combine, "No college data", withdrew=withdrew,
+                                  tankathon_rank=tankathon_rank))
             continue
 
         # ── Fetch CBB stats ───────────────────────────────────────────────────
@@ -992,10 +1129,24 @@ def score_all_prospects(prospects: list[dict]) -> pd.DataFrame:
                     college_stats[k] = v       # manual None only fills missing keys
 
         if not college_stats:
-            print(f"    CBB fetch failed (404 or missing tables)")
-            rows.append(_null_row(name, pos, college, draft_age,
-                                  combine, "CBB fetch failed", withdrew=withdrew))
-            continue
+            # Tankathon rescue: use Tankathon as primary when CBB unavailable
+            if tank_stats.get("bpm_college") is not None:
+                college_stats = dict(tank_stats)
+                print(f"    [Tankathon] Rescue: BPM={college_stats['bpm_college']:.1f}")
+            else:
+                print(f"    CBB fetch failed (404 or missing tables)")
+                rows.append(_null_row(name, pos, college, draft_age,
+                                      combine, "CBB fetch failed", withdrew=withdrew,
+                                      tankathon_rank=tankathon_rank))
+                continue
+
+        # Tankathon stat fallback — fill gaps when CBB withholds (below GP threshold)
+        if college_stats and tank_stats:
+            for k in ("bpm_college", "ts_pct", "usg_pct", "ft_pct", "games_played"):
+                if college_stats.get(k) is None and tank_stats.get(k) is not None:
+                    if k == "bpm_college":
+                        print(f"    [Tankathon] BPM fallback: {tank_stats[k]:.1f}")
+                    college_stats[k] = tank_stats[k]
 
         # ── Resolve program SRS ───────────────────────────────────────────────
         school_name = college_stats.get("school_name") or college
@@ -1014,7 +1165,7 @@ def score_all_prospects(prospects: list[dict]) -> pd.DataFrame:
             print(f"    BPM not computed by source (insufficient games/data)")
             rows.append(_null_row(name, pos, college, draft_age,
                                   combine, "BPM not computed — insufficient games",
-                                  withdrew=withdrew))
+                                  withdrew=withdrew, tankathon_rank=tankathon_rank))
             continue
 
         # ── Compute base MPS pillars ──────────────────────────────────────────
@@ -1079,6 +1230,7 @@ def score_all_prospects(prospects: list[dict]) -> pd.DataFrame:
             "age_penalty":      round(age_pen,   1),
             "mps":              round(mps_final, 1),
             "grade":            grd,
+            "tankathon_rank":   tankathon_rank,
             "withdrew":         withdrew,
             "note":             note_str,
         })
@@ -1087,12 +1239,29 @@ def score_all_prospects(prospects: list[dict]) -> pd.DataFrame:
     # Sort: scored players by MPS desc, N/A last
     result = result.sort_values("mps", ascending=False, na_position="last")
     result.insert(0, "rank", range(1, len(result) + 1))
-    return result.reset_index(drop=True)
+    result = result.reset_index(drop=True)
+
+    # Append divergence notes: model rank vs Tankathon consensus
+    if "tankathon_rank" in result.columns:
+        for idx, row in result.iterrows():
+            t_rank = row.get("tankathon_rank")
+            m_rank = row["rank"]
+            if pd.isna(row.get("mps")) or t_rank is None or pd.isna(t_rank):
+                continue
+            diff = int(m_rank) - int(t_rank)
+            if abs(diff) > 10:
+                direction = "above" if diff > 0 else "below"
+                div_note = f"Model #{m_rank} vs Tankathon #{int(t_rank)} ({abs(diff)} spots {direction} consensus)"
+                existing = result.at[idx, "note"] or ""
+                sep = "; " if existing else ""
+                result.at[idx, "note"] = existing + sep + div_note
+
+    return result
 
 
 def _null_row(name: str, pos: str, college: str,
               draft_age: float, combine: dict | None, note: str,
-              *, withdrew: bool = False) -> dict:
+              *, withdrew: bool = False, tankathon_rank: int | None = None) -> dict:
     age_pen = compute_age_penalty(draft_age)
     prefix = "WITHDREW — not in 2026 draft" if withdrew else ""
     full_note = (prefix + "; " + note) if (prefix and note) else (prefix or note)
@@ -1116,6 +1285,7 @@ def _null_row(name: str, pos: str, college: str,
         "age_penalty":      round(age_pen, 1),
         "mps":              None,
         "grade":            "N/A",
+        "tankathon_rank":   tankathon_rank,
         "withdrew":         withdrew,
         "note":             full_note,
     }
