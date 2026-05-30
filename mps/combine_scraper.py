@@ -150,7 +150,10 @@ def scrape_combine_athleticism(season_year: str = "2026-27") -> dict[str, dict]:
         if not name:
             continue
         result[name] = {
-            "max_vertical_in": _safe_float(row.get("MAX_VERTICAL_LEAP")),
+            "max_vertical_in":  _safe_float(row.get("MAX_VERTICAL_LEAP")),
+            "lane_agility_sec": _safe_float(row.get("LANE_AGILITY_TIME")),
+            "shuttle_run_sec":  _safe_float(row.get("SHUTTLE_RUN")),
+            "sprint_sec":       _safe_float(row.get("THREE_QUARTER_SPRINT")),
         }
     return result
 
@@ -304,7 +307,8 @@ def get_full_combine_data(
         Keys are player names as returned by the data source.
         Values contain any subset of:
             height_in, wingspan_in, standing_reach_in,
-            weight_lbs, max_vertical_in
+            weight_lbs, max_vertical_in,
+            lane_agility_sec, shuttle_run_sec, sprint_sec
         May be empty dict if all sources fail.
     """
     if cache_path is None:

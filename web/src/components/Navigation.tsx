@@ -17,6 +17,7 @@ const NCAA_NAV = [
 
 const NBA_NAV = [
   { href: '/nba/rankings', label: 'Rankings' },
+  { href: '/nba/prospects', label: 'Draft' },
   { href: '/nba/compare', label: 'Compare' },
   { href: '/nba/matchup', label: 'Matchup' },
   { href: '/nba/viz', label: 'Visualizations' },

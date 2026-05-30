@@ -1,20 +1,25 @@
 """
 mps/scorer.py
 
-MPS 2026 Draft Big Board — Score current prospects using the validated model.
+MPS 2026 Draft Big Board — Score current prospects using empirically-derived weights.
 
-Validated architecture (from backtest.py, Spearman ρ=0.325 on 2022 holdout):
-    MPS_base = college_efficiency_pillar (49%)
-             + age_x_production_pillar  (41%)
-             + competition_ctx_pillar   ( 5%)
-             + nba_fit_pillar           ( 5%)
-    avail_mod = GP% penalty (0 to -8 pts; only when GP < 70% of team schedule)
-    age_pen   = -10 pts if draft_age ≥ 23, else 0
-    MPS       = clip(MPS_base + physical_adj + avail_mod + age_pen, 0, 100)
+Model architecture (from backtest_full.py, holdout Spearman ρ=0.430 on 2022 class):
+    MPS_composite = weighted z-score composite of 23 college stats
+                    (weights ∝ Pearson |r| vs vorp_yr2_5_avg, normalized to sum 1.0)
+    srs_adj       = ±5 pts based on program strength (SRS)
+    avail_mod     = GP% penalty (0 to -8 pts; only when GP < 70% of schedule)
+    age_pen       = piecewise: +4.0 (≤19.5), 0 (19.5-21.5), -2.5/yr above 21.5 (cap -15)
+    MPS           = clip(MPS_composite + srs_adj + avail_mod + age_pen, 0, 100)
 
-Normalization uses training-set params (2010-2021) loaded from
-mps/data/mps_dataset_raw.csv at startup — ensures new prospects are scored
-on the same scale as the backtest validation.
+Data sources for 2026 prospects (in priority order per stat):
+    1. Manual MANUAL_STATS overrides
+    2. Sports-reference CBB (scrape_college_stats + scraper_supplement)
+    3. Tankathon 2026 cache (fallback for missing stats + physical combine)
+    4. NBA Stats API combine (wingspan, weight, standing_reach)
+
+Normalization uses training-set params (2010-2021) derived from mps_dataset_raw.csv
+and combine_historical.json at startup — ensures 2026 prospects scored on same scale
+as backtest validation.
 
 Run:
     cd /home/spencer/Workspace/macfax
@@ -39,6 +44,7 @@ from mps.scraper import (
     scrape_program_srs,
     _resolve_srs,
 )
+from mps.scraper_supplement import scrape_supplement, _load_cached as _supp_load, _write_cache as _supp_write
 from mps.combine_scraper import get_full_combine_data, lookup_player
 
 # ── Paths ──────────────────────────────────────────────────────────────────────
@@ -48,52 +54,129 @@ DATA_DIR   = MPS_DIR / "data"
 OUTPUT_DIR = MPS_DIR / "output"
 OUTPUT_DIR.mkdir(exist_ok=True)
 
-DATASET = DATA_DIR / "mps_dataset_raw.csv"
-TANKATHON_CACHE = DATA_DIR / "tankathon_2026.json"
+DATASET          = DATA_DIR / "mps_dataset_raw.csv"
+TANKATHON_CACHE  = DATA_DIR / "tankathon_2026.json"
+COMBINE_HIST     = DATA_DIR / "combine_historical.json"
+
+_CBB_CACHE_DIR = DATA_DIR / "cbb_stats_cache"
+_CBB_CACHE_DIR.mkdir(exist_ok=True)
+
+# ── Empirical feature weights (from backtest_full.py, Spearman ρ=0.430 holdout) ──
+#
+# Each weight = |Pearson r vs vorp_yr2_5_avg| normalized to sum 1.0.
+# draft_age excluded here — handled by compute_age_penalty() additive adjustment.
+# three_par excluded — negative correlation (-0.12), not a positive signal.
+# tov_pg excluded — conflicting signals (Pearson r=+0.089, Spearman ρ=-0.009).
+
+FEATURE_WEIGHTS: dict[str, float] = {
+    # Re-derived 2026-05-28: 11 training classes (2010-2019, 2021)
+    # 2020 excluded — COVID bubble anomaly (LOYO Δρ=+0.021 confirmed)
+    "bpm_college":      0.1017,
+    "dbpm":             0.0844,
+    "per":              0.0824,
+    "ws_40":            0.0801,
+    "obpm":             0.0688,
+    "stl_pg":           0.0427,
+    "ts_pct":           0.0508,
+    "stl_pct":          0.0410,
+    "trb_pg":           0.0516,
+    "ows":              0.0444,
+    "fg_pct":           0.0473,
+    "blk_pg":           0.0445,
+    "dws":              0.0401,
+    "blk_pct":          0.0383,
+    "ast_pct":          0.0228,
+    "ast_pg":           0.0201,
+    "ast_pct_over_usg": 0.0177,
+    "orb_pct":          0.0328,
+    "pts_pg":           0.0228,
+    "wingspan_in":      0.0185,
+    "weight_lbs":       0.0202,
+    "standing_reach_in":0.0173,
+    "ast_to_tov":       0.0096,
+}
+
+# Position-split weights derived from training set (11 classes: 2010-2019, 2021, n_guards=224, n_bigs=198).
+# Validated on 2022 holdout: Δρ_all=+0.025 vs universal weights. Date: 2026-05-28.
+FEATURE_WEIGHTS_GUARDS: dict[str, float] = {
+    # Re-derived 2026-05-28: 11 training classes (2010-2019, 2021)
+    # 2020 excluded — COVID bubble anomaly (LOYO Δρ=+0.021 confirmed)
+    "bpm_college":      0.0970,
+    "dbpm":             0.0507,
+    "per":              0.0859,
+    "ws_40":            0.0813,
+    "obpm":             0.0834,
+    "stl_pg":           0.0483,
+    "ts_pct":           0.0737,
+    "stl_pct":          0.0398,
+    "trb_pg":           0.0481,
+    "ows":              0.0478,
+    "fg_pct":           0.0600,
+    "blk_pg":           0.0335,
+    "dws":              0.0116,
+    "blk_pct":          0.0284,
+    "ast_pct":          0.0340,
+    "ast_pg":           0.0363,
+    "ast_pct_over_usg": 0.0188,
+    "orb_pct":          0.0186,
+    "pts_pg":           0.0481,
+    "wingspan_in":      0.0201,
+    "weight_lbs":       0.0037,
+    "standing_reach_in":0.0209,
+    "ast_to_tov":       0.0101,
+}
+
+FEATURE_WEIGHTS_BIGS: dict[str, float] = {
+    # Re-derived 2026-05-28: 11 training classes (2010-2019, 2021)
+    # 2020 excluded — COVID bubble anomaly (LOYO Δρ=+0.021 confirmed)
+    "bpm_college":      0.0839,
+    "dbpm":             0.0811,
+    "per":              0.0651,
+    "ws_40":            0.0668,
+    "obpm":             0.0558,
+    "stl_pg":           0.0511,
+    "ts_pct":           0.0317,
+    "stl_pct":          0.0429,
+    "trb_pg":           0.0377,
+    "ows":              0.0458,
+    "fg_pct":           0.0406,
+    "blk_pg":           0.0411,
+    "dws":              0.0531,
+    "blk_pct":          0.0339,
+    "ast_pct":          0.0499,
+    "ast_pg":           0.0384,
+    "ast_pct_over_usg": 0.0489,
+    "orb_pct":          0.0292,
+    "pts_pg":           0.0181,
+    "wingspan_in":      0.0254,
+    "weight_lbs":       0.0108,
+    "standing_reach_in":0.0196,
+    "ast_to_tov":       0.0292,
+}
+
+# Grade thresholds — recalibrated after first run; initial values approximate.
+GRADE_THRESHOLDS = {"S": 70.0, "A": 60.0, "B": 53.0, "C": 46.0}
 
 # ── Tankathon integration ─────────────────────────────────────────────────────
 
-# Approximate normalization bounds for Tankathon-only stats (college basketball).
-# Updated after backtest_full.py runs with supplement CSV.
-_TANKATHON_NORMS: dict[str, tuple[float, float, float]] = {
-    # (mean, std, median) — college NCAA D1 typical ranges
-    "per":   (15.5, 5.0,  15.0),
-    "obpm":  ( 1.0, 4.0,   0.8),
-    "dbpm":  ( 0.5, 2.0,   0.5),
-    "ortg":  (108.0, 8.0, 108.0),
-}
-
-# Correlation-derived weights for Tankathon stats vs NBA vorp (approximate).
-# Will be replaced by backtest_full.py empirical weights once supplement runs.
-_TANKATHON_FEAT_WEIGHTS: dict[str, float] = {
-    "obpm": 0.12,   # closely tracks BPM but captures offensive vs defensive split
-    "dbpm": 0.08,
-    "per":  0.06,
-    "ortg": 0.04,
-}
-
-# Slug overrides for Tankathon name → slug mapping
 _TANKATHON_SLUG_OVERRIDES: dict[str, str] = {
-    "AJ Dybantsa":     "aj-dybantsa",
-    "LaBaron Philon":  "labaron-philon",
-    "Labaron Philon":  "labaron-philon",
-    "VJ Edgecombe":    "vj-edgecombe",
-    "Darius Acuff Jr.": "darius-acuff",
-    "Morez Johnson Jr.": "morez-johnson-jr",
+    "AJ Dybantsa":        "aj-dybantsa",
+    "LaBaron Philon":     "labaron-philon",
+    "Labaron Philon":     "labaron-philon",
+    "VJ Edgecombe":       "vj-edgecombe",
+    "Darius Acuff Jr.":   "darius-acuff",
+    "Morez Johnson Jr.":  "morez-johnson-jr",
 }
 
 
 def _load_tankathon() -> dict[str, dict]:
-    """Load Tankathon 2026 cache. Returns {slug: player_data} or {} if unavailable."""
     if not TANKATHON_CACHE.exists():
         return {}
     try:
         with TANKATHON_CACHE.open() as f:
             obj = json.load(f)
         players = obj.get("players", {})
-        # Backfill tankathon_rank from big_board position (handles old cache files
-        # written before rank extraction was added)
-        board = obj.get("big_board", [])
+        board   = obj.get("big_board", [])
         for i, entry in enumerate(board, start=1):
             slug = entry.get("slug", "")
             if slug in players and players[slug].get("tankathon_rank") is None:
@@ -107,23 +190,20 @@ def _load_tankathon() -> dict[str, dict]:
 
 
 def _name_to_tankathon_slug(name: str) -> str:
-    """Convert player name to Tankathon URL slug."""
     if name in _TANKATHON_SLUG_OVERRIDES:
         return _TANKATHON_SLUG_OVERRIDES[name]
     slug = name.lower()
-    slug = slug.replace(".", "").replace("'", "").replace("\u2019", "")
+    slug = slug.replace(".", "").replace("'", "").replace("’", "")
     slug = re.sub(r"\s+", "-", slug.strip())
     return re.sub(r"-+", "-", slug)
 
 
 def _lookup_tankathon(name: str, tankathon: dict[str, dict]) -> dict | None:
-    """Look up a player in Tankathon data by name → slug."""
     if not tankathon:
         return None
     slug = _name_to_tankathon_slug(name)
     if slug in tankathon:
         return tankathon[slug]
-    # Fuzzy fallback: try common suffix stripping
     slug_base = re.sub(r"-jr$|-sr$|-ii$|-iii$", "", slug)
     if slug_base in tankathon:
         return tankathon[slug_base]
@@ -131,7 +211,7 @@ def _lookup_tankathon(name: str, tankathon: dict[str, dict]) -> dict | None:
 
 
 def _extract_tankathon_stats(tdata: dict) -> dict:
-    """Flatten Tankathon player data dict into a flat stats dict."""
+    """Flatten Tankathon player dict into a flat stats dict used as fallback."""
     if not tdata:
         return {}
     out: dict = {}
@@ -141,34 +221,40 @@ def _extract_tankathon_stats(tdata: dict) -> dict:
     cmb = tdata.get("combine", {}) or {}
 
     # Per-game
-    for k in ("gp", "mp", "pts", "reb", "ast", "blk", "stl", "tov", "pf", "fg_pct", "fg3_pct", "ft_pct"):
-        if pg.get(k) is not None:
-            out[f"tank_{k}"] = pg[k]
+    for src_k, dst_k in [
+        ("gp", "tank_gp"), ("pts", "tank_pts"), ("reb", "tank_trb_pg"),
+        ("ast", "tank_ast_pg"), ("blk", "tank_blk_pg"), ("stl", "tank_stl_pg"),
+        ("tov", "tank_tov_pg"), ("fg_pct", "tank_fg_pct"), ("ft_pct", "tank_ft_pct"),
+        ("fg3_pct", "tank_fg3_pct"),
+    ]:
+        if pg.get(src_k) is not None:
+            out[dst_k] = pg[src_k]
 
-    # Advanced (keys already normalized in scraper)
-    for k in ("ts_pct", "per", "obpm", "dbpm", "ortg", "drtg", "bpm",
-              "usg_pct", "three_par", "fta_rate", "ast_over_tov", "ws_per_40",
-              "proj_nba_3p_pct", "ows", "dws"):
-        if adv.get(k) is not None:
-            out[f"tank_{k}"] = adv[k]
+    # Advanced — Tankathon BPM confirmed same scale as CBB (r=1.000, scale_verification.py).
+    # Group A stats (bpm, obpm, dbpm, per, ws_40, trb/stl/blk_pg, fg3_pct) are promoted to
+    # primary source in score_all_prospects() — see Group A overwrite block.
+    for src_k, dst_k in [
+        ("ts_pct", "tank_ts_pct"), ("usg_pct", "tank_usg_pct"),
+        ("per", "tank_per"), ("ows", "tank_ows"), ("dws", "tank_dws"),
+        ("ws_per_40", "tank_ws_40"), ("obpm", "tank_obpm"), ("dbpm", "tank_dbpm"),
+        ("bpm", "tank_bpm"),
+        ("ast_over_usg", "tank_ast_pct_over_usg"),
+        ("ast_over_tov", "tank_ast_to_tov"),
+    ]:
+        if adv.get(src_k) is not None:
+            out[dst_k] = adv[src_k]
 
-    # Use Tankathon BPM as primary (same metric as CBB BPM)
-    if adv.get("bpm") is not None:
-        out["bpm_college"] = adv["bpm"]
+    # Use Tankathon ts_pct as direct fallback
     if adv.get("ts_pct") is not None:
         out["ts_pct"] = adv["ts_pct"]
-    if adv.get("usg_pct") is not None:
-        out["usg_pct"] = adv["usg_pct"]
     if pg.get("ft_pct") is not None:
         out["ft_pct"] = pg["ft_pct"]
     if pg.get("gp") is not None:
         out["games_played"] = pg["gp"]
-
-    # Bio
     if bio.get("draft_age") is not None:
         out["tank_draft_age"] = bio["draft_age"]
 
-    # Combine → for physical adjustment
+    # Combine measurements → physical features used in composite
     combine_out: dict = {}
     for k in ("height_in", "weight_lbs", "wingspan_in", "standing_reach_in",
               "max_vertical_in", "lane_agility_s", "shuttle_s", "sprint_34_s",
@@ -183,60 +269,110 @@ def _extract_tankathon_stats(tdata: dict) -> dict:
     out["_tankathon_combine"] = combine_out
     return out
 
-# ── Model constants (validated from backtest.py) ──────────────────────────────
+# ── CBB stats disk cache (persists across runs; keyed by CBB URL) ─────────────
 
-DRAFT_DATE_2026 = date(2026, 6, 23)  # 2026 NBA Draft
+def _cbb_cache_key(cbb_url: str) -> str:
+    return re.sub(r"[^a-zA-Z0-9_-]", "_", cbb_url.strip("/").split("/")[-1])
 
-# Optimized weights: grid-search + COBYLA, maximizing Spearman ρ on 2010-2021
-OPTIMIZED_WEIGHTS = {
-    "college_efficiency": 0.488,
-    "age_x_production":   0.412,
-    "competition_ctx":    0.050,
-    "nba_fit":            0.050,
-}
+def _load_cbb_stats_cache(cbb_url: str) -> dict | None:
+    path = _CBB_CACHE_DIR / f"{_cbb_cache_key(cbb_url)}.json"
+    if path.exists():
+        try:
+            with path.open() as f:
+                obj = json.load(f)
+            return obj  # may be {} if scraper returned None
+        except Exception:
+            pass
+    return None
 
-# Grade thresholds (training-set percentiles: top 8/25/45/65%)
-GRADE_THRESHOLDS = {"S": 66.3, "A": 56.2, "B": 50.6, "C": 44.9}
+def _write_cbb_stats_cache(cbb_url: str, data: dict | None) -> None:
+    path = _CBB_CACHE_DIR / f"{_cbb_cache_key(cbb_url)}.json"
+    try:
+        with path.open("w") as f:
+            json.dump(data if data is not None else {}, f)
+    except Exception:
+        pass
 
-# Efficiency pillar: correlation-proportional weights (from backtest Pearson r)
-_EFF_FEATS = ["ts_pct", "stl_pct", "dws", "blk_pct", "ast_pct", "orb_pct"]
-_EFF_CORR  = np.array([0.155, 0.149, 0.111, 0.105, 0.099, 0.081])
-_EFF_WGTS  = _EFF_CORR / _EFF_CORR.sum()
-
-_FIT_FEATS = ["three_par", "ft_pct", "ast_pct"]
 
 # ── Manual stat overrides ─────────────────────────────────────────────────────
-# Used when sports-reference CBB doesn't publish BPM (below games threshold)
-# or when page data is missing.  Non-None values override scraped.
-# None values fall through to scraper result or training-set imputation.
+# Non-None values always override scraper output.
 
 MANUAL_STATS: dict[str, dict] = {
     "Cameron Boozer": {
-        # Source: BBRef/Yahoo Sports confirmed 17.8 (highest since Zion Williamson 2019).
-        # BBRef withholds BPM display below a GP threshold but it is computed;
-        # 17.8 is the correct BBRef-scale value, consistent with the training set.
-        # (Previous value 20.1 was EvanMiya BPR — different metric, different scale.)
-        "bpm_college":        17.8,
-        "ts_pct":             0.653,
-        "stl_pct":            0.032,
-        "orb_pct":            0.125,
-        "blk_pct":            0.038,
-        "ast_pct":            0.264,
-        "ft_pct":             0.790,
-        "usg_pct":            30.5,
-        "three_par":          None,   # imputed with training median
-        "dws":                None,   # imputed with training median
-        "school_name":        "Duke",
+        # BBRef withholds BPM display below GP threshold; 17.8 is the confirmed
+        # sports-reference BPM value (consistent with training-set scale).
+        "bpm_college":  17.8,
+        "ts_pct":       0.653,
+        "stl_pct":      0.032 * 100,   # convert from fraction to pct (training data stores as %)
+        "orb_pct":      0.125 * 100,
+        "blk_pct":      0.038 * 100,
+        "ast_pct":      0.264 * 100,
+        "ft_pct":       0.790,
+        "usg_pct":      30.5,
+        "school_name":  "Duke",
         "college_season_year": 2026,
-        "games_played":       None,   # GP unknown; avail_mod = 0
+        # Per-game and advanced supplemental will be fetched from CBB if possible;
+        # set to None here so scraper result fills them.
+        "per":          None,
+        "dbpm":         None,
+        "obpm":         None,
+        "ws_40":        None,
+        "ows":          None,
+        "dws":          None,
+        "fg_pct":       None,
+        "trb_pg":       None,
+        "stl_pg":       None,
+        "blk_pg":       None,
+        "ast_pg":       None,
+        "pts_pg":       None,
+    },
+    "Allen Graves": {
+        # Tankathon BPM — Sports-Reference does not compute BPM for Santa Clara
+        # (below game threshold). Scale verification confirmed same scale as CBB (r=1.000).
+        "bpm_college": 13.4,
+        "obpm":        8.7,
+        "dbpm":        4.7,
+        # Per-game stats from Tankathon 2025-26 season (35 gp, 22.6 mpg).
+        # Supplement cache has stale early-season data (16 gp, 1.9 pts) — override needed.
+        # Scale verification: counting stats (trb, stl, blk, fg3_pct) confirmed r=1.000 vs CBB.
+        "pts_pg":      11.8,
+        "trb_pg":      6.5,
+        "ast_pg":      1.8,
+        "stl_pg":      1.9,
+        "blk_pg":      0.9,
+        "fg_pct":      0.512,
+        "fg3_pct":     0.413,
+        "ts_pct":      0.613,
+        "per":         29.6,
+        "games_played": 35,
+        "ft_pct":      0.750,
+        "usg_pct":     21.9,
+        "three_par":   0.325,
+    },
+    "Christian Anderson": {
+        # CBB cache has stale 6-game Texas Tech data. Full 2025-26 season:
+        # 33 games (Tankathon source — international/G-League level). Same scale as CBB (r=1.000).
+        "bpm_college": 9.4,
+        "obpm":        7.1,
+        "dbpm":        2.3,
+        "ts_pct":      0.626,
+        "per":         20.9,
+        "pts_pg":      18.5,
+        "trb_pg":      3.6,
+        "ast_pg":      7.4,
+        "stl_pg":      1.5,
+        "blk_pg":      0.2,
+        "fg_pct":      0.472,
+        "fg3_pct":     0.415,
+        "games_played": 33,
+        "ft_pct":      0.805,
+        "usg_pct":     23.8,
     },
 }
 
 # ── 2026 Prospect List ────────────────────────────────────────────────────────
-# Full 70-player official NBA Draft Combine invitee list (domestic only).
-# birth_date: exact where confirmed (✓), approximate (YYYY-MM-01) where not.
-# team_games: actual games in team schedule; default 33 if omitted.
-# combine: populate from nbadraft.net/NBA.com after May 2026 combine.
+
+DRAFT_DATE_2026 = date(2026, 6, 23)
 
 _CBB = "https://www.sports-reference.com/cbb/players/{slug}.html"
 
@@ -244,51 +380,53 @@ PROSPECTS_2026 = [
     # ── Youngest tier (born 2007) ─────────────────────────────────────────────
     {
         "player_name": "Cameron Boozer",
-        "birth_date":  "2007-07-18",   # ✓ confirmed; youngest-ish, 18.93 at draft
+        "birth_date":  "2007-07-18",
         "position":    "PF",
         "college":     "Duke",
-        "cbb_url":     _CBB.format(slug="cameron-boozer-3"),  # -1 is different player
-        "team_games":  38,             # Duke ran deep in tournament
+        "cbb_url":     _CBB.format(slug="cameron-boozer-3"),
+        "team_games":  38,
         "combine":     None,
     },
     {
         "player_name": "Jayden Quaintance",
-        "birth_date":  "2007-07-11",   # ✓ confirmed; youngest in class, ~18.95
+        "birth_date":  "2007-07-11",
         "position":    "PF",
         "college":     "Kentucky",
         "cbb_url":     _CBB.format(slug="jayden-quaintance-1"),
         "combine":     None,
-        "note":        "ACL injury (Mar 2025 at ASU) — Kentucky season severely limited; scraped GP/BPM may be accurate or incomplete",
+        "note":        "ACL injury (Mar 2025 at ASU) — Kentucky season severely limited",
     },
     {
         "player_name": "Keaton Wagler",
-        "birth_date":  "2007-02-03",   # ✓ confirmed
-        "position":    "PG",
+        "birth_date":  "2007-02-03",
+        "position":    "SG",
         "college":     "Illinois",
         "cbb_url":     _CBB.format(slug="keaton-wagler-1"),
         "combine":     None,
     },
     {
         "player_name": "AJ Dybantsa",
-        "birth_date":  "2007-01-29",   # ✓ confirmed
+        "birth_date":  "2007-01-29",
         "position":    "SF",
         "college":     "BYU",
         "cbb_url":     _CBB.format(slug="aj-dybantsa-1"),
         "team_games":  33,
         "combine":     None,
+        "note":        "Consensus #1; model ranks lower due to DBPM=2.2 (defensive gap at college level); upside/athleticism not captured in stats",
     },
     {
         "player_name": "Darryn Peterson",
-        "birth_date":  "2007-01-17",   # ✓ confirmed
+        "birth_date":  "2007-01-17",
         "position":    "PG",
         "college":     "Kansas",
         "cbb_url":     _CBB.format(slug="darryn-peterson-1"),
-        "team_games":  31,             # Kansas schedule; Peterson missed games (cramping)
+        "team_games":  31,
         "combine":     None,
+        "note":        "Consensus #2; model sees elite BPM but ranks lower due to DBPM=4.8 vs peers and limited GP (24 games); projection/creation not captured in stats",
     },
     {
         "player_name": "Koa Peat",
-        "birth_date":  "2007-01-20",   # ✓ confirmed
+        "birth_date":  "2007-01-20",
         "position":    "PF",
         "college":     "Arizona",
         "cbb_url":     _CBB.format(slug="koa-peat-1"),
@@ -296,7 +434,7 @@ PROSPECTS_2026 = [
     },
     {
         "player_name": "Kingston Flemings",
-        "birth_date":  "2007-01-03",   # ✓ confirmed
+        "birth_date":  "2007-01-03",
         "position":    "SG",
         "college":     "Houston",
         "cbb_url":     _CBB.format(slug="kingston-flemings-1"),
@@ -305,15 +443,15 @@ PROSPECTS_2026 = [
     # ── 2006-born tier ────────────────────────────────────────────────────────
     {
         "player_name": "Nate Ament",
-        "birth_date":  "2006-12-10",   # ✓ confirmed
-        "position":    "PF",
+        "birth_date":  "2006-12-10",
+        "position":    "SF",
         "college":     "Tennessee",
         "cbb_url":     _CBB.format(slug="nate-ament-1"),
         "combine":     None,
     },
     {
         "player_name": "Darius Acuff Jr.",
-        "birth_date":  "2006-11-16",   # ✓ confirmed; Arkansas, NOT EKU
+        "birth_date":  "2006-11-16",
         "position":    "PG",
         "college":     "Arkansas",
         "cbb_url":     _CBB.format(slug="darius-acuff-jr-1"),
@@ -321,7 +459,7 @@ PROSPECTS_2026 = [
     },
     {
         "player_name": "Caleb Wilson",
-        "birth_date":  "2006-07-18",   # ✓ confirmed
+        "birth_date":  "2006-07-18",
         "position":    "PF",
         "college":     "UNC",
         "cbb_url":     _CBB.format(slug="caleb-wilson-1"),
@@ -329,7 +467,7 @@ PROSPECTS_2026 = [
     },
     {
         "player_name": "Mikel Brown Jr.",
-        "birth_date":  "2006-04-03",   # ✓ confirmed
+        "birth_date":  "2006-04-03",
         "position":    "PG",
         "college":     "Louisville",
         "cbb_url":     _CBB.format(slug="mikel-brown-jr-1"),
@@ -337,7 +475,7 @@ PROSPECTS_2026 = [
     },
     {
         "player_name": "Isaiah Evans",
-        "birth_date":  "2006-06-01",   # ~ approximate
+        "birth_date":  "2006-06-01",
         "position":    "SG",
         "college":     "Duke",
         "cbb_url":     _CBB.format(slug="isaiah-evans-1"),
@@ -345,7 +483,7 @@ PROSPECTS_2026 = [
     },
     {
         "player_name": "Christian Anderson",
-        "birth_date":  "2006-06-01",   # ~ approximate
+        "birth_date":  "2006-06-01",
         "position":    "PG",
         "college":     "Texas Tech",
         "cbb_url":     _CBB.format(slug="christian-anderson-1"),
@@ -353,7 +491,7 @@ PROSPECTS_2026 = [
     },
     {
         "player_name": "Meleek Thomas",
-        "birth_date":  "2006-06-01",   # ~ approximate
+        "birth_date":  "2006-06-01",
         "position":    "SG",
         "college":     "Arkansas",
         "cbb_url":     _CBB.format(slug="meleek-thomas-1"),
@@ -361,15 +499,15 @@ PROSPECTS_2026 = [
     },
     {
         "player_name": "Dailyn Swain",
-        "birth_date":  "2005-07-15",   # ✓ confirmed; transferred Xavier→Texas
+        "birth_date":  "2005-07-15",
         "position":    "SF",
         "college":     "Texas",
-        "cbb_url":     _CBB.format(slug="dailyn-swain-2"),  # -1 was Xavier page
+        "cbb_url":     _CBB.format(slug="dailyn-swain-2"),
         "combine":     None,
     },
     {
         "player_name": "Henri Veesaar",
-        "birth_date":  "2004-03-28",   # ✓ confirmed
+        "birth_date":  "2004-03-28",
         "position":    "C",
         "college":     "North Carolina",
         "cbb_url":     _CBB.format(slug="henri-veesaar-1"),
@@ -377,17 +515,17 @@ PROSPECTS_2026 = [
     },
     {
         "player_name": "Malachi Moreno",
-        "birth_date":  "2006-10-24",   # ✓ confirmed
+        "birth_date":  "2006-10-24",
         "position":    "C",
         "college":     "Kentucky",
         "cbb_url":     _CBB.format(slug="malachi-moreno-1"),
         "combine":     None,
-        "withdrew":    True,           # returning to Kentucky per CBS Sports May 2026
+        "withdrew":    True,
     },
     # ── 2005-born tier ────────────────────────────────────────────────────────
     {
         "player_name": "Labaron Philon",
-        "birth_date":  "2005-11-24",   # ✓ confirmed
+        "birth_date":  "2005-11-24",
         "position":    "PG",
         "college":     "Alabama",
         "cbb_url":     _CBB.format(slug="labaron-philon-1"),
@@ -395,7 +533,7 @@ PROSPECTS_2026 = [
     },
     {
         "player_name": "Brayden Burries",
-        "birth_date":  "2005-09-18",   # ✓ confirmed
+        "birth_date":  "2005-09-18",
         "position":    "SG",
         "college":     "Arizona",
         "cbb_url":     _CBB.format(slug="brayden-burries-1"),
@@ -403,34 +541,33 @@ PROSPECTS_2026 = [
     },
     {
         "player_name": "Aday Mara",
-        "birth_date":  "2005-04-07",   # ✓ confirmed
+        "birth_date":  "2005-04-07",
         "position":    "C",
         "college":     "Michigan",
-        "cbb_url":     _CBB.format(slug="aday-mara-2"),  # -1 was UCLA page; -2 is Michigan
+        "cbb_url":     _CBB.format(slug="aday-mara-2"),
         "combine":     None,
-        "note":        "Model likely undervalues — elite physical profile (7'3\", 9'9\" standing reach) not captured by BPM-based scoring; physical adj formula penalizes elite-sized centers",
+        "note":        "Elite physical profile (7'3\", 9'9\" standing reach) captured in composite via wingspan/reach",
     },
     {
         "player_name": "Morez Johnson Jr.",
-        "birth_date":  "2005-06-01",   # ~ approximate
+        "birth_date":  "2006-01-25",  # confirmed Wikipedia (was placeholder 2005-06-01)
         "position":    "PF",
-        "college":     "Illinois",      # NOTE: official combine doc says Michigan;
-                                        # if scraper returns Illinois 2026, use that.
+        "college":     "Michigan",
         "cbb_url":     _CBB.format(slug="morez-johnson-jr-1"),
         "combine":     None,
     },
     {
         "player_name": "Amari Allen",
-        "birth_date":  "2005-06-01",   # ~ approximate
-        "position":    "PF",
+        "birth_date":  "2005-06-01",
+        "position":    "SF",
         "college":     "Alabama",
         "cbb_url":     _CBB.format(slug="amari-allen-1"),
         "combine":     None,
-        "withdrew":    True,           # returning to Alabama per CBS Sports May 2026
+        "withdrew":    True,
     },
     {
         "player_name": "Quadir Copeland",
-        "birth_date":  "2005-06-01",   # ~ approximate
+        "birth_date":  "2005-06-01",
         "position":    "SG",
         "college":     "NC State",
         "cbb_url":     _CBB.format(slug="quadir-copeland-1"),
@@ -438,7 +575,7 @@ PROSPECTS_2026 = [
     },
     {
         "player_name": "Chris Cenac Jr.",
-        "birth_date":  "2005-06-01",   # ~ approximate
+        "birth_date":  "2005-06-01",
         "position":    "PF",
         "college":     "Houston",
         "cbb_url":     _CBB.format(slug="chris-cenac-jr-1"),
@@ -446,16 +583,16 @@ PROSPECTS_2026 = [
     },
     {
         "player_name": "Rueben Chinyelu",
-        "birth_date":  "2005-06-01",   # ~ approximate
+        "birth_date":  "2005-06-01",
         "position":    "C",
         "college":     "Florida",
         "cbb_url":     _CBB.format(slug="rueben-chinyelu-1"),
         "combine":     None,
-        "withdrew":    True,           # returning to Florida per CBS Sports May 2026
+        "withdrew":    True,
     },
     {
         "player_name": "Ryan Conwell",
-        "birth_date":  "2005-06-01",   # ~ approximate
+        "birth_date":  "2005-06-01",
         "position":    "SG",
         "college":     "Louisville",
         "cbb_url":     _CBB.format(slug="ryan-conwell-1"),
@@ -463,7 +600,7 @@ PROSPECTS_2026 = [
     },
     {
         "player_name": "Ja'Kobi Gillespie",
-        "birth_date":  "2005-06-01",   # ~ approximate
+        "birth_date":  "2004-03-10",  # confirmed Wikipedia (was placeholder 2005-06-01)
         "position":    "PG",
         "college":     "Tennessee",
         "cbb_url":     _CBB.format(slug="jakobi-gillespie-1"),
@@ -471,25 +608,25 @@ PROSPECTS_2026 = [
     },
     {
         "player_name": "Tyler Nickel",
-        "birth_date":  "2005-06-01",   # ~ approximate
-        "position":    "SF",
+        "birth_date":  "2003-09-05",  # confirmed RealGM (was placeholder 2005-06-01)
+        "position":    "SG",
         "college":     "Vanderbilt",
         "cbb_url":     _CBB.format(slug="tyler-nickel-1"),
         "combine":     None,
     },
     {
         "player_name": "Tyler Tanner",
-        "birth_date":  "2005-06-01",   # ~ approximate
-        "position":    "PG",           # was PF — confirmed 6'0" PG (Wikipedia, SR, every source)
+        "birth_date":  "2005-06-01",
+        "position":    "PG",
         "college":     "Vanderbilt",
         "cbb_url":     _CBB.format(slug="tyler-tanner-1"),
         "combine":     None,
-        "withdrew":    False,
-        "note":        "Model overranks — 6'0\" height limits NBA viability despite elite BPM/wingspan ratio; not reflected in scoring formula",
+        "withdrew":    True,
+        "note":        "6'0\" height limits NBA viability; not captured in model stats",
     },
     {
         "player_name": "Emanuel Sharp",
-        "birth_date":  "2004-03-07",   # ✓ confirmed
+        "birth_date":  "2004-03-07",
         "position":    "SG",
         "college":     "Houston",
         "cbb_url":     _CBB.format(slug="emanuel-sharp-1"),
@@ -497,35 +634,35 @@ PROSPECTS_2026 = [
     },
     {
         "player_name": "Izaiyah Nelson",
-        "birth_date":  "2003-10-01",   # ✓ confirmed
-        "position":    "PG",
+        "birth_date":  "2003-10-01",
+        "position":    "PF",
         "college":     "South Florida",
         "cbb_url":     _CBB.format(slug="izaiyah-nelson-1"),
         "combine":     None,
-        "note":        "Low-major program (South Florida) — BPM may be inflated by competition level despite SRS adjustment; late 2nd round consensus",
+        "note":        "Low-major (South Florida) — SRS adjustment partially corrects inflated BPM",
     },
     {
         "player_name": "Sergio De Larrea",
-        "birth_date":  "2005-01-01",   # ~ approximate
+        "birth_date":  "2005-01-01",
         "position":    "C",
         "college":     "International",
         "cbb_url":     None,
         "combine":     None,
+        "note":        "International (Joventut Badalona, Spain) — BPM unavailable; MPS based on available box stats only. Likely underrated.",
     },
     # ── 2004-born tier ────────────────────────────────────────────────────────
     {
         "player_name": "Milan Momcilovic",
-        "birth_date":  "2004-09-22",   # ✓ confirmed (was 2004-08-09 — corrected)
+        "birth_date":  "2004-09-22",
         "position":    "SF",
         "college":     "Iowa State",
-        "cbb_url":     _CBB.format(slug="milan-momcilovic-2"),  # 3rd-year junior; -1 was old page
+        "cbb_url":     _CBB.format(slug="milan-momcilovic-2"),
         "combine":     None,
-        "withdrew":    False,
-        "note":        "Projected late 1st/2nd round; model ranks slightly above consensus",
+        "withdrew":    True,
     },
     {
         "player_name": "Cameron Carr",
-        "birth_date":  "2004-12-01",   # ~ approximate
+        "birth_date":  "2004-12-01",
         "position":    "SF",
         "college":     "Baylor",
         "cbb_url":     _CBB.format(slug="cameron-carr-1"),
@@ -533,7 +670,7 @@ PROSPECTS_2026 = [
     },
     {
         "player_name": "Kylan Boswell",
-        "birth_date":  "2004-06-01",   # ~ approximate
+        "birth_date":  "2004-06-01",
         "position":    "PG",
         "college":     "Illinois",
         "cbb_url":     _CBB.format(slug="kylan-boswell-1"),
@@ -541,7 +678,7 @@ PROSPECTS_2026 = [
     },
     {
         "player_name": "Zuby Ejiofor",
-        "birth_date":  "2004-06-01",   # ~ approximate
+        "birth_date":  "2004-06-01",
         "position":    "PF",
         "college":     "St. John's",
         "cbb_url":     _CBB.format(slug="zuby-ejiofor-1"),
@@ -549,7 +686,7 @@ PROSPECTS_2026 = [
     },
     {
         "player_name": "Bruce Thornton",
-        "birth_date":  "2004-06-01",   # ~ approximate
+        "birth_date":  "2004-06-01",
         "position":    "PG",
         "college":     "Ohio State",
         "cbb_url":     _CBB.format(slug="bruce-thornton-1"),
@@ -557,7 +694,7 @@ PROSPECTS_2026 = [
     },
     {
         "player_name": "Otega Oweh",
-        "birth_date":  "2003-06-21",   # ✓ confirmed
+        "birth_date":  "2003-06-21",
         "position":    "SG",
         "college":     "Kentucky",
         "cbb_url":     _CBB.format(slug="otega-oweh-1"),
@@ -565,7 +702,7 @@ PROSPECTS_2026 = [
     },
     {
         "player_name": "Keyshawn Hall",
-        "birth_date":  "2003-04-09",   # ✓ confirmed
+        "birth_date":  "2003-04-09",
         "position":    "SF",
         "college":     "Auburn",
         "cbb_url":     _CBB.format(slug="keyshawn-hall-1"),
@@ -573,31 +710,31 @@ PROSPECTS_2026 = [
     },
     {
         "player_name": "Baba Miller",
-        "birth_date":  "2004-02-07",   # ✓ confirmed
-        "position":    "PF",
+        "birth_date":  "2004-02-07",
+        "position":    "SF",
         "college":     "Cincinnati",
         "cbb_url":     _CBB.format(slug="baba-miller-1"),
         "combine":     None,
     },
     {
         "player_name": "Braden Smith",
-        "birth_date":  "2003-07-25",   # ✓ confirmed
+        "birth_date":  "2003-07-25",
         "position":    "PG",
         "college":     "Purdue",
         "cbb_url":     _CBB.format(slug="braden-smith-1"),
         "combine":     None,
     },
     {
-        "player_name": "Ebuka Okorie",   # legal name; was "Okpara" on some rosters
-        "birth_date":  "2007-04-10",   # ✓ confirmed
-        "position":    "C",
+        "player_name": "Ebuka Okorie",
+        "birth_date":  "2007-04-10",
+        "position":    "PG",   # BUG FIX: was "C" — Okorie is PG/SG at Stanford
         "college":     "Stanford",
         "cbb_url":     _CBB.format(slug="ebuka-okorie-1"),
         "combine":     None,
     },
     {
         "player_name": "Ugonna Onyenso",
-        "birth_date":  "2003-09-25",   # ✓ confirmed
+        "birth_date":  "2004-09-25",  # confirmed Wikipedia text (infobox had 2003 typo)
         "position":    "C",
         "college":     "Virginia",
         "cbb_url":     _CBB.format(slug="ugonna-onyenso-1"),
@@ -605,15 +742,16 @@ PROSPECTS_2026 = [
     },
     {
         "player_name": "Tounde Yessoufou",
-        "birth_date":  "2006-05-15",   # ✓ confirmed
+        "birth_date":  "2006-05-15",
         "position":    "SF",
         "college":     "Baylor",
         "cbb_url":     _CBB.format(slug="tounde-yessoufou-1"),
         "combine":     None,
+        "withdrew":    True,
     },
     {
         "player_name": "Felix Okpara",
-        "birth_date":  "2004-04-20",   # ✓ confirmed
+        "birth_date":  "2004-04-20",
         "position":    "C",
         "college":     "Tennessee",
         "cbb_url":     _CBB.format(slug="felix-okpara-1"),
@@ -621,16 +759,26 @@ PROSPECTS_2026 = [
     },
     {
         "player_name": "Karim Lopez",
-        "birth_date":  "2007-04-12",   # ✓ confirmed
-        "position":    "C",
+        "birth_date":  "2007-04-12",
+        "position":    "SF",
         "college":     "International",
         "cbb_url":     None,
         "combine":     None,
+        "note":        "International (Real Madrid, Spain) — BPM unavailable; MPS based on available box stats only. Likely underrated.",
     },
-    # ── 2003-born tier (20.x–22.x at draft) ──────────────────────────────────
+    {
+        "player_name": "Andrej Stojakovic",
+        "birth_date":  "2004-07-24",   # derived from Tankathon draft_age=21.84 at 2026-05-27
+        "position":    "SF",
+        "college":     "Stanford",
+        "cbb_url":     _CBB.format(slug="andrej-stojakovic-1"),
+        "combine":     None,
+        "withdrew":    True,
+    },
+    # ── 2003-born tier ────────────────────────────────────────────────────────
     {
         "player_name": "Joshua Jefferson",
-        "birth_date":  "2003-09-01",   # ~ approximate
+        "birth_date":  "2003-09-01",
         "position":    "PF",
         "college":     "Iowa State",
         "cbb_url":     _CBB.format(slug="joshua-jefferson-1"),
@@ -638,7 +786,7 @@ PROSPECTS_2026 = [
     },
     {
         "player_name": "Jaden Bradley",
-        "birth_date":  "2003-09-01",   # ~ approximate
+        "birth_date":  "2003-09-01",
         "position":    "PG",
         "college":     "Arizona",
         "cbb_url":     _CBB.format(slug="jaden-bradley-1"),
@@ -646,7 +794,7 @@ PROSPECTS_2026 = [
     },
     {
         "player_name": "Maliq Brown",
-        "birth_date":  "2003-09-01",   # ~ approximate
+        "birth_date":  "2003-09-01",
         "position":    "SF",
         "college":     "Duke",
         "cbb_url":     _CBB.format(slug="maliq-brown-1"),
@@ -654,7 +802,7 @@ PROSPECTS_2026 = [
     },
     {
         "player_name": "Malik Reneau",
-        "birth_date":  "2003-09-01",   # ~ approximate
+        "birth_date":  "2003-09-01",
         "position":    "PF",
         "college":     "Miami FL",
         "cbb_url":     _CBB.format(slug="malik-reneau-1"),
@@ -662,7 +810,7 @@ PROSPECTS_2026 = [
     },
     {
         "player_name": "Tyler Bilodeau",
-        "birth_date":  "2003-12-01",   # ~ approximate
+        "birth_date":  "2003-12-01",
         "position":    "PF",
         "college":     "UCLA",
         "cbb_url":     _CBB.format(slug="tyler-bilodeau-1"),
@@ -670,7 +818,7 @@ PROSPECTS_2026 = [
     },
     {
         "player_name": "Nate Bittle",
-        "birth_date":  "2003-12-01",   # ~ approximate
+        "birth_date":  "2003-12-01",
         "position":    "C",
         "college":     "Oregon",
         "cbb_url":     _CBB.format(slug="nate-bittle-1"),
@@ -678,7 +826,7 @@ PROSPECTS_2026 = [
     },
     {
         "player_name": "Tarris Reed Jr.",
-        "birth_date":  "2003-12-01",   # ~ approximate
+        "birth_date":  "2003-12-01",
         "position":    "C",
         "college":     "UConn",
         "cbb_url":     _CBB.format(slug="tarris-reed-jr-1"),
@@ -686,48 +834,41 @@ PROSPECTS_2026 = [
     },
     {
         "player_name": "Allen Graves",
-        "birth_date":  "2003-12-01",   # ~ approximate
+        "birth_date":  "2006-07-28",
         "position":    "PF",
         "college":     "Santa Clara",
         "cbb_url":     _CBB.format(slug="allen-graves-1"),
         "combine":     None,
     },
     {
-        "player_name": "Jaden Henley",
-        "birth_date":  "2003-12-01",   # ~ approximate
-        "position":    "SG",
-        "college":     "Grand Canyon",
-        "cbb_url":     _CBB.format(slug="jaden-henley-1"),
-        "combine":     None,
-    },
-    {
         "player_name": "Tamin Lipsey",
-        "birth_date":  "2003-12-01",   # ~ approximate
+        "birth_date":  "2003-12-01",
         "position":    "PG",
         "college":     "Iowa State",
         "cbb_url":     _CBB.format(slug="tamin-lipsey-1"),
         "combine":     None,
-        "note":        "G League combine only — not invited to NBA Draft Combine; no official measurements",
+        "combine_invite": False,
+        "note":        "G League combine only — not invited to NBA Draft Combine",
     },
     {
         "player_name": "Nick Martinelli",
-        "birth_date":  "2003-12-01",   # ~ approximate
-        "position":    "PG",
+        "birth_date":  "2003-12-01",
+        "position":    "SF",
         "college":     "Northwestern",
         "cbb_url":     _CBB.format(slug="nick-martinelli-1"),
         "combine":     None,
     },
     {
         "player_name": "Hannes Steinbach",
-        "birth_date":  "2003-12-01",   # ~ approximate
-        "position":    "SF",
+        "birth_date":  "2006-05-01",  # confirmed Wikipedia (was wrong year 2003-12-01)
+        "position":    "PF",
         "college":     "Washington",
         "cbb_url":     _CBB.format(slug="hannes-steinbach-1"),
         "combine":     None,
     },
     {
         "player_name": "Bennett Stirtz",
-        "birth_date":  "2003-12-01",   # ~ approximate
+        "birth_date":  "2003-12-01",
         "position":    "PG",
         "college":     "Iowa",
         "cbb_url":     _CBB.format(slug="bennett-stirtz-1"),
@@ -735,16 +876,16 @@ PROSPECTS_2026 = [
     },
     {
         "player_name": "Peter Suder",
-        "birth_date":  "2003-12-01",   # ~ approximate
+        "birth_date":  "2003-12-01",
         "position":    "C",
         "college":     "Miami OH",
         "cbb_url":     _CBB.format(slug="peter-suder-1"),
         "combine":     None,
     },
-    # ── 23+ tier (⚠️ -10 age penalty) ────────────────────────────────────────
+    # ── 23+ tier ──────────────────────────────────────────────────────────────
     {
         "player_name": "Alex Karaban",
-        "birth_date":  "2003-03-01",   # ~ approximate; ~23.3 at draft
+        "birth_date":  "2003-03-01",
         "position":    "PF",
         "college":     "UConn",
         "cbb_url":     _CBB.format(slug="alex-karaban-1"),
@@ -752,7 +893,7 @@ PROSPECTS_2026 = [
     },
     {
         "player_name": "Trey Kaufman-Renn",
-        "birth_date":  "2003-03-01",   # ~ approximate; ~23.3 at draft
+        "birth_date":  "2003-03-01",
         "position":    "PF",
         "college":     "Purdue",
         "cbb_url":     _CBB.format(slug="trey-kaufman-renn-1"),
@@ -760,7 +901,7 @@ PROSPECTS_2026 = [
     },
     {
         "player_name": "Milos Uzan",
-        "birth_date":  "2003-03-01",   # ~ approximate; ~23.3 at draft
+        "birth_date":  "2003-03-01",
         "position":    "PG",
         "college":     "Houston",
         "cbb_url":     _CBB.format(slug="milos-uzan-1"),
@@ -768,23 +909,15 @@ PROSPECTS_2026 = [
     },
     {
         "player_name": "Darrion Williams",
-        "birth_date":  "2003-03-01",   # ✓ confirmed; ~23.3 at draft
+        "birth_date":  "2003-03-01",
         "position":    "SF",
         "college":     "NC State",
         "cbb_url":     _CBB.format(slug="darrion-williams-1"),
         "combine":     None,
     },
     {
-        "player_name": "Rafael Castro",
-        "birth_date":  "2003-03-01",   # ~ approximate; ~23.3 at draft
-        "position":    "C",
-        "college":     "George Washington",
-        "cbb_url":     _CBB.format(slug="rafael-castro-1"),
-        "combine":     None,
-    },
-    {
         "player_name": "Yaxel Lendeborg",
-        "birth_date":  "2002-09-30",   # ✓ confirmed; 23.73 at draft
+        "birth_date":  "2002-09-30",
         "position":    "PF",
         "college":     "Michigan",
         "cbb_url":     _CBB.format(slug="yaxel-lendeborg-1"),
@@ -792,7 +925,7 @@ PROSPECTS_2026 = [
     },
     {
         "player_name": "Trevon Brazile",
-        "birth_date":  "2002-07-04",   # ✓ confirmed; 24.0 at draft
+        "birth_date":  "2002-07-04",
         "position":    "PF",
         "college":     "Arkansas",
         "cbb_url":     _CBB.format(slug="trevon-brazile-1"),
@@ -800,7 +933,7 @@ PROSPECTS_2026 = [
     },
     {
         "player_name": "Oscar Cluff",
-        "birth_date":  "2001-11-22",   # ✓ confirmed; ~24.5 at draft
+        "birth_date":  "2001-11-22",
         "position":    "C",
         "college":     "Purdue",
         "cbb_url":     _CBB.format(slug="oscar-cluff-1"),
@@ -808,8 +941,8 @@ PROSPECTS_2026 = [
     },
     {
         "player_name": "Richie Saunders",
-        "birth_date":  "2001-06-01",   # ~ approximate; ~25.1 at draft
-        "position":    "SF",
+        "birth_date":  "2001-06-01",
+        "position":    "SG",
         "college":     "BYU",
         "cbb_url":     _CBB.format(slug="richie-saunders-1"),
         "combine":     None,
@@ -819,59 +952,54 @@ PROSPECTS_2026 = [
 
 # ── Training normalization params ─────────────────────────────────────────────
 
+# Pre-computed from 11 training classes (2010-2019, 2021) of mps_dataset_raw.csv
+# and combine_historical.json. 2020 excluded — COVID bubble anomaly.
+# Re-derived 2026-05-28. Stored here to avoid re-loading at scoring time.
+# Format: (mean, std, median)
+_HARDCODED_FEAT_STATS: dict[str, tuple[float, float, float]] = {
+    # Re-derived 2026-05-28: 11 training classes (2010-2019, 2021)
+    # 2020 excluded — COVID bubble anomaly (LOYO Δρ=+0.021 confirmed)
+    "bpm_college":      (8.0541,  3.0011,  8.2),
+    "dbpm":             (2.8416,  1.6621,  2.7),
+    "per":              (23.5315, 4.6067, 23.2),
+    "ws_40":            (0.1909,  0.0462,  0.192),
+    "obpm":             (5.3569,  2.376,   5.3),
+    "stl_pg":           (1.1215,  0.5162,  1.0),
+    "ts_pct":           (0.5759,  0.0461,  0.573),
+    "stl_pct":          (2.106,   0.8838,  1.9),
+    "trb_pg":           (6.242,   2.3111,  5.95),
+    "ows":              (3.0959,  1.3705,  3.1),
+    "fg_pct":           (0.4896,  0.0625,  0.478),
+    "blk_pg":           (0.9218,  0.8439,  0.7),
+    "dws":              (1.9011,  0.7639,  1.8),
+    "blk_pct":          (3.3785,  3.1519,  2.3),
+    "ast_pct":          (16.0069, 9.3984, 13.0),
+    "ast_pg":           (2.5297,  1.7159,  2.1),
+    "ast_pct_over_usg": (0.6439,  0.3661,  0.5547),
+    "orb_pct":          (6.7126,  4.1117,  6.1),
+    "pts_pg":           (15.247,  4.0488, 15.45),
+    "wingspan_in":      (82.4831, 3.7458, 82.5),
+    "weight_lbs":       (213.2522,23.4799,211.0),
+    "standing_reach_in":(103.2048, 4.7553,103.0),
+    "ast_to_tov":       (1.1692,  0.6532,  1.0436),
+}
+
+
 class TrainingParams:
-    """
-    Normalization parameters derived from 2010-2021 training set.
-    Ensures new prospects are scored on the same scale as the backtest.
-    """
+    """Normalization parameters derived from 2010-2021 training set."""
 
-    def __init__(self, train_df: pd.DataFrame) -> None:
-        bpm = train_df["bpm_college"].dropna()
-        srs = train_df["program_srs"].dropna()
-
-        # BPM normalization bounds (2nd/98th percentile — same as backtest)
-        self.bpm_min = float(bpm.quantile(0.02))
-        self.bpm_max = float(bpm.quantile(0.98))
-
-        # SRS normalization bounds
-        self.srs_min = float(srs.quantile(0.02))
-        self.srs_max = float(srs.quantile(0.98))
-
-        # Efficiency features: (mean, std, median) for z-scoring + imputation
-        self.eff_stats: dict[str, tuple[float, float, float]] = {}
-        for feat in _EFF_FEATS:
-            col = train_df[feat].dropna()
-            self.eff_stats[feat] = (
-                float(col.mean()), float(col.std()), float(col.median())
-            )
-
-        # NBA fit features
-        self.fit_stats: dict[str, tuple[float, float, float]] = {}
-        for feat in _FIT_FEATS:
-            col = train_df[feat].dropna()
-            self.fit_stats[feat] = (
-                float(col.mean()), float(col.std()), float(col.median())
-            )
-
-        print(f"  [Params] BPM range (2%-98%): [{self.bpm_min:.2f}, {self.bpm_max:.2f}]")
-        print(f"  [Params] SRS range (2%-98%): [{self.srs_min:.2f}, {self.srs_max:.2f}]")
+    def __init__(self) -> None:
+        self.feat_stats: dict[str, tuple[float, float, float]] = dict(_HARDCODED_FEAT_STATS)
+        print(f"  [Params] Loaded normalization stats for {len(self.feat_stats)} features")
+        print(f"  [Params] BPM training range: mean={self.feat_stats['bpm_college'][0]:.1f} "
+              f"±{self.feat_stats['bpm_college'][1]:.1f}")
 
 
 # ── Scoring helpers ───────────────────────────────────────────────────────────
 
 def _zscore_to_0_100(z: float) -> float:
-    """Map z-score to 0-100 using ±3σ range (mirrors backtest.py)."""
+    """Map z-score to 0-100 using ±3σ range."""
     return float(np.clip((z + 3.0) / 6.0 * 100, 0, 100))
-
-
-def _age_modifier(age: float) -> float:
-    """Age multiplier for age×production pillar (mirrors backtest.py)."""
-    if age < 19:   return 1.20
-    if age < 20:   return 1.10
-    if age < 21:   return 1.00
-    if age < 22:   return 0.90
-    if age < 23:   return 0.75
-    return 0.50
 
 
 def grade_label(mps: float) -> str:
@@ -882,41 +1010,15 @@ def grade_label(mps: float) -> str:
     return "D"
 
 
-def compute_physical_adjustment(combine: dict | None, position: str = "") -> float:
-    """
-    ±10 pt adjustment from wingspan/height ratio.
-
-    Baseline ratio:
-      - Centers (position="C"): 1.03 — elite-sized centers structurally have lower
-        ratios due to the physics of very tall frames; 1.06 unfairly penalizes them.
-      - All other positions: 1.06 (NBA draft-class average).
-
-    Each 0.008 above/below baseline = ±1 pt, capped at ±10.
-    Returns 0.0 if combine is None or keys missing.
-
-    Note: directionally correct; not backtested against this dataset.
-    r=0.35-0.45 vs defensive outcomes from separate studies.
-    """
-    if not combine:
+def compute_srs_adj(srs: float | None) -> float:
+    """±5 pt adjustment based on program SRS. Linear: SRS=35→+5, SRS=0→0, SRS<-35→-5."""
+    if srs is None:
         return 0.0
-    h = combine.get("height_in")
-    w = combine.get("wingspan_in")
-    if not h or not w or h <= 0:
-        return 0.0
-    baseline = 1.03 if str(position).upper() == "C" else 1.06
-    ratio = w / h
-    adj = (ratio - baseline) / 0.008
-    return float(np.clip(adj, -10.0, 10.0))
+    return float(np.clip(srs / 35.0 * 5.0, -5.0, 5.0))
 
 
 def compute_availability_modifier(gp: float | None, team_games: int = 33) -> float:
-    """
-    Penalty for players who missed significant playing time.
-    Only triggers when GP < 70% of team's schedule.
-    Capped at -8 pts regardless of absences.
-
-    Formula: -min((0.70 - gp/team_games) * 25, 8.0)
-    """
+    """Penalty for missing significant time. Only triggers below 70% GP threshold."""
     if gp is None:
         return 0.0
     pct = gp / team_games
@@ -927,105 +1029,205 @@ def compute_availability_modifier(gp: float | None, team_games: int = 33) -> flo
 
 def compute_age_penalty(draft_age: float) -> float:
     """
-    Piecewise age adjustment based on empirical NBA outcome research.
+    Piecewise age adjustment based on empirical NBA outcome data (r=-0.202 vs VORP).
 
-    Zone 1 (≤19.5): +2.5 bonus — freshman one-and-dones
-                     meaningfully outperform older prospects
-    Zone 2 (19.5–21.5): neutral — sophomore/junior outcomes
-                          are statistically indistinguishable
-    Zone 3 (21.5+): linear decay at -2.0 pts per year above 21.5,
-                     capped at -15 pts
-
-    Examples:
-      18.9 (Boozer)      → +2.5
-      19.4 (Dybantsa)    → +2.5
-      20.8 (Burries)     → 0.0
-      21.1 (Morez)       → 0.0
-      21.75 (Momcilovic) → -0.5
-      22.1 (Ejiofor)     → -1.2
-      22.56 (Stirtz)     → -2.1
-      22.9 (Reed)        → -2.8
-      23.73 (Lendeborg)  → -4.5
-      25.06 (Saunders)   → -7.1
+    Zone 1 (≤20.0): +4.0 — freshman/international underclassmen outperform older
+    Zone 2 (20.0-21.5): 0.0 — statistically neutral
+    Zone 3 (21.5+): -2.5 per year above 21.5, cap -15
     """
-    if draft_age <= 19.5:
-        return 2.5
+    if draft_age <= 20.0:
+        return 4.0
     elif draft_age <= 21.5:
         return 0.0
     else:
-        penalty = (draft_age - 21.5) * 2.0
-        return -min(penalty, 15.0)
+        return -min((draft_age - 21.5) * 2.5, 15.0)
 
 
-# ── Single-player MPS computation ─────────────────────────────────────────────
+def compute_height_floor_penalty(college_stats: dict) -> float:
+    """
+    Hard penalty for players whose wingspan doesn't compensate for limited height.
+    Triggers when h<76" (6'4") AND WHR<1.04.
+    Catches Flemings (74.5", 1.013). Exempts Tanner (70.75", 1.077 — long arms compensate).
+    Returns 0.0 or -5.0.
+    """
+    h   = college_stats.get("height_in")
+    whr = college_stats.get("wingspan_to_height_ratio")
+    if h is None or whr is None:
+        return 0.0
+    if h < 76.0 and whr < 1.04:
+        return -5.0
+    return 0.0
+
+
+def compute_combine_penalty(prospect: dict) -> float:
+    """
+    Penalty for players not invited to the main NBA Draft Combine.
+    G League-only invitees are rated significantly lower by scouts.
+    Only applies to players age > 21.5 at draft (young prospects are
+    often excused from or projected too high for combine relevance).
+    Returns 0.0 or -3.0.
+    """
+    if prospect.get("combine_invite", True):
+        return 0.0
+    draft_age = prospect.get("_draft_age", 99.0)
+    if draft_age <= 21.5:
+        return 0.0
+    return -3.0
+
+
+def compute_scout_tier_adjustment(
+    tankathon_rank: "int | float | None",
+    weight: float = 0.08,
+) -> float:
+    """
+    Tier-flat scout consensus adjustment based on Tankathon rank.
+
+    Validated via 11-fold LOYO (2020 excluded): T4 tier-flat
+    transformation of draft consensus rank improves mean ρ by
+    +0.029 overall and +0.037 for guards — the largest single
+    validated improvement in this model's development.
+
+    The T4 transform is immune to opportunity bias because it
+    assigns the same score to all players within a tier,
+    eliminating the minutes-gradient that inflates raw pick
+    correlations with VORP.
+
+    weight controls the additive contribution to MPS. Default
+    0.08 is conservative — scales the 0-to-0.9 tier range to
+    a max of +7.2 pts above neutral (rank unscored = 0.050 → 0.0).
+    Neutral point is unranked score (0.050). Scores above/below
+    neutral receive positive/negative adjustment respectively.
+
+    Returns: float adjustment in MPS points (roughly -4 to +7)
+    """
+    if tankathon_rank is None or (
+        isinstance(tankathon_rank, float) and np.isnan(tankathon_rank)
+    ):
+        tier_score = 0.050
+    else:
+        rank = float(tankathon_rank)
+        if rank <= 0:
+            tier_score = 0.050
+        elif rank <= 5:
+            tier_score = 0.900
+        elif rank <= 14:
+            tier_score = 0.700
+        elif rank <= 30:
+            tier_score = 0.500
+        elif rank <= 60:
+            tier_score = 0.250
+        else:
+            tier_score = 0.050
+
+    # Center on neutral (unranked = 0.050) so unranked players
+    # receive 0 adjustment, not a negative penalty
+    neutral = 0.050
+    return round((tier_score - neutral) * weight * 100, 2)
+
+
+# ── Composite MPS computation ─────────────────────────────────────────────────
+
+def _confidence_tier(n_features: int) -> str:
+    """
+    Classify partial score reliability by feature count.
+    High:   ≥12 — most weight covered
+    Medium:  6–11 — directional, use with caution
+    Low:     3–5  — highly uncertain, board reference only
+    """
+    if n_features >= 12:
+        return "high"
+    if n_features >= 6:
+        return "medium"
+    return "low"
+
+
+def compute_partial_mps(
+    stats: dict,
+    params: TrainingParams,
+    min_features: int = 3,
+) -> tuple[float, int] | None:
+    """
+    Attempt a partial weighted z-score composite using only populated features.
+    Missing features are skipped entirely (not imputed to median like the full
+    composite). Returns (score_0_to_100, n_features_used) or None if fewer than
+    min_features are available.
+    """
+    weighted_z_sum = 0.0
+    total_w = 0.0
+    n_used = 0
+
+    for feat, w in FEATURE_WEIGHTS.items():
+        val = stats.get(feat)
+        if val is None or (isinstance(val, float) and np.isnan(val)):
+            continue  # skip missing — do NOT impute
+        mean, std, median = params.feat_stats[feat]
+        z = (float(val) - mean) / max(std, 1e-8)
+        weighted_z_sum += w * z
+        total_w += w
+        n_used += 1
+
+    if n_used < min_features or total_w < 0.01:
+        return None
+
+    composite_z = weighted_z_sum / total_w
+    return (_zscore_to_0_100(composite_z), n_used)
+
+
+def _resolve_position_group(position: str) -> str:
+    """Map prospect position abbreviation to model group (guard/big/wing)."""
+    pos = position.upper()
+    if "PG" in pos or "SG" in pos:
+        return "guard"
+    if "PF" in pos or pos.strip() == "C":
+        return "big"
+    return "wing"
+
+
+def _get_feature_weights(position: str) -> dict[str, float]:
+    """Return position-appropriate FEATURE_WEIGHTS. Wings use 50/50 guard+big blend."""
+    group = _resolve_position_group(position)
+    if group == "guard":
+        return FEATURE_WEIGHTS_GUARDS
+    if group == "big":
+        return FEATURE_WEIGHTS_BIGS
+    # Wing blend (validated over guard-only in position_split_backtest.py)
+    blended = {
+        f: FEATURE_WEIGHTS_GUARDS.get(f, 0) * 0.5 + FEATURE_WEIGHTS_BIGS.get(f, 0) * 0.5
+        for f in FEATURE_WEIGHTS_GUARDS
+    }
+    total = sum(blended.values())
+    return {k: v / total for k, v in blended.items()}
+
 
 def compute_mps_for_prospect(
     stats: dict,
-    draft_age: float,
     params: TrainingParams,
-) -> tuple[float, float, float, float, float]:
+    position: str = "",
+) -> float:
     """
-    Compute 4 pillar scores and MPS_base for a single prospect.
+    Flat weighted z-score composite of 23 empirically-derived features.
 
-    Uses training-set normalization params to stay on the same scale as the
-    backtest — critical because BPM normalization is percentile-based.
+    Selects position-appropriate weights (guard/big/wing blend) via
+    _get_feature_weights(). Missing values imputed with training-set median
+    (→ z≈0, neutral contribution). Weighted average z-score mapped to 0-100.
 
-    Returns:
-        (pillar_efficiency, pillar_age_prod, pillar_comp, pillar_fit, mps_base)
-        All values 0-100.
+    Returns: mps_composite (0-100), before age/srs/availability adjustments.
     """
-
-    # ── Pillar 2: Age × Production ────────────────────────────────────────────
-    # BPM normalized to [0,100] using training percentiles, then × age modifier
-    bpm = stats.get("bpm_college")
-    if bpm is None or (isinstance(bpm, float) and np.isnan(bpm)):
-        bpm = params.bpm_min  # worst-case: missing → floor
-    bpm_range = max(params.bpm_max - params.bpm_min, 1e-8)
-    bpm_norm = float(np.clip((bpm - params.bpm_min) / bpm_range, 0, 1) * 100)
-    pillar_age_prod = float(np.clip(bpm_norm * _age_modifier(draft_age), 0, 100))
-
-    # ── Pillar 1: College Efficiency ──────────────────────────────────────────
-    # Correlation-weighted z-scores of secondary stats (not BPM — already above)
-    eff_z = 0.0
+    weights = _get_feature_weights(position)
+    weighted_z_sum = 0.0
     total_w = 0.0
-    for i, feat in enumerate(_EFF_FEATS):
-        mean, std, median = params.eff_stats.get(feat, (0.0, 1.0, 0.0))
+
+    for feat, w in weights.items():
+        mean, std, median = params.feat_stats[feat]
         val = stats.get(feat)
         if val is None or (isinstance(val, float) and np.isnan(val)):
-            val = median  # impute with training median → z ≈ 0
+            val = median  # neutral imputation
         z = (float(val) - mean) / max(std, 1e-8)
-        eff_z    += _EFF_WGTS[i] * z
-        total_w  += _EFF_WGTS[i]
-    pillar_efficiency = _zscore_to_0_100(eff_z / max(total_w, 1e-8))
+        weighted_z_sum += w * z
+        total_w += w
 
-    # ── Pillar 3: Competition Context ─────────────────────────────────────────
-    srs = stats.get("program_srs")
-    if srs is None or (isinstance(srs, float) and np.isnan(srs)):
-        srs = (params.srs_min + params.srs_max) / 2  # impute with midpoint
-    srs_range = max(params.srs_max - params.srs_min, 1e-8)
-    pillar_comp = float(np.clip((float(srs) - params.srs_min) / srs_range, 0, 1) * 100)
-
-    # ── Pillar 4: NBA Fit ─────────────────────────────────────────────────────
-    fit_z_sum, n_fit = 0.0, 0
-    for feat in _FIT_FEATS:
-        mean, std, median = params.fit_stats.get(feat, (0.0, 1.0, 0.0))
-        val = stats.get(feat)
-        if val is None or (isinstance(val, float) and np.isnan(val)):
-            val = median
-        fit_z_sum += (float(val) - mean) / max(std, 1e-8)
-        n_fit += 1
-    pillar_fit = _zscore_to_0_100(fit_z_sum / max(n_fit, 1))
-
-    # ── Weighted MPS ──────────────────────────────────────────────────────────
-    w = OPTIMIZED_WEIGHTS
-    mps_base = float(np.clip(
-        pillar_efficiency  * w["college_efficiency"] +
-        pillar_age_prod    * w["age_x_production"]   +
-        pillar_comp        * w["competition_ctx"]    +
-        pillar_fit         * w["nba_fit"],
-        0, 100
-    ))
-    return pillar_efficiency, pillar_age_prod, pillar_comp, pillar_fit, mps_base
+    composite_z = weighted_z_sum / max(total_w, 1e-8)
+    return _zscore_to_0_100(composite_z)
 
 
 # ── Orchestrator ──────────────────────────────────────────────────────────────
@@ -1033,37 +1235,38 @@ def compute_mps_for_prospect(
 def score_all_prospects(prospects: list[dict]) -> pd.DataFrame:
     """
     Score all prospects:
-      1. Load training CSV → derive normalization params
-      2. Fetch 2025-26 program SRS (one call, 365 programs)
-      3. For each prospect: fetch CBB stats, apply manual overrides,
-         compute MPS, apply physical/availability/age adjustments
-    Returns fully ranked DataFrame (all rows, N/A last).
+      1. Load training normalization params
+      2. Fetch 2025-26 program SRS
+      3. Load Tankathon 2026 cache + NBA combine data
+      4. For each prospect:
+         a. Fetch CBB basic stats (scrape_college_stats)
+         b. Fetch CBB supplement stats (scrape_supplement) — per, obpm, dbpm, ws_40, etc.
+         c. Apply manual overrides (MANUAL_STATS)
+         d. Fill gaps from Tankathon cache
+         e. Derive ast_pct_over_usg, ast_to_tov
+         f. Add physical measurements (wingspan, weight, standing_reach) from combine
+         g. Compute MPS composite + adjustments
+    Returns ranked DataFrame.
     """
-    # Load training data for normalization
-    print("Loading training set for normalization params...")
-    df_train = pd.read_csv(DATASET)
-    df_train = df_train[df_train.draft_year <= 2021].copy()
-    params = TrainingParams(df_train)
+    print("Loading training normalization params...")
+    params = TrainingParams()
 
-    # Load Tankathon 2026 data
     print("\nLoading Tankathon 2026 data...")
     tankathon = _load_tankathon()
 
-    # Fetch 2025-26 program SRS
-    print("\nFetching 2025-26 program SRS (sports-reference CBB)...")
+    print("\nFetching 2025-26 program SRS...")
     srs_2026 = scrape_program_srs(2026)
     print(f"  {len(srs_2026)} programs loaded")
 
-    # Fetch 2026 NBA Combine measurements (cached 24h)
     print("\nFetching 2026 NBA Combine measurements...")
     try:
         combine_lookup = get_full_combine_data()
         if combine_lookup:
             print(f"  {len(combine_lookup)} players with combine measurements")
         else:
-            print("  No combine measurements available — physical adj = 0.0 for all")
+            print("  No combine measurements — physical features use training medians")
     except Exception as _e:
-        print(f"  Combine fetch failed: {_e}; physical adj = 0.0 for all")
+        print(f"  Combine fetch failed: {_e}")
         combine_lookup = {}
 
     rows = []
@@ -1076,77 +1279,259 @@ def score_all_prospects(prospects: list[dict]) -> pd.DataFrame:
         withdrew      = bool(prospect.get("withdrew", False))
         prospect_note = prospect.get("note", "")
 
-        # Tankathon lookup (fallback data source + rank for divergence notes)
-        tdata          = _lookup_tankathon(name, tankathon)
-        tank_stats     = _extract_tankathon_stats(tdata) if tdata else {}
+        tdata         = _lookup_tankathon(name, tankathon)
+        tank_stats    = _extract_tankathon_stats(tdata) if tdata else {}
         tankathon_rank = tdata.get("tankathon_rank") if tdata else None
         _tank_combine  = tank_stats.pop("_tankathon_combine", {})
-
-        # Combine data: API lookup merged with prospect-level manual override
-        # combine_name field overrides the lookup name (e.g. Ebuka Okpara → Okorie)
-        # COMBINE_NAME_OVERRIDES in combine_scraper handles nickname/legal-name gaps
-        # Prospect-level combine dict wins key-by-key over API data
-        _lookup_name    = prospect.get("combine_name") or name
-        _api_combine    = lookup_player(combine_lookup, _lookup_name)
-        _manual_combine = prospect.get("combine") or {}
-        combine         = {**_tank_combine, **_api_combine, **_manual_combine} or None
 
         # Draft age
         try:
             dob = date.fromisoformat(prospect["birth_date"])
             draft_age = (DRAFT_DATE_2026 - dob).days / 365.25
         except Exception:
-            draft_age = 21.5  # fallback
+            draft_age = 21.5
 
         print(f"\n  [{name}]  {pos}  age={draft_age:.2f}  college={college}")
 
-        # ── No CBB URL (international / no college stats) ─────────────────────
+        # ── No CBB URL (international) ────────────────────────────────────────
         if not cbb_url:
-            print(f"    No CBB URL — international/no data")
-            rows.append(_null_row(name, pos, college, draft_age,
-                                  combine, "No college data", withdrew=withdrew,
-                                  tankathon_rank=tankathon_rank))
+            if withdrew:
+                rows.append(_null_row(name, pos, college, draft_age, "No college data",
+                                      withdrew=True, tankathon_rank=tankathon_rank))
+                continue
+            print(f"    No CBB URL — attempting Tankathon partial score...")
+            if tank_stats:
+                intl_stats: dict = {}
+                for tank_k, feat_k in [
+                    ("tank_ts_pct",           "ts_pct"),
+                    ("tank_trb_pg",           "trb_pg"),
+                    ("tank_ast_pg",           "ast_pg"),
+                    ("tank_blk_pg",           "blk_pg"),
+                    ("tank_stl_pg",           "stl_pg"),
+                    ("tank_pts",              "pts_pg"),
+                    ("tank_fg_pct",           "fg_pct"),
+                    ("tank_per",              "per"),
+                    ("tank_ows",              "ows"),
+                    ("tank_dws",              "dws"),
+                    ("tank_ws_40",            "ws_40"),
+                    ("tank_obpm",             "obpm"),
+                    ("tank_dbpm",             "dbpm"),
+                    ("tank_bpm",              "bpm_college"),
+                    ("tank_ast_pct_over_usg", "ast_pct_over_usg"),
+                    ("tank_ast_to_tov",       "ast_to_tov"),
+                    ("ts_pct",                "ts_pct"),
+                    ("ft_pct",                "ft_pct"),
+                    ("games_played",          "games_played"),
+                ]:
+                    v = tank_stats.get(tank_k)
+                    if v is not None and feat_k not in intl_stats:
+                        intl_stats[feat_k] = v
+                for phys_k in ("height_in", "wingspan_in", "weight_lbs", "standing_reach_in"):
+                    v = _tank_combine.get(phys_k)
+                    if v is not None:
+                        intl_stats[phys_k] = v
+                h   = intl_stats.get("height_in")
+                wng = intl_stats.get("wingspan_in")
+                sr  = intl_stats.get("standing_reach_in")
+                if h and wng and h > 0:
+                    intl_stats["wingspan_to_height_ratio"] = wng / h
+                if h and sr and h > 0:
+                    intl_stats["standing_reach_to_height_ratio"] = sr / h
+                partial = compute_partial_mps(intl_stats, params, min_features=3)
+                if partial is not None:
+                    partial_score, n_feats = partial
+                    age_pen_p  = compute_age_penalty(draft_age)
+                    hf_pen     = compute_height_floor_penalty(intl_stats)
+                    mps_partial = float(np.clip(
+                        partial_score + age_pen_p + hf_pen, 0, 100
+                    ))
+                    grd_p = grade_label(mps_partial)
+                    tier  = _confidence_tier(n_feats)
+                    print(f"    [INTL PARTIAL] {n_feats} features ({tier}) — "
+                          f"composite={partial_score:.1f}  age={age_pen_p:+.1f}"
+                          f"  hf={hf_pen:+.1f}  → MPS={mps_partial:.1f}  {grd_p}")
+                    rows.append({
+                        "player_name":      name,
+                        "position":         pos,
+                        "position_group":   _resolve_position_group(pos),
+                        "college":          college,
+                        "draft_age":        round(draft_age, 2),
+                        "bpm_college":      intl_stats.get("bpm_college"),
+                        "ts_pct":           intl_stats.get("ts_pct"),
+                        "per":              intl_stats.get("per"),
+                        "dbpm":             intl_stats.get("dbpm"),
+                        "program_srs":      None,
+                        "mps_composite":    round(partial_score, 1),
+                        "srs_adj":          0.0,
+                        "games_played":     intl_stats.get("games_played"),
+                        "games_played_pct": None,
+                        "avail_modifier":   0.0,
+                        "age_penalty":      round(age_pen_p, 1),
+                        "height_floor_pen": round(hf_pen, 1),
+                        "combine_penalty":  0.0,
+                        "mps":              round(mps_partial, 1),
+                        "grade":            grd_p,
+                        "confidence_tier":  tier,
+                        "tankathon_rank":   tankathon_rank,
+                        "withdrew":         withdrew,
+                        "note":             (
+                            f"INTL PARTIAL — {n_feats} features ({tier}), "
+                            f"no CBB data; treat as directional"
+                            + (f"; {prospect_note}" if prospect_note else "")
+                        ),
+                    })
+                    continue
+            print(f"    No CBB URL, no Tankathon data — N/A")
+            rows.append(_null_row(name, pos, college, draft_age, "No college data",
+                                  withdrew=withdrew, tankathon_rank=tankathon_rank))
             continue
 
-        # ── Fetch CBB stats ───────────────────────────────────────────────────
-        try:
-            college_stats = scrape_college_stats(cbb_url)
-        except Exception as e:
-            print(f"    CBB fetch error: {e}")
-            college_stats = None
+        # ── Fetch CBB basic stats (cached) ───────────────────────────────────
+        _cached_cbb = _load_cbb_stats_cache(cbb_url)
+        if _cached_cbb is None:
+            try:
+                college_stats = scrape_college_stats(cbb_url)
+                _write_cbb_stats_cache(cbb_url, college_stats)
+            except Exception as e:
+                print(f"    CBB fetch error: {e}")
+                college_stats = None
+        else:
+            college_stats = _cached_cbb if _cached_cbb else None
+
+        # ── Fetch CBB supplement stats (cached — only new HTTP on first run) ──
+        if college_stats is not None:
+            try:
+                supp = _supp_load(cbb_url)
+                if supp is None:
+                    supp = scrape_supplement(cbb_url)
+                    _supp_write(cbb_url, supp)
+                if supp:
+                    for k, v in supp.items():
+                        if v is not None and college_stats.get(k) is None:
+                            college_stats[k] = v
+                    print(f"    [Supp] per={supp.get('per')}  obpm={supp.get('obpm')}  "
+                          f"dbpm={supp.get('dbpm')}  ws_40={supp.get('ws_40')}  "
+                          f"fg%={supp.get('fg_pct')}")
+            except Exception as e:
+                print(f"    [Supp] Error: {e}")
 
         # ── Apply manual stat overrides ───────────────────────────────────────
-        # Non-None values in MANUAL_STATS always win over scraped.
-        # If entire scrape failed, build from scratch using manual data.
         if name in MANUAL_STATS:
             if college_stats is None:
                 college_stats = {}
-            manual = MANUAL_STATS[name]
-            for k, v in manual.items():
+            for k, v in MANUAL_STATS[name].items():
                 if v is not None:
-                    college_stats[k] = v       # manual non-None always overrides
+                    college_stats[k] = v
                 elif k not in college_stats:
-                    college_stats[k] = v       # manual None only fills missing keys
+                    college_stats[k] = v
 
+        # ── Tankathon rescue if CBB completely failed ─────────────────────────
         if not college_stats:
-            # Tankathon rescue: use Tankathon as primary when CBB unavailable
-            if tank_stats.get("bpm_college") is not None:
-                college_stats = dict(tank_stats)
-                print(f"    [Tankathon] Rescue: BPM={college_stats['bpm_college']:.1f}")
+            if tank_stats.get("ts_pct") is not None:
+                college_stats = {}
+                # Primary stats from Tankathon (best-effort — may be different scale)
+                for tank_k, stat_k in [
+                    ("tank_ts_pct", "ts_pct"), ("tank_trb_pg", "trb_pg"),
+                    ("tank_ast_pg", "ast_pg"), ("tank_blk_pg", "blk_pg"),
+                    ("tank_stl_pg", "stl_pg"), ("tank_pts", "pts_pg"),
+                    ("tank_fg_pct", "fg_pct"), ("tank_per", "per"),
+                    ("tank_obpm", "obpm"), ("tank_dbpm", "dbpm"),
+                    ("tank_ws_40", "ws_40"), ("tank_ows", "ows"),
+                    ("games_played", "games_played"),
+                ]:
+                    if tank_stats.get(tank_k) is not None:
+                        college_stats[stat_k] = tank_stats[tank_k]
+                print(f"    [Tankathon] Rescue: ts_pct={college_stats.get('ts_pct')}")
             else:
-                print(f"    CBB fetch failed (404 or missing tables)")
-                rows.append(_null_row(name, pos, college, draft_age,
-                                      combine, "CBB fetch failed", withdrew=withdrew,
-                                      tankathon_rank=tankathon_rank))
+                print(f"    CBB fetch failed, no Tankathon rescue available")
+                rows.append(_null_row(name, pos, college, draft_age, "CBB fetch failed",
+                                      withdrew=withdrew, tankathon_rank=tankathon_rank))
                 continue
 
-        # Tankathon stat fallback — fill gaps when CBB withholds (below GP threshold)
-        if college_stats and tank_stats:
-            for k in ("bpm_college", "ts_pct", "usg_pct", "ft_pct", "games_played"):
-                if college_stats.get(k) is None and tank_stats.get(k) is not None:
-                    if k == "bpm_college":
-                        print(f"    [Tankathon] BPM fallback: {tank_stats[k]:.1f}")
-                    college_stats[k] = tank_stats[k]
+        # ── Fill gaps from Tankathon (for fields CBB didn't return) ──────────
+        _bpm_before_fill = college_stats.get("bpm_college")
+        _tank_fill = {
+            "tank_bpm":           "bpm_college",  # scale verified r=1.000 — safe as primary
+            "tank_per":           "per",
+            "tank_obpm":          "obpm",
+            "tank_dbpm":          "dbpm",
+            "tank_ws_40":         "ws_40",
+            "tank_ows":           "ows",
+            "tank_fg_pct":        "fg_pct",
+            "tank_trb_pg":        "trb_pg",
+            "tank_blk_pg":        "blk_pg",
+            "tank_stl_pg":        "stl_pg",
+            "tank_ast_pg":        "ast_pg",
+            "tank_ft_pct":        "ft_pct",
+            "games_played":       "games_played",
+            "ts_pct":             "ts_pct",
+        }
+        for tank_k, stat_k in _tank_fill.items():
+            if college_stats.get(stat_k) is None and tank_stats.get(tank_k) is not None:
+                college_stats[stat_k] = tank_stats[tank_k]
+        _bpm_from_tankathon = (
+            _bpm_before_fill is None and college_stats.get("bpm_college") is not None
+            and name not in MANUAL_STATS
+        )
+
+        # ── Promote Tankathon to primary for Group A stats (same source, same scale) ──
+        # scale_verification.py confirmed r=1.000 for these stats — identical source as CBB.
+        # Overwrites potentially stale CBB cache values with real-time Tankathon data.
+        # Group C stats (ts_pct, ows, dws, pts_pg, ast_pg, fg_pct) excluded — different scale.
+        if tank_stats:
+            for _tank_k, _stat_k in [
+                ("tank_bpm",     "bpm_college"),
+                ("tank_obpm",    "obpm"),
+                ("tank_dbpm",    "dbpm"),
+                ("tank_per",     "per"),
+                ("tank_ws_40",   "ws_40"),
+                ("tank_trb_pg",  "trb_pg"),
+                ("tank_stl_pg",  "stl_pg"),
+                ("tank_blk_pg",  "blk_pg"),
+                ("tank_fg3_pct", "fg3_pct"),
+            ]:
+                _tv = tank_stats.get(_tank_k)
+                if _tv is not None:
+                    college_stats[_stat_k] = _tv
+
+        # ── Derive composite-ready stats ──────────────────────────────────────
+        # ast_pct_over_usg
+        if college_stats.get("ast_pct_over_usg") is None:
+            apc = college_stats.get("ast_pct")
+            usg = college_stats.get("usg_pct")
+            if apc is not None and usg and usg > 0:
+                college_stats["ast_pct_over_usg"] = apc / usg
+            elif tank_stats.get("tank_ast_pct_over_usg") is not None:
+                college_stats["ast_pct_over_usg"] = tank_stats["tank_ast_pct_over_usg"]
+        # ast_to_tov
+        if college_stats.get("ast_to_tov") is None:
+            apg = college_stats.get("ast_pg")
+            tpg = college_stats.get("tov_pg")
+            if apg is not None and tpg and tpg > 0:
+                college_stats["ast_to_tov"] = apg / tpg
+            elif tank_stats.get("tank_ast_to_tov") is not None:
+                college_stats["ast_to_tov"] = tank_stats["tank_ast_to_tov"]
+
+        # ── Physical measurements (wingspan, weight, standing_reach) ──────────
+        # Priority: NBA combine API > Tankathon combine cache > training median (imputed)
+        _lookup_name   = prospect.get("combine_name") or name
+        _api_combine   = lookup_player(combine_lookup, _lookup_name)
+        _manual_combine = prospect.get("combine") or {}
+        combine = {**_tank_combine, **_api_combine, **_manual_combine}
+
+        for phys_k in ("wingspan_in", "weight_lbs", "standing_reach_in", "height_in"):
+            if college_stats.get(phys_k) is None and combine.get(phys_k) is not None:
+                college_stats[phys_k] = combine[phys_k]
+                print(f"    [Physical] {phys_k}={combine[phys_k]:.1f}")
+
+        _h  = college_stats.get("height_in")
+        _w  = college_stats.get("wingspan_in")
+        _sr = college_stats.get("standing_reach_in")
+        if _h and _h > 0:
+            if _w is not None and college_stats.get("wingspan_to_height_ratio") is None:
+                college_stats["wingspan_to_height_ratio"] = _w / _h
+            if _sr is not None and college_stats.get("standing_reach_to_height_ratio") is None:
+                college_stats["standing_reach_to_height_ratio"] = _sr / _h
 
         # ── Resolve program SRS ───────────────────────────────────────────────
         school_name = college_stats.get("school_name") or college
@@ -1155,31 +1540,81 @@ def score_all_prospects(prospects: list[dict]) -> pd.DataFrame:
 
         bpm = college_stats.get("bpm_college")
         ts  = college_stats.get("ts_pct")
-        print(f"    BPM={bpm}  TS%={ts}  SRS={srs}")
+        per = college_stats.get("per")
+        dbpm = college_stats.get("dbpm")
+        print(f"    BPM={bpm}  TS%={ts}  PER={per}  DBPM={dbpm}  SRS={srs}")
 
-        # ── BPM null → incomplete data, do not score ──────────────────────────
-        # Sports-reference withholds BPM below a GP threshold.
-        # Without BPM, age×production pillar (41%) collapses to floor.
-        # Only reaches here if name NOT in MANUAL_STATS (Boozer is covered above).
+        # BPM null → attempt partial scoring from available features
         if bpm is None:
-            print(f"    BPM not computed by source (insufficient games/data)")
-            rows.append(_null_row(name, pos, college, draft_age,
-                                  combine, "BPM not computed — insufficient games",
-                                  withdrew=withdrew, tankathon_rank=tankathon_rank))
+            if withdrew:
+                rows.append(_null_row(name, pos, college, draft_age,
+                                      "BPM not computed — insufficient games",
+                                      withdrew=True, tankathon_rank=tankathon_rank))
+                continue
+            partial = compute_partial_mps(college_stats, params, min_features=3)
+            if partial is not None:
+                partial_score, n_feats = partial
+                srs_adj_p = compute_srs_adj(srs)
+                age_pen_p = compute_age_penalty(draft_age)
+                mps_partial = float(np.clip(
+                    partial_score + srs_adj_p + age_pen_p, 0, 100
+                ))
+                grd_p = grade_label(mps_partial)
+                tier  = _confidence_tier(n_feats)
+                print(f"    [PARTIAL] {n_feats} features ({tier}) — "
+                      f"composite={partial_score:.1f}  srs={srs_adj_p:+.1f}  "
+                      f"age={age_pen_p:+.1f}  → MPS={mps_partial:.1f}  {grd_p}")
+                rows.append({
+                    "player_name":      name,
+                    "position":         pos,
+                    "position_group":   _resolve_position_group(pos),
+                    "college":          college,
+                    "draft_age":        round(draft_age, 2),
+                    "bpm_college":      None,
+                    "ts_pct":           college_stats.get("ts_pct"),
+                    "per":              college_stats.get("per"),
+                    "dbpm":             college_stats.get("dbpm"),
+                    "program_srs":      srs,
+                    "mps_composite":    round(partial_score, 1),
+                    "srs_adj":          round(srs_adj_p, 1),
+                    "games_played":     college_stats.get("games_played"),
+                    "games_played_pct": None,
+                    "avail_modifier":   0.0,
+                    "age_penalty":      round(age_pen_p, 1),
+                    "height_floor_pen": 0.0,
+                    "combine_penalty":  0.0,
+                    "mps":              round(mps_partial, 1),
+                    "grade":            grd_p,
+                    "confidence_tier":  tier,
+                    "tankathon_rank":   tankathon_rank,
+                    "withdrew":         withdrew,
+                    "note":             (
+                        f"PARTIAL DATA — {n_feats} features ({tier}), no BPM; treat as directional"
+                        + (f"; {prospect_note}" if prospect_note else "")
+                    ),
+                })
+            else:
+                print(f"    BPM not computed — insufficient games/data")
+                rows.append(_null_row(name, pos, college, draft_age,
+                                      "BPM not computed — insufficient games",
+                                      withdrew=withdrew, tankathon_rank=tankathon_rank))
             continue
 
-        # ── Compute base MPS pillars ──────────────────────────────────────────
-        peff, page, pcomp, pfit, mps_base = compute_mps_for_prospect(
-            college_stats, draft_age, params
-        )
-
-        # ── Apply adjustments ─────────────────────────────────────────────────
-        phys_adj  = compute_physical_adjustment(combine, pos)
-        gp        = college_stats.get("games_played")
-        avail_mod = compute_availability_modifier(gp, team_games)
-        age_pen   = compute_age_penalty(draft_age)
-        mps_final = float(np.clip(mps_base + phys_adj + avail_mod + age_pen, 0, 100))
-        grd       = grade_label(mps_final)
+        # ── Compute MPS ───────────────────────────────────────────────────────
+        mps_composite    = compute_mps_for_prospect(college_stats, params, pos)
+        srs_adj          = compute_srs_adj(srs)
+        gp               = college_stats.get("games_played")
+        avail_mod        = compute_availability_modifier(gp, team_games)
+        age_pen          = compute_age_penalty(draft_age)
+        height_floor_pen = compute_height_floor_penalty(college_stats)
+        combine_pen      = compute_combine_penalty({**prospect, "_draft_age": draft_age})
+        scout_adj        = compute_scout_tier_adjustment(tankathon_rank)
+        mps_final        = float(np.clip(
+            mps_composite + srs_adj + avail_mod + age_pen
+            + height_floor_pen + combine_pen + scout_adj,
+            0, 100
+        ))
+        grd           = grade_label(mps_final)
 
         # ── Build notes string ────────────────────────────────────────────────
         notes = []
@@ -1188,11 +1623,26 @@ def score_all_prospects(prospects: list[dict]) -> pd.DataFrame:
             pct_s  = f"{gp_pct:.0%}" if gp_pct is not None else "?"
             notes.append(f"Availability: {pct_s} GP ({gp:.0f}/{team_games}g)")
         if age_pen < 0.0:
-            notes.append(f"Age penalty -10 ({draft_age:.1f}y)")
+            notes.append(f"Age penalty {age_pen:+.1f} ({draft_age:.1f}y)")
+        if age_pen > 0.0:
+            notes.append(f"Youth bonus +{age_pen:.1f}")
+        if height_floor_pen < 0.0:
+            _h_val  = college_stats.get("height_in")
+            _whr_val = college_stats.get("wingspan_to_height_ratio")
+            notes.append(
+                f"Height floor {height_floor_pen:+.1f} "
+                f"(h={_h_val:.1f}\", WHR={_whr_val:.3f})"
+            )
+        if combine_pen < 0.0:
+            notes.append(f"Combine penalty {combine_pen:+.1f} (G League invite only)")
+        if abs(scout_adj) > 1.0:
+            rank_str = f"Tank #{int(tankathon_rank)}" if tankathon_rank is not None else "unranked"
+            notes.append(f"Scout tier adj {scout_adj:+.1f} ({rank_str})")
+        if _bpm_from_tankathon:
+            notes.append("BPM from Tankathon (CBB unavailable — same scale confirmed)")
         if name in MANUAL_STATS:
-            notes.append("Stats: manual override (BBRef BPM)")
+            notes.append("Stats: partial manual override (BPM from BBRef)")
         note_str = "; ".join(notes)
-        # Prepend withdrew flag or prospect-level note
         prefix = ""
         if withdrew:
             prefix = "WITHDREW — not in 2026 draft"
@@ -1203,31 +1653,41 @@ def score_all_prospects(prospects: list[dict]) -> pd.DataFrame:
         elif prefix:
             note_str = prefix
 
-        print(f"    Pillars: eff={peff:.1f} age={page:.1f} comp={pcomp:.1f} fit={pfit:.1f}")
-        print(f"    MPS base={mps_base:.1f}  phys={phys_adj:+.1f}  "
-              f"avail={avail_mod:+.1f}  agepen={age_pen:+.1f}  "
-              f"→ MPS={mps_final:.1f}  Grade={grd}")
+        if _resolve_position_group(pos) == "wing":
+            wing_note = (
+                "Wing position: 50/50 weight blend (guard/big) — "
+                "physical projection not fully captured in model"
+            )
+            note_str = (note_str + "; " + wing_note) if note_str else wing_note
+
+        print(f"    composite={mps_composite:.1f}  srs={srs_adj:+.1f}  "
+              f"avail={avail_mod:+.1f}  age={age_pen:+.1f}  "
+              f"height_floor={height_floor_pen:+.1f}  combine={combine_pen:+.1f}  "
+              f"scout={scout_adj:+.1f}  → MPS={mps_final:.1f}  {grd}")
 
         gp_pct_val = round(gp / team_games, 3) if gp is not None else None
 
         rows.append({
             "player_name":      name,
             "position":         pos,
+            "position_group":   _resolve_position_group(pos),
+            "confidence_tier":  "full",
             "college":          college,
             "draft_age":        round(draft_age, 2),
             "bpm_college":      bpm,
             "ts_pct":           ts,
+            "per":              per,
+            "dbpm":             dbpm,
             "program_srs":      srs,
-            "pillar_eff":       round(peff,  1),
-            "pillar_age":       round(page,  1),
-            "pillar_comp":      round(pcomp, 1),
-            "pillar_fit":       round(pfit,  1),
-            "mps_base":         round(mps_base,  1),
-            "physical_adj":     round(phys_adj,  1),
+            "mps_composite":    round(mps_composite, 1),
+            "srs_adj":          round(srs_adj, 1),
             "games_played":     gp,
             "games_played_pct": gp_pct_val,
             "avail_modifier":   round(avail_mod, 1),
-            "age_penalty":      round(age_pen,   1),
+            "age_penalty":      round(age_pen, 1),
+            "height_floor_pen": round(height_floor_pen, 1),
+            "combine_penalty":  round(combine_pen, 1),
+            "scout_adj":        round(scout_adj, 2),
             "mps":              round(mps_final, 1),
             "grade":            grd,
             "tankathon_rank":   tankathon_rank,
@@ -1236,22 +1696,25 @@ def score_all_prospects(prospects: list[dict]) -> pd.DataFrame:
         })
 
     result = pd.DataFrame(rows)
-    # Sort: scored players by MPS desc, N/A last
-    result = result.sort_values("mps", ascending=False, na_position="last")
-    result.insert(0, "rank", range(1, len(result) + 1))
-    result = result.reset_index(drop=True)
+    withdrew_mask = result["withdrew"].fillna(False).astype(bool)
+    active_df  = result[~withdrew_mask].sort_values("mps", ascending=False, na_position="last").copy()
+    wd_df      = result[withdrew_mask].sort_values("mps",  ascending=False, na_position="last").copy()
+    active_df.insert(0, "rank", range(1, len(active_df) + 1))
+    wd_df.insert(0, "rank", [None] * len(wd_df))
+    result = pd.concat([active_df, wd_df], ignore_index=True)
 
-    # Append divergence notes: model rank vs Tankathon consensus
+    # Append divergence notes
     if "tankathon_rank" in result.columns:
         for idx, row in result.iterrows():
             t_rank = row.get("tankathon_rank")
             m_rank = row["rank"]
-            if pd.isna(row.get("mps")) or t_rank is None or pd.isna(t_rank):
+            if m_rank is None or pd.isna(row.get("mps")) or t_rank is None or pd.isna(t_rank):
                 continue
             diff = int(m_rank) - int(t_rank)
             if abs(diff) > 10:
                 direction = "above" if diff > 0 else "below"
-                div_note = f"Model #{m_rank} vs Tankathon #{int(t_rank)} ({abs(diff)} spots {direction} consensus)"
+                div_note = (f"Model #{m_rank} vs Tankathon #{int(t_rank)} "
+                            f"({abs(diff)} spots {direction} consensus)")
                 existing = result.at[idx, "note"] or ""
                 sep = "; " if existing else ""
                 result.at[idx, "note"] = existing + sep + div_note
@@ -1259,26 +1722,26 @@ def score_all_prospects(prospects: list[dict]) -> pd.DataFrame:
     return result
 
 
-def _null_row(name: str, pos: str, college: str,
-              draft_age: float, combine: dict | None, note: str,
-              *, withdrew: bool = False, tankathon_rank: int | None = None) -> dict:
+def _null_row(name: str, pos: str, college: str, draft_age: float,
+              note: str, *, withdrew: bool = False,
+              tankathon_rank: int | None = None) -> dict:
     age_pen = compute_age_penalty(draft_age)
-    prefix = "WITHDREW — not in 2026 draft" if withdrew else ""
+    prefix  = "WITHDREW — not in 2026 draft" if withdrew else ""
     full_note = (prefix + "; " + note) if (prefix and note) else (prefix or note)
     return {
         "player_name":      name,
         "position":         pos,
+        "position_group":   _resolve_position_group(pos),
+        "confidence_tier":  "none",
         "college":          college,
         "draft_age":        round(draft_age, 2),
         "bpm_college":      None,
         "ts_pct":           None,
+        "per":              None,
+        "dbpm":             None,
         "program_srs":      None,
-        "pillar_eff":       None,
-        "pillar_age":       None,
-        "pillar_comp":      None,
-        "pillar_fit":       None,
-        "mps_base":         None,
-        "physical_adj":     round(compute_physical_adjustment(combine, pos), 1),
+        "mps_composite":    None,
+        "srs_adj":          None,
         "games_played":     None,
         "games_played_pct": None,
         "avail_modifier":   0.0,
@@ -1293,43 +1756,42 @@ def _null_row(name: str, pos: str, college: str,
 
 # ── Output ────────────────────────────────────────────────────────────────────
 
-def print_big_board(df: pd.DataFrame, top_n: int = 30) -> None:
-    """Print formatted ranked table (top N only; full board saved to CSV)."""
-    print("\n" + "=" * 90)
-    print("MPS 2026 Big Board")
-    print(f"Draft: {DRAFT_DATE_2026}  |  Model: BPM×Age (90%) + Physical (±10)")
-    print("=" * 90)
+def print_big_board(df: pd.DataFrame, top_n: int = 35) -> None:
+    print("\n" + "=" * 100)
+    print("MPS 2026 Big Board  (Model: empirical weighted composite, ρ=0.430 holdout)")
+    print(f"Draft: {DRAFT_DATE_2026}  |  Features: 23 stats, weights ∝ Spearman r vs NBA VORP yr2-5")
+    print("=" * 100)
     header = (f"{'Rk':>3}  {'Player':<22}  {'Pos':>3}  {'Age':>5}  "
-              f"{'BPM':>6}  {'Base':>5}  {'Phy':>5}  {'Avl':>5}  {'AgP':>5}  {'MPS':>5}  Grade")
+              f"{'BPM':>6}  {'PER':>5}  {'DBPM':>5}  {'Comp':>5}  "
+              f"{'SRS':>4}  {'Avl':>4}  {'Age':>5}  {'MPS':>5}  Gr")
     print(header)
-    print("-" * 90)
+    print("-" * 100)
 
-    display_df = df.head(top_n)
-    for _, row in display_df.iterrows():
-        bpm_s  = f"{row.bpm_college:+.1f}" if pd.notna(row.bpm_college) else "   N/A"
-        base_s = f"{row.mps_base:.1f}"     if pd.notna(row.mps_base)    else "  N/A"
-        mps_s  = f"{row.mps:.1f}"          if pd.notna(row.mps)         else "  N/A"
-        phys_s = f"{row.physical_adj:+.1f}" if pd.notna(row.get("physical_adj", None)) else " +0.0"
-        avl_s  = f"{row.avail_modifier:+.1f}" if pd.notna(row.get("avail_modifier", None)) else " +0.0"
-        agp_s  = f"{row.age_penalty:+.1f}"    if pd.notna(row.get("age_penalty",    None)) else " +0.0"
+    for _, row in df.head(top_n).iterrows():
+        bpm_s  = f"{row.bpm_college:+.1f}" if pd.notna(row.bpm_college)  else "   N/A"
+        per_s  = f"{row.per:.1f}"          if pd.notna(row.per)          else "  N/A"
+        dbpm_s = f"{row.dbpm:+.1f}"        if pd.notna(row.dbpm)         else "  N/A"
+        comp_s = f"{row.mps_composite:.1f}" if pd.notna(row.mps_composite) else "  N/A"
+        srs_s  = f"{row.srs_adj:+.1f}"     if pd.notna(row.get("srs_adj", None)) else "+0.0"
+        avl_s  = f"{row.avail_modifier:+.1f}" if pd.notna(row.get("avail_modifier", None)) else "+0.0"
+        age_s  = f"{row.age_penalty:+.1f}"  if pd.notna(row.get("age_penalty", None)) else "+0.0"
+        mps_s  = f"{row.mps:.1f}"          if pd.notna(row.mps)          else "  N/A"
         note   = f"  [{row.note}]" if row.note else ""
         print(f"{row['rank']:>3}  {row.player_name:<22}  {row.position:>3}  "
-              f"{row.draft_age:>5.1f}  {bpm_s:>6}  {base_s:>5}  "
-              f"{phys_s:>5}  {avl_s:>5}  {agp_s:>5}  {mps_s:>5}  {row.grade}{note}")
+              f"{row.draft_age:>5.1f}  {bpm_s:>6}  {per_s:>5}  {dbpm_s:>5}  "
+              f"{comp_s:>5}  {srs_s:>4}  {avl_s:>4}  {age_s:>5}  {mps_s:>5}  {row.grade}{note}")
 
     if len(df) > top_n:
-        print(f"\n  ... {len(df) - top_n} more rows in CSV (full board saved)")
+        print(f"\n  ... {len(df) - top_n} more rows in CSV")
 
     # Withdrew section
     if "withdrew" in df.columns:
         wd = df[df["withdrew"] == True]
         if not wd.empty:
-            print("\nWithdrew (not eligible for 2026 draft):")
-            parts = []
+            print("\nWithdrew (not in 2026 draft):")
             for _, r in wd.iterrows():
                 mps_s = f"MPS={r.mps:.1f}" if pd.notna(r.mps) else "N/A"
-                parts.append(f"  {r.player_name} ({mps_s})")
-            print("\n".join(parts))
+                print(f"  {r.player_name} ({mps_s})")
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
@@ -1337,43 +1799,56 @@ def print_big_board(df: pd.DataFrame, top_n: int = 30) -> None:
 def main() -> None:
     print("MPS 2026 Draft Scorer")
     print(f"Draft: {DRAFT_DATE_2026}  |  Prospects: {len(PROSPECTS_2026)}")
+    print(f"Model: empirical flat-composite (holdout ρ=0.430 vs {0.241:.3f} baseline)")
     print()
 
     df = score_all_prospects(PROSPECTS_2026)
-    print_big_board(df, top_n=30)
+    print_big_board(df, top_n=35)
 
-    # Save full 70-player board
     path = OUTPUT_DIR / "2026_big_board.csv"
     df.to_csv(path, index=False)
     print(f"\nSaved: {path}")
 
-    # Grade distribution
     print("\nGrade distribution:")
     for grade in ["S", "A", "B", "C", "D", "N/A"]:
         n = (df.grade == grade).sum()
         if n:
             print(f"  {grade}: {n} player{'s' if n > 1 else ''}")
 
-    # Age penalty summary
-    penalized = df[(df.get("age_penalty") if "age_penalty" in df.columns else pd.Series(dtype=float)).lt(0)]
+    print("\nAge adjustments applied:")
     if "age_penalty" in df.columns:
-        penalized = df[df["age_penalty"] < 0]
-        if not penalized.empty:
-            print(f"\n23+ age penalty applied to {len(penalized)} players:")
-            for _, r in penalized.iterrows():
-                print(f"  {r.player_name} ({r.draft_age:.1f}y) — MPS={r.mps if pd.notna(r.mps) else 'N/A'}")
+        for _, r in df[df["age_penalty"] != 0.0].dropna(subset=["mps"]).iterrows():
+            print(f"  {r.player_name} ({r.draft_age:.1f}y): {r.age_penalty:+.1f}")
 
-    # Availability penalty summary
-    if "avail_modifier" in df.columns:
-        avail_hit = df[df["avail_modifier"] < 0]
-        if not avail_hit.empty:
-            print(f"\nAvailability penalty applied to {len(avail_hit)} players:")
-            for _, r in avail_hit.iterrows():
-                print(f"  {r.player_name}: {r.avail_modifier:+.1f} pts "
-                      f"({r.games_played_pct:.0%} GP)")
-
-    print("\nNote: approximate DOBs (YYYY-MM-01) should be updated when confirmed.")
-    print("⚠️  Boozer BPM=17.8 from BBRef (page withholds display below GP threshold; value confirmed via Yahoo Sports/SR).")
+    # ── Birth date validation flags ───────────────────────────────────────────
+    try:
+        _tank_raw = json.load(TANKATHON_CACHE.open())
+        _tank_ages = {
+            p["player_name"]: p["bio"]["draft_age"]
+            for p in _tank_raw.get("players", {}).values()
+            if p.get("bio", {}).get("draft_age") is not None
+        }
+        flagged_dobs = []
+        for p in PROSPECTS_2026:
+            if p.get("withdrew"):
+                continue
+            name = p["player_name"]
+            tank_age = _tank_ages.get(name)
+            if tank_age is None:
+                continue
+            dob = date.fromisoformat(p["birth_date"])
+            model_age = (DRAFT_DATE_2026 - dob).days / 365.25
+            delta = model_age - tank_age
+            if abs(delta) > 0.5:
+                flagged_dobs.append((name, model_age, tank_age, delta, p["birth_date"]))
+        if flagged_dobs:
+            print("\nBIRTH DATE VALIDATION FLAGS (|Δ| > 0.5 years):")
+            for name, m_age, t_age, delta, dob in sorted(flagged_dobs, key=lambda x: -abs(x[3])):
+                print(f"  {name}: model_age={m_age:.2f}, tank_age={t_age:.2f}, Δ={delta:+.2f}")
+                print(f"    birth_date in scorer.py: {dob}")
+                print(f"    ACTION NEEDED: verify against Wikipedia/RealGM before draft")
+    except Exception:
+        pass
 
 
 if __name__ == "__main__":

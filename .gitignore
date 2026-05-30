@@ -86,3 +86,8 @@ macfax.dump
 # MPS scrape caches and backups
 mps/data/supplement_cache/
 mps/data/*.bak
+
+# MPS generated/intermediate data (large, regenerable)
+mps/data/cbb_stats_cache/
+mps/data/historical_consensus.json
+mps/data/mps_dataset_with_consensus.csv
