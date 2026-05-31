@@ -6,21 +6,7 @@ module.exports = {
     './src/app/**/*.{js,ts,jsx,tsx,mdx}',
     './src/lib/**/*.{js,ts,jsx,tsx}',
   ],
-  safelist: [
-    // Rankings table color classes - full gradient
-    'bg-emerald-500/10', 'bg-emerald-500/20', 'bg-emerald-500/30',
-    'bg-teal-500/10', 'bg-teal-500/15', 'bg-teal-500/20',
-    'bg-yellow-500/10', 'bg-yellow-500/15', 'bg-yellow-500/20',
-    'bg-amber-500/10', 'bg-amber-500/15', 'bg-amber-500/20',
-    'bg-orange-500/10', 'bg-orange-500/20', 'bg-orange-500/30',
-    'bg-rose-500/10', 'bg-rose-500/20', 'bg-rose-500/30',
-    'text-emerald-800', 'text-emerald-900', 'text-emerald-950',
-    'text-teal-800', 'text-teal-900', 'text-teal-950',
-    'text-yellow-800', 'text-yellow-900', 'text-yellow-950',
-    'text-amber-800', 'text-amber-900', 'text-amber-950',
-    'text-orange-800', 'text-orange-900', 'text-orange-950',
-    'text-rose-800', 'text-rose-900', 'text-rose-950',
-  ],
+  safelist: [],
   theme: {
     extend: {
       colors: {
@@ -63,6 +49,15 @@ module.exports = {
         success: 'var(--positive)',
         warning: 'var(--warning)',
         neutral: 'var(--muted)',
+        // Broadcast-ink palette (2026 redesign)
+        ink: {
+          DEFAULT: 'var(--ink)',
+          2: 'var(--ink-2)',
+          3: 'var(--ink-3)',
+          line: 'var(--ink-line)',
+          fg: 'var(--ink-fg)',
+          fg2: 'var(--ink-fg2)',
+        },
         // Chart palette (categorical) - updated to remove orange
         chart: {
           1: 'var(--brandBlue)',
@@ -80,6 +75,7 @@ module.exports = {
       fontFamily: {
         sans: ['var(--font-inter)', 'Inter', 'system-ui', 'sans-serif'],
         mono: ['var(--font-ibm-plex-mono)', 'IBM Plex Mono', 'monospace'],
+        display: ['var(--font-display)', 'Oswald', 'Inter', 'system-ui', 'sans-serif'],
       },
     },
   },

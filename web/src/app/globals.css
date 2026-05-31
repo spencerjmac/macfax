@@ -8,6 +8,7 @@
 :root {
   --font-inter: 'Inter', system-ui, sans-serif;
   --font-ibm-plex-mono: 'IBM Plex Mono', monospace;
+  --font-display: 'Oswald', 'Inter', system-ui, sans-serif;
 
   /* MacFax Brand Tokens */
   --bg: #0b1220;
@@ -24,6 +25,31 @@
   --positive: #22c55e;     /* semantic green */
   --negative: #ef4444;     /* semantic red */
   --warning: #94a3b8;      /* NEUTRALIZED slate - NO orange */
+
+  /* Broadcast-ink (2026 redesign) — dark bands for heroes, headers, footers */
+  --ink:      #0b1220;
+  --ink-2:    #131c2e;
+  --ink-3:    #1b2740;
+  --ink-line: #243149;
+  --ink-fg:   #c2cde0;
+  --ink-fg2:  #8d9bb5;
+
+  /* Heat-map scale — single-hue teal, national-baseline anchored */
+  --heat-3:    rgba(64, 144, 128, 0.52);
+  --heat-2:    rgba(64, 144, 128, 0.34);
+  --heat-1:    rgba(64, 144, 128, 0.16);
+  --heat-0:    rgba(100, 116, 139, 0.05);
+  --heat-lo-1: rgba(100, 116, 139, 0.10);
+  --heat-lo-2: rgba(100, 116, 139, 0.14);
+  /* Legacy aliases — old markup keeps working */
+  --heat-good-3: var(--heat-3);
+  --heat-good-2: var(--heat-2);
+  --heat-good-1: var(--heat-1);
+  --heat-mid-2:  var(--heat-0);
+  --heat-mid-1:  var(--heat-0);
+  --heat-bad-1:  var(--heat-lo-1);
+  --heat-bad-2:  var(--heat-lo-2);
+  --heat-bad-3:  var(--heat-lo-2);
 }
 
 body {
@@ -31,12 +57,31 @@ body {
   background: theme('colors.ui.bg');
 }
 
+/* Sporty display heading helpers — Oswald, uppercase, broadcast feel */
+@layer components {
+  .display-sport {
+    font: 700 clamp(46px, 5.4vw, 76px)/1.0 var(--font-display);
+    text-transform: uppercase;
+    letter-spacing: 0.005em;
+  }
+  .head-sport {
+    font: 700 clamp(30px, 3.4vw, 42px)/1.0 var(--font-display);
+    text-transform: uppercase;
+  }
+  .kicker-sport {
+    font: 600 13px/1 var(--font-display);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--brand);
+  }
+}
+
 /* Custom utility classes */
 @layer utilities {
   .stat-number {
     @apply font-mono text-sm;
   }
-  
+
   .table-header {
     @apply font-medium text-text-muted uppercase text-xs tracking-wide;
   }

@@ -40,3 +40,6 @@ Thumbs.db
 
 # Generated data
 public/data/teams.json
+
+# Design reference (never ships)
+.design-ref/
