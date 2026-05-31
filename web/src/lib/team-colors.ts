@@ -491,3 +491,20 @@ export function withOpacity(hex: string, opacity: number): string {
   const clamped = Math.round(Math.min(1, Math.max(0, opacity)) * 255);
   return `${hex}${clamped.toString(16).padStart(2, '0')}`;
 }
+
+/**
+ * Darken a hex color if it is too light to read as text on a white page.
+ * Uses SRGB luminance; colors above 0.55 lum are scaled down proportionally.
+ */
+export function readable(hex: string): string {
+  const h = hex.replace('#', '');
+  if (h.length !== 6) return hex;
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  const lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+  if (lum < 0.55) return hex;
+  const f = 0.55 / Math.max(lum, 0.001);
+  const d = (x: number) => Math.round(Math.min(255, x * f));
+  return `rgb(${d(r)},${d(g)},${d(b)})`;
+}
