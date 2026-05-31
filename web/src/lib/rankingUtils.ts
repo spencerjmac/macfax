@@ -38,16 +38,18 @@ export function computeRanks(entries: Array<{ id: string; value: number | null }
   return ranks;
 }
 
-export function getPercentileColor(percentile: number | null, better: Better, heatmap: boolean): string {
-  if (!heatmap || percentile === null || percentile === undefined) return '';
-
-  // computeRanks already accounts for direction (rank 1 = best regardless of better),
-  // so percentile is always a "goodness" score (1.0 = best). No flip needed here.
-  const adjusted = percentile;
-
-  if (adjusted >= 0.9) return 'bg-emerald-100 text-emerald-900';
-  if (adjusted >= 0.75) return 'bg-emerald-50 text-emerald-900';
-  if (adjusted >= 0.55) return 'bg-slate-50 text-slate-900';
-  if (adjusted >= 0.35) return 'bg-amber-50 text-amber-900';
-  return 'bg-rose-50 text-rose-900';
+/**
+ * Maps a percentile (0–1, 1 = best) to the 2026 teal/slate heat-map background.
+ * Above-average deepens in teal; below-average fades to faint slate.
+ * computeRanks already normalises direction, so no flip needed here.
+ */
+export function heatStyleFromPercentile(percentile: number | null): { background?: string } {
+  if (percentile === null || percentile === undefined) return {};
+  const t = Math.max(0, Math.min(1, percentile));
+  if (t >= 0.5) {
+    const a = (t - 0.5) / 0.5;
+    return { background: `rgba(64,144,128,${(0.10 + a * 0.42).toFixed(3)})` };
+  }
+  const a = (0.5 - t) / 0.5;
+  return { background: `rgba(100,116,139,${(a * 0.14).toFixed(3)})` };
 }

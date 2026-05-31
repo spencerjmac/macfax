@@ -16,7 +16,7 @@ import {
 } from '@tanstack/react-table';
 import clsx from 'clsx';
 import HeaderWithTooltip from './HeaderWithTooltip';
-import { computeRanks, getPercentileColor } from '@/lib/rankingUtils';
+import { computeRanks, heatStyleFromPercentile } from '@/lib/rankingUtils';
 import { getBPRTier, fmtSigned } from '@/lib/bprTiers';
 import {
   PLAYER_TRADITIONAL_METRICS,
@@ -177,9 +177,7 @@ export default function NBAPlayerRankingsTable({ data, seasonDisplay, seasonType
         const value = info.getValue<number | null>();
         if (value == null) return <span className="text-text-muted">—</span>;
         const rankData = metricRanks.get(key)?.get(String(info.row.original.id));
-        const colorClass = meta.heatmap
-          ? getPercentileColor(rankData?.percentile ?? null, meta.better, true)
-          : '';
+        const hs = meta.heatmap ? heatStyleFromPercentile(rankData?.percentile ?? null) : {};
         if (key === 'plus_minus') {
           return (
             <span className={clsx('font-mono text-xs', value > 0 ? 'text-emerald-700' : value < 0 ? 'text-rose-700' : '')}>
@@ -188,7 +186,7 @@ export default function NBAPlayerRankingsTable({ data, seasonDisplay, seasonType
           );
         }
         return (
-          <div className={clsx('flex items-center justify-between gap-1 px-2 py-1 rounded', colorClass)}>
+          <div style={hs} className="flex items-center justify-between gap-1 px-2 py-1 rounded">
             <span className="font-mono text-xs">{formatPlayerMetric(value, meta.format)}</span>
           </div>
         );
@@ -211,11 +209,9 @@ export default function NBAPlayerRankingsTable({ data, seasonDisplay, seasonType
         const value = info.getValue<number | null>();
         const rankData = metricRanks.get(key)?.get(String(info.row.original.id));
         if (value == null) return <div className="text-center text-text-muted text-xs">—</div>;
-        const colorClass = meta.heatmap
-          ? getPercentileColor(rankData?.percentile ?? null, meta.better, true)
-          : '';
+        const hs = meta.heatmap ? heatStyleFromPercentile(rankData?.percentile ?? null) : {};
         return (
-          <div className={clsx('px-1 py-0.5 rounded text-center', colorClass)}>
+          <div style={hs} className="px-1 py-0.5 rounded text-center">
             <div className="font-mono text-xs leading-tight">{formatPlayerMetric(value, meta.format)}</div>
           </div>
         );

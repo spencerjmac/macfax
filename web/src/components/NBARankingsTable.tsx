@@ -17,7 +17,7 @@ import clsx from 'clsx';
 import HeaderWithTooltip from './HeaderWithTooltip';
 import { NBATeamSeasonRatings, NBASeasonInfo } from '@/types/nba';
 import { NBA_METRIC_DEFINITIONS, NBAMetricMeta } from '@/config/nba';
-import { computeRanks, getPercentileColor, RankData } from '@/lib/rankingUtils';
+import { computeRanks, heatStyleFromPercentile, RankData } from '@/lib/rankingUtils';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -108,11 +108,9 @@ export default function NBARankingsTable({
         const value = info.getValue<number | null>();
         const rankData = metricRanks.get(meta.key)?.get(info.row.original.team_slug);
         if (value == null) return <span className="text-text-muted">-</span>;
-        const colorClass = meta.heatmap
-          ? getPercentileColor(rankData?.percentile ?? null, meta.better, true)
-          : '';
+        const hs = meta.heatmap ? heatStyleFromPercentile(rankData?.percentile ?? null) : {};
         return (
-          <div className={clsx('flex items-center justify-between gap-2 px-2 py-1 rounded', colorClass)}>
+          <div style={hs} className="flex items-center justify-between gap-2 px-2 py-1 rounded">
             <span className="font-mono">{formatValue(value, meta.format)}</span>
             {meta.showRank && rankData?.rank && (
               <span className="text-[11px] text-slate-900 font-bold">#{rankData.rank}</span>
@@ -137,11 +135,9 @@ export default function NBARankingsTable({
         const value = info.getValue<number | null>();
         const rankData = metricRanks.get(meta.key)?.get(info.row.original.team_slug);
         if (value == null) return <div className="text-center text-text-muted text-xs">-</div>;
-        const colorClass = meta.heatmap
-          ? getPercentileColor(rankData?.percentile ?? null, meta.better, true)
-          : '';
+        const hs = meta.heatmap ? heatStyleFromPercentile(rankData?.percentile ?? null) : {};
         return (
-          <div className={clsx('px-1 py-0.5 rounded text-center', colorClass)}>
+          <div style={hs} className="px-1 py-0.5 rounded text-center">
             <div className="font-mono text-xs leading-tight">
               {formatValue(value, meta.format)}
             </div>

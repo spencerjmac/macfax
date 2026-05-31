@@ -15,7 +15,7 @@ import {
 } from '@tanstack/react-table';
 import clsx from 'clsx';
 import HeaderWithTooltip from './HeaderWithTooltip';
-import { computeRanks, getPercentileColor } from '@/lib/rankingUtils';
+import { computeRanks, heatStyleFromPercentile } from '@/lib/rankingUtils';
 import {
   PLAYER_TRADITIONAL_METRICS,
   NCAA_IMPACT_METRICS,
@@ -214,11 +214,9 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
         const raw = info.getValue<number | null>();
         if (raw == null) return <span className="text-text-muted">—</span>;
         const rankData = metricRanks.get(key)?.get(info.row.original.player_id);
-        const colorClass = meta.heatmap
-          ? getPercentileColor(rankData?.percentile ?? null, meta.better, true)
-          : '';
+        const hs = meta.heatmap ? heatStyleFromPercentile(rankData?.percentile ?? null) : {};
         return (
-          <div className={clsx('flex items-center justify-between gap-1 px-2 py-1 rounded', colorClass)}>
+          <div style={hs} className="flex items-center justify-between gap-1 px-2 py-1 rounded">
             <span className="font-mono">{formatPlayerMetric(raw, meta.format)}</span>
           </div>
         );
@@ -349,9 +347,9 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
           const val = info.getValue<number | null>();
           if (val == null) return <div className="text-center text-text-muted text-xs">—</div>;
           const rankData = metricRanks.get('adj_team_net_on')?.get(info.row.original.player_id);
-          const colorClass = getPercentileColor(rankData?.percentile ?? null, 'higher', true);
+          const hs = heatStyleFromPercentile(rankData?.percentile ?? null);
           return (
-            <div className={clsx('px-1 py-0.5 rounded text-center', colorClass)}>
+            <div style={hs} className="px-1 py-0.5 rounded text-center">
               <div className="font-mono text-xs leading-tight">{val.toFixed(1)}</div>
             </div>
           );
@@ -373,9 +371,9 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
           const val = info.getValue<number | null>();
           if (val == null) return <div className="text-center text-text-muted text-xs">—</div>;
           const rankData = metricRanks.get('adj_team_off_eff_on')?.get(info.row.original.player_id);
-          const colorClass = getPercentileColor(rankData?.percentile ?? null, 'higher', true);
+          const hs = heatStyleFromPercentile(rankData?.percentile ?? null);
           return (
-            <div className={clsx('px-1 py-0.5 rounded text-center', colorClass)}>
+            <div style={hs} className="px-1 py-0.5 rounded text-center">
               <div className="font-mono text-xs leading-tight">{val.toFixed(1)}</div>
             </div>
           );
@@ -397,9 +395,9 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
           const val = info.getValue<number | null>();
           if (val == null) return <div className="text-center text-text-muted text-xs">—</div>;
           const rankData = metricRanks.get('adj_team_def_eff_on')?.get(info.row.original.player_id);
-          const colorClass = getPercentileColor(rankData?.percentile ?? null, 'lower', true);
+          const hs = heatStyleFromPercentile(rankData?.percentile ?? null);
           return (
-            <div className={clsx('px-1 py-0.5 rounded text-center', colorClass)}>
+            <div style={hs} className="px-1 py-0.5 rounded text-center">
               <div className="font-mono text-xs leading-tight">{val.toFixed(1)}</div>
             </div>
           );
@@ -454,11 +452,9 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
           const raw = info.getValue<number | null>();
           const rankData = metricRanks.get(key)?.get(info.row.original.player_id);
           if (raw == null) return <div className="text-center text-text-muted text-xs">—</div>;
-          const colorClass = meta.heatmap
-            ? getPercentileColor(rankData?.percentile ?? null, meta.better, true)
-            : '';
+          const hs = meta.heatmap ? heatStyleFromPercentile(rankData?.percentile ?? null) : {};
           return (
-            <div className={clsx('px-1 py-0.5 rounded text-center', colorClass)}>
+            <div style={hs} className="px-1 py-0.5 rounded text-center">
               <div className="font-mono text-xs leading-tight">
                 {formatPlayerMetric(raw, meta.format)}
               </div>
