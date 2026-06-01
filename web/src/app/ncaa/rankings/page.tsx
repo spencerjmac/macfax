@@ -36,82 +36,74 @@ export default async function RankingsPage({ searchParams }: RankingsPageProps) 
   const seasonParam = seasonYear ? `&season=${seasonYear}` : '';
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-4xl font-bold mb-2">NCAA Rankings</h1>
-        <p className="text-text-muted">
-          Complete rankings for {meta.teamCount} NCAA Division I teams &mdash; {meta.season}
-          <span className="ml-2 text-sm">
-            Last updated: {new Date(meta.lastUpdated).toLocaleDateString()}
-          </span>
-        </p>
-      </div>
-
-      {/* Tab switcher */}
-      <div className="border-b border-ui-border mb-6">
-        <div className="flex gap-0">
-          {[
-            { id: 'teams',   label: 'Team Rankings', icon: BarChart3 },
-            { id: 'players', label: 'Player Stats',   icon: Users    },
-          ].map(({ id, label, icon: Icon }) => (
-            <Link
-              key={id}
-              href={`/ncaa/rankings?tab=${id}${seasonParam}`}
-              className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
-                activeTab === id
-                  ? 'border-brand text-brand'
-                  : 'border-transparent text-text-muted hover:text-text-primary'
-              }`}
-            >
-              <Icon className="w-4 h-4" />
-              {label}
-            </Link>
-          ))}
+    <div>
+      {/* Page header */}
+      <div className="bg-surface border-b border-ui-border">
+        <div className="max-w-[1240px] mx-auto px-8 py-10 pb-[34px]">
+          <p className="kicker-sport text-brand mb-[9px]">College Basketball · {meta.season}</p>
+          <h1 className="font-display font-bold text-[clamp(32px,4vw,48px)] leading-none uppercase tracking-[0.005em] m-0 mb-[14px]">
+            NCAA Rankings
+          </h1>
+          <div className="flex items-center gap-[14px] flex-wrap">
+            <p className="text-[15px] text-muted m-0">
+              Complete rankings for {meta.teamCount} Division I teams
+            </p>
+            <span className="font-mono text-[12px] text-muted-2 inline-flex items-center gap-[7px] px-[10px] py-[5px] bg-ui-surface border border-ui-border rounded-md">
+              <span className="w-1.5 h-1.5 rounded-full bg-brand2" />
+              Updated {new Date(meta.lastUpdated).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+            </span>
+          </div>
         </div>
       </div>
 
-      {/* Rankings Table / Player Table */}
-      {activeTab === 'players' ? (
-        <NCAAPlayerRankingsTable data={players} seasonDisplay={meta.season} selectedSeason={seasonYear} />
-      ) : (
-        <RankingsTable data={teams} seasons={seasons} selectedSeason={seasonYear} />
-      )}
+      <div className="max-w-[1240px] mx-auto px-8 py-8">
+        {/* Teams / Players tab */}
+        <div className="border-b border-ui-border mb-6">
+          <div className="flex gap-0">
+            {[
+              { id: 'teams',   label: 'Team Rankings', icon: BarChart3 },
+              { id: 'players', label: 'Player Stats',   icon: Users    },
+            ].map(({ id, label, icon: Icon }) => (
+              <Link
+                key={id}
+                href={`/ncaa/rankings?tab=${id}${seasonParam}`}
+                className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
+                  activeTab === id
+                    ? 'border-brand text-brand'
+                    : 'border-transparent text-text-muted hover:text-text-primary'
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                {label}
+              </Link>
+            ))}
+          </div>
+        </div>
 
-      {/* Legend */}
-      <div className="mt-8 p-6 bg-ui-surface border border-ui-border rounded-lg">
-        <h2 className="font-bold text-lg mb-4">Metric Definitions</h2>
-        <div className="grid md:grid-cols-2 gap-4 text-sm">
-          <div>
-            <strong className="text-brand-orange">AdjEM:</strong> Adjusted Efficiency Margin 
-            (AdjO - AdjD), the predicted point margin vs average team on neutral court
-          </div>
-          <div>
-            <strong className="text-success">AdjO:</strong> Adjusted Offensive Efficiency, 
-            points scored per 100 possessions vs average D1 defense
-          </div>
-          <div>
-            <strong className="text-secondary">AdjD:</strong> Adjusted Defensive Efficiency, 
-            points allowed per 100 possessions vs average D1 offense
-          </div>
-          <div>
-            <strong>Tempo:</strong> Adjusted possessions per 40 minutes
-          </div>
-          <div>
-            <strong>eFG%:</strong> Effective Field Goal Percentage 
-            (FG% adjusted for 3-pointers being worth more)
-          </div>
-          <div>
-            <strong>TOV%:</strong> Turnover percentage 
-            (turnovers per 100 plays)
-          </div>
-          <div>
-            <strong>ORB%:</strong> Offensive Rebound percentage 
-            (% of available offensive rebounds secured)
-          </div>
-          <div>
-            <strong>FTR:</strong> Free Throw Rate 
-            (free throws attempted per field goal attempt)
+        {activeTab === 'players' ? (
+          <NCAAPlayerRankingsTable data={players} seasonDisplay={meta.season} selectedSeason={seasonYear} />
+        ) : (
+          <RankingsTable data={teams} seasons={seasons} selectedSeason={seasonYear} />
+        )}
+
+        {/* Legend */}
+        <div className="mt-8 p-6 bg-ui-surface border border-ui-border rounded-lg">
+          <h2 className="font-display font-bold text-[16px] uppercase tracking-[0.02em] mb-[14px]">Metric Definitions</h2>
+          <div className="grid md:grid-cols-2 gap-3 text-[13.5px]">
+            {[
+              { k: 'AdjEM', v: 'Adjusted Efficiency Margin (AdjO − AdjD). Predicted point margin vs average team on neutral court.' },
+              { k: 'AdjO',  v: 'Adjusted Offensive Efficiency — points scored per 100 possessions vs average D1 defense.' },
+              { k: 'AdjD',  v: 'Adjusted Defensive Efficiency — points allowed per 100 possessions vs average D1 offense.' },
+              { k: 'Tempo', v: 'Adjusted possessions per 40 minutes.' },
+              { k: 'eFG%',  v: 'Effective Field Goal % — accounts for 3-pointers being worth more than 2s.' },
+              { k: 'TOV%',  v: 'Turnover rate per 100 possessions.' },
+              { k: 'ORB%',  v: 'Offensive rebound % of available boards.' },
+              { k: 'FTR',   v: 'Free throw rate — FTA per field goal attempt.' },
+            ].map(d => (
+              <div key={d.k} className="text-muted">
+                <b className="font-mono font-semibold text-text-primary mr-1.5">{d.k}</b>{d.v}
+              </div>
+            ))}
           </div>
         </div>
       </div>

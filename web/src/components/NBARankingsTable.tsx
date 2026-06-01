@@ -110,10 +110,10 @@ export default function NBARankingsTable({
         if (value == null) return <span className="text-text-muted">-</span>;
         const hs = meta.heatmap ? heatStyleFromPercentile(rankData?.percentile ?? null) : {};
         return (
-          <div style={hs} className="flex items-center justify-between gap-2 px-2 py-1 rounded">
-            <span className="font-mono">{formatValue(value, meta.format)}</span>
+          <div style={hs} className="px-2 py-1 rounded font-mono">
+            {formatValue(value, meta.format)}
             {meta.showRank && rankData?.rank && (
-              <span className="text-[11px] text-slate-900 font-bold">#{rankData.rank}</span>
+              <sup className="text-[9px] text-muted ml-0.5 font-sans font-medium">{rankData.rank}</sup>
             )}
           </div>
         );
@@ -137,12 +137,10 @@ export default function NBARankingsTable({
         if (value == null) return <div className="text-center text-text-muted text-xs">-</div>;
         const hs = meta.heatmap ? heatStyleFromPercentile(rankData?.percentile ?? null) : {};
         return (
-          <div style={hs} className="px-1 py-0.5 rounded text-center">
-            <div className="font-mono text-xs leading-tight">
-              {formatValue(value, meta.format)}
-            </div>
+          <div style={hs} className="px-1 py-0.5 rounded text-center font-mono text-xs">
+            {formatValue(value, meta.format)}
             {meta.showRank && rankData?.rank && (
-              <div className="text-[10px] text-slate-500 leading-tight">#{rankData.rank}</div>
+              <sup className="text-[9px] text-muted ml-0.5 font-sans font-medium">{rankData.rank}</sup>
             )}
           </div>
         );
@@ -417,17 +415,18 @@ export default function NBARankingsTable({
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-ui-border">
-        <div className="flex space-x-1">
+      {/* View toggle */}
+      <div className="flex items-center justify-between">
+        <div className="inline-flex bg-surface border border-ui-border rounded-lg p-[3px]">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={clsx(
-                'px-4 py-2 text-sm font-medium transition-colors relative',
+                'px-[14px] py-2 rounded-md font-display font-semibold text-[13px] tracking-[0.06em] uppercase transition-all',
                 activeTab === tab.id
-                  ? 'text-brand border-b-2 border-brand'
-                  : 'text-text-muted hover:text-text-primary',
+                  ? 'bg-ink text-white'
+                  : 'text-muted hover:text-text-primary',
               )}
             >
               {tab.label}
@@ -444,8 +443,8 @@ export default function NBARankingsTable({
               <tr
                 key={headerGroup.id}
                 className={clsx(
-                  'border-b border-ui-border',
-                  isGroupedTab && groupIdx === 0 ? 'bg-ui-hover' : 'bg-ui-surface',
+                  'border-b border-ink-line',
+                  isGroupedTab && groupIdx === 0 ? 'bg-ink-2' : 'bg-ink',
                 )}
               >
                 {headerGroup.headers.map((header) => {
@@ -460,11 +459,11 @@ export default function NBARankingsTable({
                       key={header.id}
                       colSpan={header.colSpan}
                       className={clsx(
-                        'px-2 py-2 text-xs font-semibold text-text-secondary uppercase tracking-wider align-middle',
-                        isLabeledGroup && 'text-center border-x border-ui-border/50',
+                        'px-2 py-[13px] text-xs font-display font-semibold text-white uppercase tracking-[0.06em] align-middle whitespace-nowrap',
+                        isLabeledGroup && 'text-center border-x border-ink-line',
                         isLeaf && 'text-left',
                         isLeaf && header.column.getCanSort() &&
-                          'cursor-pointer select-none hover:bg-ui-hover',
+                          'cursor-pointer select-none hover:text-brand2',
                       )}
                       onClick={isLeaf ? header.column.getToggleSortingHandler() : undefined}
                       style={isLeaf ? { width: header.column.getSize() } : undefined}
@@ -478,7 +477,7 @@ export default function NBARankingsTable({
                         >
                           {flexRender(header.column.columnDef.header, header.getContext())}
                           {isLeaf && header.column.getIsSorted() && (
-                            <span>{header.column.getIsSorted() === 'desc' ? '\u2193' : '\u2191'}</span>
+                            <span className="text-brand2">{header.column.getIsSorted() === 'desc' ? '\u25be' : '\u25b4'}</span>
                           )}
                         </div>
                       )}

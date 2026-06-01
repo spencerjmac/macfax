@@ -40,37 +40,49 @@ export default async function NBARankingsPage({ searchParams }: NBAPageProps) {
   const seasonTypeParam = seasonType === 'playoffs' ? `&season_type=playoffs` : '';
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-text-primary">NBA Rankings</h1>
-        <p className="mt-1 text-text-muted">
-          Opponent-adjusted efficiency · {currentSeason?.display_name ?? 'Current season'}
-        </p>
-      </div>
-
-      {/* Tab switcher */}
-      <div className="border-b border-ui-border mb-6">
-        <div className="flex gap-0">
-          {[
-            { id: 'teams', label: 'Team Rankings', icon: BarChart3 },
-            { id: 'players', label: 'Player Stats', icon: Users },
-          ].map(({ id, label, icon: Icon }) => (
-            <Link
-              key={id}
-              href={`/nba/rankings?tab=${id}${seasonParam}${seasonTypeParam}`}
-              className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
-                activeTab === id
-                  ? 'border-brand text-brand'
-                  : 'border-transparent text-text-muted hover:text-text-primary'
-              }`}
-            >
-              <Icon className="w-4 h-4" />
-              {label}
-            </Link>
-          ))}
+    <div>
+      {/* Page header */}
+      <div className="bg-surface border-b border-ui-border">
+        <div className="max-w-[1240px] mx-auto px-8 py-10 pb-[34px]">
+          <p className="kicker-sport text-brand mb-[9px]">NBA · {currentSeason?.display_name ?? 'Current season'}</p>
+          <h1 className="font-display font-bold text-[clamp(32px,4vw,48px)] leading-none uppercase tracking-[0.005em] m-0 mb-[14px]">
+            NBA Rankings
+          </h1>
+          <div className="flex items-center gap-[14px] flex-wrap">
+            <p className="text-[15px] text-muted m-0">Opponent-adjusted efficiency for all 30 teams</p>
+            {rankings.length > 0 && (
+              <span className="font-mono text-[12px] text-muted-2 inline-flex items-center gap-[7px] px-[10px] py-[5px] bg-ui-surface border border-ui-border rounded-md">
+                <span className="w-1.5 h-1.5 rounded-full bg-brand2" />
+                Live
+              </span>
+            )}
+          </div>
         </div>
       </div>
+
+      <div className="max-w-[1240px] mx-auto px-8 py-8">
+        {/* Tab switcher */}
+        <div className="border-b border-ui-border mb-6">
+          <div className="flex gap-0">
+            {[
+              { id: 'teams', label: 'Team Rankings', icon: BarChart3 },
+              { id: 'players', label: 'Player Stats', icon: Users },
+            ].map(({ id, label, icon: Icon }) => (
+              <Link
+                key={id}
+                href={`/nba/rankings?tab=${id}${seasonParam}${seasonTypeParam}`}
+                className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
+                  activeTab === id
+                    ? 'border-brand text-brand'
+                    : 'border-transparent text-text-muted hover:text-text-primary'
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                {label}
+              </Link>
+            ))}
+          </div>
+        </div>
 
       {activeTab === 'teams' && rankings.length === 0 ? (
         /* Empty state — DB not yet populated */
@@ -112,64 +124,24 @@ export default async function NBARankingsPage({ searchParams }: NBAPageProps) {
         )
       )}
 
-      {/* Metric glossary — mirrors NCAA rankings page layout */}
-      <div className="mt-8 p-6 bg-ui-surface border border-ui-border rounded-lg">
-        <h2 className="text-sm font-semibold text-text-primary uppercase tracking-wider mb-4">
-          Metric Definitions
-        </h2>
-        <div className="grid md:grid-cols-2 gap-4 text-sm">
-          <div>
-            <span className="font-semibold text-text-primary">Adj Net</span>
-            <span className="text-text-muted ml-2">
-              Opponent-adjusted net efficiency (points per 100 possessions above or below average).
-              Primary ranking metric.
-            </span>
-          </div>
-          <div>
-            <span className="font-semibold text-text-primary">Adj Off / Adj Def</span>
-            <span className="text-text-muted ml-2">
-              Opponent-adjusted offensive and defensive efficiency (points per 100 possessions).
-            </span>
-          </div>
-          <div>
-            <span className="font-semibold text-text-primary">Pace</span>
-            <span className="text-text-muted ml-2">
-              Estimated possessions per 48 minutes after opponent adjustment.
-            </span>
-          </div>
-          <div>
-            <span className="font-semibold text-text-primary">FFI</span>
-            <span className="text-text-muted ml-2">
-              Four Factor Index — composite of eFG%, turnover rate, rebound rate, and FT rate edges.
-              Weights derived from 11-season OLS regression (2016–2026).
-            </span>
-          </div>
-          <div>
-            <span className="font-semibold text-text-primary">EFG %</span>
-            <span className="text-text-muted ml-2">
-              Effective field goal percentage, accounting for the extra value of 3-point makes.
-              Off = offensive, Def = opponent&apos;s eFG% allowed.
-            </span>
-          </div>
-          <div>
-            <span className="font-semibold text-text-primary">Turnover Rate</span>
-            <span className="text-text-muted ml-2">
-              Turnovers per 100 possessions. Off = own TOV rate (lower is better);
-              Def = opponent TOV rate (higher is better).
-            </span>
-          </div>
-          <div>
-            <span className="font-semibold text-text-primary">Rebound %</span>
-            <span className="text-text-muted ml-2">
-              Offensive rebound percentage (OREB / available rebounds).
-              Higher Off and lower Def is better.
-            </span>
-          </div>
-          <div>
-            <span className="font-semibold text-text-primary">FT Rate</span>
-            <span className="text-text-muted ml-2">
-              Free throw attempts per field goal attempt. Higher Off and lower Def is better.
-            </span>
+        {/* Legend */}
+        <div className="mt-8 p-6 bg-ui-surface border border-ui-border rounded-lg">
+          <h2 className="font-display font-bold text-[16px] uppercase tracking-[0.02em] mb-[14px]">Metric Definitions</h2>
+          <div className="grid md:grid-cols-2 gap-3 text-[13.5px]">
+            {[
+              { k: 'Adj Net',  v: 'Opponent-adjusted net efficiency (pts/100 poss above or below average). Primary ranking metric.' },
+              { k: 'Adj Off',  v: 'Opponent-adjusted offensive efficiency — points scored per 100 possessions.' },
+              { k: 'Adj Def',  v: 'Opponent-adjusted defensive efficiency — points allowed per 100 possessions.' },
+              { k: 'Pace',     v: 'Estimated possessions per 48 minutes after opponent adjustment.' },
+              { k: 'FFI',      v: 'Four Factor Index — composite of eFG%, TOV rate, rebound rate, and FT rate edges. Weights from 11-season OLS regression.' },
+              { k: 'EFG %',    v: 'Effective field goal %, accounting for 3-pointer value. Off = team, Def = opponent allowed.' },
+              { k: 'TOV Rate', v: 'Turnovers per 100 possessions. Off = own rate (lower = better); Def = opponent rate (higher = better).' },
+              { k: 'FT Rate',  v: 'Free throw attempts per field goal attempt. Higher Off and lower Def is better.' },
+            ].map(d => (
+              <div key={d.k} className="text-muted">
+                <b className="font-mono font-semibold text-text-primary mr-1.5">{d.k}</b>{d.v}
+              </div>
+            ))}
           </div>
         </div>
       </div>
