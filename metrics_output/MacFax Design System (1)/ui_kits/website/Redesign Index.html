@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MacFax — 2026 Redesign Index</title>
+<link rel="stylesheet" href="../../colors_and_type.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="redesign.css">
+<style>
+  .rx-hero { background: var(--ink); color: #fff; border-bottom: 4px solid var(--brand); position: relative; overflow: hidden; }
+  .rx-hero::before { content:''; position:absolute; inset:0; background: radial-gradient(820px 360px at 88% -12%, rgba(64,144,128,0.20), transparent 60%); pointer-events:none; }
+  .rx-hero__in { max-width: 1240px; margin: 0 auto; padding: 44px 32px 40px; position: relative; display:flex; align-items:flex-end; justify-content:space-between; gap:32px; flex-wrap:wrap; }
+  .rx-brand { display:flex; align-items:center; gap:12px; margin-bottom:20px; }
+  .rx-brand img { height: 30px; }
+  .rx-brand span { font-family: var(--font-display); font-weight:700; font-size:26px; text-transform:lowercase; letter-spacing:0.01em; }
+  .rx-eyebrow { font-family: var(--font-display); font-weight:600; font-size:13px; letter-spacing:0.16em; text-transform:uppercase; color: var(--brand-2); margin:0 0 12px; }
+  .rx-hero h1 { font-family: var(--font-display); font-weight:700; font-size: clamp(36px, 5vw, 60px); line-height:0.98; text-transform:uppercase; letter-spacing:0.005em; margin:0; max-width: 16ch; }
+  .rx-hero p { font-size:16px; line-height:1.55; color: var(--ink-fg); max-width: 52ch; margin:14px 0 0; }
+  .rx-meta { font: 600 12px/1.7 var(--font-mono); color: var(--ink-fg2); text-transform:uppercase; letter-spacing:0.06em; text-align:right; }
+  .rx-meta b { color:#fff; font-weight:600; }
+
+  .rx-grid { max-width:1240px; margin:0 auto; padding: 40px 32px 72px; display:grid; grid-template-columns: repeat(3, 1fr); gap:22px; }
+  .rx-card { border:1px solid var(--border); border-radius:16px; overflow:hidden; background:var(--surface); cursor:pointer; transition: border-color 150ms, box-shadow 150ms, transform 150ms; display:flex; flex-direction:column; text-decoration:none; color:inherit; }
+  .rx-card:hover { border-color:var(--brand); box-shadow:var(--shadow-lg); transform:translateY(-3px); }
+  .rx-card__shot { height: 168px; background: var(--ink); border-bottom:1px solid var(--ink-line); display:flex; align-items:flex-start; justify-content:center; overflow:hidden; position:relative; }
+  .rx-card__shot img { width:100%; height:100%; object-fit:cover; object-position:top center; display:block; }
+  .rx-card__num { position:absolute; top:12px; left:14px; font:700 12px/1 var(--font-mono); color:#fff; background:rgba(11,18,32,0.7); border:1px solid var(--ink-line); padding:5px 8px; border-radius:6px; z-index:2; }
+  .rx-card__body { padding:18px 20px 20px; display:flex; flex-direction:column; gap:8px; flex:1; }
+  .rx-card__kick { font:600 10.5px/1 var(--font-sans); letter-spacing:0.1em; text-transform:uppercase; color:var(--brand); }
+  .rx-card h3 { font-family:var(--font-display); font-weight:700; font-size:20px; text-transform:uppercase; letter-spacing:0.01em; margin:0; }
+  .rx-card p { font-size:13px; line-height:1.5; color:var(--muted); margin:0; }
+  .rx-card__foot { margin-top:auto; padding-top:12px; display:flex; align-items:center; gap:7px; font-family:var(--font-display); font-weight:600; font-size:12px; letter-spacing:0.06em; text-transform:uppercase; color:var(--brand); }
+  .rx-card:hover .rx-card__foot { gap:11px; }
+  @media (max-width: 920px){ .rx-grid{ grid-template-columns:1fr 1fr; } }
+</style>
+</head>
+<body>
+<header class="rx-hero">
+  <div class="rx-hero__in">
+    <div>
+      <div class="rx-brand"><img src="../../assets/macfax-logo.png" alt=""><span>macfax</span></div>
+      <p class="rx-eyebrow">2026 Broadcast Redesign</p>
+      <h1>The redesigned MacFax</h1>
+      <p>Six refreshed surfaces on one shared system — Oswald display type, broadcast ink bands, teal-only heat maps, and Lucide icons. Click any screen to open the live prototype.</p>
+    </div>
+    <div class="rx-meta">
+      6&nbsp;screens<br>
+      Spec: <b>redesign.css</b><br>
+      Data: <b>data.js</b>
+    </div>
+  </div>
+</header>
+
+<main class="rx-grid" id="grid"></main>
+
+<script>
+  const SCREENS = [
+    { n:'01', file:'Homepage Redesign.html', shot:'../../preview/thumbs/01-homepage.png', kick:'Marketing', title:'Homepage', desc:'Ink hero, dual-league entry, tweakable sporty font.' },
+    { n:'02', file:'Sport Hub.html', shot:'../../preview/thumbs/02-hub.png', kick:'Landing', title:'Sport Hub', desc:'NCAA / NBA hub — leader spotlight, tools, viz cards.' },
+    { n:'03', file:'NCAA Rankings.html', shot:'../../preview/thumbs/03-rankings.png', kick:'Product', title:'NCAA Rankings', desc:'Sortable table, national-baseline teal heat map.' },
+    { n:'04', file:'Team Profile.html', shot:'../../preview/thumbs/04-profile.png', kick:'Product', title:'Team Profile', desc:'Overview, Off/Def, Game Log, team-highlighted Charts.' },
+    { n:'05', file:'Visualizations.html', shot:'../../preview/thumbs/05-viz.png', kick:'Editorial', title:'Visualizations', desc:'Feature article + chart-preview card grid.' },
+    { n:'06', file:'Matchup.html', shot:'../../preview/thumbs/06-matchup.png', kick:'Product', title:'Matchup Tool', desc:'Team-colored forecast, four factors, volatility, form.' },
+  ];
+  const grid = document.getElementById('grid');
+  SCREENS.forEach(s => {
+    const a = document.createElement('a');
+    a.className = 'rx-card';
+    a.href = s.file;
+    a.innerHTML = `
+      <div class="rx-card__shot">
+        <span class="rx-card__num">${s.n}</span>
+        <img src="${encodeURI(s.shot)}" alt="${s.title} preview" loading="lazy">
+      </div>
+      <div class="rx-card__body">
+        <span class="rx-card__kick">${s.kick}</span>
+        <h3>${s.title}</h3>
+        <p>${s.desc}</p>
+        <span class="rx-card__foot">Open prototype →</span>
+      </div>`;
+    grid.appendChild(a);
+  });
+</script>
+</body>
+</html>

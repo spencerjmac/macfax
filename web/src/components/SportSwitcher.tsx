@@ -5,8 +5,8 @@ import { usePathname } from 'next/navigation';
 import clsx from 'clsx';
 
 const SPORTS = [
-  { id: 'ncaa', label: 'NCAA', href: '/ncaa/rankings' },
-  { id: 'nba',  label: 'NBA',  href: '/nba/rankings' },
+  { id: 'ncaa', label: 'NCAA', href: '/ncaa' },
+  { id: 'nba',  label: 'NBA',  href: '/nba' },
 ] as const;
 
 export default function SportSwitcher() {

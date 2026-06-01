@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MacFax — Team Profile</title>
+<link rel="stylesheet" href="../../colors_and_type.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="redesign.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="data.js"></script>
+<script type="text/babel" src="teamprofile.jsx"></script>
+<script type="text/babel">
+const { useState } = React;
+
+function Nav() {
+  return (
+    <nav className="mfx-nav">
+      <div className="mfx-nav__in">
+        <button className="mfx-brand" onClick={() => location.href='Homepage Redesign.html'}>
+          <img src="../../assets/macfax-logo.png" alt="" />
+          <span>macfax</span>
+        </button>
+        <div className="mfx-nav__nav">
+          <div className="mfx-sport">
+            <button className="on">NCAA</button>
+            <button onClick={() => location.href='Sport Hub.html#nba'}>NBA</button>
+          </div>
+          <span className="mfx-div" />
+          {['Rankings','Matchup','Outlook','Visualizations','Glossary'].map((l) =>
+            <button key={l} className="mfx-link" onClick={() => { if(l==='Rankings') location.href='NCAA Rankings.html'; }}>{l}</button>)}
+          <span className="mfx-div" />
+          <button className="mfx-link">About</button>
+        </div>
+      </div>
+    </nav>
+  );
+}
+
+const TABS = ['Overview', 'Off / Def', 'Game Log', 'Charts'];
+
+function App() {
+  const id = (location.hash || '').replace('#', '') || 'duke';
+  const idx = Math.max(0, NCAA_FULL.findIndex(t => t.id === id));
+  const team = { ...NCAA_FULL[idx], natRank: idx + 1 };
+  const [tab, setTab] = useState('Overview');
+
+  return (
+    <div className="mfx-upmode">
+      <Nav />
+
+      <header className="mfx-thead">
+        <div className="mfx-thead__in">
+          <button className="mfx-back" onClick={() => location.href='NCAA Rankings.html'}>
+            <TPIcon name="arrow-left" size={15} /> Back to rankings
+          </button>
+          <div className="mfx-thead__row">
+            <img className="mfx-thead__logo" src={LOGO(team.id)} alt="" />
+            <div className="mfx-thead__id">
+              <div className="mfx-thead__rk">No. {team.natRank} <span className="conf">· {team.conf}</span></div>
+              <h1 className="mfx-thead__nm">{team.name}</h1>
+              <div className="mfx-thead__sub">
+                <span>Record <b>{team.rec}</b></span>
+                <span>Tempo <b>{team.tempo.toFixed(1)}</b></span>
+                <span>Off <b>{team.adjO.toFixed(1)}</b></span>
+                <span>Def <b>{team.adjD.toFixed(1)}</b></span>
+              </div>
+            </div>
+            <div className="mfx-thead__hero">
+              <span className="k">Adj. Efficiency Margin</span>
+              <span className="v">{fmtEM(team.adjEM)}</span>
+            </div>
+          </div>
+          <div className="mfx-ttabs">
+            {TABS.map(t => (
+              <button key={t} className={'mfx-ttab' + (tab === t ? ' on' : '')} onClick={() => setTab(t)}>{t}</button>
+            ))}
+          </div>
+        </div>
+      </header>
+
+      <div className="mfx-wrap" style={{ paddingTop: 28, paddingBottom: 64 }}>
+        {tab === 'Overview' && <OverviewTab team={team} />}
+        {tab === 'Off / Def' && <OffDefTab team={team} />}
+        {tab === 'Game Log' && <GameLogTab />}
+        {tab === 'Charts' && <ChartsTab team={team} />}
+      </div>
+
+      <footer className="mfx-foot">
+        <div className="mfx-foot__in">
+          <div className="mfx-foot__brand"><img src="../../assets/macfax-logo.png" alt="" /><span>macfax</span></div>
+          <div className="mfx-foot__links"><a>Model Accuracy</a><a>Methodology</a><a>Glossary</a><a>About</a></div>
+        </div>
+      </footer>
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

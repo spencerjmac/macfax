@@ -59,12 +59,12 @@ export default async function HomePage() {
                 <span className="w-1.5 h-1.5 rounded-full bg-brand2 shadow-[0_0_0_4px_rgba(112,192,112,0.18)]" />
                 NCAA · NBA — Updated daily
               </p>
-              <h1 className="display-sport text-white mb-6 max-w-[12ch]">
-                Know who&apos;s actually good.
+              <h1 className="display-sport text-white mb-6 max-w-[16ch]">
+                The numbers behind the game.
               </h1>
               <p className="text-ink-fg text-[19px] leading-[1.55] max-w-[540px] mb-8">
-                Adjusted efficiency, four factors, matchup forecasts, and original
-                visualizations — college hoops and the NBA, unified under one roof.
+                We run the numbers and share what we find. Dig in, check our work,
+                and see what the data says.
               </p>
               <div className="flex gap-3 flex-wrap">
                 <Link
@@ -151,8 +151,6 @@ export default async function HomePage() {
           <div className="grid grid-cols-2 gap-[22px]">
             {/* NCAA */}
             <LeagueCard
-              badge="NCAA"
-              badgeBg="#0b1220"
               title="College Basketball"
               sub="365 Division I teams · all conferences"
               feats={['Rankings', 'Matchup', 'Outlook', 'Visualizations']}
@@ -168,8 +166,6 @@ export default async function HomePage() {
 
             {/* NBA */}
             <LeagueCard
-              badge="NBA"
-              badgeBg="#3080b0"
               title="NBA"
               sub="30 teams · East &amp; West"
               feats={['Rankings', 'Player Stats', 'Visualizations']}
@@ -210,9 +206,31 @@ export default async function HomePage() {
 
 // ── League card component ─────────────────────────────────────────────────────
 
+function BasketballIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" aria-hidden="true">
+      {/* solid filled ball — currentColor (brand teal) */}
+      <circle cx="12" cy="12" r="10.5" fill="currentColor" opacity="0.82" />
+      {/* seam lines in white over the fill */}
+      <line
+        x1="1.5" y1="12" x2="22.5" y2="12"
+        stroke="white" strokeWidth="1.2" strokeLinecap="round" strokeOpacity="0.75"
+      />
+      {/* left ) seam — control points stay left of center (x=11), arc peaks at x≈10.5 */}
+      <path
+        d="M9 2C11 6 11 18 9 22"
+        fill="none" stroke="white" strokeWidth="1.2" strokeLinecap="round" strokeOpacity="0.75"
+      />
+      {/* right ( seam — control points stay right of center (x=13), arc peaks at x≈13.5 */}
+      <path
+        d="M15 2C13 6 13 18 15 22"
+        fill="none" stroke="white" strokeWidth="1.2" strokeLinecap="round" strokeOpacity="0.75"
+      />
+    </svg>
+  );
+}
+
 function LeagueCard({
-  badge,
-  badgeBg,
   title,
   sub,
   feats,
@@ -220,8 +238,6 @@ function LeagueCard({
   btnLabel,
   teams,
 }: {
-  badge: string;
-  badgeBg: string;
   title: string;
   sub: string;
   feats: string[];
@@ -239,12 +255,7 @@ function LeagueCard({
           </h3>
           <p className="text-sm text-muted m-0">{sub}</p>
         </div>
-        <span
-          className="font-display font-bold text-[30px] tracking-[0.02em] uppercase leading-none text-white px-4 py-3 rounded-[11px]"
-          style={{ background: badgeBg }}
-        >
-          {badge}
-        </span>
+        <BasketballIcon className="w-16 h-16 text-brand shrink-0" />
       </div>
 
       {/* feature chips */}

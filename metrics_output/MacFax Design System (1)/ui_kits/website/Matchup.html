@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MacFax — Matchup</title>
+<link rel="stylesheet" href="../../colors_and_type.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="redesign.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="data.js"></script>
+<script type="text/babel">
+const { useState } = React;
+const pct = v => (v * 100).toFixed(1);
+
+/* darken a hex if it's too light to read as text on white */
+function readable(hex) {
+  const h = hex.replace('#',''); const r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16);
+  const lum = (0.2126*r + 0.7152*g + 0.0722*b) / 255;
+  if (lum < 0.55) return hex;
+  const f = 0.55 / Math.max(lum, 0.001);
+  const d = x => Math.round(Math.min(255, x * f));
+  return `rgb(${d(r)},${d(g)},${d(b)})`;
+}
+/* seeded RNG so each team's recent form is stable across renders */
+function seeded(str){ let h=0; for(const c of str) h=(h*31 + c.charCodeAt(0))>>>0; return ()=>{ h=(h*1103515245+12345)>>>0; return h/4294967296; }; }
+
+function recentForm(team, rank) {
+  const rng = seeded(team.id + 'rf');
+  const wins = Math.max(4, Math.min(10, Math.round(10 - (rank-1)*0.22 - rng()*1.6)));
+  const avgMargin = +(team.adjEM * 0.42 + rng()*3).toFixed(1);
+  const variance = +(10.5 + rng()*5.5).toFixed(1);
+  const pool = NCAA_FULL.filter(t => t.id !== team.id);
+  const games = [];
+  let w = wins, total = 10;
+  for (let i = 0; i < 5; i++) {
+    const opp = pool[Math.floor(rng()*pool.length)];
+    const isW = rng() < (w / total); if (isW) w = Math.max(0, w-1); total = Math.max(1, total-1);
+    const base = 64 + Math.round(rng()*18);
+    const diff = 4 + Math.round(rng()*16);
+    const ts = isW ? base + diff : base;
+    const os = isW ? base : base + diff;
+    games.push({ opp: opp.name, wl: isW ? 'W' : 'L', ts, os });
+  }
+  return { record: `${wins}-${10-wins}`, avgMargin, variance, games };
+}
+
+function Nav() {
+  return (
+    <nav className="mfx-nav">
+      <div className="mfx-nav__in">
+        <button className="mfx-brand" onClick={() => location.href='Homepage Redesign.html'}>
+          <img src="../../assets/macfax-logo.png" alt="" /><span>macfax</span>
+        </button>
+        <div className="mfx-nav__nav">
+          <div className="mfx-sport"><button className="on">NCAA</button><button onClick={() => location.href='Sport Hub.html#nba'}>NBA</button></div>
+          <span className="mfx-div" />
+          {['Rankings','Matchup','Outlook','Visualizations','Glossary'].map((l) =>
+            <button key={l} className={'mfx-link' + (l==='Matchup'?' on':'')}
+              onClick={() => { if(l==='Rankings') location.href='NCAA Rankings.html'; if(l==='Visualizations') location.href='Visualizations.html'; }}>{l}</button>)}
+          <span className="mfx-div" /><button className="mfx-link">About</button>
+        </div>
+      </div>
+    </nav>
+  );
+}
+
+function TeamSide({ role, team, rank, color, onChange }) {
+  return (
+    <div className="mfx-mu__side" style={{ borderTop: `4px solid ${color}` }}>
+      <span className="mfx-mu__role" style={{ color: readable(color) }}>{role === 'a' ? 'Team A' : 'Team B'}</span>
+      <div className="mfx-mu__sel">
+        <select value={team.id} onChange={e => onChange(NCAA_FULL.find(t => t.id === e.target.value))}>
+          {NCAA_FULL.map((t, i) => <option key={t.id} value={t.id}>{i+1}. {t.name}</option>)}
+        </select>
+      </div>
+      <div className="mfx-mu__team">
+        <img className="mfx-mu__logo" src={LOGO(team.id)} alt="" />
+        <div>
+          <div className="mfx-mu__nm">{team.name}</div>
+          <div className="mfx-mu__meta">No. {rank} · {team.conf} · {team.rec}</div>
+        </div>
+      </div>
+      <div className="mfx-mu__statline">
+        <div><span className="k">AdjEM</span><span className="v">{(team.adjEM>0?'+':'')+team.adjEM.toFixed(1)}</span></div>
+        <div><span className="k">AdjO</span><span className="v">{team.adjO.toFixed(1)}</span></div>
+        <div><span className="k">AdjD</span><span className="v">{team.adjD.toFixed(1)}</span></div>
+      </div>
+    </div>
+  );
+}
+
+/* one four-factor row */
+function FFRow({ name, aVal, bVal, aColor, bColor, aName, bName, lowerBetter, impact }) {
+  const edge = lowerBetter ? (bVal - aVal) : (aVal - bVal);
+  const favA = edge >= 0;
+  const tot = aVal + bVal || 1;
+  const aw = (aVal / tot) * 100, bw = (bVal / tot) * 100;
+  return (
+    <div className="mfx-ff">
+      <div className="mfx-ff__top">
+        <span className="mfx-ff__name">{name}</span>
+        <span className="mfx-ff__edge" style={{ color: favA ? readable(aColor) : readable(bColor) }}>
+          Edge {edge>0?'+':''}{edge.toFixed(1)}%
+        </span>
+      </div>
+      <div className="mfx-ff__vals">
+        <span style={{ color: readable(aColor) }}>{aName} {aVal.toFixed(1)}%</span>
+        <span style={{ color: readable(bColor) }}>{bName} {bVal.toFixed(1)}%</span>
+      </div>
+      <div className="mfx-ff__track">
+        <span className="a" style={{ width: aw+'%', background: aColor }} />
+        <span className="b" style={{ width: bw+'%', background: bColor }} />
+      </div>
+      <div className="mfx-ff__impact">Impact: {impact>0?'+':''}{impact.toFixed(1)} pts {favA ? aName : bName}</div>
+    </div>
+  );
+}
+
+function App() {
+  const [a, setA] = useState(NCAA_FULL[0]);
+  const [b, setB] = useState(NCAA_FULL[3]);
+  const [loc, setLoc] = useState('neutral');
+
+  const rankA = NCAA_FULL.findIndex(t => t.id === a.id) + 1;
+  const rankB = NCAA_FULL.findIndex(t => t.id === b.id) + 1;
+  const cA = teamColor(a.id), cB = teamColor(b.id);
+
+  const homeAdj = loc === 'a' ? 3.5 : loc === 'b' ? -3.5 : 0;
+  const margin = a.adjEM - b.adjEM + homeAdj;
+  const tempo = (a.tempo + b.tempo) / 2;
+  const projA = Math.round(0.5*tempo + (a.adjO - b.adjD)/2 + margin/2 + 20);
+  const projB = Math.round(0.5*tempo + (b.adjO - a.adjD)/2 - margin/2 + 20);
+  const winA = Math.round(100 / (1 + Math.pow(10, -margin / 11)));
+  const favA = margin >= 0;
+
+  const formA = recentForm(a, rankA), formB = recentForm(b, rankB);
+
+  // volatility from pace, 3p volume (mock seeded), recent variance
+  const rng = seeded(a.id + b.id);
+  const paceC = Math.round(Math.max(0, Math.min(100, (tempo - 60) / 14 * 100)));
+  const threeC = Math.round(40 + rng()*55);
+  const varC = Math.round(Math.max(0, Math.min(100, ((formA.variance + formB.variance)/2 - 8) / 10 * 100)));
+  const vol = Math.round(paceC*0.34 + threeC*0.26 + varC*0.40);
+  const volLab = vol < 33 ? 'Low Volatility' : vol < 55 ? 'Moderate Volatility' : vol < 72 ? 'High Volatility' : 'Extreme Volatility';
+  const volColor = vol < 33 ? '#2f9e6f' : vol < 55 ? '#b9942a' : vol < 72 ? '#e8730c' : '#b8352e';
+
+  return (
+    <div className="mfx-upmode">
+      <Nav />
+      <header className="mfx-phead">
+        <div className="mfx-phead__in">
+          <p className="mfx-kick">College Basketball</p>
+          <h1>Matchup Tool</h1>
+          <div className="mfx-phead__meta">
+            <p className="mfx-phead__lede">Head-to-head forecast, four-factor edges, volatility, and recent form.</p>
+          </div>
+        </div>
+      </header>
+
+      <div className="mfx-wrap" style={{ paddingTop: 28, paddingBottom: 64 }}>
+        {/* team slots */}
+        <div className="mfx-mu">
+          <TeamSide role="a" team={a} rank={rankA} color={cA} onChange={setA} />
+          <div className="mfx-mu__vs"><span className="vs">vs</span></div>
+          <TeamSide role="b" team={b} rank={rankB} color={cB} onChange={setB} />
+        </div>
+
+        <div style={{ display:'flex', justifyContent:'center' }}>
+          <div className="mfx-loc">
+            <button className={loc==='a'?'on':''} onClick={() => setLoc('a')}>@ {a.name}</button>
+            <button className={loc==='neutral'?'on':''} onClick={() => setLoc('neutral')}>Neutral</button>
+            <button className={loc==='b'?'on':''} onClick={() => setLoc('b')}>@ {b.name}</button>
+          </div>
+        </div>
+
+        {/* game forecast */}
+        <div className="mfx-proj">
+          <h2 className="mfx-proj__h">Game Forecast</h2>
+          <div className="mfx-proj__row">
+            <div className="mfx-proj__team">
+              <div className="nm">{a.name}</div>
+              <div className="mfx-proj__score" style={{ color: readable(cA) }}>{projA}</div>
+            </div>
+            <div className="mfx-proj__mid">
+              <div className="mfx-proj__win">Expected margin</div>
+              <div className="mfx-proj__winv">{favA?'+':''}{margin.toFixed(1)}</div>
+              <div className="mfx-proj__win" style={{ marginTop: 6 }}>{(favA?a.name:b.name)} · {favA?winA:100-winA}% win</div>
+            </div>
+            <div className="mfx-proj__team">
+              <div className="nm">{b.name}</div>
+              <div className="mfx-proj__score" style={{ color: readable(cB) }}>{projB}</div>
+            </div>
+          </div>
+          <div className="mfx-proj__bar">
+            <span style={{ width: winA + '%', background: cA }} />
+            <span style={{ width: (100 - winA) + '%', background: cB }} />
+          </div>
+          <p className="mfx-proj__note">
+            Projected at {tempo.toFixed(1)} possessions{loc !== 'neutral' && ' · includes home-court advantage'}
+          </p>
+        </div>
+
+        {/* four factor breakdown */}
+        <h2 className="mfx-h2" style={{ fontSize: 24, margin: '34px 0 0' }}>Four-Factor Breakdown</h2>
+        <div className="mfx-ffb">
+          <div className="mfx-ffb__legend">
+            <span><i style={{ background: cA }} /> <b style={{ color: readable(cA) }}>{a.name} advantage</b></span>
+            <span><i style={{ background: cB }} /> <b style={{ color: readable(cB) }}>{b.name} advantage</b></span>
+          </div>
+          <FFRow name="Effective FG%" aVal={a.eFG*100} bVal={b.eFG*100} aColor={cA} bColor={cB} aName={a.name} bName={b.name} impact={(a.eFG-b.eFG)*100*0.93} />
+          <FFRow name="Turnover Rate" aVal={a.tov*100} bVal={b.tov*100} aColor={cA} bColor={cB} aName={a.name} bName={b.name} lowerBetter impact={(b.tov-a.tov)*100*0.84} />
+          <FFRow name="Offensive Reb%" aVal={a.orb*100} bVal={b.orb*100} aColor={cA} bColor={cB} aName={a.name} bName={b.name} impact={(a.orb-b.orb)*100*0.42} />
+          <FFRow name="Free-Throw Rate" aVal={a.ftr*100} bVal={b.ftr*100} aColor={cA} bColor={cB} aName={a.name} bName={b.name} impact={(a.ftr-b.ftr)*100*0.18} />
+        </div>
+
+        {/* volatility */}
+        <h2 className="mfx-h2" style={{ fontSize: 24, margin: '34px 0 0' }}>Game Volatility</h2>
+        <p className="mfx-phead__lede" style={{ margin: '6px 0 0' }}>Game unpredictability based on pace, 3-point volume, and recent variance.</p>
+        <div className="mfx-vol">
+          <div className="mfx-vol__score">
+            <div className="mfx-vol__num" style={{ color: volColor }}>{vol}</div>
+            <div className="mfx-vol__lab" style={{ color: volColor }}>{volLab}</div>
+          </div>
+          <div className="mfx-vol__bar"><span className="mark" style={{ left: vol + '%' }} /></div>
+          <div className="mfx-vol__scale"><span>Low (0)</span><span>Moderate (50)</span><span>Extreme (100)</span></div>
+          <div className="mfx-vol__subs">
+            <div className="mfx-vol__sub"><div className="v">{paceC}</div><div className="k">Pace</div></div>
+            <div className="mfx-vol__sub"><div className="v">{threeC}</div><div className="k">3P Volume</div></div>
+            <div className="mfx-vol__sub"><div className="v">{varC}</div><div className="k">Variance</div></div>
+          </div>
+          {vol >= 72 && <div className="mfx-vol__warn">⚠ High upset potential · {Math.max(formA.variance,formB.variance).toFixed(1)} pt recent swing</div>}
+        </div>
+
+        {/* recent form */}
+        <h2 className="mfx-h2" style={{ fontSize: 24, margin: '34px 0 16px' }}>Recent Form · Last 10 Games</h2>
+        <div className="mfx-rf">
+          {[{ t:a, f:formA, c:cA }, { t:b, f:formB, c:cB }].map(({ t, f, c }) => (
+            <div key={t.id} className="mfx-rf__team">
+              <h3 className="mfx-rf__nm" style={{ color: readable(c) }}>{t.name}</h3>
+              <div className="mfx-rf__cards">
+                <div className="mfx-rf__c rec" style={{ background: c+'14', borderColor: c+'40' }}>
+                  <div className="v" style={{ color: readable(c) }}>{f.record}</div><div className="k">Record</div>
+                </div>
+                <div className="mfx-rf__c"><div className="v">{f.avgMargin>0?'+':''}{f.avgMargin}</div><div className="k">Avg Margin</div></div>
+                <div className="mfx-rf__c"><div className="v">±{f.variance}</div><div className="k">Variance</div></div>
+              </div>
+              {f.games.map((g, i) => (
+                <div key={i} className="mfx-rf__game">
+                  <span className={'mfx-rf__wl ' + (g.wl==='W'?'w':'l')}>{g.wl}</span>
+                  <span className="mfx-rf__opp">{g.opp}</span>
+                  <span className="mfx-rf__sc">{g.ts}–{g.os}</span>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <footer className="mfx-foot">
+        <div className="mfx-foot__in">
+          <div className="mfx-foot__brand"><img src="../../assets/macfax-logo.png" alt="" /><span>macfax</span></div>
+          <div className="mfx-foot__links"><a>Model Accuracy</a><a>Methodology</a><a>Glossary</a><a>About</a></div>
+        </div>
+      </footer>
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

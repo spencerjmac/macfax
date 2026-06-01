@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MacFax — Homepage Redesign</title>
+<link rel="stylesheet" href="../../colors_and_type.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700&family=Barlow+Semi+Condensed:wght@600;700&family=Anton&family=Saira+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<link rel="stylesheet" href="redesign.css">
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel">
+const { useState } = React;
+
+/* ---------------- Icons (Lucide, stroke 1.5) ---------------- */
+const PATHS = {
+  'trophy':      <><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></>,
+  'swords':      <><path d="M14.5 17.5 3 6V3h3l11.5 11.5"/><path d="m13 19 6-6"/><path d="m16 16 4 4"/><path d="m19 21 2-2"/><path d="M14.5 6.5 18 3h3v3l-3.5 3.5"/><path d="M5 14l9 9"/></>,
+  'scatter':     <><circle cx="7.5" cy="16.5" r="1.4"/><circle cx="11" cy="11" r="1.4"/><circle cx="16.5" cy="7" r="1.4"/><circle cx="15" cy="14" r="1.4"/><path d="M3 3v18h18"/></>,
+  'book-open':   <><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></>,
+  'arrow-right': <><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></>,
+  'arrow-up-right': <><path d="M7 7h10v10"/><path d="M7 17 17 7"/></>,
+  'activity':    <><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></>,
+};
+const Icon = ({ name, size = 20, stroke = 1.5 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+       strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round">{PATHS[name] || null}</svg>
+);
+
+/* ---------------- Data ---------------- */
+const LOGO = (id) => `../../assets/teams/${id}.png`;
+const SVG  = (id) => `../../assets/teams/${id}.svg`;
+
+const NCAA = [
+  { id:'duke',      name:'Duke',           conf:'ACC',      rec:'24-3', em:34.21, o:120.4, d:86.2 },
+  { id:'kansas',    name:'Kansas',         conf:'Big 12',   rec:'22-4', em:29.84, o:118.7, d:88.9 },
+  { id:'uconn',     name:'UConn',          conf:'Big East', rec:'23-4', em:27.66, o:117.2, d:89.5 },
+  { id:'houston',   name:'Houston',        conf:'Big 12',   rec:'25-2', em:25.41, o:114.1, d:88.7 },
+  { id:'tennessee', name:'Tennessee',      conf:'SEC',      rec:'21-5', em:23.18, o:113.6, d:90.4 },
+];
+const NBA = [
+  { id:'okc-thunder',         name:'OKC Thunder',        conf:'West · NW', rec:'68-14', em:12.3, o:119.2, d:106.9, ext:'svg' },
+  { id:'cleveland-cavaliers', name:'Cleveland Cavaliers',conf:'East · C',  rec:'64-18', em:9.8,  o:121.0, d:111.2, ext:'svg' },
+  { id:'new-york-knicks',     name:'New York Knicks',    conf:'East · ATL',rec:'51-31', em:5.4,  o:117.3, d:111.9, ext:'png' },
+  { id:'san-antonio-spurs',   name:'San Antonio Spurs',  conf:'West · SW', rec:'48-34', em:3.1,  o:115.8, d:112.7, ext:'svg' },
+  { id:'detroit-pistons',     name:'Detroit Pistons',    conf:'East · C',  rec:'44-38', em:1.2,  o:114.0, d:112.8, ext:'svg' },
+];
+const teamLogo = (t) => t.ext === 'svg' ? SVG(t.id) : (t.ext === 'png' ? LOGO(t.id) : LOGO(t.id));
+
+/* ---------------- Tweaks ---------------- */
+const FONT_STACKS = {
+  'Oswald':           "'Oswald', sans-serif",
+  'Barlow Condensed': "'Barlow Condensed', sans-serif",
+  'Anton':            "'Anton', sans-serif",
+  'Saira Condensed':  "'Saira Condensed', sans-serif",
+};
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "displayFont": "Oswald",
+  "uppercaseHeads": true,
+  "accent": "#409080",
+  "headline": "Know who's actually good."
+}/*EDITMODE-END*/;
+
+/* ---------------- Nav ---------------- */
+function Nav({ sport, setSport }) {
+  const NAV = sport === 'nba'
+    ? ['Rankings', 'Visualizations', 'Model Health']
+    : ['Rankings', 'Matchup', 'Outlook', 'Visualizations', 'Glossary'];
+  return (
+    <nav className="mfx-nav">
+      <div className="mfx-nav__in">
+        <button className="mfx-brand">
+          <img src="../../assets/macfax-logo.png" alt="" />
+          <span>macfax</span>
+        </button>
+        <div className="mfx-nav__nav">
+          <div className="mfx-sport">
+            <button className={sport === 'ncaa' ? 'on' : ''} onClick={() => setSport('ncaa')}>NCAA</button>
+            <button className={sport === 'nba'  ? 'on' : ''} onClick={() => setSport('nba')}>NBA</button>
+          </div>
+          <span className="mfx-div" />
+          {NAV.map((l, i) => <button key={l} className={'mfx-link' + (i === 0 ? ' on' : '')}>{l}</button>)}
+          <span className="mfx-div" />
+          <button className="mfx-link">About</button>
+        </div>
+      </div>
+    </nav>
+  );
+}
+
+/* ---------------- Hero ---------------- */
+function Hero({ t, sport, teams }) {
+  return (
+    <header className="mfx-hero">
+      <div className="mfx-wrap">
+        <div className="mfx-hero__grid">
+          <div className="mfx-hero__copy">
+            <p className="mfx-eyebrow"><span className="dot" /> NCAA · NBA — Updated daily</p>
+            <h1 className="mfx-h1">{t.headline}</h1>
+            <p className="mfx-lede">
+              Adjusted efficiency, four factors, matchup forecasts, and original visualizations —
+              college hoops and the NBA, unified under one roof instead of scattered across five tabs.
+            </p>
+            <div className="mfx-cta-row">
+              <button className="mfx-btn mfx-btn--primary">View rankings <Icon name="arrow-right" size={18} /></button>
+              <button className="mfx-btn mfx-btn--ghost">Matchup tool</button>
+            </div>
+          </div>
+
+          <div className="mfx-board">
+            <div className="mfx-board__head">
+              <span className="mfx-board__title">{sport === 'nba' ? 'NBA · Top of the table' : 'NCAA · Top of the polls'}</span>
+              <span className="mfx-board__tag"><span className="live" /> Live</span>
+            </div>
+            {teams.map((tm, i) => (
+              <button key={tm.id} className="mfx-brow">
+                <span className="mfx-brow__rk">{i + 1}</span>
+                <img className="mfx-brow__logo" src={teamLogo(tm)} alt="" />
+                <span>
+                  <span className="mfx-brow__nm">{tm.name}</span>
+                  <span className="mfx-brow__cf">{tm.conf} · {tm.rec}</span>
+                </span>
+                <span className="mfx-brow__em">{tm.em > 0 ? '+' : ''}{tm.em.toFixed(2)}</span>
+              </button>
+            ))}
+            <div className="mfx-board__foot">
+              <button>Full rankings <Icon name="arrow-right" size={15} /></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+/* ---------------- League cards ---------------- */
+function Leagues({ t }) {
+  const cards = [
+    { key:'ncaa', badge:'NCAA', badgeBg:'#0b1220', title:'College Basketball', sub:'365 Division I teams · all conferences',
+      feats:['Rankings','Matchup','Outlook','Visualizations'], teams: NCAA.slice(0,3) },
+    { key:'nba', badge:'NBA', badgeBg:'#3080b0', title:'NBA', sub:'30 teams · East & West',
+      feats:['Rankings','Visualizations','Model Health'], teams: NBA.slice(0,3) },
+  ];
+  return (
+    <section className="mfx-section">
+      <div className="mfx-wrap">
+        <div className="mfx-shead">
+          <div>
+            <p className="mfx-kick">Two leagues, one model</p>
+            <h2 className="mfx-h2">Pick your league</h2>
+          </div>
+        </div>
+        <div className="mfx-leagues">
+          {cards.map(c => (
+            <div key={c.key} className="mfx-league" onClick={() => { location.href = `Sport Hub.html#${c.key}`; }}>
+              <div className="mfx-league__top">
+                <div>
+                  <h3>{c.title}</h3>
+                  <p className="mfx-league__sub">{c.sub}</p>
+                </div>
+                <span className="mfx-league__badge" style={{ background: c.badgeBg }}>{c.badge}</span>
+              </div>
+              <div className="mfx-league__feat">
+                {c.feats.map(f => <span key={f} className="mfx-chip">{f}</span>)}
+              </div>
+              <div className="mfx-league__list">
+                {c.teams.map((tm, i) => (
+                  <div key={tm.id} className="mfx-lrow">
+                    <span className="mfx-lrow__rk">{i + 1}</span>
+                    <img className="mfx-lrow__logo" src={teamLogo(tm)} alt="" />
+                    <span className="mfx-lrow__nm">{tm.name}</span>
+                    <span className="mfx-lrow__em">{tm.em > 0 ? '+' : ''}{tm.em.toFixed(2)}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="mfx-league__foot">
+                <button className="mfx-btn mfx-btn--primary" style={{ width:'100%', justifyContent:'center' }}>
+                  Enter {c.badge} <Icon name="arrow-right" size={18} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ---------------- Top five ---------------- */
+function TopFive() {
+  const [tab, setTab] = useState('ncaa');
+  const teams = tab === 'nba' ? NBA : NCAA;
+  return (
+    <section className="mfx-section mfx-section--alt">
+      <div className="mfx-wrap">
+        <div className="mfx-shead">
+          <div>
+            <p className="mfx-kick">This week</p>
+            <h2 className="mfx-h2">Top of the rankings</h2>
+          </div>
+          <button className="mfx-seelink">Full rankings <Icon name="arrow-right" size={15} /></button>
+        </div>
+        <div className="mfx-tabs">
+          <button className={'mfx-tab' + (tab==='ncaa'?' on':'')} onClick={() => setTab('ncaa')}>NCAA</button>
+          <button className={'mfx-tab' + (tab==='nba' ?' on':'')} onClick={() => setTab('nba')}>NBA</button>
+        </div>
+        <div className="mfx-strip">
+          {teams.map((tm, i) => (
+            <button key={tm.id} className="mfx-srow">
+              <span className="mfx-srow__rk">{i + 1}</span>
+              <img className="mfx-srow__logo" src={teamLogo(tm)} alt="" />
+              <span>
+                <span className="mfx-srow__nm">{tm.name}</span>
+                <span className="mfx-srow__cf">{tm.conf} · {tm.rec}</span>
+              </span>
+              <span className="mfx-srow__col"><span className="k">AdjO</span><span className="v">{tm.o.toFixed(1)}</span></span>
+              <span className="mfx-srow__col" style={{ textAlign:'right' }}><span className="k">AdjEM</span><span className="v em">{tm.em>0?'+':''}{tm.em.toFixed(2)}</span></span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ---------------- Features ---------------- */
+function Features() {
+  const F = [
+    { i:'trophy',    t:'Team Rankings', b:"Adjusted efficiency and four factors across every team. Find who's actually good, not who has the easy schedule." },
+    { i:'swords',    t:'Matchup Tool',  b:'Compare any two teams head-to-head. Projected margins and where each side wins the four-factor battle.' },
+    { i:'scatter',   t:'Visualizations',b:'Trapezoid of Excellence, Efficiency Landscape, Crystal Ball — charts that tell a story beyond the box score.' },
+    { i:'book-open', t:'Glossary',      b:'Plain-English definitions for every metric. No jargon walls — just what the numbers mean and why they matter.' },
+  ];
+  return (
+    <section className="mfx-section">
+      <div className="mfx-wrap">
+        <div className="mfx-shead">
+          <div>
+            <p className="mfx-kick">The toolkit</p>
+            <h2 className="mfx-h2">What MacFax gives you</h2>
+          </div>
+        </div>
+        <div className="mfx-feats">
+          {F.map(f => (
+            <div key={f.t} className="mfx-feat">
+              <span className="mfx-feat__ic"><Icon name={f.i} size={24} /></span>
+              <h4>{f.t}</h4>
+              <p>{f.b}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Footer() {
+  return (
+    <footer className="mfx-foot">
+      <div className="mfx-foot__in">
+        <div className="mfx-foot__brand">
+          <img src="../../assets/macfax-logo.png" alt="" />
+          <span>macfax</span>
+        </div>
+        <div className="mfx-foot__links">
+          <a>Model Accuracy</a><a>Methodology</a><a>Glossary</a><a>About</a>
+        </div>
+      </div>
+    </footer>
+  );
+}
+
+/* ---------------- App ---------------- */
+function App() {
+  const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+  const [sport, setSport] = useState('ncaa');
+
+  React.useEffect(() => {
+    document.documentElement.style.setProperty('--font-display', FONT_STACKS[t.displayFont] || FONT_STACKS.Oswald);
+    document.documentElement.style.setProperty('--brand', t.accent);
+  }, [t.displayFont, t.accent]);
+
+  const heroTeams = sport === 'nba' ? NBA : NCAA;
+
+  return (
+    <div className={t.uppercaseHeads ? 'mfx-upmode' : ''}>
+      <Nav sport={sport} setSport={setSport} />
+      <Hero t={t} sport={sport} teams={heroTeams} />
+      <Leagues t={t} />
+      <TopFive />
+      <Features />
+      <Footer />
+
+      <TweaksPanel>
+        <TweakSection label="Display font" />
+        <TweakSelect label="Sporty face" value={t.displayFont}
+          options={['Oswald','Barlow Condensed','Anton','Saira Condensed']}
+          onChange={(v) => setTweak('displayFont', v)} />
+        <TweakToggle label="Uppercase headings" value={t.uppercaseHeads}
+          onChange={(v) => setTweak('uppercaseHeads', v)} />
+        <TweakSection label="Brand accent" />
+        <TweakColor label="Accent" value={t.accent}
+          options={['#409080','#3080b0','#2f7a52']}
+          onChange={(v) => setTweak('accent', v)} />
+        <TweakSection label="Copy" />
+        <TweakText label="Headline" value={t.headline}
+          onChange={(v) => setTweak('headline', v)} />
+      </TweaksPanel>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

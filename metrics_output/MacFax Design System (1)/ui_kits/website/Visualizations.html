@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MacFax — Visualizations</title>
+<link rel="stylesheet" href="../../colors_and_type.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="redesign.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="data.js"></script>
+<script type="text/babel">
+const { useState } = React;
+
+const PATHS = { 'arrow-right': <><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></> };
+const Icon = ({ name, size = 14, stroke = 1.6 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+       strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round">{PATHS[name]}</svg>
+);
+
+function Nav() {
+  return (
+    <nav className="mfx-nav">
+      <div className="mfx-nav__in">
+        <button className="mfx-brand" onClick={() => location.href='Homepage Redesign.html'}>
+          <img src="../../assets/macfax-logo.png" alt="" /><span>macfax</span>
+        </button>
+        <div className="mfx-nav__nav">
+          <div className="mfx-sport"><button className="on">NCAA</button><button onClick={() => location.href='Sport Hub.html#nba'}>NBA</button></div>
+          <span className="mfx-div" />
+          {['Rankings','Matchup','Outlook','Visualizations','Glossary'].map((l) =>
+            <button key={l} className={'mfx-link' + (l==='Visualizations'?' on':'')}
+                    onClick={() => { if(l==='Rankings') location.href='NCAA Rankings.html'; }}>{l}</button>)}
+          <span className="mfx-div" /><button className="mfx-link">About</button>
+        </div>
+      </div>
+    </nav>
+  );
+}
+
+/* ---- dark scatter for hero (real data) ---- */
+function DarkScatter({ xKey, yKey, xLabel, yLabel, invertX, overlay, highlight }) {
+  const W = 440, H = 320, P = { l: 46, r: 20, t: 20, b: 40 };
+  const data = NCAA_FULL;
+  const xs = data.map(d => d[xKey]), ys = data.map(d => d[yKey]);
+  const x0 = Math.min(...xs) - (Math.max(...xs)-Math.min(...xs))*0.12, x1 = Math.max(...xs) + (Math.max(...xs)-Math.min(...xs))*0.12;
+  const y0 = Math.min(...ys) - (Math.max(...ys)-Math.min(...ys))*0.12, y1 = Math.max(...ys) + (Math.max(...ys)-Math.min(...ys))*0.12;
+  const sx = v => { const t=(v-x0)/(x1-x0); return P.l + (invertX?1-t:t)*(W-P.l-P.r); };
+  const sy = v => { const t=(v-y0)/(y1-y0); return P.t + (1-t)*(H-P.t-P.b); };
+  return (
+    <svg className="mfx-darkchart" viewBox={`0 0 ${W} ${H}`}>
+      {[0.25,0.5,0.75].map(f => <line key={'h'+f} className="gr" x1={P.l} x2={W-P.r} y1={P.t+f*(H-P.t-P.b)} y2={P.t+f*(H-P.t-P.b)} strokeWidth="1"/>)}
+      {[0.25,0.5,0.75].map(f => <line key={'v'+f} className="gr" y1={P.t} y2={H-P.b} x1={P.l+f*(W-P.l-P.r)} x2={P.l+f*(W-P.l-P.r)} strokeWidth="1"/>)}
+      <line className="ax" x1={P.l} x2={W-P.r} y1={H-P.b} y2={H-P.b} strokeWidth="1.25"/>
+      <line className="ax" x1={P.l} x2={P.l} y1={P.t} y2={H-P.b} strokeWidth="1.25"/>
+      {overlay && overlay(sx, sy)}
+      {data.map(d => d.id === highlight ? null : <circle key={d.id} cx={sx(d[xKey])} cy={sy(d[yKey])} r="4.5" fill="#5b6a86" opacity="0.55"/>)}
+      {highlight && (() => { const d = data.find(t=>t.id===highlight); return (
+        <g key="hl"><circle cx={sx(d[xKey])} cy={sy(d[yKey])} r="12" fill="var(--brand)" opacity="0.22"/>
+        <circle cx={sx(d[xKey])} cy={sy(d[yKey])} r="6.5" fill="var(--brand)" stroke="#fff" strokeWidth="2"/>
+        <text className="lbl" x={sx(d[xKey])} y={sy(d[yKey])-14} textAnchor="middle">{d.name}</text></g>); })()}
+      <text className="axlbl" x={(P.l+W-P.r)/2} y={H-8} textAnchor="middle">{xLabel}</text>
+      <text className="axlbl" x={-(P.t+H-P.b)/2} y={15} textAnchor="middle" transform="rotate(-90)">{yLabel}</text>
+    </svg>
+  );
+}
+
+/* ---- small article thumbnails (on ink) ---- */
+function Thumb({ kind }) {
+  const dot = (cx, cy, r, hl, k) => <circle key={k} cx={cx} cy={cy} r={r} fill={hl?'var(--brand)':'#5b6a86'} opacity={hl?1:0.5} stroke={hl?'#fff':'none'} strokeWidth={hl?1.5:0}/>;
+  if (kind === 'landscape') return (
+    <svg viewBox="0 0 200 130" preserveAspectRatio="xMidYMid meet">
+      <line x1="24" y1="108" x2="184" y2="108" stroke="#3a4760" strokeWidth="1.2"/>
+      <line x1="24" y1="20" x2="24" y2="108" stroke="#3a4760" strokeWidth="1.2"/>
+      {[[60,80],[90,64],[120,50],[150,40],[78,90],[108,72],[138,58],[168,46],[95,86]].map((p,i)=>dot(p[0],p[1],4,false,'l'+i))}
+      {dot(160,34,6,true,'lh')}
+    </svg>
+  );
+  if (kind === 'trapezoid') return (
+    <svg viewBox="0 0 200 130" preserveAspectRatio="xMidYMid meet">
+      <polygon points="70,44 130,44 118,98 82,98" fill="rgba(64,144,128,0.12)" stroke="var(--brand)" strokeWidth="1.3" strokeDasharray="4 4"/>
+      {[[92,62],[112,58],[100,80],[84,84],[122,76]].map((p,i)=>dot(p[0],p[1],4,false,'t'+i))}
+      {dot(100,52,6,true,'th')}
+    </svg>
+  );
+  if (kind === 'crystal') return (
+    <svg viewBox="0 0 200 130" preserveAspectRatio="xMidYMid meet">
+      <circle cx="100" cy="50" r="31" fill="rgba(64,144,128,0.10)" stroke="var(--brand)" strokeWidth="2"/>
+      <path d="M86 40a15 15 0 0 1 12 -6" fill="none" stroke="var(--brand)" strokeWidth="1.6" opacity="0.7"/>
+      <path d="M85 78 C81 86 79 94 79 102 M115 78 C119 86 121 94 121 102" fill="none" stroke="var(--brand)" strokeWidth="2"/>
+      <path d="M73 102 h54" stroke="var(--brand)" strokeWidth="2.4" strokeLinecap="round"/>
+      <path d="M150 24 l2.2 6 6 2.2 -6 2.2 -2.2 6 -2.2 -6 -6 -2.2 6 -2.2 z" fill="var(--brand)" opacity="0.8"/>
+    </svg>
+  );
+  if (kind === 'cinderella') return (
+    <svg viewBox="0 0 200 130" preserveAspectRatio="xMidYMid meet">
+      {/* high-heel glass slipper, toe left / heel right */}
+      <path d="M34 92 C39 83 52 79 66 77 C77 76 87 79 95 79 C112 73 134 65 153 55
+               C159 61 158 75 151 84 C148 87 144 89 140 90 C118 95 92 93 72 91
+               C58 90 45 91 34 92 Z"
+            fill="rgba(64,144,128,0.12)" stroke="var(--brand)" strokeWidth="2" strokeLinejoin="round"/>
+      {/* tall thin heel */}
+      <path d="M140 90 L150 114 L157 114 L150 88" fill="none" stroke="var(--brand)" strokeWidth="2.2" strokeLinejoin="round"/>
+      {/* throat opening + glass shimmer */}
+      <path d="M70 81 C82 79 90 81 96 81" fill="none" stroke="var(--brand)" strokeWidth="1.3" opacity="0.55"/>
+      <path d="M120 44 l1.8 5 5 1.8 -5 1.8 -1.8 5 -1.8 -5 -5 -1.8 5 -1.8 z" fill="var(--brand)" opacity="0.85"/>
+    </svg>
+  );
+  // killshot — radial / quadrant
+  return (
+    <svg viewBox="0 0 200 130" preserveAspectRatio="xMidYMid meet">
+      <line x1="100" y1="18" x2="100" y2="110" stroke="#3a4760" strokeWidth="1"/>
+      <line x1="30" y1="64" x2="170" y2="64" stroke="#3a4760" strokeWidth="1"/>
+      {[[70,44],[126,50],[84,86],[140,80],[60,72]].map((p,i)=>dot(p[0],p[1],4,false,'k'+i))}
+      {dot(132,40,6,true,'kh')}
+    </svg>
+  );
+}
+
+const ARTICLES = [
+  { kind:'landscape', cat:'Efficiency', status:'live', title:'Efficiency Landscape',
+    stand:'Every Division I team on one offense-versus-defense plane. The closer to the top-right, the more complete the team.', date:'Updated Mar 9' },
+  { kind:'crystal', cat:'Forecast', status:'live', title:'Crystal Ball',
+    stand:'Win-probability curves for the week\u2019s biggest games, updated as lines and lineups move.', date:'Updated Mar 9' },
+  { kind:'cinderella', cat:'Bracket', status:'live', title:'Cinderella Index',
+    stand:'Which double-digit seeds are built to cause chaos? Five pillars combine into one upset-potential score.', date:'Updated Mar 8' },
+  { kind:'killshot', cat:'Matchup', status:'soon', title:'Kill Shot Analysis',
+    stand:'The single factor most likely to decide a given matchup — where one team can land the knockout blow.', date:'Coming soon' },
+];
+
+function App() {
+  const trapOverlay = (sx, sy) => (
+    <polygon points={`${sx(63)},${sy(34)} ${sx(72)},${sy(34)} ${sx(70.5)},${sy(8)} ${sx(64.5)},${sy(8)}`}
+      fill="rgba(64,144,128,0.12)" stroke="var(--brand)" strokeWidth="1.3" strokeDasharray="5 5"/>
+  );
+  return (
+    <div className="mfx-upmode">
+      <Nav />
+
+      <header className="mfx-phead">
+        <div className="mfx-phead__in">
+          <p className="mfx-kick">College Basketball</p>
+          <h1>Visualizations</h1>
+          <div className="mfx-phead__meta">
+            <p className="mfx-phead__lede">Charts that tell a story beyond the box score — read the season at a glance.</p>
+            <span className="mfx-stamp"><span className="dot" /> 4 visualizations · refreshed daily</span>
+          </div>
+        </div>
+      </header>
+
+      <div className="mfx-wrap" style={{ paddingTop: 28, paddingBottom: 64 }}>
+        {/* hero feature */}
+        <article className="mfx-feature" style={{ marginBottom: 30 }}>
+          <div className="mfx-feature__body">
+            <span className="mfx-cat"><span className="dot" /> Featured · Efficiency</span>
+            <h2>The Trapezoid of Excellence</h2>
+            <p className="mfx-feature__stand">
+              Twenty years of champions cluster inside one shape: elite efficiency at a balanced tempo.
+              We plot all 365 teams against the trapezoid so you can see — instantly — who has a real title profile
+              and who is built to bow out early.
+            </p>
+            <div className="mfx-byline">
+              <span>MacFax Model</span><span className="sep" /><span>Updated Mar 9, 2026</span><span className="sep" /><span>NCAA</span>
+            </div>
+            <button className="mfx-btn mfx-btn--primary mfx-btn--sm">Read the breakdown <Icon name="arrow-right" size={16} /></button>
+          </div>
+          <div className="mfx-feature__art">
+            <DarkScatter xKey="tempo" yKey="adjEM" xLabel="Adjusted Tempo" yLabel="Adj. Efficiency Margin"
+              overlay={trapOverlay} />
+          </div>
+        </article>
+
+        {/* article grid */}
+        <div className="mfx-artgrid">
+          {ARTICLES.map(a => (
+            <article key={a.title} className="mfx-article">
+              <div className="mfx-article__art"><Thumb kind={a.kind} /></div>
+              <div className="mfx-article__body">
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                  <span className="mfx-article__cat">{a.cat}</span>
+                  <span className={'mfx-statuschip ' + a.status} style={a.status==='soon'?{background:'var(--surface-2)',color:'var(--muted)'}:null}>{a.status === 'live' ? 'Live' : 'Soon'}</span>
+                </div>
+                <h3>{a.title}</h3>
+                <p>{a.stand}</p>
+                <div className="mfx-article__foot">
+                  <span className="mfx-article__date">{a.date}</span>
+                  <span className="mfx-article__link">Open <Icon name="arrow-right" size={13} /></span>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      </div>
+
+      <footer className="mfx-foot">
+        <div className="mfx-foot__in">
+          <div className="mfx-foot__brand"><img src="../../assets/macfax-logo.png" alt="" /><span>macfax</span></div>
+          <div className="mfx-foot__links"><a>Model Accuracy</a><a>Methodology</a><a>Glossary</a><a>About</a></div>
+        </div>
+      </footer>
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

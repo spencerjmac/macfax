@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MacFax — NCAA Rankings</title>
+<link rel="stylesheet" href="../../colors_and_type.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="redesign.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="data.js"></script>
+<script type="text/babel">
+const { useState, useMemo } = React;
+
+const PATHS = {
+  'search':      <><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></>,
+  'arrow-right': <><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></>,
+};
+const Icon = ({ name, size = 18, stroke = 1.5 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+       strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round">{PATHS[name] || null}</svg>
+);
+
+/* ---- heat-map: teal intensity anchored to a NATIONAL baseline ----
+   higher = better for adjEM/adjO; for adjD lower is better (invert). */
+function heatStyle(v, [lo, hi], invert = false) {
+  let t = (v - lo) / (hi - lo);
+  if (invert) t = 1 - t;
+  t = Math.max(0, Math.min(1, t));
+  // single-hue teal ramp; alpha grows with quality, neutral in the middle
+  if (t >= 0.5) {
+    const a = (t - 0.5) / 0.5;            // 0..1 across the top half
+    return { background: `rgba(64,144,128,${(0.10 + a * 0.42).toFixed(3)})`, color: a > 0.55 ? '#0b3d31' : 'var(--text)' };
+  }
+  const a = (0.5 - t) / 0.5;              // below average → faint slate, never alarming red
+  return { background: `rgba(100,116,139,${(a * 0.14).toFixed(3)})`, color: 'var(--text)' };
+}
+
+const CONFS = ['All conferences', 'ACC', 'Big 12', 'Big Ten', 'Big East', 'SEC', 'WCC'];
+
+function Nav() {
+  return (
+    <nav className="mfx-nav">
+      <div className="mfx-nav__in">
+        <button className="mfx-brand" onClick={() => location.href='Homepage Redesign.html'}>
+          <img src="../../assets/macfax-logo.png" alt="" />
+          <span>macfax</span>
+        </button>
+        <div className="mfx-nav__nav">
+          <div className="mfx-sport">
+            <button className="on">NCAA</button>
+            <button onClick={() => location.href='Sport Hub.html#nba'}>NBA</button>
+          </div>
+          <span className="mfx-div" />
+          {['Rankings','Matchup','Outlook','Visualizations','Glossary'].map((l,i) =>
+            <button key={l} className={'mfx-link' + (i===0?' on':'')}>{l}</button>)}
+          <span className="mfx-div" />
+          <button className="mfx-link">About</button>
+        </div>
+      </div>
+    </nav>
+  );
+}
+
+const fmtEM = v => (v > 0 ? '+' : '') + v.toFixed(2);
+const pct = v => (v * 100).toFixed(1);
+
+function App() {
+  const [sort, setSort] = useState('adjEM');
+  const [dir, setDir] = useState('desc');
+  const [conf, setConf] = useState('All conferences');
+  const [q, setQ] = useState('');
+  const [view, setView] = useState('efficiency');
+
+  const rows = useMemo(() => {
+    let r = NCAA_FULL.map((t, i) => ({ ...t, natRank: i + 1 }));
+    if (conf !== 'All conferences') r = r.filter(t => t.conf === conf);
+    if (q.trim()) r = r.filter(t => t.name.toLowerCase().includes(q.trim().toLowerCase()));
+    r = [...r].sort((a, b) => {
+      const av = a[sort], bv = b[sort];
+      if (sort === 'adjD') return dir === 'desc' ? av - bv : bv - av; // lower D is better
+      return dir === 'desc' ? bv - av : av - bv;
+    });
+    return r;
+  }, [sort, dir, conf, q]);
+
+  const onSort = key => {
+    if (sort === key) setDir(d => d === 'desc' ? 'asc' : 'desc');
+    else { setSort(key); setDir(key === 'adjD' ? 'asc' : 'desc'); }
+  };
+  const arr = key => sort === key ? <span className="arr">{dir === 'desc' ? '▾' : '▴'}</span> : null;
+
+  const Th = ({ k, children, grp }) => (
+    <th className={'sortable' + (grp ? ' grp' : '')} onClick={() => onSort(k)}>{children}{arr(k)}</th>
+  );
+
+  return (
+    <div className="mfx-upmode">
+      <Nav />
+
+      {/* page header */}
+      <header className="mfx-phead">
+        <div className="mfx-phead__in">
+          <p className="mfx-kick">College Basketball · 2025–26</p>
+          <h1>NCAA Rankings</h1>
+          <div className="mfx-phead__meta">
+            <p className="mfx-phead__lede">Top 15 of 365 Division I teams, ranked by adjusted efficiency margin.</p>
+            <span className="mfx-stamp"><span className="dot" /> Updated Mar 9, 2026 · 6:00 AM ET</span>
+          </div>
+        </div>
+      </header>
+
+      <div className="mfx-wrap" style={{ paddingTop: 8, paddingBottom: 64 }}>
+        {/* toolbar */}
+        <div className="mfx-toolbar">
+          <div className="mfx-search">
+            <Icon name="search" size={16} />
+            <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search teams…" />
+          </div>
+          <select className="mfx-select" value={conf} onChange={e => setConf(e.target.value)}>
+            {CONFS.map(c => <option key={c}>{c}</option>)}
+          </select>
+          <div className="mfx-viewtoggle">
+            <button className={view==='efficiency'?'on':''} onClick={() => setView('efficiency')}>Efficiency</button>
+            <button className={view==='factors'?'on':''} onClick={() => setView('factors')}>Four Factors</button>
+          </div>
+        </div>
+
+        {/* table */}
+        <div className="mfx-tablewrap">
+          <table className="mfx-tbl">
+            <thead>
+              <tr>
+                <th className="mfx-rk">Rk</th>
+                <th className="lft">Team</th>
+                <th className="lft">Conf</th>
+                <th className="lft">Rec</th>
+                <Th k="adjEM">AdjEM</Th>
+                {view === 'efficiency' ? (
+                  <React.Fragment>
+                    <Th k="adjO">AdjO</Th>
+                    <Th k="adjD">AdjD</Th>
+                    <Th k="tempo">Tempo</Th>
+                  </React.Fragment>
+                ) : (
+                  <React.Fragment>
+                    <Th k="eFG" grp>eFG%</Th>
+                    <Th k="tov">TOV%</Th>
+                    <Th k="orb">ORB%</Th>
+                    <Th k="ftr">FTR</Th>
+                  </React.Fragment>
+                )}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map(t => (
+                <tr key={t.id} onClick={() => location.href='Team Profile.html#'+t.id}>
+                  <td className={'mfx-rk' + (t.natRank <= 3 ? ' mfx-rk--top' : '')}>{t.natRank}</td>
+                  <td className="lft">
+                    <span className="mfx-tcell">
+                      <img className="mfx-tlogo" src={LOGO(t.id)} alt="" />
+                      <span className="mfx-tnm">{t.name}</span>
+                    </span>
+                  </td>
+                  <td className="lft mfx-tconf">{t.conf}</td>
+                  <td className="lft mfx-trec">{t.rec}</td>
+                  <td className="mfx-em" style={heatStyle(t.adjEM, NCAA_BASE.adjEM)}>{fmtEM(t.adjEM)}</td>
+                  {view === 'efficiency' ? (
+                    <React.Fragment>
+                      <td style={heatStyle(t.adjO, NCAA_BASE.adjO)}>{t.adjO.toFixed(1)}<span className="mfx-rank-sup">{t.oRk}</span></td>
+                      <td style={heatStyle(t.adjD, NCAA_BASE.adjD, true)}>{t.adjD.toFixed(1)}<span className="mfx-rank-sup">{t.dRk}</span></td>
+                      <td>{t.tempo.toFixed(1)}</td>
+                    </React.Fragment>
+                  ) : (
+                    <React.Fragment>
+                      <td className="mfx-grpcell">{pct(t.eFG)}</td>
+                      <td>{pct(t.tov)}</td>
+                      <td>{pct(t.orb)}</td>
+                      <td>{t.ftr.toFixed(3).slice(1)}</td>
+                    </React.Fragment>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {rows.length === 0 && (
+          <p style={{ color:'var(--muted)', textAlign:'center', padding:'40px 0', fontSize:14 }}>No teams match your filters.</p>
+        )}
+
+        {/* definitions */}
+        <div className="mfx-defs">
+          <h3>Metric Definitions</h3>
+          <div className="mfx-defgrid">
+            <div className="mfx-def"><b className="brand">AdjEM</b> — Adjusted Efficiency Margin (AdjO − AdjD): predicted point margin vs. an average team on a neutral floor.</div>
+            <div className="mfx-def"><b className="pos">AdjO</b> — Adjusted Offensive Efficiency: points scored per 100 possessions vs. an average D-I defense.</div>
+            <div className="mfx-def"><b>AdjD</b> — Adjusted Defensive Efficiency: points allowed per 100 possessions vs. an average D-I offense. Lower is better.</div>
+            <div className="mfx-def"><b>Tempo</b> — Adjusted possessions per 40 minutes.</div>
+            <div className="mfx-def"><b>eFG% · TOV% · ORB% · FTR</b> — The Four Factors: shooting, ball security, offensive rebounding, and free-throw rate.</div>
+            <div className="mfx-def">Superscripts on AdjO / AdjD are national ranks among all 365 teams. Click any row for the full team profile.</div>
+          </div>
+          <div className="mfx-heatkey">
+            Color reflects national percentile, not position in this list:
+            <span className="bar">
+              <span style={{ background:'rgba(100,116,139,0.14)' }}></span>
+              <span style={{ background:'rgba(100,116,139,0.05)' }}></span>
+              <span style={{ background:'rgba(64,144,128,0.16)' }}></span>
+              <span style={{ background:'rgba(64,144,128,0.34)' }}></span>
+              <span style={{ background:'rgba(64,144,128,0.52)' }}></span>
+            </span>
+            below average → elite
+          </div>
+        </div>
+      </div>
+
+      <footer className="mfx-foot">
+        <div className="mfx-foot__in">
+          <div className="mfx-foot__brand">
+            <img src="../../assets/macfax-logo.png" alt="" /><span>macfax</span>
+          </div>
+          <div className="mfx-foot__links"><a>Model Accuracy</a><a>Methodology</a><a>Glossary</a><a>About</a></div>
+        </div>
+      </footer>
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
