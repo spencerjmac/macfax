@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import type { EfficiencyLandscapeData, Conference } from '@/types';
@@ -33,21 +33,7 @@ export default function EfficiencyLandscapePage() {
     return () => clearTimeout(timer);
   }, [topN]);
   
-  // Load data when filters change
-  useEffect(() => {
-    loadData();
-  }, [season, conferenceFilter, debouncedTopN]);
-  
-  async function loadConferences() {
-    try {
-      const confs = await api.getConferences();
-      setConferences(confs);
-    } catch (err) {
-      console.error('Failed to load conferences:', err);
-    }
-  }
-  
-  async function loadData() {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       const result = await api.getLandscape({
@@ -62,6 +48,19 @@ export default function EfficiencyLandscapePage() {
       console.error('Landscape error:', err);
     } finally {
       setLoading(false);
+    }
+  }, [season, conferenceFilter, debouncedTopN]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  async function loadConferences() {
+    try {
+      const confs = await api.getConferences();
+      setConferences(confs);
+    } catch (err) {
+      console.error('Failed to load conferences:', err);
     }
   }
   
@@ -208,7 +207,7 @@ function EfficiencyLandscapeChart({ data, hoveredTeam, onTeamHover, onTeamClick 
   const { teams, max_net, defaults } = data;
   
   // Chart dimensions
-  const width = 1000;
+  const width = 1000; // coordinate space — SVG scales to container via viewBox
   const height = 600;
   const margin = { top: 60, right: 100, bottom: 80, left: 80 };
   const plotWidth = width - margin.left - margin.right;
@@ -321,7 +320,7 @@ function EfficiencyLandscapeChart({ data, hoveredTeam, onTeamHover, onTeamClick 
   
   return (
     <div className="relative">
-      <svg width={width} height={height} className="mx-auto">
+      <svg width="100%" viewBox={`0 0 ${width} ${height}`} className="block" style={{ maxWidth: width }}>
         {/* Background */}
         <rect 
           x={margin.left} 

@@ -20,7 +20,7 @@ function mapApiRowToTeamSeason(team: Record<string, unknown>): TeamSeason {
     conference: (team.conference as string) || 'Ind',
     logoUrl: (team.team_logo as string) || '/logos/default.png',
     season: (team.season_display as string) || '',
-    lastUpdated: new Date().toISOString().slice(0, 10),
+    lastUpdated: (team.updated_at as string) || new Date().toISOString().slice(0, 10),
     games,
     record,
     rank: (team.rank as number) ?? 0,
@@ -106,12 +106,19 @@ async function fetchRankingsFromApi(season?: number): Promise<TeamsData> {
   const results = json.results ?? [];
   const teams = results.map(r => mapApiRowToTeamSeason(r));
 
-  // Derive season display from the first result, or fall back to a computed value
+  // Use the most recent updated_at from any result row; fall back to now only if absent
+  const apiTimestamps = results
+    .map(r => r.updated_at as string | undefined)
+    .filter(Boolean) as string[];
+  const latestTimestamp = apiTimestamps.length
+    ? apiTimestamps.reduce((a, b) => (a > b ? a : b))
+    : new Date().toISOString();
+
   const seasonDisplay = teams[0]?.season || (season ? `${season - 1}-${String(season).slice(2)}` : 'N/A');
 
   return {
     metadata: {
-      lastUpdated: new Date().toISOString(),
+      lastUpdated: latestTimestamp,
       season: seasonDisplay,
       teamCount: teams.length,
       sources: { kenpom: 0, torvik: 0, cbbAnalytics: 0 },

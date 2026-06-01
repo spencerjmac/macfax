@@ -542,18 +542,6 @@ export default function NBAPlayerRankingsTable({ data, seasonDisplay, seasonType
         </div>
       )}
 
-      {/* ── Impact tab context note ──────────────────────────────────────── */}
-      {activeTab === 'impact' && (
-        <div className="flex items-start gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
-          <span className="shrink-0 mt-0.5">ℹ</span>
-          <span>
-            <strong>BPR</strong> (Bayesian Performance Rating) is a context-adjusted lineup impact metric — career-stabilized box stats regularized toward 3-year lineup RAPM. Measures impact on current team, not pure skill in isolation.{' '}
-            <strong>MPIR</strong> (Macfax Player Impact Rating) is NBA.com{"'"}s Bayesian-stabilised on-court efficiency recentred on league average.{' '}
-            <strong>Box BPR</strong> is the intermediate box-score prior (toggle on for transparency).{' '}
-            <strong>Adj On-Court</strong> are Bayesian-stabilised on-court efficiency ratings (toggle Raw On-Court for unadjusted).
-          </span>
-        </div>
-      )}
 
       {/* ── Table ───────────────────────────────────────────────────────── */}
       <div className="overflow-x-auto border border-ui-border rounded-lg">
