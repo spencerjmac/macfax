@@ -173,35 +173,37 @@ export default function NBATeamPageTabs({ slug, seasonYear, ratings, games }: NB
 
   return (
     <div>
-      {/* Tab bar */}
-      <div className="border-b border-ui-border mb-6">
-        <div className="flex gap-0 overflow-x-auto">
-          {NBA_TEAM_TABS.map((tab) => {
-            const isLive = tab.phase <= 4;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => isLive && setActiveTab(tab.id)}
-                className={clsx(
-                  'px-5 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap',
-                  activeTab === tab.id && isLive
-                    ? 'border-brand text-brand'
-                    : isLive
-                    ? 'border-transparent text-text-muted hover:text-text-primary'
-                    : 'border-transparent text-text-muted opacity-40 cursor-default'
-                )}
-              >
-                {tab.label}
-                {!isLive && (
-                  <span className="ml-1.5 text-[10px] bg-gray-100 text-gray-400 px-1 rounded">
-                    Ph{tab.phase}
-                  </span>
-                )}
-              </button>
-            );
-          })}
+      {/* Tab nav — dark ink band, 4px teal separator */}
+      <div className="bg-ink border-b-4 border-brand">
+        <div className="max-w-[1240px] mx-auto px-8">
+          <div className="flex gap-1 overflow-x-auto">
+            {NBA_TEAM_TABS.map((tab) => {
+              const isLive = tab.phase <= 4;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => isLive && setActiveTab(tab.id)}
+                  className={clsx(
+                    'px-[18px] py-[14px] font-display font-semibold text-[14px] tracking-[0.05em] uppercase border-b-[3px] transition-colors whitespace-nowrap',
+                    activeTab === tab.id && isLive
+                      ? 'text-white border-brand'
+                      : isLive
+                      ? 'text-ink-fg2 border-transparent hover:text-white'
+                      : 'text-ink-fg2 border-transparent opacity-40 cursor-default',
+                  )}
+                >
+                  {tab.label}
+                  {!isLive && (
+                    <span className="ml-1.5 font-mono text-[10px] opacity-60">Ph{tab.phase}</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
+
+      <div className="max-w-[1240px] mx-auto px-8 py-8">
 
       {/* ── Overview ──────────────────────────────────────────────────────── */}
       {activeTab === 'overview' && (
@@ -622,6 +624,7 @@ export default function NBATeamPageTabs({ slug, seasonYear, ratings, games }: NB
           </p>
         </div>
       )}
+      </div>
     </div>
   );
 }

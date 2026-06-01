@@ -41,8 +41,8 @@ export default async function TeamPage({ params }: TeamPageProps) {
   const { team, ranks, checklist, cinderella } = teamData;
   
   return (
-    <div className="container mx-auto px-4 py-8">
-      <TeamHeader team={team} ranks={ranks} />
+    <div>
+      <TeamHeader team={team} />
       <TeamPageTabs team={team} ranks={ranks} checklist={checklist} cinderella={cinderella} />
     </div>
   );

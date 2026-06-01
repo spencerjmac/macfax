@@ -66,36 +66,37 @@ export default function TeamPageTabs({ team, ranks, checklist, cinderella }: Tea
   
   return (
     <div>
-      {/* Tab Navigation */}
-      <div className="border-b border-ui-border mb-6">
-        <div className="flex space-x-1">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={clsx(
-                'px-6 py-3 font-medium transition-colors border-b-2',
-                activeTab === tab.id
-                  ? 'border-brand text-brand'
-                  : 'border-transparent text-text-muted hover:text-text-primary'
-              )}
+      {/* Tab nav — dark ink band extending from header, 4px teal separator */}
+      <div className="bg-ink border-b-4 border-brand">
+        <div className="max-w-[1240px] mx-auto px-8">
+          <div className="flex gap-1">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={clsx(
+                  'px-[18px] py-[14px] font-display font-semibold text-[14px] tracking-[0.05em] uppercase border-b-[3px] transition-colors',
+                  activeTab === tab.id
+                    ? 'text-white border-brand'
+                    : 'text-ink-fg2 border-transparent hover:text-white',
+                )}
+              >
+                {tab.label}
+              </button>
+            ))}
+            <Link
+              href={`/ncaa/outlook/${team.teamId}`}
+              className="px-[18px] py-[14px] font-display font-semibold text-[14px] tracking-[0.05em] uppercase border-b-[3px] border-transparent text-ink-fg2 hover:text-white transition-colors inline-flex items-center gap-1"
             >
-              {tab.label}
-            </button>
-          ))}
-          {/* Roster Outlook — navigates to a separate page */}
-          <Link
-            href={`/ncaa/outlook/${team.teamId}`}
-            className="px-6 py-3 font-medium transition-colors border-b-2 border-transparent text-text-muted hover:text-text-primary flex items-center gap-1"
-          >
-            Outlook
-            <span className="text-xs text-brand font-semibold ml-0.5">↗</span>
-          </Link>
+              Outlook
+              <span className="text-brand text-xs font-semibold">↗</span>
+            </Link>
+          </div>
         </div>
       </div>
-      
+
       {/* Tab Content */}
-      <div>
+      <div className="max-w-[1240px] mx-auto px-8 py-8">
         {activeTab === 'overview' && <OverviewTab team={team} ranks={ranks} checklist={checklist} cinderella={cinderella} />}
         {activeTab === 'four-factors' && <FourFactorsTab team={team} ranks={ranks} />}
         {activeTab === 'offense-defense' && <OffenseDefenseTab team={team} ranks={ranks} />}
