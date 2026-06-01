@@ -161,8 +161,18 @@ function MatchupPageInner() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-4xl font-bold mb-8">NBA Matchup Predictor</h1>
+    <>
+    {/* Page header */}
+    <div className="bg-surface border-b border-ui-border">
+      <div className="max-w-[1240px] mx-auto px-8 py-10 pb-[34px]">
+        <p className="kicker-sport text-brand mb-[9px]">NBA</p>
+        <h1 className="font-display font-bold text-[clamp(32px,4vw,48px)] leading-none uppercase tracking-[0.005em] m-0 mb-[14px]">
+          Matchup Tool
+        </h1>
+        <p className="text-[15px] text-muted m-0">Head-to-head forecast, four-factor edges, volatility, and recent form.</p>
+      </div>
+    </div>
+    <div className="max-w-[1240px] mx-auto px-8 py-8">
 
       {/* Input Form */}
       <div className="bg-white rounded-lg shadow-md p-6 mb-8">
@@ -276,10 +286,10 @@ function MatchupPageInner() {
           )}
           <VolatilitySection volatility={result.volatility} />
           <RecentFormSection teamA={result.teamA} teamB={result.teamB} formA={result.recent_form_a} formB={result.recent_form_b} colorA={colorA} colorB={colorB} />
-          <MetadataSection metadata={result.metadata} season={result.season} />
         </div>
       )}
     </div>
+    </>
   );
 }
 
@@ -299,7 +309,7 @@ function ForecastSection({ result, colorA, colorB }: { result: NBAMatchupResult;
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
-      <h2 className="text-2xl font-bold mb-6 text-center">
+      <h2 className="font-display font-bold text-[24px] uppercase tracking-[0.01em] mb-6 text-center">
         {result.mode === 'series' ? 'Game Forecast (Game 1)' : 'Game Forecast'}
       </h2>
 
@@ -436,7 +446,7 @@ function FourFactorSection({ result, colorA, colorB }: { result: NBAMatchupResul
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
-      <h2 className="text-2xl font-bold mb-2">Efficiency Profile</h2>
+      <h2 className="font-display font-bold text-[24px] uppercase tracking-[0.01em] mb-2">Efficiency Profile</h2>
 
       <div className="flex gap-4 mb-5 text-xs font-medium">
         <span className="flex items-center gap-1.5">
@@ -502,7 +512,7 @@ function TopDriversSection({ drivers, teamA, teamB, colorA, colorB }: {
 }) {
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
-      <h2 className="text-2xl font-bold mb-2">Key Matchup Drivers</h2>
+      <h2 className="font-display font-bold text-[24px] uppercase tracking-[0.01em] mb-2">Key Matchup Drivers</h2>
       <p className="text-sm text-gray-600 mb-6">Top factors contributing to the projected margin</p>
       <div className="space-y-4">
         {drivers.map((driver, i) => {
@@ -582,7 +592,7 @@ function SeriesSection({ series, teamA, teamB, colorA, colorB }: {
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
-      <h2 className="text-2xl font-bold mb-2">7-Game Series Prediction</h2>
+      <h2 className="font-display font-bold text-[24px] uppercase tracking-[0.01em] mb-2">7-Game Series Prediction</h2>
       <p className="text-sm text-gray-600 mb-6">
         2-2-1-1-1 format · Home court: <span className="font-semibold">{aWins.name}</span>
       </p>
@@ -669,7 +679,7 @@ function VolatilitySection({ volatility }: { volatility: NBAMatchupResult['volat
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
-      <h2 className="text-2xl font-bold mb-4">Game Volatility</h2>
+      <h2 className="font-display font-bold text-[24px] uppercase tracking-[0.01em] mb-4">Game Volatility</h2>
       <p className="text-sm text-gray-600 mb-6">Unpredictability based on pace, 3-point volume, and recent variance</p>
 
       <div className="flex items-center justify-center mb-6">
@@ -787,15 +797,3 @@ function RecentFormSection({ teamA, teamB, formA, formB, colorA, colorB }: {
 
 // ==================== Metadata Footer ====================
 
-function MetadataSection({ metadata, season }: { metadata: NBAMatchupResult['metadata']; season: string }) {
-  return (
-    <div className="bg-gray-50 rounded-lg p-4 text-xs text-gray-600">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div><p className="font-semibold">Season</p><p>{season}</p></div>
-        <div><p className="font-semibold">HCA</p><p>{metadata.hca_points.toFixed(2)} pts</p></div>
-        <div><p className="font-semibold">Prediction σ</p><p>{metadata.prediction_sigma.toFixed(2)} pts</p></div>
-        <div><p className="font-semibold">Model R²</p><p>{metadata.coefficients.r_squared?.toFixed(3) ?? 'N/A'}</p></div>
-      </div>
-    </div>
-  );
-}

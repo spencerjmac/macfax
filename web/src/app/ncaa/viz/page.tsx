@@ -124,37 +124,67 @@ const THUMB_MAP: Record<string, () => React.ReactElement> = {
 // ── Feature hero art (larger, with dark scatter) ──────────────────────────────
 
 function FeatureArt() {
-  const pts = [40, 62, 70, 80, 86, 96, 100, 108, 114, 118, 124, 130, 138, 144, 152];
-  const ems = [34, 28, 22, 20, 18, 16, 14, 12, 10, 8, 6, 4, 2, 0, -2];
+  // Pre-computed [cx, cy] for scatter dots.
+  // Formula: x = 46 + ((tempo-58)/18)*374, y = 20 + ((36-em)/48)*260
+  // Tempo range 60-74, AdjEM range -10 to 34 — spread across full chart.
+  const dots: [number, number][] = [
+    [108, 53],  // t61 em30
+    [149, 64],  // t63 em27
+    [191, 80],  // t65 em23
+    [233, 53],  // t67 em30
+    [253, 96],  // t68 em20
+    [274, 117], // t69 em17
+    [295, 64],  // t70 em27
+    [295, 139], // t70 em13
+    [316, 107], // t71 em19
+    [316, 171], // t71 em8
+    [337, 117], // t72 em17
+    [337, 193], // t72 em3
+    [358, 150], // t73 em11
+    [358, 215], // t73 em-1
+    [378, 182], // t74 em5
+    [378, 236], // t74 em-4
+    [129, 107], // t62 em19
+    [129, 193], // t62 em3
+    [171, 150], // t64 em11
+    [212, 193], // t66 em3
+    [212, 236], // t66 em-4
+    [274, 215], // t69 em-1
+    [87,  193], // t60 em3
+    [87,  236], // t60 em-4
+  ];
+
+  const trap = '150,31 337,31 306,172 181,172';
+  const [hx, hy] = [233, 53]; // highlighted team — inside trap, top area
+
+  // True if a dot falls inside the trapezoid polygon
+  const inTrap = (cx: number, cy: number) => {
+    if (cy < 31 || cy > 172) return false;
+    const t = (cy - 31) / (172 - 31);
+    return cx >= 150 + t * 31 && cx <= 337 - t * 31;
+  };
+
   return (
     <svg viewBox="0 0 440 300" className="w-full h-auto" aria-hidden="true">
-      {/* grid */}
       {[0.25, 0.5, 0.75].map(f => (
         <line key={'h'+f} x1={46} x2={420} y1={20 + f * 260} y2={20 + f * 260} stroke="#1f2b43" strokeWidth="1" />
       ))}
       {[0.25, 0.5, 0.75].map(f => (
         <line key={'v'+f} y1={20} y2={280} x1={46 + f * 374} x2={46 + f * 374} stroke="#1f2b43" strokeWidth="1" />
       ))}
-      {/* axes */}
       <line x1={46} x2={420} y1={280} y2={280} stroke="#3a4760" strokeWidth="1.25" />
-      <line x1={46} x2={46} y1={20} y2={280} stroke="#3a4760" strokeWidth="1.25" />
-      {/* trapezoid overlay — wide-side-up */}
-      <polygon
-        points="196,20 284,20 258,280 222,280"
-        fill="rgba(64,144,128,0.10)" stroke="var(--brand)" strokeWidth="1.3" strokeDasharray="5 5"
-      />
-      {/* background team dots */}
-      {pts.map((t, i) => {
-        const x = 46 + ((t - 58) / 18) * 374;
-        const y = 20 + ((36 - ems[i]) / 48) * 260;
-        return <circle key={i} cx={x} cy={y} r="5" fill="#5b6a86" opacity="0.45" />;
-      })}
-      {/* highlighted team (Duke-like: high EM, moderate tempo) */}
-      <circle cx={214} cy={36} r="14" fill="var(--brand)" opacity="0.20" />
-      <circle cx={214} cy={36} r="7.5" fill="var(--brand)" stroke="#fff" strokeWidth="2" />
-      <text x={214} y={24} textAnchor="middle" style={{ font: '700 12px var(--font-display)', fill: 'var(--brand-2)', textTransform: 'uppercase' }}>#1</text>
-      {/* axis labels */}
-      <text x={233} y={295} textAnchor="middle" style={{ font: '500 10px var(--font-sans)', fill: '#8d9bb5', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Adjusted Tempo</text>
+      <line x1={46} x2={46}  y1={20}  y2={280} stroke="#3a4760" strokeWidth="1.25" />
+      <polygon points={trap} fill="rgba(64,144,128,0.10)" stroke="var(--brand)" strokeWidth="1.3" strokeDasharray="5 5" />
+      {/* dots — teal if inside trapezoid, grey otherwise */}
+      {dots.map(([cx, cy], i) => (
+        inTrap(cx, cy)
+          ? <circle key={i} cx={cx} cy={cy} r="5" fill="var(--brand)" opacity="0.85" />
+          : <circle key={i} cx={cx} cy={cy} r="4.5" fill="#5b6a86" opacity="0.5" />
+      ))}
+      {/* single highlighted team — larger glow ring, no label */}
+      <circle cx={hx} cy={hy} r="13" fill="var(--brand)" opacity="0.22" />
+      <circle cx={hx} cy={hy} r="7" fill="var(--brand)" stroke="#fff" strokeWidth="2" />
+      <text x={233} y={296} textAnchor="middle" style={{ font: '500 10px var(--font-sans)', fill: '#8d9bb5', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Adjusted Tempo</text>
       <text x={-150} y={15} textAnchor="middle" transform="rotate(-90)" style={{ font: '500 10px var(--font-sans)', fill: '#8d9bb5', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Adj. Efficiency Margin</text>
     </svg>
   );
