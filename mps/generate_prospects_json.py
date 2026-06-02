@@ -157,6 +157,82 @@ def _safe(val, cast=None):
     return val
 
 
+def _build_strengths_weaknesses(row: pd.Series) -> tuple[list[str], list[str]]:
+    """Derive narrative strength/weakness bullets from scored prospect row."""
+    strengths: list[str] = []
+    weaknesses: list[str] = []
+
+    bpm   = _safe(row.get("bpm_college"), float)
+    dbpm  = _safe(row.get("dbpm"), float)
+    ts    = _safe(row.get("ts_pct"), float)
+    ppg   = _safe(row.get("pts_pg"), float)
+    rpg   = _safe(row.get("trb_pg"), float)
+    apg   = _safe(row.get("ast_pg"), float)
+    age   = _safe(row.get("draft_age"), float)
+    avail = _safe(row.get("avail_modifier"), float) or 0.0
+    hf    = _safe(row.get("height_floor_pen"), float) or 0.0
+    scout = _safe(row.get("scout_adj"), float) or 0.0
+
+    # ── Strengths ──────────────────────────────────────────────────────────
+    if bpm is not None:
+        if bpm >= 14:  strengths.append("Elite overall producer (BPM)")
+        elif bpm >= 10: strengths.append("High box-score value (BPM)")
+
+    if dbpm is not None:
+        if dbpm >= 5:   strengths.append("Elite college defender")
+        elif dbpm >= 2: strengths.append("Positive defensive impact")
+
+    if ts is not None:
+        if ts >= 0.64:   strengths.append("Elite scoring efficiency (TS%)")
+        elif ts >= 0.58: strengths.append("Above-average scorer efficiency")
+
+    if ppg is not None:
+        if ppg >= 20:    strengths.append("High-volume scorer")
+        elif ppg >= 16:  strengths.append("Consistent scoring threat")
+
+    if rpg is not None:
+        if rpg >= 9:  strengths.append("Elite rebounder")
+        elif rpg >= 7: strengths.append("Strong rebounder")
+
+    if apg is not None:
+        if apg >= 6:  strengths.append("Elite playmaker")
+        elif apg >= 4: strengths.append("Capable playmaker")
+
+    if age is not None:
+        if age <= 19.5:  strengths.append("Top-tier youth upside")
+        elif age <= 20.5: strengths.append("Strong projection runway")
+
+    if scout >= 5.0:     strengths.append("Consensus top-5 pick")
+    elif scout >= 3.0:   strengths.append("Lottery consensus prospect")
+
+    # ── Weaknesses ─────────────────────────────────────────────────────────
+    if dbpm is not None:
+        if dbpm < 0:    weaknesses.append("Defensive liability at college level")
+        elif dbpm < 1.5: weaknesses.append("Below-average college defender")
+
+    if ts is not None:
+        if ts < 0.53:   weaknesses.append("Below-average scoring efficiency")
+        elif ts < 0.56: weaknesses.append("Inconsistent scoring efficiency")
+
+    if bpm is not None and bpm < 7:
+        weaknesses.append("Limited box-score production")
+
+    if ppg is not None and ppg < 10:
+        weaknesses.append("Low college scoring output")
+
+    if age is not None:
+        if age >= 23:   weaknesses.append("Age limits projection window")
+        elif age >= 22: weaknesses.append("Age-based projection concern")
+
+    if avail < -2.0:
+        weaknesses.append("Injury/availability history")
+
+    if hf < -2.0:
+        weaknesses.append("Height/length below NBA threshold")
+
+    return strengths, weaknesses
+
+
 def main() -> None:
     df = pd.read_csv(CSV_PATH)
 
@@ -179,6 +255,7 @@ def main() -> None:
         headshot = espn_headshots.get(csv_name)
         if headshot:
             matched_photos += 1
+        strengths, weaknesses = _build_strengths_weaknesses(row)
         prospects.append({
             "rank":          int(row["rank"]),
             "name":          str(row["player_name"]),
@@ -188,8 +265,18 @@ def main() -> None:
             "age":           round(float(row["draft_age"]), 2),
             "bpm":           _safe(row.get("bpm_college"), float),
             "dbpm":          _safe(row.get("dbpm"), float),
+            "obpm":          _safe(row.get("obpm"), float),
             "per":           _safe(row.get("per"), float),
             "ts":            _safe(row.get("ts_pct"), float),
+            "fgPct":         _safe(row.get("fg_pct"), float),
+            "ws40":          _safe(row.get("ws_40"), float),
+            "ppg":           _safe(row.get("pts_pg"), float),
+            "rpg":           _safe(row.get("trb_pg"), float),
+            "apg":           _safe(row.get("ast_pg"), float),
+            "stlPg":         _safe(row.get("stl_pg"), float),
+            "blkPg":         _safe(row.get("blk_pg"), float),
+            "orbPct":        _safe(row.get("orb_pct"), float),
+            "astPct":        _safe(row.get("ast_pct"), float),
             "mpsComposite":  round(float(row["mps_composite"]), 1),
             "srsAdj":        round(float(row.get("srs_adj", 0) or 0), 1),
             "ageAdj":        round(float(row.get("age_penalty", 0) or 0), 1),
@@ -203,6 +290,16 @@ def main() -> None:
             "heightFloor":   round(float(row.get("height_floor_pen", 0) or 0), 1),
             "combinePen":    round(float(row.get("combine_penalty", 0) or 0), 1),
             "headshot":      headshot,
+            "strengths":     strengths,
+            "weaknesses":    weaknesses,
+            "comp1":         _safe(row.get("comp1_name"), str),
+            "comp1Year":     _safe(row.get("comp1_year"), int),
+            "comp1Pick":     _safe(row.get("comp1_pick"), int),
+            "comp1Sim":      _safe(row.get("comp1_sim"), int),
+            "comp2":         _safe(row.get("comp2_name"), str),
+            "comp2Year":     _safe(row.get("comp2_year"), int),
+            "comp2Pick":     _safe(row.get("comp2_pick"), int),
+            "comp2Sim":      _safe(row.get("comp2_sim"), int),
         })
 
     output = {

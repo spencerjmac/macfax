@@ -9,39 +9,33 @@ import { ProspectCard } from './ProspectCard';
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const POSITIONS = ['ALL', 'PG', 'SG', 'SF', 'PF', 'C'] as const;
-const GRADES    = ['ALL', 'S', 'A', 'B', 'C', 'D']    as const;
+const GRADES    = ['ALL', 'S', 'A', 'D']                as const;
 
 const GRADE_COLORS: Record<string, string> = {
-  S: '#B45309', A: '#16A34A', B: '#2563EB', C: '#EA580C', D: '#DC2626',
+  S: '#B45309', A: '#16A34A', D: '#64748B',
 };
 
 const GRADE_BADGE: Record<string, string> = {
   S: 'bg-yellow-100 text-yellow-800',
   A: 'bg-emerald-100 text-emerald-800',
-  B: 'bg-blue-100 text-blue-800',
-  C: 'bg-orange-100 text-orange-800',
-  D: 'bg-red-100 text-red-800',
+  D: 'bg-slate-100 text-slate-600',
 };
 
 const GRADE_ACTIVE: Record<string, string> = {
   ALL: 'bg-brand/10 text-brand border-brand/30',
   S:   'bg-yellow-50 text-yellow-700 border-yellow-300',
   A:   'bg-emerald-50 text-emerald-700 border-emerald-300',
-  B:   'bg-blue-50 text-blue-700 border-blue-300',
-  C:   'bg-orange-50 text-orange-700 border-orange-300',
-  D:   'bg-red-50 text-red-700 border-red-300',
+  D:   'bg-slate-50 text-slate-600 border-slate-300',
 };
 
 const GRADE_TIER: Record<string, string> = {
-  S: 'FRANCHISE', A: 'LOTTERY', B: 'LATE 1ST', C: '2ND ROUND', D: 'FRINGE',
+  S: 'S TIER', A: 'A TIER', D: 'THE REST',
 };
 
 const TIER_LABELS: Record<string, string> = {
-  S: 'S TIER · FRANCHISE PICKS',
-  A: 'A TIER · LOTTERY QUALITY',
-  B: 'B TIER · LATE FIRST / EARLY SECOND',
-  C: 'C TIER · SECOND ROUND',
-  D: 'D TIER · FRINGE',
+  S: 'S TIER',
+  A: 'A TIER',
+  D: 'THE REST',
 };
 
 const POS_BADGE: Record<string, string> = {
@@ -54,13 +48,13 @@ const POS_BADGE: Record<string, string> = {
 
 // ─── Stat coloring ────────────────────────────────────────────────────────────
 
-type StatKey = 'bpm' | 'dbpm' | 'per' | 'ts';
+type StatKey = 'bpm' | 'ppg' | 'rpg' | 'apg';
 
-const STAT_THRESHOLDS: Record<StatKey, [number, string, string][]> = {
-  bpm:  [[14, 'text-emerald-600 font-semibold', 'Elite'], [10, 'text-emerald-500', 'Good'], [7, 'text-text-primary', 'Avg'], [-99, 'text-red-500', 'Weak']],
-  dbpm: [[5,  'text-emerald-600 font-semibold', 'Elite'], [2,  'text-emerald-500', 'Good'], [0, 'text-text-primary', 'Avg'], [-99, 'text-red-500', 'Weak']],
-  per:  [[28, 'text-emerald-600 font-semibold', 'Elite'], [22, 'text-emerald-500', 'Good'], [17,'text-text-primary', 'Avg'], [-99, 'text-red-500', 'Weak']],
-  ts:   [[.64,'text-emerald-600 font-semibold', 'Elite'], [.58,'text-emerald-500', 'Good'], [.53,'text-text-primary','Avg'], [-99, 'text-red-500', 'Weak']],
+const STAT_THRESHOLDS: Record<StatKey, [number, string][]> = {
+  bpm: [[14, 'text-emerald-600 font-semibold'], [10, 'text-emerald-500'], [7, 'text-text-primary'], [-99, 'text-red-500']],
+  ppg: [[20, 'text-emerald-600 font-semibold'], [16, 'text-emerald-500'], [12, 'text-text-primary'], [-99, 'text-red-500']],
+  rpg: [[9,  'text-emerald-600 font-semibold'], [7,  'text-emerald-500'], [5,  'text-text-primary'], [-99, 'text-red-500']],
+  apg: [[6,  'text-emerald-600 font-semibold'], [4,  'text-emerald-500'], [2.5,'text-text-primary'], [-99, 'text-red-500']],
 };
 
 function statClass(key: StatKey, val: number | null): string {
@@ -73,17 +67,17 @@ function statClass(key: StatKey, val: number | null): string {
 
 function formatStat(key: StatKey, val: number | null): string {
   if (val == null) return '—';
-  if (key === 'ts') return `${(val * 100).toFixed(1)}%`;
+  if (key === 'bpm') return val >= 0 ? `+${val.toFixed(1)}` : val.toFixed(1);
   return val.toFixed(1);
 }
 
 // ─── Sorting ──────────────────────────────────────────────────────────────────
 
-type SortKey = 'rank' | 'mps' | 'bpm' | 'dbpm' | 'per' | 'ts';
+type SortKey = 'rank' | 'mps' | 'bpm' | 'ppg' | 'rpg' | 'apg';
 
 function getSortVal(p: Prospect, key: SortKey): number {
   const map: Record<SortKey, number | null> = {
-    rank: p.rank, mps: p.mps, bpm: p.bpm, dbpm: p.dbpm, per: p.per, ts: p.ts,
+    rank: p.rank, mps: p.mps, bpm: p.bpm, ppg: p.ppg, rpg: p.rpg, apg: p.apg,
   };
   return map[key] ?? -Infinity;
 }
@@ -204,16 +198,6 @@ export function ProspectsBigBoard({ data }: Props) {
         <div className="text-xs font-semibold tracking-widest text-brand uppercase mb-1">macfax</div>
         <h1 className="text-3xl font-bold text-text-primary">2026 NBA Draft Big Board</h1>
         <p className="mt-1 text-text-muted">MacFax Prospect Score · MPS Model · 11-fold validated</p>
-        <div className="flex flex-wrap gap-2 mt-3">
-          {[`ρ = 0.395`, '11-FOLD VALIDATED', `${data.totalProspects} PROSPECTS`].map(b => (
-            <span
-              key={b}
-              className="text-xs font-mono font-semibold px-3 py-1 rounded-full bg-brand/10 text-brand border border-brand/20"
-            >
-              {b}
-            </span>
-          ))}
-        </div>
       </div>
 
       {/* ── CONTROLS ── */}
@@ -250,7 +234,7 @@ export function ProspectsBigBoard({ data }: Props) {
                   : 'bg-white text-text-muted border-ui-border hover:border-ui-border',
               )}
             >
-              {g}
+              {g === 'D' ? 'THE REST' : g}
             </button>
           ))}
         </div>
@@ -290,10 +274,10 @@ export function ProspectsBigBoard({ data }: Props) {
                 <ColHeader label="RK"     col="rank" align="left"   {...colProps} />
                 <ColHeader label="PLAYER" col={null} align="left"   {...colProps} />
                 <ColHeader label="MPS"    col="mps"  align="center" tooltip="MacFax Prospect Score (0–100)" {...colProps} />
-                <ColHeader label="BPM"    col="bpm"  align="right"  tooltip="Box Plus/Minus (college)" {...colProps} />
-                <ColHeader label="DBPM"   col="dbpm" align="right"  tooltip="Defensive Box Plus/Minus" {...colProps} />
-                <ColHeader label="PER"    col="per"  align="right"  tooltip="Player Efficiency Rating" {...colProps} />
-                <ColHeader label="TS%"    col="ts"   align="right"  tooltip="True Shooting %" {...colProps} />
+                <ColHeader label="BPM"    col="bpm"  align="right"  tooltip="Box Plus/Minus — #1 NBA outcome predictor (r=0.33)" {...colProps} />
+                <ColHeader label="PPG"    col="ppg"  align="right"  tooltip="Points per game" {...colProps} />
+                <ColHeader label="REB"    col="rpg"  align="right"  tooltip="Rebounds per game" {...colProps} />
+                <ColHeader label="AST"    col="apg"  align="right"  tooltip="Assists per game" {...colProps} />
               </tr>
             </thead>
             <tbody>
@@ -414,19 +398,19 @@ export function ProspectsBigBoard({ data }: Props) {
                       {formatStat('bpm', p.bpm)}
                     </td>
 
-                    {/* DBPM */}
-                    <td className={clsx('px-2 py-2.5 text-sm font-mono text-right w-16', statClass('dbpm', p.dbpm))}>
-                      {formatStat('dbpm', p.dbpm)}
+                    {/* PPG */}
+                    <td className={clsx('px-2 py-2.5 text-sm font-mono text-right w-16', statClass('ppg', p.ppg))}>
+                      {formatStat('ppg', p.ppg)}
                     </td>
 
-                    {/* PER */}
-                    <td className={clsx('px-2 py-2.5 text-sm font-mono text-right w-16', statClass('per', p.per))}>
-                      {formatStat('per', p.per)}
+                    {/* REB */}
+                    <td className={clsx('px-2 py-2.5 text-sm font-mono text-right w-16', statClass('rpg', p.rpg))}>
+                      {formatStat('rpg', p.rpg)}
                     </td>
 
-                    {/* TS% */}
-                    <td className={clsx('px-2 py-2.5 text-sm font-mono text-right w-16', statClass('ts', p.ts))}>
-                      {formatStat('ts', p.ts)}
+                    {/* AST */}
+                    <td className={clsx('px-2 py-2.5 text-sm font-mono text-right w-16', statClass('apg', p.apg))}>
+                      {formatStat('apg', p.apg)}
                     </td>
                   </tr>
                 );
