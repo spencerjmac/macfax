@@ -247,7 +247,7 @@ def run_update_all(
     try:
         return _run_command_job(
             job_id,
-            "update_all",
+            "update_ncaa_all",
             {
                 "season": season_year,
                 "skip_ingest": skip_ingest,

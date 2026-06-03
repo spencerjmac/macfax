@@ -6,8 +6,7 @@ sub-commands in dependency order.
 Sub-commands (run independently or via this command):
   update_ncaa_teams   — steps 1-14:  ingest game logs + all team ratings/metrics
   update_ncaa_players — steps 1-11:  player box scores, PBP, BPR, projections, fit
-  update_nba_teams    — steps 1-2:   NBA game ingest + opponent-adjusted ratings
-  update_nba_players  — steps 1-3:   NBA player box scores, stats, advanced metrics
+  update_nba_all      — steps 1-10:  NBA full data pipeline (games, stats, BPR, playoffs)
 
 Usage
 ─────
@@ -177,27 +176,16 @@ class Command(BasePipelineCommand):
         # ── NBA pipelines ─────────────────────────────────────────────────────
         if skip_nba:
             self.stdout.write("[SKIP] NBA pipelines (--skip-nba)\n")
-            self._skip_step("NBA team pipeline",   steps, "Skipped (--skip-nba)")
-            self._skip_step("NBA player pipeline", steps, "Skipped (--skip-nba)")
+            self._skip_step("NBA full pipeline",   steps, "Skipped (--skip-nba)")
         else:
-            self.stdout.write("─── NBA Team Data ────────────────────────────────────")
+            self.stdout.write("─── NBA Full Data Pipeline ───────────────────────────")
             self._run_step(
-                "NBA team pipeline",
-                "update_nba_teams",
-                {"season": season_year, "skip_ingest": skip_ingest},
-                steps,
-                fatal=False,
-                label="[C]",
-            )
-
-            self.stdout.write("─── NBA Player Data ──────────────────────────────────")
-            self._run_step(
-                "NBA player pipeline",
-                "update_nba_players",
+                "NBA full pipeline",
+                "update_nba_all",
                 {"season": season_year, "skip_ingest": skip_ingest, "workers": nba_workers},
                 steps,
                 fatal=False,
-                label="[D]",
+                label="[C]",
             )
 
         end_time = timezone.now()

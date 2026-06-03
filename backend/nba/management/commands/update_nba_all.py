@@ -39,7 +39,7 @@ from django.core.management.base import BaseCommand
 from django.core.management import call_command
 from django.utils import timezone
 
-TOTAL_STEPS = 8
+TOTAL_STEPS = 10
 
 
 class Command(BaseCommand):
@@ -160,12 +160,26 @@ class Command(BaseCommand):
             label=f"[6/{TOTAL_STEPS}]",
         )
         self._run_step(
+            "NBA compute final BPR",
+            "nba_compute_final_bpr",
+            {"season": season_year},
+            steps,
+            label=f"[7/{TOTAL_STEPS}]",
+        )
+        self._run_step(
+            "NBA compute career BPR (peak + career averages)",
+            "nba_compute_career_bpr",
+            {},
+            steps,
+            label=f"[8/{TOTAL_STEPS}]",
+        )
+        self._run_step(
             "NBA compute ratings (Playoffs)",
             "nba_compute_ratings",
             {"season": season_year, "season_type": "playoffs"},
             steps,
             fatal=False,
-            label=f"[7/{TOTAL_STEPS}]",
+            label=f"[9/{TOTAL_STEPS}]",
         )
         self._run_step(
             "NBA compute player stats (Playoffs)",
@@ -173,7 +187,7 @@ class Command(BaseCommand):
             {"season": season_year, "season_type": "playoffs"},
             steps,
             fatal=False,
-            label=f"[8/{TOTAL_STEPS}]",
+            label=f"[10/{TOTAL_STEPS}]",
         )
 
         # ── Optional PBP + RAPM (--with-pbp only) ────────────────────────────
@@ -183,21 +197,21 @@ class Command(BaseCommand):
                 "nba_sync_play_by_play",
                 {"season": season_year, "workers": pbp_workers},
                 steps,
-                label="[PBP-1/4]",
+                label="[PBP-1/5]",
             )
             self._run_step(
                 "NBA compute baseline RAPM",
                 "nba_compute_baseline_rapm",
                 {"season": season_year},
                 steps,
-                label="[PBP-2/4]",
+                label="[PBP-2/5]",
             )
             self._run_step(
                 "NBA compute box BPR (RAPM targets)",
                 "nba_compute_box_bpr",
                 {"season": season_year},
                 steps,
-                label="[PBP-3/4]",
+                label="[PBP-3/5]",
             )
             self._run_step(
                 "NBA compute final BPR (prior-informed RAPM)",
