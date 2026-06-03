@@ -223,6 +223,7 @@ class RankingsSerializer(serializers.Serializer):
     # NCAA Tournament
     tournament_seed = serializers.IntegerField(allow_null=True, required=False)
     tournament_region = serializers.CharField(allow_null=True, required=False)
+    tournament_finish = serializers.CharField(allow_null=True, required=False)
 
     # Legacy fields for compatibility
     aor_100 = serializers.FloatField(source="adj_o")

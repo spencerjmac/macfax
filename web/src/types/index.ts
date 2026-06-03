@@ -96,6 +96,7 @@ export interface TeamSeason {
   // NCAA Tournament
   tournament_seed: number | null;
   tournament_region: string | null;
+  tournament_finish?: string | null;
   
   // Source metadata
   sources: {
@@ -168,6 +169,7 @@ export interface TrapezoidTeam {
   rank: number | null;
   record: string;
   inside_trapezoid: boolean;
+  tournament_finish?: string | null;
 }
 
 export interface TrapezoidData {
@@ -207,6 +209,7 @@ export interface EfficiencyLandscapeTeam {
   logo_url: string | null;
   rank: number | null;
   record: string;
+  tournament_finish?: string | null;
 }
 
 export interface EfficiencyLandscapeData {
@@ -246,6 +249,7 @@ export interface CrystalBallTeam {
   adj_d: number;
   tournament_seed: number | null;
   tournament_region: string | null;
+  tournament_finish?: string | null;
   checklist: {
     passedCount: number;
     totalCount: number;
@@ -302,6 +306,7 @@ export interface CinderellaTeam {
   adj_tempo: number;
   tournament_seed: number | null;
   tournament_region: string | null;
+  tournament_finish?: string | null;
   cinderella: CinderellaScore;
 }
 

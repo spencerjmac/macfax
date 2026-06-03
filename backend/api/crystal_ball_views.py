@@ -338,6 +338,7 @@ class CrystalBallView(APIView):
                 "adj_d":            round(r.adj_d, 1),
                 "tournament_seed":  r.tournament_seed,
                 "tournament_region": r.tournament_region,
+                "tournament_finish": r.tournament_finish,
                 "checklist":        checklist,
             })
 

@@ -108,10 +108,12 @@ export default function TrapezoidPage() {
         formatter: (params: any) => {
           if (params.componentSubType === 'scatter') {
             const team = params.data.team;
+            const trophy = team.tournament_finish === 'Champ' ? ' 🏆' : team.tournament_finish === 'Runner-Up' ? ' 🥈' : team.tournament_finish === 'Final Four' ? ' 🏅' : '';
+              
             return `
-              <div style="padding: 8px;">
-                <strong style="font-size: 14px;">${team.team_name}</strong><br/>
-                <span style="color: #666;">${team.conference_name} (${team.conference})</span><br/>
+              <div style="font-family: inherit; padding: 4px;">
+                <strong style="font-size: 14px;">${team.team_name}${trophy}</strong><br/>
+                <span style="color: #666; font-size: 12px;">${team.conference_name} (${team.conference})</span><br/>
                 <hr style="margin: 6px 0; border: none; border-top: 1px solid #ddd;"/>
                 <strong>Adj Tempo:</strong> ${team.adj_tempo}<br/>
                 <strong>Adj EM:</strong> ${team.adj_em}<br/>

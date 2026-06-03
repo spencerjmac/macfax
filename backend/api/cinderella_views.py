@@ -306,6 +306,7 @@ class CinderellaView(APIView):
                 'adj_tempo':         round(r.adj_tempo, 1),
                 'tournament_seed':   r.tournament_seed,
                 'tournament_region': r.tournament_region,
+                'tournament_finish': r.tournament_finish,
                 'cinderella':        cin,
             })
 

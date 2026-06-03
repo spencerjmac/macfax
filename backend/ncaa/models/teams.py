@@ -434,6 +434,23 @@ class TeamSeasonRatings(models.Model):
         choices=TOURNAMENT_REGION_CHOICES,
         help_text="NCAA Tournament region (South/East/West/Midwest)"
     )
+    
+    TOURNAMENT_FINISH_CHOICES = [
+        ('Champ', 'Champion'),
+        ('Runner-Up', 'Runner-Up'),
+        ('Final Four', 'Final Four'),
+        ('Elite Eight', 'Elite Eight'),
+        ('Sweet 16', 'Sweet 16'),
+        ('Round of 32', 'Round of 32'),
+        ('Round of 64', 'Round of 64'),
+        ('First Four', 'First Four'),
+    ]
+    tournament_finish = models.CharField(
+        max_length=20,
+        null=True, blank=True,
+        choices=TOURNAMENT_FINISH_CHOICES,
+        help_text="NCAA Tournament finish"
+    )
 
     # Model parameters
     games_played = models.IntegerField(

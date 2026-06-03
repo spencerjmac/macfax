@@ -267,7 +267,9 @@ class TrapezoidView(APIView):
                 'rank_adj_em': rating.rank_adj_em,
                 'wins': rating.wins,
                 'losses': rating.losses,
+                'net_100': rating.adj_em,
                 'tournament_seed': rating.tournament_seed,
+                'tournament_finish': rating.tournament_finish,
                 'tournament_region': rating.tournament_region,
             })
         
@@ -289,10 +291,7 @@ class TrapezoidView(APIView):
         teams_data = teams_data[:top_n]
         
         if not teams_data:
-            return Response(
-                {'error': 'No teams found matching criteria'},
-                status=status.HTTP_404_NOT_FOUND
-            )
+            teams_data = []
         
         # Build team list with inside_trapezoid flag
         teams = []
@@ -310,6 +309,7 @@ class TrapezoidView(APIView):
                 'rank': t['rank_adj_em'],
                 'record': f"{t['wins']}-{t['losses']}",
                 'inside_trapezoid': inside,
+                'tournament_finish': t['tournament_finish'],
             })
         
         # Build response

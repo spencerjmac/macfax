@@ -143,13 +143,11 @@ class EfficiencyLandscapeView(APIView):
         # Take top N teams
         teams_data = teams_data[:top_n]
         
+        # If no teams match the conference/tournament filter, just return empty list
+        # rather than 404 to avoid crashing the frontend
         if not teams_data:
-            return Response(
-                {'error': 'No teams found matching criteria'},
-                status=status.HTTP_404_NOT_FOUND
-            )
-        
-        # Build response
+            teams_data = []
+            
         teams_list = []
         for team_data in teams_data:
             rating = team_data['rating']
@@ -164,6 +162,7 @@ class EfficiencyLandscapeView(APIView):
                 'logo_url': rating.team.logo_url,
                 'rank': rating.rank_adj_em,
                 'record': f"{rating.wins}-{rating.losses}",
+                'tournament_finish': rating.tournament_finish,
             })
         
         response_data = {

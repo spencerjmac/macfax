@@ -215,6 +215,9 @@ export default function RankingsTable({ data, seasons = [], selectedSeason }: Ra
                 </span>
               )}
               <span className="font-medium">{team.teamName}</span>
+              {team.tournament_finish === 'Champ' && <span title="National Champion" className="text-sm">🏆</span>}
+              {team.tournament_finish === 'Runner-Up' && <span title="Runner-Up" className="text-sm">🥈</span>}
+              {team.tournament_finish === 'Final Four' && <span title="Final Four" className="text-sm">🏅</span>}
             </Link>
           );
         },
@@ -278,6 +281,9 @@ export default function RankingsTable({ data, seasons = [], selectedSeason }: Ra
                 </span>
               )}
               <span className="font-medium text-sm">{team.teamName}</span>
+              {team.tournament_finish === 'Champ' && <span title="National Champion" className="text-sm">🏆</span>}
+              {team.tournament_finish === 'Runner-Up' && <span title="Runner-Up" className="text-sm">🥈</span>}
+              {team.tournament_finish === 'Final Four' && <span title="Final Four" className="text-sm">🏅</span>}
             </Link>
           );
         },
