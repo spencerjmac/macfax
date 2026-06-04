@@ -132,7 +132,7 @@ function TeamRow({ team, rank }: { team: CinderellaTeam; rank: number }) {
                 {team.team_name}
                 {team.tournament_finish === 'Champ' && <span title="National Champion" className="text-sm ml-1">🏆</span>}
                 {team.tournament_finish === 'Runner-Up' && <span title="Runner-Up" className="text-sm ml-1">🥈</span>}
-                {team.tournament_finish === 'Final Four' && <span title="Final Four" className="text-sm ml-1">🏅</span>}
+                {team.tournament_finish === 'Final Four' && <span title="Final Four" className="text-sm ml-1">🥉</span>}
               </Link>
               <div className="text-xs text-text-muted">
                 {team.conference}

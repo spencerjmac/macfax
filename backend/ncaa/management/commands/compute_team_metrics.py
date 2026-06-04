@@ -45,10 +45,16 @@ class Command(BaseCommand):
         parser.add_argument(
             "--teams", nargs="+", help="Specific team slugs to process (default: all)"
         )
+        parser.add_argument(
+            "--pre-tournament",
+            action="store_true",
+            help="If set, only compute metrics for games on or before Selection Sunday.",
+        )
 
     def handle(self, *args, **options):
         season_year = options["season"]
         team_slugs = options.get("teams")
+        is_pre_tournament = options["pre_tournament"]
 
         # Get season
         try:
@@ -81,7 +87,7 @@ class Command(BaseCommand):
 
         for team in teams:
             try:
-                self._compute_team_season_metrics(team, season)
+                self._compute_team_season_metrics(team, season, is_pre_tournament)
                 processed += 1
                 self.stdout.write(f"  OK - {team.name}")
             except Exception as e:
@@ -100,16 +106,22 @@ class Command(BaseCommand):
             )
         )
 
-    def _compute_team_season_metrics(self, team: Team, season: Season):
+    def _compute_team_season_metrics(self, team: Team, season: Season, is_pre_tournament: bool):
         """Compute all metrics for a team-season"""
+        # Base filter
+        filters = Q(
+            team=team,
+            game__season_year=season.year,
+            game__status="final",
+            opponent__is_d1=True,  # Only include games vs D1 opponents
+        )
+        
+        if is_pre_tournament and season.selection_sunday_date:
+            filters &= Q(game__game_date__lte=season.selection_sunday_date)
+            
         # Get all games for this team (D1 vs D1 only for metrics)
         game_stats = (
-            TeamGameStats.objects.filter(
-                team=team,
-                game__season_year=season.year,
-                game__status="final",
-                opponent__is_d1=True,  # Only include games vs D1 opponents
-            )
+            TeamGameStats.objects.filter(filters)
             .select_related("game", "opponent")
             .order_by("game__game_date")
         )
@@ -122,14 +134,15 @@ class Command(BaseCommand):
         totals = self._compute_totals(game_stats)
 
         # Compute kill shots
-        kill_shots_data = self._compute_kill_shots(team, season)
+        kill_shots_data = self._compute_kill_shots(team, season, is_pre_tournament)
 
         # Compute derived metrics
         metrics = self._compute_derived_metrics(totals, kill_shots_data)
 
         # Save to DB
-        TeamSeasonMetrics.objects.update_or_create(
-            team=team, season=season, defaults=metrics
+        metrics["is_pre_tournament"] = is_pre_tournament
+        TeamSeasonMetrics.all_objects.update_or_create(
+            team=team, season=season, is_pre_tournament=is_pre_tournament, defaults=metrics
         )
 
     def _compute_totals(self, game_stats) -> Dict:
@@ -205,7 +218,7 @@ class Command(BaseCommand):
 
         return totals
 
-    def _compute_kill_shots(self, team: Team, season: Season) -> Dict:
+    def _compute_kill_shots(self, team: Team, season: Season, is_pre_tournament: bool) -> Dict:
         """
         Compute Kill Shots from scoring events
 
@@ -219,12 +232,20 @@ class Command(BaseCommand):
         kill_shots_for = 0
         kill_shots_against = 0
 
-        # Get all games for this team
-        games = Game.objects.filter(
-            Q(home_team=team) | Q(away_team=team),
+        # Base filters
+        filters = Q(home_team=team) | Q(away_team=team)
+        
+        games_qs = Game.objects.filter(
+            filters,
             season_year=season.year,
             status="final",
         )
+        
+        if is_pre_tournament and season.selection_sunday_date:
+            games_qs = games_qs.filter(game_date__lte=season.selection_sunday_date)
+
+        # Get all games for this team
+        games = games_qs
 
         for game in games:
             # Get scoring events in order

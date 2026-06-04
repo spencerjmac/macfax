@@ -81,31 +81,31 @@ def compute_national_champion_checklist(
         passed_count += 1
     
     # 9) eFG Margin
-    item = _check_efg_margin(team_stats)
+    item = _check_efg_margin(team_stats, season_context)
     items.append(item)
     if item['pass']:
         passed_count += 1
     
     # 10) FTR Margin
-    item = _check_ftr_margin(team_stats)
+    item = _check_ftr_margin(team_stats, season_context)
     items.append(item)
     if item['pass']:
         passed_count += 1
     
     # 11) Rebounding Edge
-    item = _check_rebounding_edge(team_stats)
+    item = _check_rebounding_edge(team_stats, season_context)
     items.append(item)
     if item['pass']:
         passed_count += 1
     
     # 12) Turnover Edge
-    item = _check_turnover_edge(team_stats)
+    item = _check_turnover_edge(team_stats, season_context)
     items.append(item)
     if item['pass']:
         passed_count += 1
     
     # 13) Four Factor Index
-    item = _check_four_factor_index(team_stats)
+    item = _check_four_factor_index(team_stats, season_context)
     items.append(item)
     if item['pass']:
         passed_count += 1
@@ -167,11 +167,47 @@ def compute_season_context(season) -> Dict[str, Any]:
     adj_d_sorted = sorted(teams, key=lambda t: t.adj_d)
     adj_d_ranks = {t.team_id: rank + 1 for rank, t in enumerate(adj_d_sorted)}
     
+    # Fetch ratings to compute four factor stats
+    # Determine if this is a pre-tournament snapshot
+    is_pre = False
+    if teams:
+        first_team = teams[0]
+        if hasattr(first_team, 'rating') and first_team.rating:
+            is_pre = first_team.rating.is_pre_tournament
+
+    from ncaa.models import TeamSeasonRatings
+    qs = TeamSeasonRatings.objects.filter(season=season, team__is_d1=True, is_pre_tournament=is_pre)
+    efgs = []
+    ftrs = []
+    rebs = []
+    tovs = []
+    ffis = []
+    for r in qs:
+        if r.adj_efg_margin is not None: efgs.append(r.adj_efg_margin)
+        if r.adj_ftr_margin is not None: ftrs.append(r.adj_ftr_margin)
+        if r.adj_reb_edge is not None: rebs.append(r.adj_reb_edge)
+        if r.adj_tov_edge is not None: tovs.append(r.adj_tov_edge)
+        if r.ffi_adj is not None: ffis.append(r.ffi_adj)
+        
+    stats = {
+        "efg_mean": float(np.mean(efgs)) if efgs else 0,
+        "efg_std": float(np.std(efgs)) if efgs else 1,
+        "ftr_mean": float(np.mean(ftrs)) if ftrs else 0,
+        "ftr_std": float(np.std(ftrs)) if ftrs else 1,
+        "reb_mean": float(np.mean(rebs)) if rebs else 0,
+        "reb_std": float(np.std(rebs)) if rebs else 1,
+        "tov_mean": float(np.mean(tovs)) if tovs else 0,
+        "tov_std": float(np.std(tovs)) if tovs else 1,
+        "ffi_mean": float(np.mean(ffis)) if ffis else 0,
+        "ffi_std": float(np.std(ffis)) if ffis else 1,
+    }
+    
     return {
         "max_adj_em": max_adj_em,
         "trapezoid": trapezoid,
         "adj_o_ranks": adj_o_ranks,
         "adj_d_ranks": adj_d_ranks,
+        "stats": stats,
     }
 
 
@@ -388,73 +424,84 @@ def _check_ap_poll_week6(team_stats: TeamSeasonStats) -> Dict[str, Any]:
     }
 
 
-def _check_efg_margin(team_stats: TeamSeasonStats) -> Dict[str, Any]:
-    """Check eFG Margin >= 6.0"""
+def _check_efg_margin(team_stats: TeamSeasonStats, context: Dict[str, Any]) -> Dict[str, Any]:
+    """Check eFG Margin >= Dynamic Z-Score Threshold"""
     efg_margin = team_stats.efg_margin
-    threshold = 6.0
-    passes = efg_margin >= threshold
+    stats = context.get("stats", {})
+    MIN_Z_EFG = 1.39 # 1.3936
+    threshold = stats.get("efg_mean", 0) + (MIN_Z_EFG * stats.get("efg_std", 1))
+    passes = efg_margin >= threshold if efg_margin is not None else False
     
     return {
         "key": "efg_margin",
         "label": "eFG Margin",
         "pass": passes,
-        "value": f"{efg_margin:.3f}",
-        "threshold": "≥ 6.0",
-        "details": f"eFG Margin: {efg_margin:.3f}"
+        "value": f"{efg_margin:.3f}" if efg_margin is not None else "N/A",
+        "threshold": f"≥ {threshold:.3f}",
+        "details": f"eFG Margin: {efg_margin:.3f}" if efg_margin is not None else "Unavailable"
     }
 
 
-def _check_ftr_margin(team_stats: TeamSeasonStats) -> Dict[str, Any]:
-    """Check FTR Margin >= -5.5"""
+def _check_ftr_margin(team_stats: TeamSeasonStats, context: Dict[str, Any]) -> Dict[str, Any]:
+    """Check FTR Margin >= Dynamic Z-Score Threshold"""
     ftr_margin = team_stats.ftr_margin
-    threshold = -5.5
-    passes = ftr_margin >= threshold
+    stats = context.get("stats", {})
+    MIN_Z_FTR = -0.47 # -0.4703
+    threshold = stats.get("ftr_mean", 0) + (MIN_Z_FTR * stats.get("ftr_std", 1))
+    passes = ftr_margin >= threshold if ftr_margin is not None else False
     
     return {
         "key": "ftr_margin",
         "label": "FTR Margin",
         "pass": passes,
-        "value": f"{ftr_margin:.2f}",
-        "threshold": "≥ -5.5",
-        "details": f"FTR Margin: {ftr_margin:.2f}"
+        "value": f"{ftr_margin:.2f}" if ftr_margin is not None else "N/A",
+        "threshold": f"≥ {threshold:.2f}",
+        "details": f"FTR Margin: {ftr_margin:.2f}" if ftr_margin is not None else "Unavailable"
     }
 
 
-def _check_rebounding_edge(team_stats: TeamSeasonStats) -> Dict[str, Any]:
-    """Check Rebounding Edge >= 0"""
+def _check_rebounding_edge(team_stats: TeamSeasonStats, context: Dict[str, Any]) -> Dict[str, Any]:
+    """Check Rebounding Edge >= Dynamic Z-Score Threshold"""
     reb_edge = team_stats.reb_edge
-    threshold = 0.0
-    passes = reb_edge >= threshold
+    stats = context.get("stats", {})
+    MIN_Z_REB = 0.15 # 0.1491
+    threshold = stats.get("reb_mean", 0) + (MIN_Z_REB * stats.get("reb_std", 1))
+    passes = reb_edge >= threshold if reb_edge is not None else False
     
     return {
         "key": "rebounding_edge",
         "label": "Rebounding Edge",
         "pass": passes,
-        "value": f"{reb_edge:.2f}",
-        "threshold": "≥ 0",
-        "details": f"Rebounding Edge: {reb_edge:.2f}"
+        "value": f"{reb_edge:.2f}" if reb_edge is not None else "N/A",
+        "threshold": f"≥ {threshold:.2f}",
+        "details": f"Rebounding Edge: {reb_edge:.2f}" if reb_edge is not None else "Unavailable"
     }
 
 
-def _check_turnover_edge(team_stats: TeamSeasonStats) -> Dict[str, Any]:
-    """Check Turnover Edge >= 1.5"""
+def _check_turnover_edge(team_stats: TeamSeasonStats, context: Dict[str, Any]) -> Dict[str, Any]:
+    """Check Turnover Edge >= Dynamic Z-Score Threshold"""
     to_edge = team_stats.tov_edge
-    threshold = 1.5
-    passes = to_edge >= threshold
+    stats = context.get("stats", {})
+    MIN_Z_TOV = -0.10 # -0.1009
+    threshold = stats.get("tov_mean", 0) + (MIN_Z_TOV * stats.get("tov_std", 1))
+    passes = to_edge >= threshold if to_edge is not None else False
     
     return {
         "key": "turnover_edge",
         "label": "Turnover Edge",
         "pass": passes,
-        "value": f"{to_edge:.2f}",
-        "threshold": "≥ 1.5",
-        "details": f"Turnover Edge: {to_edge:.2f}"
+        "value": f"{to_edge:.2f}" if to_edge is not None else "N/A",
+        "threshold": f"≥ {threshold:.2f}",
+        "details": f"Turnover Edge: {to_edge:.2f}" if to_edge is not None else "Unavailable"
     }
 
 
-def _check_four_factor_index(team_stats: TeamSeasonStats) -> Dict[str, Any]:
-    """Check Four Factor Index > 80"""
+def _check_four_factor_index(team_stats: TeamSeasonStats, context: Dict[str, Any]) -> Dict[str, Any]:
+    """Check Four Factor Index >= Dynamic Z-Score Threshold"""
     ffi = team_stats.four_factor_index_100
+    stats = context.get("stats", {})
+    MIN_Z_FFI = 1.64 # 1.6378
+    threshold = stats.get("ffi_mean", 0) + (MIN_Z_FFI * stats.get("ffi_std", 1))
     
     if ffi is None:
         return {
@@ -462,19 +509,18 @@ def _check_four_factor_index(team_stats: TeamSeasonStats) -> Dict[str, Any]:
             "label": "Four Factor Index",
             "pass": False,
             "value": "N/A",
-            "threshold": "> 80",
+            "threshold": f"≥ {threshold:.1f}",
             "details": "Four Factor Index unavailable"
         }
     
-    threshold = 80.0
-    passes = ffi > threshold
+    passes = ffi >= threshold
     
     return {
         "key": "four_factor_index",
         "label": "Four Factor Index",
         "pass": passes,
         "value": f"{ffi:.1f}",
-        "threshold": "> 80",
+        "threshold": f"≥ {threshold:.1f}",
         "details": f"Four Factor Index: {ffi:.1f}"
     }
 

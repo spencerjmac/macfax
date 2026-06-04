@@ -15,6 +15,9 @@ class Season(models.Model):
     is_current = models.BooleanField(
         default=False, help_text="Is this the active season?"
     )
+    selection_sunday_date = models.DateField(
+        null=True, blank=True, help_text="Date of Selection Sunday for this season"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

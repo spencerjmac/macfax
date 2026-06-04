@@ -550,7 +550,7 @@ function EfficiencyLandscapeChart({ data, hoveredTeam, onTeamHover, onTeamClick 
             {tooltipTeam.team_name}
             {tooltipTeam.tournament_finish === 'Champ' && <span title="National Champion" className="text-sm ml-1">🏆</span>}
             {tooltipTeam.tournament_finish === 'Runner-Up' && <span title="Runner-Up" className="text-sm ml-1">🥈</span>}
-            {tooltipTeam.tournament_finish === 'Final Four' && <span title="Final Four" className="text-sm ml-1">🏅</span>}
+            {tooltipTeam.tournament_finish === 'Final Four' && <span title="Final Four" className="text-sm ml-1">🥉</span>}
           </div>
           <div className="text-sm text-gray-600 mb-2">
             {tooltipTeam.conference_name} ({tooltipTeam.conference})

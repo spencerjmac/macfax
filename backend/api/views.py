@@ -117,18 +117,22 @@ class RankingsViewSet(viewsets.ReadOnlyModelViewSet):
         else:
             season = Season.objects.filter(is_current=True).first()
 
+        is_pre_tournament = self.request.query_params.get("pre_tournament") == "true"
+        
+        base_qs = TeamSeasonRatings.all_objects.filter(is_pre_tournament=is_pre_tournament)
+
         # Filter to D1 teams only, then immediately annotate with a live sequential
         # rank (d1_rank) using a window function over AdjEM descending.  This
         # guarantees ranks are always 1…N with no gaps, regardless of what is
         # stored in rank_adj_em (which may have been computed before non-D1 teams
         # were purged and therefore contains gaps when filtered to D1 only).
         queryset = (
-            TeamSeasonRatings.objects.filter(season=season, team__is_d1=True, games_played__gt=0)
+            base_qs.filter(season=season, team__is_d1=True, games_played__gt=0)
             .select_related("team", "season")
             .prefetch_related(
                 Prefetch(
                     "team__season_metrics",
-                    queryset=TeamSeasonMetrics.objects.filter(season=season),
+                    queryset=TeamSeasonMetrics.all_objects.filter(season=season, is_pre_tournament=is_pre_tournament),
                     to_attr="_metrics_for_season",
                 )
             )

@@ -16,24 +16,26 @@ export const metadata: Metadata = {
 };
 
 interface RankingsPageProps {
-  searchParams: Promise<{ season?: string; tab?: string }>;
+  searchParams: Promise<{ season?: string; tab?: string; pre_tournament?: string }>;
 }
 
 export default async function RankingsPage({ searchParams }: RankingsPageProps) {
   const params = await searchParams;
   const seasonYear = params.season ? parseInt(params.season, 10) : undefined;
   const activeTab = params.tab === 'players' ? 'players' : 'teams';
+  const isPreTournament = params.pre_tournament === 'true';
 
   const [teams, seasons, meta, players] = await Promise.all([
-    getAllTeams(seasonYear),
+    getAllTeams(seasonYear, isPreTournament),
     getAllSeasons(),
-    getMetadata(seasonYear),
+    getMetadata(seasonYear, isPreTournament),
     activeTab === 'players'
       ? api.getLeaguePlayers({ season: seasonYear, ordering: '-pts', min_gp: 5 }).catch(() => [])
       : Promise.resolve([]),
   ]);
 
   const seasonParam = seasonYear ? `&season=${seasonYear}` : '';
+  const preTourneyParam = isPreTournament ? `&pre_tournament=true` : '';
 
   return (
     <div>
@@ -66,7 +68,7 @@ export default async function RankingsPage({ searchParams }: RankingsPageProps) 
             ].map(({ id, label, icon: Icon }) => (
               <Link
                 key={id}
-                href={`/ncaa/rankings?tab=${id}${seasonParam}`}
+                href={`/ncaa/rankings?tab=${id}${seasonParam}${preTourneyParam}`}
                 className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
                   activeTab === id
                     ? 'border-brand text-brand'
@@ -83,7 +85,7 @@ export default async function RankingsPage({ searchParams }: RankingsPageProps) 
         {activeTab === 'players' ? (
           <NCAAPlayerRankingsTable data={players} seasonDisplay={meta.season} selectedSeason={seasonYear} />
         ) : (
-          <RankingsTable data={teams} seasons={seasons} selectedSeason={seasonYear} />
+          <RankingsTable data={teams} seasons={seasons} selectedSeason={seasonYear} isPreTournament={isPreTournament} />
         )}
 
         {/* Legend */}

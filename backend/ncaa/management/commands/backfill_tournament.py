@@ -19,6 +19,56 @@ from ncaa.utils.team_mapping import TeamMapper
 
 
 TOURNAMENT_RESULTS = {
+    2005: {
+        'Champ': ['North Carolina'],
+        'Runner-Up': ['Illinois'],
+        'Final Four': ['Louisville', 'Michigan State']
+    },
+    2006: {
+        'Champ': ['Florida'],
+        'Runner-Up': ['UCLA'],
+        'Final Four': ['LSU', 'George Mason']
+    },
+    2007: {
+        'Champ': ['Florida'],
+        'Runner-Up': ['Ohio State'],
+        'Final Four': ['UCLA', 'Georgetown']
+    },
+    2008: {
+        'Champ': ['Kansas'],
+        'Runner-Up': ['Memphis'],
+        'Final Four': ['North Carolina', 'UCLA']
+    },
+    2009: {
+        'Champ': ['North Carolina'],
+        'Runner-Up': ['Michigan State'],
+        'Final Four': ['UConn', 'Villanova']
+    },
+    2010: {
+        'Champ': ['Duke'],
+        'Runner-Up': ['Butler'],
+        'Final Four': ['West Virginia', 'Michigan State']
+    },
+    2011: {
+        'Champ': ['UConn'],
+        'Runner-Up': ['Butler'],
+        'Final Four': ['VCU', 'Kentucky']
+    },
+    2012: {
+        'Champ': ['Kentucky'],
+        'Runner-Up': ['Kansas'],
+        'Final Four': ['Louisville', 'Ohio State']
+    },
+    2013: {
+        'Champ': ['Louisville'],
+        'Runner-Up': ['Michigan'],
+        'Final Four': ['Syracuse', 'Wichita State']
+    },
+    2014: {
+        'Champ': ['UConn'],
+        'Runner-Up': ['Kentucky'],
+        'Final Four': ['Florida', 'Wisconsin']
+    },
     2015: {
         'Champ': ['Duke'],
         'Runner-Up': ['Wisconsin'],
@@ -93,7 +143,7 @@ class Command(BaseCommand):
         if season_arg:
             seasons = Season.objects.filter(year=season_arg)
         else:
-            seasons = Season.objects.filter(year__gte=2015, year__lte=2026).exclude(year=2020).order_by('year')
+            seasons = Season.objects.filter(year__gte=2005, year__lte=2026).exclude(year=2020).order_by('year')
 
         mapper = TeamMapper(source="ncaa")
         total_updated = 0
@@ -129,54 +179,49 @@ class Command(BaseCommand):
                     seed_tables.append(t)
             
             if not seed_tables:
-                self.stderr.write(self.style.ERROR(f"  Could not find seed tables for {year}."))
-                continue
-
-            # First clear existing seeds for this season to avoid staleness
-            TeamSeasonRatings.objects.filter(season=season).update(tournament_seed=None, tournament_finish=None)
-            
-            season_updated = 0
-            
-            for t in seed_tables:
-                for _, row in t.iterrows():
-                    seed_raw = row.get('Seed')
-                    school = str(row.get('School')).strip()
-                    
-                    if pd.isna(seed_raw) or not school or school == 'nan':
-                        continue
+                self.stderr.write(self.style.ERROR(f"  Could not find seed tables for {year}. Skipping seeds..."))
+            else:
+                season_updated = 0
+                for t in seed_tables:
+                    for _, row in t.iterrows():
+                        seed_raw = row.get('Seed')
+                        school = str(row.get('School')).strip()
                         
-                    # Clean up seed (e.g. "11*" or "11a")
-                    try:
-                        seed_str = ''.join(c for c in str(seed_raw) if c.isdigit())
-                        seed = int(seed_str)
-                    except ValueError:
-                        continue
-                    
-                    # Apply overrides
-                    school = school.replace('*', '').strip()
-                    school = school.replace(' State', ' St.')
-                    if school == 'UNC': school = 'North Carolina'
-                    if school == 'USC': school = 'Southern California'
-                    if school == "Saint Mary's": school = "Saint Mary's (CA)"
-                    if school == "Miami (Florida)": school = "Miami (FL)"
-                    if 'Loyola' in school and 'Chicago' in school: school = 'Loyola Chicago'
-                    
-                    team, conf, is_override = mapper.find_team(school, min_confidence=0.85)
-                    
-                    if team:
+                        if pd.isna(seed_raw) or not school or school == 'nan':
+                            continue
+                            
+                        # Clean up seed (e.g. "11*" or "11a")
                         try:
-                            ratings = TeamSeasonRatings.objects.get(season=season, team=team)
-                            ratings.tournament_seed = seed
-                            ratings.save(update_fields=['tournament_seed'])
-                            season_updated += 1
-                        except TeamSeasonRatings.DoesNotExist:
-                            pass
-                    else:
-                        self.stderr.write(self.style.ERROR(f"  UNMATCHED TEAM: Seed {seed} {school}"))
-                        total_missing.append(f"{year} - {school}")
+                            seed_str = ''.join(c for c in str(seed_raw) if c.isdigit())
+                            seed = int(seed_str)
+                        except ValueError:
+                            continue
+                        
+                        # Apply overrides
+                        school = school.replace('*', '').strip()
+                        school = school.replace(' State', ' St.')
+                        if school == 'UNC': school = 'North Carolina'
+                        if school == 'USC': school = 'Southern California'
+                        if school == "Saint Mary's": school = "Saint Mary's (CA)"
+                        if school == "Miami (Florida)": school = "Miami (FL)"
+                        if 'Loyola' in school and 'Chicago' in school: school = 'Loyola Chicago'
+                        
+                        team, conf, is_override = mapper.find_team(school, min_confidence=0.85)
+                        
+                        if team:
+                            try:
+                                ratings = TeamSeasonRatings.objects.get(season=season, team=team)
+                                ratings.tournament_seed = seed
+                                ratings.save(update_fields=['tournament_seed'])
+                                season_updated += 1
+                            except TeamSeasonRatings.DoesNotExist:
+                                pass
+                        else:
+                            self.stderr.write(self.style.ERROR(f"  UNMATCHED TEAM: Seed {seed} {school}"))
+                            total_missing.append(f"{year} - {school}")
 
-            self.stdout.write(self.style.SUCCESS(f"✓ Updated {season_updated} seeds for {year}"))
-            total_updated += season_updated
+                self.stdout.write(self.style.SUCCESS(f"✓ Updated {season_updated} seeds for {year}"))
+                total_updated += season_updated
             
             # Now set the hardcoded results for this year
             results = TOURNAMENT_RESULTS.get(year)

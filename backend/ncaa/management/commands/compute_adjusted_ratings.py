@@ -10,6 +10,7 @@ import logging
 import math
 from collections import defaultdict
 from datetime import date
+from django.core.cache import cache
 
 from django.core.management.base import BaseCommand
 from django.db import transaction
@@ -98,6 +99,11 @@ class Command(BaseCommand):
             default=False,
             help="Overwrite NationalAverages.avg_ortg with mean of computed AdjO (default: off)",
         )
+        parser.add_argument(
+            "--pre-tournament",
+            action="store_true",
+            help="If set, compute ratings using only games on or before Selection Sunday.",
+        )
 
     def handle(self, *args, **options):
         from ncaa.models import PipelineConfig
@@ -113,6 +119,7 @@ class Command(BaseCommand):
         recency_lambda = options["recency_lambda"]
         importance_enabled = not options["no_importance"]
         update_natavg = options["update_natavg"]
+        is_pre_tournament = options["pre_tournament"]
 
         # --- Importance weight constants ---
         IMP_C = 40.0          # gap (AdjEM pts) where base weight drops to 0.5
@@ -154,7 +161,7 @@ class Command(BaseCommand):
         )
 
         # Get all D1 teams with season metrics
-        teams = Team.objects.filter(season_metrics__season=season, is_d1=True)
+        teams = Team.objects.filter(season_metrics__season=season, season_metrics__is_pre_tournament=is_pre_tournament, is_d1=True)
 
         if teams.count() == 0:
             self.stderr.write("No teams found with season metrics")
@@ -164,12 +171,16 @@ class Command(BaseCommand):
 
         # Calculate dynamic shrinkage k based on average games played
         # Count team-games (NOT matchups - each game counts twice, once per team)
-        team_games_count = TeamGameStats.objects.filter(
+        team_games_filters = Q(
             game__season_year=season_year,
             game__status="final",
             opponent__is_d1=True,
             team__is_d1=True,
-        ).count()
+        )
+        if is_pre_tournament and season.selection_sunday_date:
+            team_games_filters &= Q(game__game_date__lte=season.selection_sunday_date)
+
+        team_games_count = TeamGameStats.objects.filter(team_games_filters).count()
 
         avg_games_played = team_games_count / num_d1_teams if num_d1_teams > 0 else 0
         
@@ -205,18 +216,24 @@ class Command(BaseCommand):
             # Use the last game date in the season as the "today" reference so that
             # recency weighting is calibrated within the season (not from wall-clock
             # today, which would give ~zero weight to all games in historical seasons).
+            last_game_qs = Game.objects.filter(season_year=season_year, status="final")
+            if is_pre_tournament and season.selection_sunday_date:
+                last_game_qs = last_game_qs.filter(game_date__lte=season.selection_sunday_date)
+
             last_game = (
-                Game.objects.filter(season_year=season_year, status="final")
+                last_game_qs
                 .order_by("-game_date")
                 .values("game_date")
                 .first()
             )
             today = last_game["game_date"] if last_game else date.today()
 
+            game_qs = Game.objects.filter(season_year=season_year, status="final")
+            if is_pre_tournament and season.selection_sunday_date:
+                game_qs = game_qs.filter(game_date__lte=season.selection_sunday_date)
+
             # Exponential decay weight per game
-            for g in Game.objects.filter(
-                season_year=season_year, status="final"
-            ).values("id", "game_date"):
+            for g in game_qs.values("id", "game_date"):
                 days_ago = max(0, (today - g["game_date"]).days)
                 game_time_weights[g["id"]] = math.exp(-recency_lambda * days_ago)
             self.stdout.write(
@@ -227,12 +244,16 @@ class Command(BaseCommand):
             # so shrinkage denominator stays calibrated to real possessions.
             sum_poss: defaultdict = defaultdict(float)
             sum_poss_w: defaultdict = defaultdict(float)
-            for row in TeamGameStats.objects.filter(
+            tgs_qs = TeamGameStats.objects.filter(
                 game__season_year=season_year,
                 game__status="final",
                 team__is_d1=True,
                 opponent__is_d1=True,
-            ).values("team_id", "game_id", "fga", "oreb", "tov", "fta"):
+            )
+            if is_pre_tournament and season.selection_sunday_date:
+                tgs_qs = tgs_qs.filter(game__game_date__lte=season.selection_sunday_date)
+
+            for row in tgs_qs.values("team_id", "game_id", "fga", "oreb", "tov", "fta"):
                 poss = row["fga"] - row["oreb"] + row["tov"] + 0.475 * (row["fta"] or 0)
                 w = game_time_weights.get(row["game_id"], 1.0)
                 sum_poss[row["team_id"]] += poss
@@ -257,7 +278,7 @@ class Command(BaseCommand):
         # Step 1: Initialize with raw ORtg/DRtg/Pace
         self.stdout.write("\n[1/1] Initializing with raw ratings...")
         for team in teams:
-            metrics = TeamSeasonMetrics.objects.get(team=team, season=season)
+            metrics = TeamSeasonMetrics.all_objects.get(team=team, season=season, is_pre_tournament=is_pre_tournament)
             ratings[team.id] = {
                 "aor": metrics.ortg,
                 "adr": metrics.drtg,
@@ -283,12 +304,16 @@ class Command(BaseCommand):
 
             for team in teams:
                 # Get all games for this team (D1 vs D1 only)
-                games = TeamGameStats.objects.filter(
+                tgs_filters = Q(
                     team=team,
                     game__season_year=season_year,
                     game__status="final",
                     opponent__is_d1=True,  # Only include games vs D1 opponents
-                ).select_related("game", "opponent")
+                )
+                if is_pre_tournament and season.selection_sunday_date:
+                    tgs_filters &= Q(game__game_date__lte=season.selection_sunday_date)
+
+                games = TeamGameStats.objects.filter(tgs_filters).select_related("game", "opponent")
 
                 if games.count() == 0:
                     continue
@@ -465,12 +490,16 @@ class Command(BaseCommand):
                 # Note: poss_team is a @property, so we recompute from box score fields.
                 sum_base: defaultdict = defaultdict(float)
                 sum_weighted_imp: defaultdict = defaultdict(float)
-                for row in TeamGameStats.objects.filter(
+                tgs_imp_qs = TeamGameStats.objects.filter(
                     game__season_year=season_year,
                     game__status="final",
                     team__is_d1=True,
                     opponent__is_d1=True,
-                ).values("team_id", "game_id", "fga", "oreb", "tov", "fta"):
+                )
+                if is_pre_tournament and season.selection_sunday_date:
+                    tgs_imp_qs = tgs_imp_qs.filter(game__game_date__lte=season.selection_sunday_date)
+
+                for row in tgs_imp_qs.values("team_id", "game_id", "fga", "oreb", "tov", "fta"):
                     tid = row["team_id"]
                     gid = row["game_id"]
                     poss = (
@@ -542,8 +571,8 @@ class Command(BaseCommand):
                 "adj_d": r.adj_d,
                 "name": r.team.name,
             }
-            for r in TeamSeasonRatings.objects.filter(
-                season=season, team__is_d1=True
+            for r in TeamSeasonRatings.all_objects.filter(
+                season=season, team__is_d1=True, is_pre_tournament=is_pre_tournament
             ).select_related("team")
         }
 
@@ -558,12 +587,16 @@ class Command(BaseCommand):
                 if team.id not in ratings:
                     continue
 
-                metrics = TeamSeasonMetrics.objects.get(team=team, season=season)
+                metrics = TeamSeasonMetrics.all_objects.get(team=team, season=season, is_pre_tournament=is_pre_tournament)
 
                 # Record = ALL games (D1 + non-D1). Computations use D1-only; display record uses all.
-                all_games = TeamGameStats.objects.filter(
+                all_games_filters = Q(
                     team=team, game__season_year=season_year, game__status="final"
-                ).select_related("game", "opponent")
+                )
+                if is_pre_tournament and season.selection_sunday_date:
+                    all_games_filters &= Q(game__game_date__lte=season.selection_sunday_date)
+
+                all_games = TeamGameStats.objects.filter(all_games_filters).select_related("game", "opponent")
 
                 total_games = all_games.count()
                 total_wins = 0
@@ -588,9 +621,10 @@ class Command(BaseCommand):
                 aem = aor - adr
                 adj_pace = ratings[team.id]["pace"]
 
-                rating_obj, is_created = TeamSeasonRatings.objects.update_or_create(
+                rating_obj, is_created = TeamSeasonRatings.all_objects.update_or_create(
                     team=team,
                     season=season,
+                    is_pre_tournament=is_pre_tournament,
                     defaults={
                         "adj_o": round(aor, 4),
                         "adj_d": round(adr, 4),
@@ -611,8 +645,8 @@ class Command(BaseCommand):
 
         # Compute rankings — only among D1 teams so non-D1 stale records don't skew numbers
         self.stdout.write(f"Computing rankings...")
-        d1_ratings_qs = TeamSeasonRatings.objects.filter(
-            season=season, team__is_d1=True
+        d1_ratings_qs = TeamSeasonRatings.all_objects.filter(
+            season=season, team__is_d1=True, is_pre_tournament=is_pre_tournament
         )
 
         all_ratings = d1_ratings_qs.order_by("-adj_em")

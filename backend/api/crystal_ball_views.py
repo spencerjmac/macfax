@@ -54,12 +54,33 @@ def _build_season_context(ratings_qs):
     em_sorted  = sorted(ratings, key=lambda r: r.adj_em, reverse=True)
     em_ranks   = {r.team_id: idx + 1 for idx, r in enumerate(em_sorted)}
 
+    # Compute means and standard deviations for dynamic thresholds
+    efg_margins = np.array([r.adj_efg_margin for r in ratings if r.adj_efg_margin is not None])
+    tov_edges = np.array([r.adj_tov_edge for r in ratings if r.adj_tov_edge is not None])
+    reb_edges = np.array([r.adj_reb_edge for r in ratings if r.adj_reb_edge is not None])
+    ftr_margins = np.array([r.adj_ftr_margin for r in ratings if r.adj_ftr_margin is not None])
+    ffis = np.array([r.ffi_adj for r in ratings if r.ffi_adj is not None])
+
+    stats = {
+        "efg_mean": float(np.mean(efg_margins)) if len(efg_margins) else 0,
+        "efg_std": float(np.std(efg_margins)) if len(efg_margins) else 1,
+        "tov_mean": float(np.mean(tov_edges)) if len(tov_edges) else 0,
+        "tov_std": float(np.std(tov_edges)) if len(tov_edges) else 1,
+        "reb_mean": float(np.mean(reb_edges)) if len(reb_edges) else 0,
+        "reb_std": float(np.std(reb_edges)) if len(reb_edges) else 1,
+        "ftr_mean": float(np.mean(ftr_margins)) if len(ftr_margins) else 0,
+        "ftr_std": float(np.std(ftr_margins)) if len(ftr_margins) else 1,
+        "ffi_mean": float(np.mean(ffis)) if len(ffis) else 0,
+        "ffi_std": float(np.std(ffis)) if len(ffis) else 1,
+    }
+
     return {
         "trapezoid":   trapezoid,
         "max_adj_em":  max_adj_em,
         "off_ranks":   off_ranks,
         "def_ranks":   def_ranks,
         "em_ranks":    em_ranks,
+        "stats":       stats,
     }
 
 
@@ -174,44 +195,70 @@ def _check_ap_poll(r, ctx):
 
 def _check_efg_margin(r, ctx):
     margin = r.adj_efg_margin
-    passed = margin >= 6.0
+    stats = ctx.get("stats", {})
+    
+    # Z-scores based on historical champion minimums
+    MIN_Z_EFG = 1.39  # 1.3936
+    
+    threshold = stats.get("efg_mean", 0) + (MIN_Z_EFG * stats.get("efg_std", 1))
+    passed = margin >= threshold if margin is not None else False
     return _item("efg_margin", "eFG Margin", passed,
-                 f"{margin:.2f}", "≥ 6.0",
-                 f"Adjusted eFG margin: {margin:.2f}")
+                 f"{margin:.2f}" if margin is not None else "N/A", f"≥ {threshold:.2f}",
+                 f"Adjusted eFG margin: {margin:.2f}" if margin is not None else "Unavailable")
 
 
 def _check_ftr_margin(r, ctx):
     margin = r.adj_ftr_margin
-    passed = margin >= -5.5
+    stats = ctx.get("stats", {})
+    
+    MIN_Z_FTR = -0.47  # -0.4703
+    
+    threshold = stats.get("ftr_mean", 0) + (MIN_Z_FTR * stats.get("ftr_std", 1))
+    passed = margin >= threshold if margin is not None else False
     return _item("ftr_margin", "FTR Margin", passed,
-                 f"{margin:.2f}", "≥ -5.5",
-                 f"Adjusted FTR margin: {margin:.2f}")
+                 f"{margin:.2f}" if margin is not None else "N/A", f"≥ {threshold:.2f}",
+                 f"Adjusted FTR margin: {margin:.2f}" if margin is not None else "Unavailable")
 
 
 def _check_reb_edge(r, ctx):
-    edge   = r.adj_reb_edge
-    passed = edge >= 0.0
+    edge = r.adj_reb_edge
+    stats = ctx.get("stats", {})
+    
+    MIN_Z_REB = 0.15  # 0.1491
+    
+    threshold = stats.get("reb_mean", 0) + (MIN_Z_REB * stats.get("reb_std", 1))
+    passed = edge >= threshold if edge is not None else False
     return _item("rebounding_edge", "Rebounding Edge", passed,
-                 f"{edge:.2f}", "≥ 0",
-                 f"Adjusted rebounding edge: {edge:.2f}")
+                 f"{edge:.2f}" if edge is not None else "N/A", f"≥ {threshold:.2f}",
+                 f"Adjusted rebounding edge: {edge:.2f}" if edge is not None else "Unavailable")
 
 
 def _check_tov_edge(r, ctx):
-    edge   = r.adj_tov_edge
-    passed = edge >= 1.5
+    edge = r.adj_tov_edge
+    stats = ctx.get("stats", {})
+    
+    MIN_Z_TOV = -0.10  # -0.1009
+    
+    threshold = stats.get("tov_mean", 0) + (MIN_Z_TOV * stats.get("tov_std", 1))
+    passed = edge >= threshold if edge is not None else False
     return _item("turnover_edge", "Turnover Edge", passed,
-                 f"{edge:.2f}", "≥ 1.5",
-                 f"Adjusted turnover edge: {edge:.2f}")
+                 f"{edge:.2f}" if edge is not None else "N/A", f"≥ {threshold:.2f}",
+                 f"Adjusted turnover edge: {edge:.2f}" if edge is not None else "Unavailable")
 
 
 def _check_ffi(r, ctx):
     ffi = r.ffi_adj
+    stats = ctx.get("stats", {})
+    
+    MIN_Z_FFI = 1.64  # 1.6378
+    
+    threshold = stats.get("ffi_mean", 0) + (MIN_Z_FFI * stats.get("ffi_std", 1))
     if ffi is None:
         return _item("four_factor_index", "Four Factor Index", False,
-                     "N/A", "> 80", "FFI unavailable")
-    passed = ffi > 80.0
+                     "N/A", f"≥ {threshold:.1f}", "FFI unavailable")
+    passed = ffi >= threshold
     return _item("four_factor_index", "Four Factor Index", passed,
-                 f"{ffi:.1f}", "> 80",
+                 f"{ffi:.1f}", f"≥ {threshold:.1f}",
                  f"Adjusted FFI: {ffi:.1f}")
 
 

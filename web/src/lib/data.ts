@@ -81,12 +81,15 @@ function mapApiRowToTeamSeason(team: Record<string, unknown>): TeamSeason {
 }
 
 /** Fetch rankings from backend API */
-async function fetchRankingsFromApi(season?: number): Promise<TeamsData> {
+async function fetchRankingsFromApi(season?: number, isPreTournament?: boolean): Promise<TeamsData> {
   // Server-side: prefer the internal Docker URL (never exposed to browsers).
   // Client-side: falls back to the public URL baked in at build time.
   const base = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
-  const params = season ? `?season=${season}` : '';
-  const url = `${base}${API_RANKINGS_PATH}${params}`;
+  const queryParams = new URLSearchParams();
+  if (season) queryParams.set('season', season.toString());
+  if (isPreTournament) queryParams.set('pre_tournament', 'true');
+  const paramsStr = queryParams.toString() ? `?${queryParams.toString()}` : '';
+  const url = `${base}${API_RANKINGS_PATH}${paramsStr}`;
 
   const res = await fetch(url, { cache: 'no-store' });
 
@@ -152,15 +155,15 @@ export async function getAllSeasons(): Promise<SeasonInfo[]> {
   return fetchSeasonsFromApi();
 }
 
-export async function getAllTeams(season?: number): Promise<TeamSeason[]> {
+export async function getAllTeams(season?: number, isPreTournament?: boolean): Promise<TeamSeason[]> {
   if (isBuildPhase()) return [];
-  const apiData = await fetchRankingsFromApi(season);
+  const apiData = await fetchRankingsFromApi(season, isPreTournament);
   return apiData.teams;
 }
 
-export async function getMetadata(season?: number): Promise<DatasetMetadata> {
+export async function getMetadata(season?: number, isPreTournament?: boolean): Promise<DatasetMetadata> {
   if (isBuildPhase()) return emptyMetadata;
-  const apiData = await fetchRankingsFromApi(season);
+  const apiData = await fetchRankingsFromApi(season, isPreTournament);
   return apiData.metadata;
 }
 

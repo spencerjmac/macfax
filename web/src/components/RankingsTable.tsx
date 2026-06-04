@@ -25,6 +25,7 @@ interface RankingsTableProps {
   selectedSeason?: number;
   /** Sport context — defaults to 'ncaa'. Reserved for future sport-aware column config. */
   sport?: 'ncaa';
+  isPreTournament?: boolean;
 }
 
 type TabId = 'overview' | 'four-factors' | 'adjusted-four-factors';
@@ -35,7 +36,7 @@ interface SubColSpec {
   label: string;
 }
 
-export default function RankingsTable({ data, seasons = [], selectedSeason }: RankingsTableProps) {
+export default function RankingsTable({ data, seasons = [], selectedSeason, isPreTournament = false }: RankingsTableProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabId>('overview');
   const [sorting, setSorting] = useState<SortingState>([
@@ -217,7 +218,7 @@ export default function RankingsTable({ data, seasons = [], selectedSeason }: Ra
               <span className="font-medium">{team.teamName}</span>
               {team.tournament_finish === 'Champ' && <span title="National Champion" className="text-sm">🏆</span>}
               {team.tournament_finish === 'Runner-Up' && <span title="Runner-Up" className="text-sm">🥈</span>}
-              {team.tournament_finish === 'Final Four' && <span title="Final Four" className="text-sm">🏅</span>}
+              {team.tournament_finish === 'Final Four' && <span title="Final Four" className="text-sm">🥉</span>}
             </Link>
           );
         },
@@ -283,7 +284,7 @@ export default function RankingsTable({ data, seasons = [], selectedSeason }: Ra
               <span className="font-medium text-sm">{team.teamName}</span>
               {team.tournament_finish === 'Champ' && <span title="National Champion" className="text-sm">🏆</span>}
               {team.tournament_finish === 'Runner-Up' && <span title="Runner-Up" className="text-sm">🥈</span>}
-              {team.tournament_finish === 'Final Four' && <span title="Final Four" className="text-sm">🏅</span>}
+              {team.tournament_finish === 'Final Four' && <span title="Final Four" className="text-sm">🥉</span>}
             </Link>
           );
         },
@@ -448,6 +449,38 @@ export default function RankingsTable({ data, seasons = [], selectedSeason }: Ra
 
         <div className="text-sm text-text-muted">
           Showing {table.getFilteredRowModel().rows.length} teams
+        </div>
+
+        {/* Pre-Tournament Toggle */}
+        <div className="flex items-center gap-2 ml-auto">
+          <label htmlFor="preTournamentToggle" className="text-sm font-medium text-text-primary cursor-pointer">
+            Pre-Tournament Only
+          </label>
+          <button
+            id="preTournamentToggle"
+            role="switch"
+            aria-checked={isPreTournament}
+            onClick={() => {
+              const newUrl = new URL(window.location.href);
+              if (!isPreTournament) {
+                newUrl.searchParams.set('pre_tournament', 'true');
+              } else {
+                newUrl.searchParams.delete('pre_tournament');
+              }
+              router.push(newUrl.pathname + newUrl.search);
+            }}
+            className={clsx(
+              "relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 focus:ring-offset-surface",
+              isPreTournament ? "bg-brand" : "bg-ui-border"
+            )}
+          >
+            <span
+              className={clsx(
+                "inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform",
+                isPreTournament ? "translate-x-4" : "translate-x-1"
+              )}
+            />
+          </button>
         </div>
       </div>
 

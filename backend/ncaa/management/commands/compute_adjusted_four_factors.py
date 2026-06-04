@@ -46,6 +46,11 @@ class Command(BaseCommand):
             default=None,
             help='Number of iterations for convergence (default: from PipelineConfig)'
         )
+        parser.add_argument(
+            "--pre-tournament",
+            action="store_true",
+            help="If set, compute ratings using only games on or before Selection Sunday.",
+        )
 
     def handle(self, *args, **options):
         from ncaa.models import PipelineConfig
@@ -53,6 +58,7 @@ class Command(BaseCommand):
 
         season_year = options['season']
         iterations = options['iterations'] or cfg.adj_ff_iterations
+        is_pre_tournament = options['pre_tournament']
 
         # Get season
         try:
@@ -87,7 +93,11 @@ class Command(BaseCommand):
         # Initialize ratings dictionary with raw four factors
         four_factors = {}
         for team in all_teams:
-            metrics = TeamSeasonMetrics.objects.get(team=team, season=season)
+            try:
+                metrics = TeamSeasonMetrics.all_objects.get(team=team, season=season, is_pre_tournament=is_pre_tournament)
+            except TeamSeasonMetrics.DoesNotExist:
+                continue
+                
             four_factors[team.id] = {
                 # Offensive four factors
                 'adj_efg': metrics.efg_pct,
@@ -112,10 +122,11 @@ class Command(BaseCommand):
             
             for team in all_teams:
                 # Get all games for this team
-                team_games = TeamGameStats.objects.filter(
-                    team=team,
-                    game__season_year=season.year
-                ).select_related('game')
+                tgs_filters = {'team': team, 'game__season_year': season.year}
+                if is_pre_tournament and season.selection_sunday_date:
+                    tgs_filters['game__game_date__lte'] = season.selection_sunday_date
+                
+                team_games = TeamGameStats.objects.filter(**tgs_filters).select_related('game')
 
                 if not team_games.exists():
                     continue
@@ -258,9 +269,10 @@ class Command(BaseCommand):
                 # Only update existing TeamSeasonRatings — never create stubs for teams
                 # that weren't processed by compute_adjusted_ratings (e.g. teams that
                 # weren't D1 in this historical season).
-                updated = TeamSeasonRatings.objects.filter(
+                updated = TeamSeasonRatings.all_objects.filter(
                     team=team,
                     season=season,
+                    is_pre_tournament=is_pre_tournament,
                 ).update(
                     adj_efg_pct=round(ff['adj_efg'], 2),
                     adj_tov_pct=round(ff['adj_tov'], 2),
@@ -275,7 +287,7 @@ class Command(BaseCommand):
 
                 if updated:
                     # Recompute margin fields separately (they depend on the adj fields)
-                    rating = TeamSeasonRatings.objects.get(team=team, season=season)
+                    rating = TeamSeasonRatings.all_objects.get(team=team, season=season, is_pre_tournament=is_pre_tournament)
                     rating.adj_efg_margin = round(rating.adj_efg_pct - rating.adj_opp_efg_pct, 2)
                     rating.adj_tov_edge = round(rating.adj_opp_tov_pct - rating.adj_tov_pct, 2)
                     rating.adj_reb_edge = round(rating.adj_orb_pct - rating.adj_opp_orb_pct, 2)
@@ -298,8 +310,8 @@ class Command(BaseCommand):
 
         # Show sample results
         self.stdout.write("\nSample Adjusted Four Factors (Top 10 by Adj eFG margin):")
-        top_teams = TeamSeasonRatings.objects.filter(
-            season=season
+        top_teams = TeamSeasonRatings.all_objects.filter(
+            season=season, is_pre_tournament=is_pre_tournament
         ).order_by('-adj_efg_margin')[:10]
 
         for i, rating in enumerate(top_teams, 1):

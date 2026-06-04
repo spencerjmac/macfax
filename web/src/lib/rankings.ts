@@ -220,20 +220,55 @@ export function buildChampionChecklist(team: TeamSeason, ranks: TeamRanks, allTe
   const apPollWeek6 = team.ap_poll_week6 ?? null;
   const goodAPPoll = apPollWeek6 != null ? apPollWeek6 <= 12 : false;
 
-  // 9) eFG Margin ≥ 6% (stored as decimal after /100, e.g. 0.1751 = 17.51%)
-  const goodEFGMargin = (team.eFG_margin ?? 0) >= 0.06;
+  // Dynamically calculate thresholds using standard deviations
+  // Z-scores based on historical champion minimums
+  const minZEFGMargin = 1.39; // 1.3936
+  const minZTOVEdge = -0.10; // -0.1009
+  const minZRebEdge = 0.15; // 0.1491
+  const minZFTRMargin = -0.47; // -0.4703
+  const minZFFI = 1.64; // 1.6378
+  
+  let efgMean = 0, efgStd = 1, tovMean = 0, tovStd = 1;
+  let rebMean = 0, rebStd = 1, ftrMean = 0, ftrStd = 1;
+  let ffiMean = 0, ffiStd = 1;
 
-  // 10) FTR Margin ≥ -5.5 (stored as raw ratio, e.g. 17.54)
-  const goodFTRMargin = (team.ftr_margin ?? 0) >= -5.5;
+  if (allTeams && allTeams.length > 0) {
+      const calcMean = (arr: number[]) => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
+      const calcStd = (arr: number[], mean: number) => arr.length ? Math.sqrt(arr.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / arr.length) : 1;
 
-  // 11) Rebounding Edge ≥ 0 (stored as decimal)
-  const goodRebEdge = (team.reb_edge ?? 0) >= 0;
+      const efgArr = allTeams.filter(t => t.eFG_margin != null).map(t => t.eFG_margin!);
+      const tovArr = allTeams.filter(t => t.tov_edge != null).map(t => t.tov_edge!);
+      const rebArr = allTeams.filter(t => t.reb_edge != null).map(t => t.reb_edge!);
+      const ftrArr = allTeams.filter(t => t.ftr_margin != null).map(t => t.ftr_margin!);
+      const ffiArr = allTeams.filter(t => t.four_factor_index_100 != null).map(t => t.four_factor_index_100!);
 
-  // 12) Turnover Edge ≥ 1.5% (stored as decimal, e.g. 0.0371 = 3.71%)
-  const goodTOVEdge = (team.tov_edge ?? 0) >= 0.015;
+      efgMean = calcMean(efgArr); efgStd = calcStd(efgArr, efgMean);
+      tovMean = calcMean(tovArr); tovStd = calcStd(tovArr, tovMean);
+      rebMean = calcMean(rebArr); rebStd = calcStd(rebArr, rebMean);
+      ftrMean = calcMean(ftrArr); ftrStd = calcStd(ftrArr, ftrMean);
+      ffiMean = calcMean(ffiArr); ffiStd = calcStd(ffiArr, ffiMean);
+  }
 
-  // 13) Four Factor Index > 80
-  const goodFFI = team.four_factor_index_100 != null ? team.four_factor_index_100 > 80 : false;
+  const threshEFG = efgMean + (minZEFGMargin * efgStd);
+  const threshTOV = tovMean + (minZTOVEdge * tovStd);
+  const threshReb = rebMean + (minZRebEdge * rebStd);
+  const threshFTR = ftrMean + (minZFTRMargin * ftrStd);
+  const threshFFI = ffiMean + (minZFFI * ffiStd);
+
+  // 9) Four Factor Index dynamically derived
+  const goodFFI = team.four_factor_index_100 != null ? team.four_factor_index_100 >= threshFFI : false;
+
+  // 10) eFG Margin dynamically derived
+  const goodEFGMargin = (team.eFG_margin ?? 0) >= threshEFG;
+
+  // 11) TOV Edge dynamically derived
+  const goodTOVEdge = (team.tov_edge ?? 0) >= threshTOV;
+
+  // 12) REB Edge dynamically derived
+  const goodRebEdge = (team.reb_edge ?? 0) >= threshReb;
+
+  // 13) FTR Margin dynamically derived
+  const goodFTRMargin = (team.ftr_margin ?? 0) >= threshFTR;
 
   // 14) WAB > 5
   const goodWAB = team.wab != null ? team.wab > 5 : false;
@@ -299,39 +334,39 @@ export function buildChampionChecklist(team: TeamSeason, ranks: TeamRanks, allTe
       thresholdDisplay: '≤ 12',
     },
     {
+      key: 'four_factor_index',
+      label: 'Four Factor Index',
+      passed: goodFFI,
+      valueDisplay: team.four_factor_index_100 != null ? team.four_factor_index_100.toFixed(1) : 'N/A',
+      thresholdDisplay: `≥ ${threshFFI.toFixed(1)}`,
+    },
+    {
       key: 'efg_margin',
       label: 'eFG Margin',
       passed: goodEFGMargin,
-      valueDisplay: `${((team.eFG_margin ?? 0) * 100).toFixed(1)}%`,
-      thresholdDisplay: '≥ 6%',
+      valueDisplay: team.eFG_margin != null ? `${(team.eFG_margin * 100).toFixed(1)}%` : 'N/A',
+      thresholdDisplay: `≥ ${(threshEFG * 100).toFixed(1)}%`,
+    },
+    {
+      key: 'tov_edge',
+      label: 'Turnover Edge',
+      passed: goodTOVEdge,
+      valueDisplay: team.tov_edge != null ? `${(team.tov_edge * 100).toFixed(1)}%` : 'N/A',
+      thresholdDisplay: `≥ ${(threshTOV * 100).toFixed(1)}%`,
+    },
+    {
+      key: 'reb_edge',
+      label: 'Rebounding Edge',
+      passed: goodRebEdge,
+      valueDisplay: team.reb_edge != null ? `${(team.reb_edge * 100).toFixed(1)}%` : 'N/A',
+      thresholdDisplay: `≥ ${(threshReb * 100).toFixed(1)}%`,
     },
     {
       key: 'ftr_margin',
       label: 'FTR Margin',
       passed: goodFTRMargin,
-      valueDisplay: (team.ftr_margin ?? 0).toFixed(2),
-      thresholdDisplay: '≥ -5.50',
-    },
-    {
-      key: 'rebounding_edge',
-      label: 'Rebounding Edge',
-      passed: goodRebEdge,
-      valueDisplay: `${((team.reb_edge ?? 0) * 100).toFixed(1)}%`,
-      thresholdDisplay: '≥ 0%',
-    },
-    {
-      key: 'turnover_edge',
-      label: 'Turnover Edge',
-      passed: goodTOVEdge,
-      valueDisplay: `${((team.tov_edge ?? 0) * 100).toFixed(1)}%`,
-      thresholdDisplay: '≥ 1.5%',
-    },
-    {
-      key: 'four_factor_index',
-      label: 'Four Factor Index',
-      passed: goodFFI,
-      valueDisplay: team.four_factor_index_100 != null ? team.four_factor_index_100.toFixed(1) : 'N/A',
-      thresholdDisplay: '> 80',
+      valueDisplay: team.ftr_margin != null ? team.ftr_margin.toFixed(2) : 'N/A',
+      thresholdDisplay: `≥ ${threshFTR.toFixed(2)}`,
     },
     {
       key: 'wab',

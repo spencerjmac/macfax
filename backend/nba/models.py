@@ -75,6 +75,7 @@ class NBATeam(models.Model):
     conference = models.CharField(max_length=10, choices=CONFERENCE_CHOICES)
     division = models.CharField(max_length=50)
     logo_url = models.CharField(max_length=255, null=True, blank=True)
+    elevation = models.IntegerField(null=True, blank=True, help_text="Home arena elevation in feet")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -113,6 +114,7 @@ class NBAGame(models.Model):
     home_score = models.IntegerField(null=True, blank=True)
     away_score = models.IntegerField(null=True, blank=True)
     arena = models.CharField(max_length=150, blank=True)
+    elevation = models.IntegerField(null=True, blank=True, help_text="Game arena elevation in feet")
 
     season_type = models.CharField(
         max_length=20, choices=SEASON_TYPE_CHOICES, default="regular"

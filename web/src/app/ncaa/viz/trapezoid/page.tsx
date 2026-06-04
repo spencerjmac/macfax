@@ -108,7 +108,7 @@ export default function TrapezoidPage() {
         formatter: (params: any) => {
           if (params.componentSubType === 'scatter') {
             const team = params.data.team;
-            const trophy = team.tournament_finish === 'Champ' ? ' 🏆' : team.tournament_finish === 'Runner-Up' ? ' 🥈' : team.tournament_finish === 'Final Four' ? ' 🏅' : '';
+            const trophy = team.tournament_finish === 'Champ' ? ' 🏆' : team.tournament_finish === 'Runner-Up' ? ' 🥈' : team.tournament_finish === 'Final Four' ? ' 🥉' : '';
               
             return `
               <div style="font-family: inherit; padding: 4px;">

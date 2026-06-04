@@ -182,6 +182,7 @@ class Game(models.Model):
     venue_name = models.CharField(max_length=200, null=True, blank=True)
     venue_city = models.CharField(max_length=100, null=True, blank=True)
     venue_state = models.CharField(max_length=2, null=True, blank=True)
+    elevation = models.IntegerField(null=True, blank=True, help_text="Game arena elevation in feet")
 
     status = models.CharField(
         max_length=20, choices=STATUS_CHOICES, default="scheduled"

@@ -33,6 +33,11 @@ class Command(BaseCommand):
             required=True,
             help='Season year (e.g., 2026)'
         )
+        parser.add_argument(
+            '--pre-tournament',
+            action='store_true',
+            help='Compute metrics using only pre-tournament game data (up to Selection Sunday)'
+        )
 
     def compute_z_score(self, value, mean, std_dev):
         """Compute z-score with protection against zero std dev"""
@@ -61,6 +66,7 @@ class Command(BaseCommand):
         cfg = PipelineConfig.get_config()
 
         season_year = options['season']
+        is_pre_tournament = options['pre_tournament']
 
         # Get season
         try:
@@ -72,8 +78,8 @@ class Command(BaseCommand):
         self.stdout.write(f"Computing Four Factor Index for {season.display_name}...")
 
         # Get all D1 teams with metrics and ratings
-        teams_with_metrics = TeamSeasonMetrics.objects.filter(season=season, team__is_d1=True)
-        teams_with_ratings = TeamSeasonRatings.objects.filter(season=season, team__is_d1=True)
+        teams_with_metrics = TeamSeasonMetrics.all_objects.filter(season=season, team__is_d1=True, is_pre_tournament=is_pre_tournament)
+        teams_with_ratings = TeamSeasonRatings.all_objects.filter(season=season, team__is_d1=True, is_pre_tournament=is_pre_tournament)
 
         if not teams_with_metrics.exists():
             self.stdout.write(self.style.ERROR(
@@ -218,8 +224,8 @@ class Command(BaseCommand):
 
         # Show sample results
         self.stdout.write("\n=== Top 10 Teams by Adjusted FFI ===")
-        top_teams = TeamSeasonRatings.objects.filter(
-            season=season
+        top_teams = TeamSeasonRatings.all_objects.filter(
+            season=season, is_pre_tournament=is_pre_tournament
         ).order_by('-ffi_adj')[:10]
 
         for i, rating in enumerate(top_teams, 1):
@@ -233,8 +239,8 @@ class Command(BaseCommand):
             )
 
         self.stdout.write("\n=== Bottom 10 Teams by Adjusted FFI ===")
-        bottom_teams = TeamSeasonRatings.objects.filter(
-            season=season
+        bottom_teams = TeamSeasonRatings.all_objects.filter(
+            season=season, is_pre_tournament=is_pre_tournament
         ).order_by('ffi_adj')[:10]
 
         for i, rating in enumerate(bottom_teams, 1):
