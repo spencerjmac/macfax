@@ -5,15 +5,17 @@ import { usePathname } from 'next/navigation';
 import clsx from 'clsx';
 
 const SPORTS = [
-  { id: 'ncaa', label: 'NCAA', href: '/ncaa' },
-  { id: 'nba',  label: 'NBA',  href: '/nba' },
+  { id: 'ncaa',      label: 'NCAA',       href: '/ncaa' },
+  { id: 'nba',       label: 'NBA',        href: '/nba' },
+  { id: 'world-cup', label: 'World Cup',  href: '/world-cup' },
 ] as const;
 
 export default function SportSwitcher() {
   const pathname = usePathname();
   const isNCAA = pathname?.startsWith('/ncaa');
   const isNBA = pathname?.startsWith('/nba');
-  const activeSport = isNBA ? 'nba' : (isNCAA ? 'ncaa' : null);
+  const isWorldCup = pathname?.startsWith('/world-cup');
+  const activeSport = isNBA ? 'nba' : isNCAA ? 'ncaa' : isWorldCup ? 'world-cup' : null;
 
   return (
     <div className="flex items-center rounded-md border border-gray-700 divide-x divide-gray-700">

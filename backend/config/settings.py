@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     "backtesting",
     "nba",
     "validation",
+    "world_cup",
 ]
 
 MIDDLEWARE = [
