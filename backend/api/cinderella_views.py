@@ -252,8 +252,8 @@ class CinderellaView(APIView):
             sigma = 11.08
 
         all_ratings = list(
-            TeamSeasonRatings.objects
-            .filter(season=season, team__is_d1=True, games_played__gt=0)
+            TeamSeasonRatings.all_objects
+            .filter(season=season, team__is_d1=True, games_played__gt=0, is_pre_tournament=True)
             .select_related('team')
         )
         if not all_ratings:
@@ -262,7 +262,7 @@ class CinderellaView(APIView):
 
         metrics_map = {
             m.team_id: m
-            for m in TeamSeasonMetrics.objects.filter(season=season)
+            for m in TeamSeasonMetrics.all_objects.filter(season=season, is_pre_tournament=True)
         }
 
         ctx           = _build_context(all_ratings, metrics_map)

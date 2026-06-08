@@ -25,7 +25,7 @@ def get_elevation_for_location(query: str):
     try:
         # 1. Geocoding
         geo_url = f"https://geocoding-api.open-meteo.com/v1/search?name={requests.utils.quote(query)}&count=1&language=en&format=json"
-        geo_res = requests.get(geo_url)
+        geo_res = requests.get(geo_url, timeout=10)
         geo_data = geo_res.json()
         
         if not geo_data.get('results'):
@@ -37,7 +37,7 @@ def get_elevation_for_location(query: str):
         
         # 2. Elevation
         elev_url = f"https://api.open-meteo.com/v1/elevation?latitude={lat}&longitude={lon}"
-        elev_res = requests.get(elev_url)
+        elev_res = requests.get(elev_url, timeout=10)
         elev_data = elev_res.json()
         
         if not elev_data.get('elevation'):
@@ -92,17 +92,19 @@ def populate_ncaa():
     for team in teams:
         if team.elevation is not None:
             continue
-        # Find home city from games
-        home_games = Game.objects.filter(home_team=team, neutral_site=False)
-        cities = []
-        for g in home_games:
-            if g.venue_city and g.venue_state:
-                cities.append(f"{g.venue_city}, {g.venue_state}")
-                
-        if not cities:
+        # Find home city from games (just grab the first valid one to be fast)
+        home_game = Game.objects.filter(
+            home_team=team, 
+            neutral_site=False, 
+            venue_city__isnull=False, 
+            venue_state__isnull=False
+        ).exclude(venue_city='').exclude(venue_state='').first()
+        
+        if not home_game:
             continue
             
-        most_common_city = Counter(cities).most_common(1)[0][0]
+        most_common_city = f"{home_game.venue_city}, {home_game.venue_state}"
+        print(f"Processing {team.name} ({most_common_city})...")
         elev = get_elevation_for_location(most_common_city)
         if elev is not None:
             team.elevation = elev

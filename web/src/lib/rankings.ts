@@ -193,44 +193,44 @@ export function buildChampionChecklist(team: TeamSeason, ranks: TeamRanks, allTe
   const trapezoid = computeTrapezoidBoundaries(allTempos, allEMs);
   const inTrapezoid = isInsideTrapezoid(team.adjTempo, team.adjEM, trapezoid);
 
-  // 2) KenPom Contender: (AdjO > 113.8 AND AdjD < 95.0) OR AdjEM > 30.0
-  const kenpomContender = (team.adjO > 113.8 && team.adjD < 95.0) || team.adjEM > 30.0;
+  const minZAdjO = 1.66;
+  const maxZAdjD = -1.24;
+  const minZAdjEM = 1.76;
+  const minZWin = 1.31;
+  const minZ3P = -0.52;
+  const minZFT = -0.28;
+  const minZBalancedEM = 2.50;
 
   // 3) Title Favorite: within 6.0 points of max AdjEM
   const titleFavoriteThreshold = maxAdjEM - 6.0;
   const titleFavorite = team.adjEM >= titleFavoriteThreshold;
 
-  // 4) Win% > 74%
+  // Compute local percentages
   const [winsStr, lossesStr] = team.record.split('-');
   const wins = parseInt(winsStr, 10) || 0;
   const losses = parseInt(lossesStr, 10) || 0;
   const totalGames = wins + losses || 1;
   const winPct = wins / totalGames;
-  const goodWinPct = winPct > 0.74;
 
-  // 5) Elite Off/Def Ranks: AdjO rank ≤ 21 AND AdjD rank ≤ 37
-  const eliteRanks = (ranks.adjO != null ? ranks.adjO <= 21 : false) &&
-                     (ranks.adjD != null ? ranks.adjD <= 37 : false);
-
-  // 6) 3P% > 32% (stored as decimal, e.g. 0.348)
-  const goodThreePct = team.fg3_pct != null ? team.fg3_pct > 0.32 : false;
-
-  // 7) T-Rank ≤ 17 — not in rankings data
   // 8) AP Poll Week 6 ≤ 12
   const apPollWeek6 = team.ap_poll_week6 ?? null;
   const goodAPPoll = apPollWeek6 != null ? apPollWeek6 <= 12 : false;
 
   // Dynamically calculate thresholds using standard deviations
   // Z-scores based on historical champion minimums
-  const minZEFGMargin = 1.39; // 1.3936
-  const minZTOVEdge = -0.10; // -0.1009
-  const minZRebEdge = 0.15; // 0.1491
-  const minZFTRMargin = -0.47; // -0.4703
-  const minZFFI = 1.64; // 1.6378
+  const minZEFGMargin = 1.36; // 1.3629
+  const minZTOVEdge = 0.12; // 0.1225
+  const minZRebEdge = 0.20; // 0.1987
+  const minZFTRMargin = -0.58; // -0.5757
+  const minZFFI = 2.01; // 2.0141
   
   let efgMean = 0, efgStd = 1, tovMean = 0, tovStd = 1;
   let rebMean = 0, rebStd = 1, ftrMean = 0, ftrStd = 1;
   let ffiMean = 0, ffiStd = 1;
+  
+  // New metrics
+  let adjoMean = 0, adjoStd = 1, adjdMean = 0, adjdStd = 1, adjemMean = 0, adjemStd = 1;
+  let winMean = 0.5, winStd = 0.1, fg3Mean = 0.33, fg3Std = 0.03, ftMean = 0.70, ftStd = 0.03;
 
   if (allTeams && allTeams.length > 0) {
       const calcMean = (arr: number[]) => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
@@ -241,12 +241,31 @@ export function buildChampionChecklist(team: TeamSeason, ranks: TeamRanks, allTe
       const rebArr = allTeams.filter(t => t.reb_edge != null).map(t => t.reb_edge!);
       const ftrArr = allTeams.filter(t => t.ftr_margin != null).map(t => t.ftr_margin!);
       const ffiArr = allTeams.filter(t => t.four_factor_index_100 != null).map(t => t.four_factor_index_100!);
+      
+      const adjoArr = allTeams.filter(t => t.adjO != null).map(t => t.adjO);
+      const adjdArr = allTeams.filter(t => t.adjD != null).map(t => t.adjD);
+      const adjemArr = allTeams.filter(t => t.adjEM != null).map(t => t.adjEM);
+      const fg3Arr = allTeams.filter(t => t.fg3_pct != null).map(t => t.fg3_pct!);
+      const ftArr = allTeams.filter(t => t.ft_pct != null).map(t => t.ft_pct!);
+      const winArr = allTeams.map(t => {
+        const [w, l] = t.record.split('-');
+        const wins = parseInt(w) || 0;
+        const total = wins + (parseInt(l) || 0) || 1;
+        return wins / total;
+      });
 
       efgMean = calcMean(efgArr); efgStd = calcStd(efgArr, efgMean);
       tovMean = calcMean(tovArr); tovStd = calcStd(tovArr, tovMean);
       rebMean = calcMean(rebArr); rebStd = calcStd(rebArr, rebMean);
       ftrMean = calcMean(ftrArr); ftrStd = calcStd(ftrArr, ftrMean);
       ffiMean = calcMean(ffiArr); ffiStd = calcStd(ffiArr, ffiMean);
+      
+      adjoMean = calcMean(adjoArr); adjoStd = calcStd(adjoArr, adjoMean);
+      adjdMean = calcMean(adjdArr); adjdStd = calcStd(adjdArr, adjdMean);
+      adjemMean = calcMean(adjemArr); adjemStd = calcStd(adjemArr, adjemMean);
+      winMean = calcMean(winArr); winStd = calcStd(winArr, winMean);
+      fg3Mean = calcMean(fg3Arr); fg3Std = calcStd(fg3Arr, fg3Mean);
+      ftMean = calcMean(ftArr); ftStd = calcStd(ftArr, ftMean);
   }
 
   const threshEFG = efgMean + (minZEFGMargin * efgStd);
@@ -273,8 +292,30 @@ export function buildChampionChecklist(team: TeamSeason, ranks: TeamRanks, allTe
   // 14) WAB > 5
   const goodWAB = team.wab != null ? team.wab > 5 : false;
 
-  // 15) FT% > 70% (stored as decimal)
-  const goodFTPct = team.ft_pct != null ? team.ft_pct > 0.70 : false;
+  // Dynamic values
+  const adjoZ = (team.adjO - adjoMean) / adjoStd;
+  const adjdZ = (team.adjD - adjdMean) / adjdStd;
+  const adjemZ = (team.adjEM - adjemMean) / adjemStd;
+  const winZ = (winPct - winMean) / winStd;
+  const fg3Z = team.fg3_pct != null ? (team.fg3_pct - fg3Mean) / fg3Std : 0;
+  const ftZ = team.ft_pct != null ? (team.ft_pct - ftMean) / ftStd : 0;
+  
+  const threshWin = winMean + (minZWin * winStd);
+  const thresh3P = fg3Mean + (minZ3P * fg3Std);
+  const threshFT = ftMean + (minZFT * ftStd);
+  const threshAdjEM = adjemMean + (minZAdjEM * adjemStd);
+  const threshAdjO = adjoMean + (minZAdjO * adjoStd);
+  const threshAdjD = adjdMean + (maxZAdjD * adjdStd);
+
+  const threshBalancedEM = adjemMean + (minZBalancedEM * adjemStd);
+
+  const balancedDominance = (adjoZ >= minZAdjO && adjdZ <= maxZAdjD) || (adjemZ >= minZBalancedEM);
+  const goodWinPct = winZ >= minZWin;
+  const eliteEfficiency = (ranks.adjO != null ? ranks.adjO <= 16 : false) &&
+                     (ranks.adjD != null ? ranks.adjD <= 45 : false);
+  const goodThreePct = team.fg3_pct != null && fg3Z >= minZ3P;
+  const eliteAdjEM = adjemZ >= minZAdjEM;
+  const goodFTPct = team.ft_pct != null && ftZ >= minZFT;
 
   const items: ChecklistItem[] = [
     {
@@ -285,11 +326,11 @@ export function buildChampionChecklist(team: TeamSeason, ranks: TeamRanks, allTe
       thresholdDisplay: 'Inside trapezoid',
     },
     {
-      key: 'kenpom_contender',
-      label: 'KenPom Contender',
-      passed: kenpomContender,
+      key: 'balanced_dominance',
+      label: 'Balanced Dominance',
+      passed: balancedDominance,
       valueDisplay: `O: ${team.adjO.toFixed(1)}, D: ${team.adjD.toFixed(1)}`,
-      thresholdDisplay: '(O > 113.8 & D < 95) or EM > 30',
+      thresholdDisplay: `(O ≥ ${threshAdjO.toFixed(1)} & D ≤ ${threshAdjD.toFixed(1)}) or EM ≥ ${threshBalancedEM.toFixed(1)}`,
     },
     {
       key: 'title_favorite',
@@ -303,29 +344,30 @@ export function buildChampionChecklist(team: TeamSeason, ranks: TeamRanks, allTe
       label: 'Win Percentage',
       passed: goodWinPct,
       valueDisplay: `${(winPct * 100).toFixed(1)}%`,
-      thresholdDisplay: '> 74%',
+      thresholdDisplay: `≥ ${(threshWin * 100).toFixed(1)}% (Z ≥ ${minZWin})`,
     },
     {
-      key: 'elite_ranks',
-      label: 'Elite Off/Def Ranks',
-      passed: eliteRanks,
+      key: 'elite_efficiency',
+      label: 'Elite Efficiency',
+      passed: eliteEfficiency,
       valueDisplay: `Off: ${formatRank(ranks.adjO)}, Def: ${formatRank(ranks.adjD)}`,
-      thresholdDisplay: 'Off ≤ 21, Def ≤ 37',
+      thresholdDisplay: 'Off ≤ 16, Def ≤ 45',
     },
     {
       key: 'three_point_pct',
       label: '3-Point %',
       passed: goodThreePct,
       valueDisplay: team.fg3_pct != null ? `${(team.fg3_pct * 100).toFixed(1)}%` : 'N/A',
-      thresholdDisplay: '> 32%',
+      thresholdDisplay: `≥ ${(thresh3P * 100).toFixed(1)}% (Z ≥ ${minZ3P})`,
     },
     {
-      key: 'adj_em_rank_17',
-      label: 'AdjEM Rank',
-      passed: ranks.adjEM != null ? ranks.adjEM <= 17 : false,
-      valueDisplay: formatRank(ranks.adjEM),
-      thresholdDisplay: '≤ #17',
+      key: 'elite_adjem',
+      label: 'Elite AdjEM',
+      passed: eliteAdjEM,
+      valueDisplay: `Z: ${adjemZ.toFixed(2)}`,
+      thresholdDisplay: `Z ≥ ${minZAdjEM}`,
     },
+
     {
       key: 'ap_poll_week6',
       label: 'AP Poll Week 6',
@@ -380,7 +422,7 @@ export function buildChampionChecklist(team: TeamSeason, ranks: TeamRanks, allTe
       label: 'Free Throw %',
       passed: goodFTPct,
       valueDisplay: team.ft_pct != null ? `${(team.ft_pct * 100).toFixed(1)}%` : 'N/A',
-      thresholdDisplay: '> 70%',
+      thresholdDisplay: `≥ ${(threshFT * 100).toFixed(1)}% (Z ≥ ${minZFT})`,
     },
   ];
 

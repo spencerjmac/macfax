@@ -366,12 +366,30 @@ class Command(BaseCommand):
                         continue
 
                     # Get site factors (different for offense vs defense)
-                    off_site_factor = (
-                        game_stat.site_factor
-                    )  # Home: 0.9862, Away: 1.0140
-                    def_site_factor = (
-                        game_stat.defensive_site_factor
-                    )  # Home: 1.0140, Away: 0.9862
+                    off_site_factor = game_stat.site_factor  # Home: 0.9862, Away: 1.0140
+                    def_site_factor = game_stat.defensive_site_factor  # Home: 1.0140, Away: 0.9862
+                    
+                    # --- ELEVATION PENALTY ---
+                    # If an away team travels to a higher altitude, they suffer an efficiency penalty.
+                    # Coefficient: +0.2 margin per 100 poss per 1,000 feet of altitude difference.
+                    # This converts to roughly a +/- 0.001 multiplier penalty per 1,000 feet.
+                    if not game_stat.game.neutral_site:
+                        game_elev = game_stat.game.elevation or 0
+                        team_elev = team.elevation or 0
+                        opp_elev = game_stat.opponent.elevation or 0
+                        
+                        elev_diff_team = max(0, game_elev - team_elev) / 1000.0
+                        elev_diff_opp = max(0, game_elev - opp_elev) / 1000.0
+                        
+                        if elev_diff_team > 0:
+                            # Team is playing up, so their offense/defense suffered. Inflate/deflate to adjust back to neutral.
+                            off_site_factor += (0.001 * elev_diff_team)
+                            def_site_factor -= (0.001 * elev_diff_team)
+                            
+                        if elev_diff_opp > 0:
+                            # Opponent played up, so they suffered. Team had it easier. Deflate/inflate to adjust back to neutral.
+                            off_site_factor -= (0.001 * elev_diff_opp)
+                            def_site_factor += (0.001 * elev_diff_opp)
 
                     # Compute adjusted game ratings
                     # AOR_g = RawOE_g * (NatAvg / OppAdjD) * OffSiteFactor
@@ -593,6 +611,9 @@ class Command(BaseCommand):
                 all_games_filters = Q(
                     team=team, game__season_year=season_year, game__status="final"
                 )
+                
+                # Exclude canceled games (where both teams scored 0 points despite 'final' status)
+                all_games_filters &= ~Q(game__home_score=0, game__away_score=0)
                 if is_pre_tournament and season.selection_sunday_date:
                     all_games_filters &= Q(game__game_date__lte=season.selection_sunday_date)
 

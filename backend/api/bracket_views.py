@@ -56,10 +56,9 @@ class BracketView(APIView):
             nat_avg_ortg = _DEFAULT_NAT_AVG
             sigma = _DEFAULT_SIGMA
 
-        # Load tournament teams
         all_ratings = list(
-            TeamSeasonRatings.objects
-            .filter(season=season, tournament_seed__isnull=False)
+            TeamSeasonRatings.all_objects
+            .filter(season=season, tournament_seed__isnull=False, is_pre_tournament=True)
             .select_related('team')
         )
 

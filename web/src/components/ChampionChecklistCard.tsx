@@ -42,7 +42,7 @@ export default function ChampionChecklistCard({
           </div>
         </div>
         <p className="text-text-muted text-sm">
-          National Champion Checklist — 15 criteria based on historical championship winners
+          National Champion Checklist — 15 criteria based on historical championship winners*
         </p>
         
         {/* Progress Bar */}
@@ -57,6 +57,9 @@ export default function ChampionChecklistCard({
         </div>
         <div className="text-right text-xs text-text-muted mt-1">
           {percentage.toFixed(0)}% complete
+        </div>
+        <div className="mt-4 text-[10px] text-text-muted italic bg-ui-surface/50 p-2 rounded border border-ui-border/50">
+          *The "UConn Rule": Four Factor criteria are calculated based on 19 of the last 21 National Champions, explicitly excluding the anomalous 2011 & 2014 UConn runs to ensure stricter, more accurate predictive thresholds.
         </div>
       </div>
       

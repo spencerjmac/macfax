@@ -111,14 +111,35 @@ def _check_trapezoid(r, ctx):
                  f"Tempo {r.adj_tempo:.1f}, AdjEM {r.adj_em:.1f}")
 
 
-def _check_kenpom_contender(r, ctx):
-    c1 = r.adj_o > 113.8 and r.adj_d < 95.0
-    c2 = r.adj_em > 30.0
+def _check_balanced_dominance(r, ctx):
+    stats = ctx.get("stats", {})
+    # Z-scores from historical champions
+    MIN_Z_ADJO = 1.66
+    MAX_Z_ADJD = -1.24
+    MIN_Z_ADJEM = 2.50 # High AdjEM threshold proxy for 30.0
+    
+    adjo_mean = stats.get("adjo_mean", 0)
+    adjo_std = stats.get("adjo_std", 1)
+    adjd_mean = stats.get("adjd_mean", 0)
+    adjd_std = stats.get("adjd_std", 1)
+    adjem_mean = stats.get("adjem_mean", 0)
+    adjem_std = stats.get("adjem_std", 1)
+    
+    thresh_adjo = adjo_mean + (MIN_Z_ADJO * adjo_std)
+    thresh_adjd = adjd_mean + (MAX_Z_ADJD * adjd_std)
+    thresh_adjem = adjem_mean + (MIN_Z_ADJEM * adjem_std)
+    
+    adjo_z = (r.adj_o - adjo_mean) / adjo_std if r.adj_o else 0
+    adjd_z = (r.adj_d - adjd_mean) / adjd_std if r.adj_d else 0
+    adjem_z = (r.adj_em - adjem_mean) / adjem_std if r.adj_em else 0
+    
+    c1 = (adjo_z >= MIN_Z_ADJO) and (adjd_z <= MAX_Z_ADJD)
+    c2 = (adjem_z >= MIN_Z_ADJEM)
     passed = c1 or c2
-    return _item("kenpom_contender", "KenPom Contender", passed,
-                 f"O {r.adj_o:.1f} / D {r.adj_d:.1f}",
-                 "(O > 113.8 & D < 95.0) or EM > 30.0",
-                 f"AdjO {r.adj_o:.1f}, AdjD {r.adj_d:.1f}, AdjEM {r.adj_em:.1f}")
+    return _item("balanced_dominance", "Balanced Dominance", passed,
+                 f"O: {r.adj_o:.1f} / D: {r.adj_d:.1f}",
+                 f"(O ≥ {thresh_adjo:.1f} & D ≤ {thresh_adjd:.1f}) or EM ≥ {thresh_adjem:.1f}",
+                 f"AdjO {r.adj_o:.1f} (Threshold: {thresh_adjo:.1f}), AdjD {r.adj_d:.1f} (Threshold: {thresh_adjd:.1f}), AdjEM {r.adj_em:.1f} (Threshold: {thresh_adjem:.1f})")
 
 
 def _check_title_favorite(r, ctx):
@@ -135,51 +156,77 @@ def _check_title_favorite(r, ctx):
 
 
 def _check_win_pct(r, ctx):
+    stats = ctx.get("stats", {})
+    MIN_Z_WIN = 1.31
+    
     games = r.games_played or 0
-    pct   = (r.wins / games) if games else 0.0
-    passed = pct > 0.74
+    pct = (r.wins / games) if games else 0.0
+    
+    win_mean = stats.get("win_pct_mean", 0.5)
+    win_std = stats.get("win_pct_std", 0.1)
+    win_z = (pct - win_mean) / win_std if win_std else 0
+    
+    threshold = win_mean + (MIN_Z_WIN * win_std)
+    passed = win_z >= MIN_Z_WIN
     return _item("win_pct", "Win Percentage", passed,
-                 f"{pct * 100:.1f}%", "> 74%",
-                 f"{r.wins}-{r.losses} ({pct * 100:.1f}%)")
+                 f"{pct * 100:.1f}%", f"≥ {threshold * 100:.1f}% (Z ≥ {MIN_Z_WIN})",
+                 f"{r.wins}-{r.losses} ({pct * 100:.1f}%) | Z-Score: {win_z:.2f}")
 
 
-def _check_elite_ranks(r, ctx):
+def _check_elite_efficiency(r, ctx):
     off_rank = ctx.get("off_ranks", {}).get(r.team_id)
     def_rank = ctx.get("def_ranks", {}).get(r.team_id)
     if off_rank is None or def_rank is None:
-        return _item("elite_ranks", "Elite Off/Def Ranks", False,
-                     "N/A", "Off ≤ 21, Def ≤ 37")
-    passed = off_rank <= 21 and def_rank <= 37
-    return _item("elite_ranks", "Elite Off/Def Ranks", passed,
-                 f"Off #{off_rank} / Def #{def_rank}",
-                 "Off ≤ 21, Def ≤ 37",
+        return _item("elite_efficiency", "Elite Efficiency", False,
+                     "N/A", "Off ≤ 16, Def ≤ 45")
+    passed = off_rank <= 16 and def_rank <= 45
+    return _item("elite_efficiency", "Elite Efficiency", passed,
+                 f"Off: #{off_rank} / Def: #{def_rank}",
+                 "Off Rank ≤ 16, Def Rank ≤ 45",
                  f"Offensive rank #{off_rank}, Defensive rank #{def_rank}")
 
 
 def _check_three_point_pct(r, ctx):
+    stats = ctx.get("stats", {})
     metrics = ctx.get("metrics_map", {}).get(r.team_id)
+    MIN_Z_3P = -0.52
+    
+    fg3_mean = stats.get("fg3_pct_mean", 0.33)
+    fg3_std = stats.get("fg3_pct_std", 0.03)
+    threshold = fg3_mean + (MIN_Z_3P * fg3_std)
+    
     fg3_pct = None
     if metrics and metrics.total_fg3a and metrics.total_fg3a > 0:
         fg3_pct = metrics.total_fg3m / metrics.total_fg3a
+        
     if fg3_pct is None:
         return _item("three_point_pct", "3-Point %", False,
-                     "N/A", "> 32%", "3P% data unavailable")
-    passed = fg3_pct > 0.32
+                     "N/A", f"≥ {threshold * 100:.1f}%", "3P% data unavailable")
+                     
+    fg3_z = (fg3_pct - fg3_mean) / fg3_std if fg3_std else 0
+    passed = fg3_z >= MIN_Z_3P
     return _item("three_point_pct", "3-Point %", passed,
-                 f"{fg3_pct * 100:.1f}%", "> 32%",
-                 f"3P%: {fg3_pct * 100:.1f}% ({metrics.total_fg3m}/{metrics.total_fg3a})")
+                 f"{fg3_pct * 100:.1f}%", f"≥ {threshold * 100:.1f}%",
+                 f"3P%: {fg3_pct * 100:.1f}% (Z: {fg3_z:.2f})")
 
 
-def _check_adj_em_rank(r, ctx):
-    """AdjEM rank ≤ 17 — proxy for T-Rank contender status."""
-    em_rank = ctx.get("em_ranks", {}).get(r.team_id)
-    if em_rank is None:
-        return _item("adj_em_rank", "AdjEM Top 17", False,
-                     "N/A", "AdjEM Rank ≤ 17")
-    passed = em_rank <= 17
-    return _item("adj_em_rank", "AdjEM Top 17", passed,
-                 f"#{em_rank}", "Rank ≤ 17",
-                 f"AdjEM rank: #{em_rank}")
+def _check_elite_adjem(r, ctx):
+    stats = ctx.get("stats", {})
+    MIN_Z_ADJEM = 1.76
+    
+    adjem_mean = stats.get("adjem_mean", 0)
+    adjem_std = stats.get("adjem_std", 1)
+    threshold = adjem_mean + (MIN_Z_ADJEM * adjem_std)
+    
+    if r.adj_em is None:
+        return _item("elite_adjem", "Elite AdjEM", False,
+                     "N/A", f"≥ {threshold:.1f}")
+                     
+    adjem_z = (r.adj_em - adjem_mean) / adjem_std if adjem_std else 0
+    passed = adjem_z >= MIN_Z_ADJEM
+    return _item("elite_adjem", "Elite AdjEM", passed,
+                 f"Z: {adjem_z:.2f}", f"Z ≥ {MIN_Z_ADJEM}",
+                 f"AdjEM: {r.adj_em:.1f} (Z: {adjem_z:.2f}), threshold: {threshold:.1f}")
 
 
 def _check_ap_poll(r, ctx):
@@ -198,7 +245,7 @@ def _check_efg_margin(r, ctx):
     stats = ctx.get("stats", {})
     
     # Z-scores based on historical champion minimums
-    MIN_Z_EFG = 1.39  # 1.3936
+    MIN_Z_EFG = 1.36  # 1.3629
     
     threshold = stats.get("efg_mean", 0) + (MIN_Z_EFG * stats.get("efg_std", 1))
     passed = margin >= threshold if margin is not None else False
@@ -211,7 +258,7 @@ def _check_ftr_margin(r, ctx):
     margin = r.adj_ftr_margin
     stats = ctx.get("stats", {})
     
-    MIN_Z_FTR = -0.47  # -0.4703
+    MIN_Z_FTR = -0.58  # -0.5757
     
     threshold = stats.get("ftr_mean", 0) + (MIN_Z_FTR * stats.get("ftr_std", 1))
     passed = margin >= threshold if margin is not None else False
@@ -224,7 +271,7 @@ def _check_reb_edge(r, ctx):
     edge = r.adj_reb_edge
     stats = ctx.get("stats", {})
     
-    MIN_Z_REB = 0.15  # 0.1491
+    MIN_Z_REB = 0.20  # 0.1987
     
     threshold = stats.get("reb_mean", 0) + (MIN_Z_REB * stats.get("reb_std", 1))
     passed = edge >= threshold if edge is not None else False
@@ -237,7 +284,7 @@ def _check_tov_edge(r, ctx):
     edge = r.adj_tov_edge
     stats = ctx.get("stats", {})
     
-    MIN_Z_TOV = -0.10  # -0.1009
+    MIN_Z_TOV = 0.12  # 0.1225
     
     threshold = stats.get("tov_mean", 0) + (MIN_Z_TOV * stats.get("tov_std", 1))
     passed = edge >= threshold if edge is not None else False
@@ -250,7 +297,7 @@ def _check_ffi(r, ctx):
     ffi = r.ffi_adj
     stats = ctx.get("stats", {})
     
-    MIN_Z_FFI = 1.64  # 1.6378
+    MIN_Z_FFI = 2.01  # 2.0141
     
     threshold = stats.get("ffi_mean", 0) + (MIN_Z_FFI * stats.get("ffi_std", 1))
     if ffi is None:
@@ -274,28 +321,38 @@ def _check_wab(r, ctx):
 
 
 def _check_ft_pct(r, ctx):
+    stats = ctx.get("stats", {})
     metrics = ctx.get("metrics_map", {}).get(r.team_id)
-    ft_pct  = None
+    MIN_Z_FT = -0.28
+    
+    ft_mean = stats.get("ft_pct_mean", 0.70)
+    ft_std = stats.get("ft_pct_std", 0.03)
+    threshold = ft_mean + (MIN_Z_FT * ft_std)
+    
+    ft_pct = None
     if metrics and metrics.total_fta and metrics.total_fta > 0:
         ft_pct = metrics.total_ftm / metrics.total_fta
+        
     if ft_pct is None:
         return _item("ft_pct", "Free Throw %", False,
-                     "N/A", "> 70%", "FT% data unavailable")
-    passed = ft_pct > 0.70
+                     "N/A", f"≥ {threshold * 100:.1f}%", "FT% data unavailable")
+                     
+    ft_z = (ft_pct - ft_mean) / ft_std if ft_std else 0
+    passed = ft_z >= MIN_Z_FT
     return _item("ft_pct", "Free Throw %", passed,
-                 f"{ft_pct * 100:.1f}%", "> 70%",
-                 f"FT%: {ft_pct * 100:.1f}% ({metrics.total_ftm}/{metrics.total_fta})")
+                 f"{ft_pct * 100:.1f}%", f"≥ {threshold * 100:.1f}%",
+                 f"FT%: {ft_pct * 100:.1f}% (Z: {ft_z:.2f})")
 
 
 # Ordered list of check functions
 CHECKS = [
     _check_trapezoid,
-    _check_kenpom_contender,
+    _check_balanced_dominance,
     _check_title_favorite,
     _check_win_pct,
-    _check_elite_ranks,
+    _check_elite_efficiency,
     _check_three_point_pct,
-    _check_adj_em_rank,
+    _check_elite_adjem,
     _check_ap_poll,
     _check_efg_margin,
     _check_ftr_margin,
@@ -348,15 +405,15 @@ class CrystalBallView(APIView):
 
         # All D1 rated teams — used for stable season context
         all_qs = (
-            TeamSeasonRatings.objects
-            .filter(season=season, team__is_d1=True, games_played__gt=0)
+            TeamSeasonRatings.all_objects
+            .filter(season=season, team__is_d1=True, games_played__gt=0, is_pre_tournament=True)
             .select_related("team")
         )
 
         ctx = _build_season_context(all_qs)
 
         # Build metrics lookup for shooting pct checks
-        metrics_qs = TeamSeasonMetrics.objects.filter(season=season)
+        metrics_qs = TeamSeasonMetrics.all_objects.filter(season=season, is_pre_tournament=True)
         ctx["metrics_map"] = {m.team_id: m for m in metrics_qs}
 
         # Also attach conference lookup from serializer

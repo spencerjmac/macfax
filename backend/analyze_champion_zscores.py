@@ -23,6 +23,8 @@ def analyze_champs():
     }
     
     for champ in champs:
+        if champ.season.year in [2011, 2014]:
+            continue
         year = champ.season.year
         
         # Get all D1 teams for this season

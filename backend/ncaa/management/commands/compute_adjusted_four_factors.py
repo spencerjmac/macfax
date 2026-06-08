@@ -23,7 +23,7 @@ Usage:
 """
 
 from django.core.management.base import BaseCommand
-from django.db.models import Sum, Avg
+from django.db.models import Sum, Avg, Q
 from ncaa.models import (
     Season, Team, TeamGameStats, TeamSeasonMetrics,
     TeamSeasonRatings, NationalAverages
@@ -126,7 +126,11 @@ class Command(BaseCommand):
                 if is_pre_tournament and season.selection_sunday_date:
                     tgs_filters['game__game_date__lte'] = season.selection_sunday_date
                 
-                team_games = TeamGameStats.objects.filter(**tgs_filters).select_related('game')
+                # Exclude canceled games (0-0 score)
+                team_games = TeamGameStats.objects.filter(
+                    ~Q(game__home_score=0, game__away_score=0),
+                    **tgs_filters
+                ).select_related('game')
 
                 if not team_games.exists():
                     continue

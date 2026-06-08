@@ -6,7 +6,7 @@ class Command(BaseCommand):
     help = "Backfill pre-tournament snapshots for all historical seasons"
 
     def handle(self, *args, **options):
-        seasons = Season.objects.filter(year__gte=2012, year__lte=2026).exclude(year=2020).order_by('year')
+        seasons = Season.objects.filter(year__gte=2019, year__lte=2026).exclude(year=2020).order_by('year')
 
         for season in seasons:
             self.stdout.write(f"\n{'='*60}")
@@ -24,5 +24,11 @@ class Command(BaseCommand):
             
             # Step 4: Compute four factor index
             call_command("compute_four_factor_index", season=season.year, pre_tournament=True)
+
+            # Step 5: Compute SOS
+            call_command("compute_sos", season=season.year, pre_tournament=True)
+
+            # Step 6: Compute WAB
+            call_command("compute_wab", season=season.year, pre_tournament=True)
 
             self.stdout.write(self.style.SUCCESS(f"✓ Completed {season.year} Pre-Tournament Backfill\n"))

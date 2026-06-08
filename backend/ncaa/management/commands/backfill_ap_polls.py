@@ -40,7 +40,7 @@ class Command(BaseCommand):
         else:
             current_year = timezone.now().year + 1
             # We filter for seasons where we probably have poll data
-            seasons = Season.objects.filter(year__lte=current_year, year__gte=2015).order_by("year")
+            seasons = Season.objects.filter(year__lte=current_year, year__gte=2005).order_by("year")
             
         mapper = TeamMapper(source="ncaa")
         
@@ -107,13 +107,12 @@ class Command(BaseCommand):
                 team, conf, is_override = mapper.find_team(sr_name, min_confidence=0.88)
                 
                 if team:
-                    try:
-                        ratings = TeamSeasonRatings.objects.get(season=season, team=team)
-                        ratings.ap_poll_week6 = rank
-                        ratings.save(update_fields=['ap_poll_week6'])
+                    ratings_qs = TeamSeasonRatings.all_objects.filter(season=season, team=team)
+                    if ratings_qs.exists():
+                        ratings_qs.update(ap_poll_week6=rank)
                         season_updated += 1
                         self.stdout.write(f"  #{rank:2d} {team.name} (matched from '{sr_name}')")
-                    except TeamSeasonRatings.DoesNotExist:
+                    else:
                         self.stderr.write(self.style.WARNING(f"  TeamSeasonRatings missing for {team.name} in {year}"))
                 else:
                     self.stderr.write(self.style.ERROR(f"  UNMATCHED TEAM: #{rank} {sr_name}"))

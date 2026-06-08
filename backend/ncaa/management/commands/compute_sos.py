@@ -33,6 +33,11 @@ class Command(BaseCommand):
             default=2026,
             help='Season year to compute SOS for (default: 2026)'
         )
+        parser.add_argument(
+            '--pre_tournament',
+            action='store_true',
+            help='If set, computes SOS using only games up to Selection Sunday'
+        )
 
     def handle(self, *args, **options):
         from ncaa.models import PipelineConfig
@@ -46,6 +51,8 @@ class Command(BaseCommand):
             self.stdout.write(self.style.ERROR(f'Season {season_year} not found'))
             return
 
+        is_pre_tournament = options.get('pre_tournament', False)
+
         # Constants from config
         BASELINE_ADJEM = cfg.sos_baseline_adjem
         SIGMA = cfg.sos_logistic_sigma
@@ -56,7 +63,8 @@ class Command(BaseCommand):
         }
 
         self.stdout.write(f'\n{"="*60}')
-        self.stdout.write(f'Computing SOS for {season.display_name}')
+        mode_str = "(Pre-Tournament)" if is_pre_tournament else "(Full Season)"
+        self.stdout.write(f'Computing SOS for {season.display_name} {mode_str}')
         self.stdout.write(f'{"="*60}')
         self.stdout.write(f'Baseline team: AdjEM = {BASELINE_ADJEM:.2f} (average D1)')
         self.stdout.write(f'SIGMA = {SIGMA:.2f}')
@@ -64,9 +72,10 @@ class Command(BaseCommand):
         self.stdout.write(f'{"="*60}\n')
 
         # Get all teams with ratings for this season
-        teams_with_ratings = TeamSeasonRatings.objects.filter(
+        teams_with_ratings = TeamSeasonRatings.all_objects.filter(
             season=season,
-            rank_adj_em__isnull=False
+            rank_adj_em__isnull=False,
+            is_pre_tournament=is_pre_tournament
         ).select_related('team').order_by('rank_adj_em')
 
         if not teams_with_ratings.exists():
@@ -82,8 +91,12 @@ class Command(BaseCommand):
             games = TeamGameStats.objects.filter(
                 team=team,
                 game__season_year=season_year,
-                opponent__isnull=False
+                opponent__isnull=False,
+                game__status='final'
             ).select_related('opponent', 'game')
+
+            if is_pre_tournament and season.selection_sunday_date:
+                games = games.filter(game__game_date__lte=season.selection_sunday_date)
 
             if not games.exists():
                 self.stdout.write(self.style.WARNING(f'⚠️  {team.name}: No games found'))
@@ -94,9 +107,10 @@ class Command(BaseCommand):
             for game_stat in games:
                 # Get opponent's AdjEM
                 try:
-                    opp_ratings = TeamSeasonRatings.objects.get(
+                    opp_ratings = TeamSeasonRatings.all_objects.get(
                         team=game_stat.opponent,
-                        season=season
+                        season=season,
+                        is_pre_tournament=is_pre_tournament
                     )
                     opp_adjem = opp_ratings.adj_em or 0.0
                 except TeamSeasonRatings.DoesNotExist:

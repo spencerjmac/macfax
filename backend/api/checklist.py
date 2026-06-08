@@ -245,8 +245,8 @@ def _check_kenpom_contender(team_stats: TeamSeasonStats) -> Dict[str, Any]:
     adj_d = team_stats.adj_d
     adj_em = team_stats.adj_em
     
-    # Pass if (AdjO > 113.8 AND AdjD < 95.0) OR (AdjEM > 30.0)
-    condition1 = adj_o > 113.8 and adj_d < 95.0
+    # Pass if (AdjO ≥ 112.0 AND AdjD ≤ 96.5) OR (AdjEM > 30.0)
+    condition1 = adj_o >= 112.0 and adj_d <= 96.5
     condition2 = adj_em > 30.0
     passes = condition1 or condition2
     
@@ -255,7 +255,7 @@ def _check_kenpom_contender(team_stats: TeamSeasonStats) -> Dict[str, Any]:
         "label": "KenPom Contender",
         "pass": passes,
         "value": f"O: {adj_o:.1f}, D: {adj_d:.1f}",
-        "threshold": "(O > 113.8 & D < 95.0) OR EM > 30.0",
+        "threshold": "(O ≥ 112.0 & D ≤ 96.5) OR EM > 30.0",
         "details": f"AdjO: {adj_o:.1f}, AdjD: {adj_d:.1f}, AdjEM: {adj_em:.1f}"
     }
 
@@ -295,20 +295,20 @@ def _check_win_pct(team_stats: TeamSeasonStats) -> Dict[str, Any]:
     else:
         win_pct = team_stats.wins / team_stats.games
     
-    passes = win_pct > 0.74
+    passes = win_pct >= 0.75
     
     return {
         "key": "win_pct",
         "label": "Win Percentage",
         "pass": passes,
         "value": f"{win_pct * 100:.1f}%",
-        "threshold": "> 74%",
+        "expected": ">= 75.0%",
         "details": f"{team_stats.record} ({win_pct * 100:.1f}%)"
     }
 
 
 def _check_elite_ranks(team_stats: TeamSeasonStats, context: Dict[str, Any]) -> Dict[str, Any]:
-    """Check OffRtgRank <= 21 AND DefRtgRank <= 37"""
+    """Check OffRtgRank <= 16 AND DefRtgRank <= 45"""
     adj_o_ranks = context.get('adj_o_ranks', {})
     adj_d_ranks = context.get('adj_d_ranks', {})
     
@@ -321,18 +321,18 @@ def _check_elite_ranks(team_stats: TeamSeasonStats, context: Dict[str, Any]) -> 
             "label": "Elite Off/Def Ranks",
             "pass": False,
             "value": "N/A",
-            "threshold": "Off ≤ 21, Def ≤ 37",
+            "threshold": "Off ≤ 16, Def ≤ 45",
             "details": "Rank data unavailable"
         }
     
-    passes = off_rank <= 21 and def_rank <= 37
+    passes = off_rank <= 16 and def_rank <= 45
     
     return {
         "key": "elite_ranks",
         "label": "Elite Off/Def Ranks",
         "pass": passes,
         "value": f"Off: #{off_rank}, Def: #{def_rank}",
-        "threshold": "Off ≤ 21, Def ≤ 37",
+        "threshold": "Off ≤ 16, Def ≤ 45",
         "details": f"Offensive rank: #{off_rank}, Defensive rank: #{def_rank}"
     }
 
@@ -373,7 +373,7 @@ def _check_three_point_pct(team_stats: TeamSeasonStats) -> Dict[str, Any]:
 
 
 def _check_t_rank(team_stats: TeamSeasonStats) -> Dict[str, Any]:
-    """Check T-Rank <= 17"""
+    """Check T-Rank <= 7"""
     t_rank = team_stats.t_rank
     
     if t_rank is None:
@@ -382,18 +382,18 @@ def _check_t_rank(team_stats: TeamSeasonStats) -> Dict[str, Any]:
             "label": "T-Rank",
             "pass": False,
             "value": "N/A",
-            "threshold": "≤ 17",
+            "threshold": "≤ 7",
             "details": "T-Rank unavailable"
         }
     
-    passes = t_rank <= 17
+    passes = t_rank <= 7
     
     return {
         "key": "t_rank",
         "label": "T-Rank",
         "pass": passes,
         "value": f"#{t_rank}",
-        "threshold": "≤ 17",
+        "threshold": "≤ 7",
         "details": f"T-Rank: #{t_rank}"
     }
 
@@ -428,7 +428,7 @@ def _check_efg_margin(team_stats: TeamSeasonStats, context: Dict[str, Any]) -> D
     """Check eFG Margin >= Dynamic Z-Score Threshold"""
     efg_margin = team_stats.efg_margin
     stats = context.get("stats", {})
-    MIN_Z_EFG = 1.39 # 1.3936
+    MIN_Z_EFG = 1.36 # 1.3629
     threshold = stats.get("efg_mean", 0) + (MIN_Z_EFG * stats.get("efg_std", 1))
     passes = efg_margin >= threshold if efg_margin is not None else False
     
@@ -446,7 +446,7 @@ def _check_ftr_margin(team_stats: TeamSeasonStats, context: Dict[str, Any]) -> D
     """Check FTR Margin >= Dynamic Z-Score Threshold"""
     ftr_margin = team_stats.ftr_margin
     stats = context.get("stats", {})
-    MIN_Z_FTR = -0.47 # -0.4703
+    MIN_Z_FTR = -0.58 # -0.5757
     threshold = stats.get("ftr_mean", 0) + (MIN_Z_FTR * stats.get("ftr_std", 1))
     passes = ftr_margin >= threshold if ftr_margin is not None else False
     
@@ -464,7 +464,7 @@ def _check_rebounding_edge(team_stats: TeamSeasonStats, context: Dict[str, Any])
     """Check Rebounding Edge >= Dynamic Z-Score Threshold"""
     reb_edge = team_stats.reb_edge
     stats = context.get("stats", {})
-    MIN_Z_REB = 0.15 # 0.1491
+    MIN_Z_REB = 0.20 # 0.1987
     threshold = stats.get("reb_mean", 0) + (MIN_Z_REB * stats.get("reb_std", 1))
     passes = reb_edge >= threshold if reb_edge is not None else False
     
@@ -482,7 +482,7 @@ def _check_turnover_edge(team_stats: TeamSeasonStats, context: Dict[str, Any]) -
     """Check Turnover Edge >= Dynamic Z-Score Threshold"""
     to_edge = team_stats.tov_edge
     stats = context.get("stats", {})
-    MIN_Z_TOV = -0.10 # -0.1009
+    MIN_Z_TOV = 0.12 # 0.1225
     threshold = stats.get("tov_mean", 0) + (MIN_Z_TOV * stats.get("tov_std", 1))
     passes = to_edge >= threshold if to_edge is not None else False
     
@@ -500,7 +500,7 @@ def _check_four_factor_index(team_stats: TeamSeasonStats, context: Dict[str, Any
     """Check Four Factor Index >= Dynamic Z-Score Threshold"""
     ffi = team_stats.four_factor_index_100
     stats = context.get("stats", {})
-    MIN_Z_FFI = 1.64 # 1.6378
+    MIN_Z_FFI = 2.01 # 2.0141
     threshold = stats.get("ffi_mean", 0) + (MIN_Z_FFI * stats.get("ffi_std", 1))
     
     if ffi is None:
@@ -566,7 +566,7 @@ def _check_wab(team_stats: TeamSeasonStats) -> Dict[str, Any]:
 
 
 def _check_ft_pct(team_stats: TeamSeasonStats) -> Dict[str, Any]:
-    """Check FT% > 70%"""
+    """Check FT% ≥ 68.0%"""
     ft_pct = team_stats.ft_pct
     
     if ft_pct is None:
@@ -575,19 +575,19 @@ def _check_ft_pct(team_stats: TeamSeasonStats) -> Dict[str, Any]:
             "label": "Free Throw %",
             "pass": False,
             "value": "N/A",
-            "threshold": "> 70%",
+            "threshold": "≥ 68.0%",
             "details": "FT% data unavailable"
         }
     
     # Assuming ft_pct is stored as 0-100 scale (e.g., 72.5 for 72.5%)
     # If it's stored as 0-1 scale, adjust the threshold
-    threshold = 70.0
+    threshold = 68.0
     if ft_pct < 1.0:  # Stored as decimal (0-1)
-        threshold = 0.70
-        passes = ft_pct > threshold
+        threshold = 0.68
+        passes = ft_pct >= threshold
         display_value = f"{ft_pct * 100:.1f}%"
     else:  # Stored as percentage (0-100)
-        passes = ft_pct > threshold
+        passes = ft_pct >= threshold
         display_value = f"{ft_pct:.1f}%"
     
     return {

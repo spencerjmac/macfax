@@ -27,6 +27,7 @@ from .outlook_views import RosterOutlookView, ScenarioProjectionView, PlayerSear
 from .scenario_views import ScenarioComputeView, ScenarioSaveView, ScenarioDetailView, ScenarioListView
 from .validation_views import ValidationSummaryView, ValidationWeeklyView, ValidationRecentGamesView
 from .game_detail_views import ncaa_game_detail
+from .analyze_view import AnalyzeCriteriaView
 
 router = DefaultRouter()
 router.register(r"seasons", SeasonViewSet, basename="season")
@@ -68,4 +69,5 @@ urlpatterns = [
     path("validation/recent-games/",  ValidationRecentGamesView.as_view(),  name="validation-recent-games"),
     # Game detail
     path("games/<int:game_id>/detail/", ncaa_game_detail, name="ncaa-game-detail"),
+    path("analyze/", AnalyzeCriteriaView.as_view(), name="analyze-criteria"),
 ]

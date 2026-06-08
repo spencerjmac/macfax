@@ -116,6 +116,9 @@ class Command(BaseCommand):
             opponent__is_d1=True,  # Only include games vs D1 opponents
         )
         
+        # Exclude canceled games (where both teams scored 0 points despite 'final' status)
+        filters &= ~Q(game__home_score=0, game__away_score=0)
+        
         if is_pre_tournament and season.selection_sunday_date:
             filters &= Q(game__game_date__lte=season.selection_sunday_date)
             

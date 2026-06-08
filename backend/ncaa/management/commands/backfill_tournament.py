@@ -209,13 +209,10 @@ class Command(BaseCommand):
                         team, conf, is_override = mapper.find_team(school, min_confidence=0.85)
                         
                         if team:
-                            try:
-                                ratings = TeamSeasonRatings.objects.get(season=season, team=team)
-                                ratings.tournament_seed = seed
-                                ratings.save(update_fields=['tournament_seed'])
+                            qs = TeamSeasonRatings.all_objects.filter(season=season, team=team)
+                            if qs.exists():
+                                qs.update(tournament_seed=seed)
                                 season_updated += 1
-                            except TeamSeasonRatings.DoesNotExist:
-                                pass
                         else:
                             self.stderr.write(self.style.ERROR(f"  UNMATCHED TEAM: Seed {seed} {school}"))
                             total_missing.append(f"{year} - {school}")
@@ -233,13 +230,10 @@ class Command(BaseCommand):
                         
                         team, _, _ = mapper.find_team(team_name, min_confidence=0.85)
                         if team:
-                            try:
-                                ratings = TeamSeasonRatings.objects.get(season=season, team=team)
-                                ratings.tournament_finish = finish
-                                ratings.save(update_fields=['tournament_finish'])
+                            qs = TeamSeasonRatings.all_objects.filter(season=season, team=team)
+                            if qs.exists():
+                                qs.update(tournament_finish=finish)
                                 self.stdout.write(f"  → Set {finish}: {team.name}")
-                            except TeamSeasonRatings.DoesNotExist:
-                                pass
                         else:
                             self.stderr.write(self.style.ERROR(f"  UNMATCHED RESULT TEAM: {team_name}"))
 
