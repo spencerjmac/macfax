@@ -63,7 +63,7 @@ def _load_lebron_targets(season_year: int, player_pks: list[int]) -> dict[int, t
     except ImportError:
         return {}
 
-    csv_path = SCRIPT_DIR / f"lebron-data-{season_year}.csv"
+    csv_path = SCRIPT_DIR / "data" / "nba" / f"lebron-data-{season_year}.csv"
     if not csv_path.exists():
         return {}
 

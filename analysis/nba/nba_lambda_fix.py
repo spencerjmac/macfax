@@ -24,7 +24,7 @@ import pandas as pd
 import scipy.stats
 from django.utils import timezone
 
-SCRIPT_DIR = Path(__file__).parent
+SCRIPT_DIR = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(SCRIPT_DIR / "backend"))
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 import django

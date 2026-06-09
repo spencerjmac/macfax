@@ -31,9 +31,9 @@ from rapidfuzz import process as rfprocess, fuzz
 
 # ── Constants ──────────────────────────────────────────────────────────────────
 
-SCRIPT_DIR   = Path(__file__).parent
+SCRIPT_DIR   = Path(__file__).parent.parent.parent
 OUTPUT_DIR   = SCRIPT_DIR / "metrics_output"
-LEBRON_CSV   = SCRIPT_DIR / "lebron-data-2026.csv"
+LEBRON_CSV   = SCRIPT_DIR / "data" / "nba" / "lebron-data-2026.csv"
 MERGE_LOG    = OUTPUT_DIR / "merge_log.txt"
 
 MIN_MINUTES  = 200

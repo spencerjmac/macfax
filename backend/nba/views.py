@@ -369,6 +369,8 @@ class NBAMatchupView(APIView):
             identify_top_drivers,
         )
 
+        from datetime import date as _date
+
         team_a_slug = request.query_params.get("teamA", "").lower()
         team_b_slug = request.query_params.get("teamB", "").lower()
         site = request.query_params.get("site", "neutral")
@@ -376,6 +378,16 @@ class NBAMatchupView(APIView):
         season_year = request.query_params.get("season")
         _upb_raw = request.query_params.get("use_playoff_blend", "true")
         use_playoff_blend = _upb_raw.lower() not in ("0", "false", "no", "off")
+
+        # game_date: optional ISO date for injury-adjusted forecast (defaults to today)
+        _gd_raw = request.query_params.get("game_date")
+        if _gd_raw:
+            try:
+                game_date = _date.fromisoformat(_gd_raw)
+            except ValueError:
+                return Response({"error": "game_date must be YYYY-MM-DD"}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            game_date = _date.today()
 
         if not team_a_slug or not team_b_slug:
             return Response({"error": "teamA and teamB required"}, status=status.HTTP_400_BAD_REQUEST)
@@ -387,7 +399,7 @@ class NBAMatchupView(APIView):
             return Response({"error": "mode must be game or series"}, status=status.HTTP_400_BAD_REQUEST)
 
         _blend_flag = "blend" if use_playoff_blend else "reg"
-        cache_key = f"nba:matchup:{team_a_slug}:{team_b_slug}:{site}:{season_year or 'current'}:{mode}:{_blend_flag}"
+        cache_key = f"nba:matchup:{team_a_slug}:{team_b_slug}:{site}:{season_year or 'current'}:{mode}:{_blend_flag}:{game_date}"
         cached = cache.get(cache_key)
         if cached is not None:
             return Response(cached)
@@ -433,6 +445,22 @@ class NBAMatchupView(APIView):
             }
             ratings_a = _get_blended_ratings(ratings_a, po_qs.get(team_a.id))
             ratings_b = _get_blended_ratings(ratings_b, po_qs.get(team_b.id))
+
+        # ===== INJURY ADJUSTMENT (in-memory only, never written to DB) =====
+        from nba.injury_engine import compute_nba_injury_adjustment
+
+        _inj_a = compute_nba_injury_adjustment(team_a, season, game_date)
+        _inj_b = compute_nba_injury_adjustment(team_b, season, game_date)
+
+        if _inj_a["adj_off_delta"] or _inj_a["adj_def_delta"]:
+            ratings_a.adj_off = (ratings_a.adj_off or 0.0) + _inj_a["adj_off_delta"]
+            ratings_a.adj_def = (ratings_a.adj_def or 0.0) + _inj_a["adj_def_delta"]
+            ratings_a.adj_net = ratings_a.adj_off - ratings_a.adj_def
+
+        if _inj_b["adj_off_delta"] or _inj_b["adj_def_delta"]:
+            ratings_b.adj_off = (ratings_b.adj_off or 0.0) + _inj_b["adj_off_delta"]
+            ratings_b.adj_def = (ratings_b.adj_def or 0.0) + _inj_b["adj_def_delta"]
+            ratings_b.adj_net = ratings_b.adj_off - ratings_b.adj_def
 
         # Model parameters (HCA, sigma, nat_avg_ortg)
         params = get_nba_model_params(season)
@@ -672,6 +700,21 @@ class NBAMatchupView(APIView):
             "recent_form_a": recent_form_a,
             "recent_form_b": recent_form_b,
             "series_prediction": series_prediction,
+            "injury_context": {
+                "game_date": game_date.isoformat(),
+                "team_a": {
+                    "adj_off_delta": _inj_a["adj_off_delta"],
+                    "adj_def_delta": _inj_a["adj_def_delta"],
+                    "adj_net_delta": round(_inj_a["adj_off_delta"] - _inj_a["adj_def_delta"], 3),
+                    "players": _inj_a["players"],
+                },
+                "team_b": {
+                    "adj_off_delta": _inj_b["adj_off_delta"],
+                    "adj_def_delta": _inj_b["adj_def_delta"],
+                    "adj_net_delta": round(_inj_b["adj_off_delta"] - _inj_b["adj_def_delta"], 3),
+                    "players": _inj_b["players"],
+                },
+            },
             "metadata": {
                 "hca_points": round(hca_points, 2),
                 "prediction_sigma": round(sigma, 2),

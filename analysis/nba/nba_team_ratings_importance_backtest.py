@@ -42,7 +42,7 @@ import numpy as np
 import pandas as pd
 import scipy.stats
 
-SCRIPT_DIR = Path(__file__).parent
+SCRIPT_DIR = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(SCRIPT_DIR / "backend"))
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 
@@ -55,7 +55,7 @@ RESULTS_CSV = OUTPUT_DIR / "team_ratings_importance_results.csv"
 
 # Production config (from nba/ratings_config.py)
 _CFG = {
-    "iterations": 8,
+    "iterations": 20,
     "convergence_threshold": 0.001,
     "prior_games": 5.0,
     "prior_ortg": 115.0,
@@ -740,12 +740,31 @@ def _build_variants(
     ]
 
     if not skip_lorentzian:
+        # Baseline Lorentzian
         variants.append({
-            "label": "lorentzian",
+            "label": "lorentzian_freeze6",
             "note": "NCAA-style iterative (IMP_C=6, freeze iter 6)",
             "recs_fn": lambda: train_recs,
             "weight_fn": None,
             "lorentzian": True,
+            "freeze_iter": 6,
+        })
+        for f_iter in [8, 10, 12, 14, 20]:
+            variants.append({
+                "label": f"lorentzian_freeze{f_iter}",
+                "note": f"Freeze iter {f_iter}",
+                "recs_fn": lambda: train_recs,
+                "weight_fn": None,
+                "lorentzian": True,
+                "freeze_iter": f_iter,
+            })
+        variants.append({
+            "label": "lorentzian_adaptive",
+            "note": "Adaptive freeze iter (avg_games_played / 2)",
+            "recs_fn": lambda: train_recs,
+            "weight_fn": None,
+            "lorentzian": True,
+            "freeze_iter": "adaptive",
         })
 
     return variants
@@ -798,7 +817,14 @@ def _eval_season(
         holdout_train = [r for r in train_set if r.game_id in train_ids or r.game_number == _PLAYOFF_SENTINEL]
 
         if v["lorentzian"]:
-            train_ratings = _solve_lorentzian(holdout_train)
+            freeze_val = v.get("freeze_iter", 6)
+            if freeze_val == "adaptive":
+                # Calculate adaptive based on train games / 30 teams / 2
+                # holdout_train contains all recs so far
+                total_games_played = len({r.game_id for r in holdout_train if r.game_number != _PLAYOFF_SENTINEL})
+                avg_games_played = total_games_played / 30.0 if total_games_played > 0 else 0
+                freeze_val = max(4, min(15, int(avg_games_played / 2.0)))
+            train_ratings = _solve_lorentzian(holdout_train, freeze_iter=freeze_val)
         else:
             if v["weight_fn"] is not None:
                 iw, tr = v["weight_fn"](holdout_train)
@@ -812,7 +838,12 @@ def _eval_season(
         # ── Full-season retrodiction ───────────────────────────────────────────
         if v["lorentzian"]:
             full_set = reg_recs
-            full_ratings = _solve_lorentzian(full_set)
+            freeze_val = v.get("freeze_iter", 6)
+            if freeze_val == "adaptive":
+                total_games_played = len({r.game_id for r in full_set if r.game_number != _PLAYOFF_SENTINEL})
+                avg_games_played = total_games_played / 30.0 if total_games_played > 0 else 0
+                freeze_val = max(4, min(15, int(avg_games_played / 2.0)))
+            full_ratings = _solve_lorentzian(full_set, freeze_iter=freeze_val)
         else:
             if v["weight_fn"] is not None:
                 full_set = v["recs_fn"]()

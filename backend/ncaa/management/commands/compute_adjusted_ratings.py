@@ -94,6 +94,12 @@ class Command(BaseCommand):
             help='Importance: maximum closeness boost multiplier (default: 1.40)'
         )
         parser.add_argument(
+            '--freeze-iter',
+            type=int,
+            default=0,
+            help='Importance: iteration to freeze weights (default: 0). 0 = adaptive based on season length.'
+        )
+        parser.add_argument(
             "--update-natavg",
             action="store_true",
             default=False,
@@ -124,7 +130,7 @@ class Command(BaseCommand):
         # --- Importance weight constants ---
         IMP_C = 40.0          # gap (AdjEM pts) where base weight drops to 0.5
         IMP_FLOOR = 0.35      # minimum importance weight
-        FREEZE_ITERATION = 6  # freeze weights after this iteration
+        FREEZE_ITERATION = options["freeze_iter"]
         CLOSE_M = 12.0        # closeness scale (margin per 100 poss)
         BOOST_MAX = 1.40      # max boost for unexpectedly close mismatches
         
@@ -204,6 +210,14 @@ class Command(BaseCommand):
             self.stdout.write(
                 f"Fixed Shrinkage: k={shrinkage_k:.1f} possessions (user override)"
             )
+
+        if FREEZE_ITERATION <= 0:
+            # Adaptive freeze based on avg games played
+            # Midseason (15 games) -> freeze at 7. End of season (35 games) -> freeze at 17.
+            FREEZE_ITERATION = max(4, min(20, int(avg_games_played / 2.0)))
+            self.stdout.write(f"Adaptive Freeze Iteration: {FREEZE_ITERATION} (based on {avg_games_played:.1f} avg games)")
+        else:
+            self.stdout.write(f"Fixed Freeze Iteration: {FREEZE_ITERATION}")
 
         self.stdout.write("=" * 60)
         self.stdout.write(f"Processing {num_d1_teams} teams...")

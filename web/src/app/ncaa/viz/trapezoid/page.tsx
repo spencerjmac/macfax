@@ -374,8 +374,6 @@ export default function TrapezoidPage() {
           <li><strong>X-axis:</strong> Adjusted Tempo (pace of play)</li>
           <li><strong>Y-axis:</strong> Adjusted Efficiency Margin (net rating)</li>
           <li><strong>Trapezoid Boundaries:</strong> Computed dynamically from percentiles of the filtered dataset</li>
-          <li><strong>Green Points:</strong> Teams inside the trapezoid (championship-caliber profile)</li>
-          <li><strong>Blue Points:</strong> Teams outside the trapezoid</li>
         </ul>
         
         <p className="text-sm text-gray-600">

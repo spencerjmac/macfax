@@ -34,10 +34,10 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error
 
 # ── Constants ──────────────────────────────────────────────────────────────────
 
-SCRIPT_DIR   = Path(__file__).parent
+SCRIPT_DIR   = Path(__file__).parent.parent.parent
 OUTPUT_DIR   = SCRIPT_DIR / "metrics_output"
 METRICS_CSV  = OUTPUT_DIR / "nba_metrics_2025_26.csv"
-BPR_CSV      = SCRIPT_DIR / "bpr_2025_26.csv"
+BPR_CSV      = SCRIPT_DIR / "data" / "nba" / "bpr_2025_26.csv"
 
 BBREF_STANDINGS_URL = "https://www.basketball-reference.com/leagues/NBA_2026.html"
 

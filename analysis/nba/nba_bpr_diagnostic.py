@@ -35,10 +35,10 @@ warnings.filterwarnings("ignore", category=UserWarning)
 
 # ── Constants ──────────────────────────────────────────────────────────────────
 
-SCRIPT_DIR   = Path(__file__).parent
+SCRIPT_DIR   = Path(__file__).parent.parent.parent
 OUTPUT_DIR   = SCRIPT_DIR / "metrics_output"
 METRICS_CSV  = OUTPUT_DIR / "nba_metrics_2025_26.csv"
-BPR_CSV      = SCRIPT_DIR / "bpr_2025_26.csv"
+BPR_CSV      = SCRIPT_DIR / "data" / "nba" / "bpr_2025_26.csv"
 
 MIN_MINUTES   = 200
 NULL_THRESH   = 0.30

@@ -17,6 +17,9 @@ NBA PIPELINE
     4. nba_compute_player_stats — roll up player season averages
     5. nba_sync_player_advanced — advanced + impact stats from NBA.com
     6. nba_compute_box_bpr    — box-score BPR + archetype classification
+    ...
+   10. nba_compute_player_stats (Playoffs)
+   11. nba_sync_injury_report — today's ESPN injury report → NBAPlayerAvailability
 
   PBP + RAPM (only when --with-pbp, takes hours on first run)
     7. nba_sync_play_by_play  — PBP ingestion into NBAPlayerGameStint
@@ -39,7 +42,7 @@ from django.core.management.base import BaseCommand
 from django.core.management import call_command
 from django.utils import timezone
 
-TOTAL_STEPS = 10
+TOTAL_STEPS = 11
 
 
 class Command(BaseCommand):
@@ -188,6 +191,14 @@ class Command(BaseCommand):
             steps,
             fatal=False,
             label=f"[10/{TOTAL_STEPS}]",
+        )
+        self._run_step(
+            "NBA sync injury report (ESPN)",
+            "nba_sync_injury_report",
+            {"season": season_year},
+            steps,
+            fatal=False,
+            label=f"[11/{TOTAL_STEPS}]",
         )
 
         # ── Optional PBP + RAPM (--with-pbp only) ────────────────────────────

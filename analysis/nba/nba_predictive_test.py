@@ -35,7 +35,7 @@ from sklearn.metrics import mean_squared_error
 
 # ── Setup ──────────────────────────────────────────────────────────────────────
 
-SCRIPT_DIR = Path(__file__).parent
+SCRIPT_DIR = Path(__file__).parent.parent.parent
 OUTPUT_DIR = SCRIPT_DIR / "metrics_output"
 OUTPUT_DIR.mkdir(exist_ok=True)
 

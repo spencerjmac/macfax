@@ -13,6 +13,11 @@ RUN apt-get update \
 COPY backend /app
 RUN pip install --no-cache-dir -r /app/requirements.txt
 
+# Copy data files that management commands expect relative to project root
+# (SCRIPT_DIR in commands resolves 5 levels above /app/nba/management/commands/ = /)
+COPY data/nba/ /data/nba/
+COPY metrics_output/ /metrics_output/
+
 EXPOSE 8000
 
 CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000"]
