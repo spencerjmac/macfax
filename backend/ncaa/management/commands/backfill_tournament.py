@@ -8,6 +8,7 @@ Usage:
     python manage.py backfill_tournament --season 2024
 """
 
+import re
 import sys
 import time
 import requests
@@ -127,6 +128,72 @@ TOURNAMENT_RESULTS = {
 }
 
 
+# Wikipedia's 2005-2013 tournament pages use full/old school names that don't
+# match the abbreviated NCAA.com naming convention used by
+# mappings/ncaa_team_name_mappings.yml. Map those directly to the NCAA.com key.
+WIKI_SCHOOL_OVERRIDES_2005_2013 = {
+    'Southern Illinois': 'Southern Ill.',
+    'UW-Milwaukee': 'Milwaukee',
+    'Southeastern Louisiana': 'Southeastern La.',
+    'Fairleigh Dickinson': 'FDU',
+    'Louisiana-Lafayette': 'Louisiana',
+    'Connecticut': 'UConn',
+    'NC State': 'NC State',
+    'Northern Iowa': 'UNI',
+    'Central Florida': 'UCF',
+    'Eastern Kentucky': 'Eastern Ky.',
+    'UNC Wilmington': 'UNCW',
+    'Pennsylvania': 'Penn',
+    'Southern': 'Southern U.',
+    'Albany': 'UAlbany',
+    'Miami (Ohio)': 'Miami (OH)',
+    'Texas A&M-Corpus Christi': 'A&M-Corpus Christi',
+    'Brigham Young': 'BYU',
+    'Central Connecticut': 'Central Conn. St.',
+    'Texas-Arlington': 'UT Arlington',
+    'Western Kentucky': 'Western Ky.',
+    'Mississippi Valley State': 'Mississippi Val.',
+    'East Tennessee State': 'ETSU',
+    'Stephen F. Austin': 'SFA',
+    'Cal State Northridge': 'CSUN',
+    'Sam Houston State': 'Sam Houston',
+    'Arkansas-Pine Bluff': 'Ark.-Pine Bluff',
+    'Long Island': 'LIU',
+    "St. John's": "St. John's (NY)",
+    'Arkansas-Little Rock': 'Little Rock',
+    'Boston University': 'Boston U.',
+    'Northern Colorado': 'Northern Colo.',
+    'Southern Miss': 'Southern Miss.',
+    'Loyola': 'Loyola Maryland',
+    'South Florida': 'South Fla.',
+    'Lamar': 'Lamar University',
+    'LIU-Brooklyn': 'LIU',
+    'Florida Gulf Coast': 'FGCU',
+    'Miami': 'Miami (FL)',
+    'Middle Tennessee': 'Middle Tenn.',
+    'North Carolina A&T': 'N.C. A&T',
+}
+
+
+def clean_school_2005_2013(school):
+    """Normalize a 2005-2013 Wikipedia school name to an NCAA.com mapping key."""
+    school = school.replace('–', '-')  # en dash -> hyphen
+    school = re.sub(r'\(vacated\)', '', school)
+    school = re.sub(r'\[\d+\]', '', school)
+    school = school.replace('*', '').strip()
+
+    if school in WIKI_SCHOOL_OVERRIDES_2005_2013:
+        return WIKI_SCHOOL_OVERRIDES_2005_2013[school]
+
+    school = school.replace(' State', ' St.')
+    if school == 'UNC': school = 'North Carolina'
+    if school == 'USC': school = 'Southern California'
+    if school == "Saint Mary's": school = "Saint Mary's (CA)"
+    if school == "Miami (Florida)": school = "Miami (FL)"
+    if 'Loyola' in school and 'Chicago' in school: school = 'Loyola Chicago'
+    return school
+
+
 class Command(BaseCommand):
     help = "Backfill historical NCAA Tournament seeds and finish"
 
@@ -175,37 +242,47 @@ class Command(BaseCommand):
                 
             seed_tables = []
             for t in tables:
-                if 'Seed' in t.columns and 'School' in t.columns:
-                    seed_tables.append(t)
-            
+                cols = t.columns
+                if isinstance(cols, pd.MultiIndex):
+                    # 2005-2013 format: columns like (RegionName, 'Seed'), (RegionName, 'School'), ...
+                    sub_cols = [c[-1] for c in cols]
+                    if 'Seed' in sub_cols and 'School' in sub_cols:
+                        flat = pd.DataFrame({c[-1]: t[c] for c in cols})
+                        seed_tables.append((flat, True))
+                elif 'Seed' in cols and 'School' in cols:
+                    seed_tables.append((t, False))
+
             if not seed_tables:
                 self.stderr.write(self.style.ERROR(f"  Could not find seed tables for {year}. Skipping seeds..."))
             else:
                 season_updated = 0
-                for t in seed_tables:
+                for t, is_multiindex in seed_tables:
                     for _, row in t.iterrows():
                         seed_raw = row.get('Seed')
                         school = str(row.get('School')).strip()
-                        
+
                         if pd.isna(seed_raw) or not school or school == 'nan':
                             continue
-                            
+
                         # Clean up seed (e.g. "11*" or "11a")
                         try:
                             seed_str = ''.join(c for c in str(seed_raw) if c.isdigit())
                             seed = int(seed_str)
                         except ValueError:
                             continue
-                        
+
                         # Apply overrides
-                        school = school.replace('*', '').strip()
-                        school = school.replace(' State', ' St.')
-                        if school == 'UNC': school = 'North Carolina'
-                        if school == 'USC': school = 'Southern California'
-                        if school == "Saint Mary's": school = "Saint Mary's (CA)"
-                        if school == "Miami (Florida)": school = "Miami (FL)"
-                        if 'Loyola' in school and 'Chicago' in school: school = 'Loyola Chicago'
-                        
+                        if is_multiindex:
+                            school = clean_school_2005_2013(school)
+                        else:
+                            school = school.replace('*', '').strip()
+                            school = school.replace(' State', ' St.')
+                            if school == 'UNC': school = 'North Carolina'
+                            if school == 'USC': school = 'Southern California'
+                            if school == "Saint Mary's": school = "Saint Mary's (CA)"
+                            if school == "Miami (Florida)": school = "Miami (FL)"
+                            if 'Loyola' in school and 'Chicago' in school: school = 'Loyola Chicago'
+
                         team, conf, is_override = mapper.find_team(school, min_confidence=0.85)
                         
                         if team:

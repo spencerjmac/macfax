@@ -42,7 +42,7 @@ const NAV_ITEMS: NavSection[] = [
     href: '/world-cup',
     items: [
       { label: 'Elo Rankings', href: '/world-cup' },
-      { label: 'Power vs. Perception', href: '/world-cup/power-vs-perception' },
+      { label: 'Efficiency Landscape', href: '/world-cup/efficiency-landscape' },
     ],
   },
 ];

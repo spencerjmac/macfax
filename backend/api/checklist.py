@@ -7,7 +7,7 @@ historical champion thresholds.
 
 from typing import Dict, List, Optional, Any
 from ncaa.models import TeamSeasonStats
-from .trapezoid_views import compute_trapezoid_boundaries, is_inside_trapezoid
+from .trapezoid_views import compute_trapezoid_boundaries, is_inside_trapezoid, trapezoid_margin
 import numpy as np
 
 
@@ -228,14 +228,16 @@ def _check_trapezoid(team_stats: TeamSeasonStats, context: Dict[str, Any]) -> Di
         }
     
     inside = is_inside_trapezoid(team_stats.adj_tempo, team_stats.adj_em, trapezoid)
-    
+    margin = trapezoid_margin(team_stats.adj_tempo, team_stats.adj_em, trapezoid)
+    margin_str = f"{margin:+.2f}" if margin is not None else "N/A"
+
     return {
         "key": "trapezoid",
         "label": "Trapezoid of Excellence",
         "pass": inside,
         "value": "Inside" if inside else "Outside",
         "threshold": "Inside trapezoid",
-        "details": f"Tempo: {team_stats.adj_tempo:.1f}, AdjEM: {team_stats.adj_em:.1f}"
+        "details": f"Tempo: {team_stats.adj_tempo:.1f}, AdjEM: {team_stats.adj_em:.1f}, Margin: {margin_str}"
     }
 
 

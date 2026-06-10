@@ -11,7 +11,7 @@ Concept by Ryan Hammer
 
 # ==================== Y-AXIS (Efficiency Margin) ====================
 # Elite floor: bottom boundary is computed from national distribution
-Q_BOT_EM = 0.965  # 96.5th percentile of national Adj EM distribution
+Q_BOT_EM = 0.97  # 97th percentile of national Adj EM distribution
 
 # Top boundary: always above the best team in the nation
 Y_PAD_MIN = 0.50  # Minimum padding above max EM
@@ -25,11 +25,11 @@ Y_PAD_RATE = 0.02  # Additional padding as % of (y_max - y_bot) range
 # Q_X_LEFT_TOP and Q_X_RIGHT_TOP are NOT USED (kept for reference)
 Q_X_LEFT_TOP = 0.02   # NOT USED - top edge uses MIN(elite_tempo)
 Q_X_RIGHT_TOP = 0.98  # NOT USED - top edge uses MAX(elite_tempo)
-Q_X_LEFT_BOT = 0.25   # 25th percentile of elite subset tempo
+Q_X_LEFT_BOT = 0.30   # 30th percentile of elite subset tempo
 Q_X_RIGHT_BOT = 0.75  # 75th percentile of elite subset tempo
 
 # Padding to prevent logos from touching trapezoid outline
-PACE_PAD = 0.25  # Added/subtracted from left_top and right_top
+PACE_PAD = 0.75  # Added/subtracted from left_top and right_top
 
 # ==================== COMPUTATION SETTINGS ====================
 # Quantile interpolation method

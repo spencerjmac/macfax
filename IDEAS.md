@@ -14,6 +14,14 @@
 - Get all historical player data from past seasons to improve current data (Chat)
 - Explore if we should change/add/remove any criteria for the NCAA Champion Checklist (Claude)
 - Explore the Trapezoid of Excellence formula — is there a better shape formula? (Claude or Chat)
+- Refine player stats pipeline — verify BPR has everything it needs
+- Review four-factor player stats
+-  Audit adjusted four-factors pipeline — only 3 iterations currently; verify correctness
+- Overhaul team profile pages — less dashboard, more direct and opinionated
+
+Reference: CBB Analytics, KenPom, EvanMiya, ESPN
+Tabs: Overview, Four Factors, Offense, Defense, Game Log, Roster Charts (charts empty)
+- 
 
 ## Stats & Metrics to Add to Database
 
@@ -54,6 +62,12 @@
 - Change Viz Builder icon on Viz Homepage
 - Highlight historical season champions on Visualizations (gold highlight?)
 - Highlight champions on Trapezoid of Excellence
+- Tone down overall design — less loud, more understated; target FiveThirtyEight aesthetic
+- Preserve graphic structure, simplify visual noise
+- Audit team rankings table — verify correct stats shown, clean up layout and structure
+- Audit NCAA player stats tables — right stats, intentional column selection, clean presentation; no data blobs
+
+
 
 ## Team Profile
 

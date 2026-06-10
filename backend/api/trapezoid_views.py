@@ -135,6 +135,43 @@ def is_inside_trapezoid(x, y, trapezoid):
     return y >= y_min
 
 
+def trapezoid_margin(x, y, trapezoid):
+    """
+    Signed distance (in EM points) from a point (x=tempo, y=em) to the
+    trapezoid's bottom boundary at that x position.
+
+    Positive: inside, value = how far above the boundary.
+    Negative: outside, value = how far short of the boundary.
+    None: x is outside the trapezoid's x-range entirely (no boundary defined).
+    """
+    x_left_top = trapezoid['x_left_top']
+    x_right_top = trapezoid['x_right_top']
+    x_left_bot = trapezoid['x_left_bot']
+    x_right_bot = trapezoid['x_right_bot']
+    y_top = trapezoid['y_top']
+    y_bot = trapezoid['y_bot']
+
+    if x < x_left_top or x > x_right_top:
+        return None
+
+    if x <= x_left_bot:
+        if x_left_bot == x_left_top:
+            y_min = y_bot
+        else:
+            slope = (y_bot - y_top) / (x_left_bot - x_left_top)
+            y_min = y_top + slope * (x - x_left_top)
+    elif x < x_right_bot:
+        y_min = y_bot
+    else:
+        if x_right_top == x_right_bot:
+            y_min = y_bot
+        else:
+            slope = (y_top - y_bot) / (x_right_top - x_right_bot)
+            y_min = y_bot + slope * (x - x_right_bot)
+
+    return y - y_min
+
+
 class TrapezoidView(APIView):
     """
     GET /api/viz/trapezoid?season=2026&conference=ALL&top=365
@@ -299,6 +336,7 @@ class TrapezoidView(APIView):
         teams = []
         for t in teams_data:
             inside = is_inside_trapezoid(t['adj_tempo'], t['adj_em'], trapezoid)
+            margin = trapezoid_margin(t['adj_tempo'], t['adj_em'], trapezoid)
             teams.append({
                 'team_id': t['team_id'],
                 'team_name': t['team__name'],
@@ -311,6 +349,7 @@ class TrapezoidView(APIView):
                 'rank': t['rank_adj_em'],
                 'record': f"{t['wins']}-{t['losses']}",
                 'inside_trapezoid': inside,
+                'trapezoid_margin': round(margin, 2) if margin is not None else None,
                 'tournament_finish': t['tournament_finish'],
             })
         

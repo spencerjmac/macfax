@@ -15,7 +15,7 @@ from rest_framework import status
 from django.shortcuts import get_object_or_404
 
 from ncaa.models import Season, TeamSeasonRatings, TeamSeasonMetrics
-from .trapezoid_views import compute_trapezoid_boundaries, is_inside_trapezoid
+from .trapezoid_views import compute_trapezoid_boundaries, is_inside_trapezoid, trapezoid_margin
 from .serializers import RankingsSerializer
 
 
@@ -105,10 +105,12 @@ def _check_trapezoid(r, ctx):
         return _item("trapezoid", "Trapezoid of Excellence", False, "N/A",
                      "Inside trapezoid", "Trapezoid unavailable")
     inside = is_inside_trapezoid(r.adj_tempo, r.adj_em, trap)
+    margin = trapezoid_margin(r.adj_tempo, r.adj_em, trap)
+    margin_str = f"{margin:+.2f}" if margin is not None else "N/A"
     return _item("trapezoid", "Trapezoid of Excellence", inside,
                  "Inside" if inside else "Outside",
                  "Inside trapezoid",
-                 f"Tempo {r.adj_tempo:.1f}, AdjEM {r.adj_em:.1f}")
+                 f"Tempo {r.adj_tempo:.1f}, AdjEM {r.adj_em:.1f}, Margin {margin_str}")
 
 
 def _check_balanced_dominance(r, ctx):
