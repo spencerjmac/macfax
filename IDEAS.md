@@ -80,6 +80,8 @@
   - Fix ranges to be more realistic (currently too wide)
   - Fix logic when adding newcomer/transfer — All-Conference player added should slightly lower projected rating since not retained
   - Review Offensive Fit and Defensive Fit grades
+- Explore adding player profiles like the team profile pages for specific players for both the NCAA and NBA
+
 
 ## NBA Draft / Prospects
 

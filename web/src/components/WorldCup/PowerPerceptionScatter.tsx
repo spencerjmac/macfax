@@ -125,7 +125,7 @@ export default function PowerPerceptionScatter({ teams }: PowerPerceptionScatter
   return (
     <div className="bg-ui-card border border-ui-border rounded-lg p-6">
       <div className="mb-4">
-        <h2 className="text-xl font-bold">Power vs. Perception</h2>
+        <h2 className="text-xl font-bold">Efficiency Landscape</h2>
         <p className="text-sm text-text-muted mt-0.5">
           Elo rating vs. FIFA points — teams in the upper-left are rated higher by our model than FIFA
         </p>
