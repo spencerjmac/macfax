@@ -68,7 +68,7 @@ NCAAA Stats API / NBA API
 
 Run the entire pipeline:
 ```bash
-python manage.py update_all --season 2026
+python manage.py update_ncaa_all --season 2026
 ```
 
 See **[docs/DATA_PIPELINE.md](docs/DATA_PIPELINE.md)** for the full management command reference.
@@ -96,7 +96,7 @@ CBB-Analytical-Dashboard/
 │   ├── config/                   # Django settings, URLs, WSGI
 │   ├── core/                     # Main app: models, management commands
 │   │   ├── models.py
-│   │   ├── management/commands/  # Pipeline commands (update_all, ingest_gamelogs, etc.)
+│   │   ├── management/commands/  # Pipeline commands (update_ncaa_all, ingest_gamelogs, etc.)
 │   │   └── utils/                # NCAA API client, team mapping
 │   ├── api/                      # REST endpoints, serializers, views
 │   ├── static/logos/             # Team logo PNG files (served via WhiteNoise)

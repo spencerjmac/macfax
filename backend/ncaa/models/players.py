@@ -689,3 +689,73 @@ class PlaceholderArchetype(models.Model):
 
     def __str__(self):
         return f"{self.display_name} (n={self.sample_n}, BPR≈{self.projected_bpr:.2f})"
+
+
+class PlayerAvailability(models.Model):
+    """
+    Game-day availability report for an NCAA player.
+
+    Written by: python manage.py ncaa_sync_injury_report --date YYYY-MM-DD
+    Used by:    NCAA matchup view to compute real-time injury adjustments.
+    Never stored to TeamSeasonRatings — matchup-projection only.
+    """
+
+    STATUS_AVAILABLE       = "available"
+    STATUS_PROBABLE        = "probable"
+    STATUS_DAY_TO_DAY      = "day_to_day"
+    STATUS_QUESTIONABLE    = "questionable"
+    STATUS_GAME_TIME       = "game_time_decision"
+    STATUS_DOUBTFUL        = "doubtful"
+    STATUS_OUT             = "out"
+    STATUS_OUT_FOR_SEASON  = "out_for_season"
+
+    STATUS_CHOICES = [
+        (STATUS_AVAILABLE,      "Available"),
+        (STATUS_PROBABLE,       "Probable"),
+        (STATUS_DAY_TO_DAY,     "Day-to-Day"),
+        (STATUS_QUESTIONABLE,   "Questionable"),
+        (STATUS_GAME_TIME,      "Game-Time Decision"),
+        (STATUS_DOUBTFUL,       "Doubtful"),
+        (STATUS_OUT,            "Out"),
+        (STATUS_OUT_FOR_SEASON, "Out for Season"),
+    ]
+
+    # Fraction of player value to subtract; 0.0 = full availability, 1.0 = full absence
+    STATUS_WEIGHTS = {
+        STATUS_AVAILABLE:      0.00,
+        STATUS_PROBABLE:       0.15,
+        STATUS_DAY_TO_DAY:     0.35,
+        STATUS_QUESTIONABLE:   0.50,
+        STATUS_GAME_TIME:      0.60,
+        STATUS_DOUBTFUL:       0.80,
+        STATUS_OUT:            1.00,
+        STATUS_OUT_FOR_SEASON: 1.00,
+    }
+
+    player = models.ForeignKey(Player, on_delete=models.CASCADE, related_name="availability_reports")
+    team   = models.ForeignKey(Team,   on_delete=models.CASCADE, related_name="injury_reports")
+    season = models.ForeignKey(Season, on_delete=models.CASCADE, related_name="injury_reports")
+    game_date = models.DateField(db_index=True, help_text="Date of the game this report applies to")
+    status = models.CharField(max_length=24, choices=STATUS_CHOICES, default=STATUS_AVAILABLE, db_index=True)
+    injury_reason = models.CharField(max_length=200, blank=True, default="")
+    notes = models.TextField(blank=True, default="")
+    source = models.CharField(max_length=32, default="espn", help_text="Data source slug (espn, ncaa_official, manual)")
+    report_timestamp = models.DateTimeField(null=True, blank=True, help_text="When the source reported this status")
+    expected_minutes_pct = models.FloatField(null=True, blank=True, help_text="Override minute share (null = use full mpg)")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["game_date", "team", "player"]
+        unique_together = [("player", "game_date", "source")]
+        indexes = [
+            models.Index(fields=["team", "game_date"]),
+            models.Index(fields=["game_date", "status"]),
+        ]
+
+    def __str__(self):
+        return f"{self.player.display_name} – {self.get_status_display()} ({self.game_date})"
+
+    @property
+    def weight(self) -> float:
+        return self.STATUS_WEIGHTS.get(self.status, 0.0)

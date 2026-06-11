@@ -56,7 +56,7 @@ docker compose exec backend python manage.py seed_conferences
 ### 5. Run the data pipeline
 
 ```bash
-docker compose exec backend python manage.py update_all --season 2026
+docker compose exec backend python manage.py update_ncaa_all --season 2026
 ```
 
 This fetches all games from the NCAA API and computes all metrics. First run takes ~5–15 minutes depending on how many games exist.
@@ -133,7 +133,7 @@ The frontend reads `NEXT_PUBLIC_API_BASE_URL` from environment. For local dev, t
 
 ```bash
 cd backend
-uv run python manage.py update_all --season 2026
+uv run python manage.py update_ncaa_all --season 2026
 ```
 
 ---
@@ -159,17 +159,17 @@ After the initial setup, keeping data current is one command:
 
 ```bash
 # Docker
-docker compose exec backend python manage.py update_all --season 2026
+docker compose exec backend python manage.py update_ncaa_all --season 2026
 
 # Local
-cd backend && uv run python manage.py update_all --season 2026
+cd backend && uv run python manage.py update_ncaa_all --season 2026
 ```
 
-`update_all` is idempotent — it only ingests games not yet in the database and recomputes all metrics.
+`update_ncaa_all` is idempotent — it only ingests games not yet in the database and recomputes all metrics.
 
 To skip ingestion and only recompute metrics (faster):
 ```bash
-python manage.py update_all --season 2026 --skip-ingest
+python manage.py update_ncaa_all --season 2026 --skip-ingest
 ```
 
 ---

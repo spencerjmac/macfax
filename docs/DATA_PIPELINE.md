@@ -4,12 +4,12 @@ All data comes from the **NCAA Stats API**. There are no CSV files or external s
 
 ---
 
-## `update_all` — Full Pipeline (use this)
+## `update_ncaa_all` — Full Pipeline (use this)
 
 Runs the complete pipeline in sequence. Idempotent — safe to re-run.
 
 ```bash
-python manage.py update_all --season 2026
+python manage.py update_ncaa_all --season 2026
 ```
 
 **Options:**
@@ -212,7 +212,7 @@ If the canonical name is not in the Team table, run `ensure_ncaa_teams` which cr
 2. python manage.py seed_conferences
 3. python manage.py ensure_ncaa_teams
 4. python manage.py createsuperuser
-5. python manage.py update_all --season 2026
+5. python manage.py update_ncaa_all --season 2026
 6. python manage.py import_logos
 7. python manage.py collectstatic --noinput
 ```

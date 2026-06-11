@@ -38,6 +38,7 @@ from .players import (
     PlayerGameStint,
     BPRModelArtifact,
     PlaceholderArchetype,
+    PlayerAvailability,
 )
 
 from .scenarios import ScenarioSnapshot
@@ -71,6 +72,7 @@ __all__ = [
     "PlayerGameStint",
     "BPRModelArtifact",
     "PlaceholderArchetype",
+    "PlayerAvailability",
     # scenarios
     "ScenarioSnapshot",
 ]

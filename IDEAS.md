@@ -4,7 +4,6 @@
 
 - Improve BPR ratings by backtesting and trying to match Evan Miya (Claude)
 - Analyze BPR ratings for NBA players, compare to RAPTOR or LEBRON to see improvements (Claude)
-- Explore adding Injury Adjustment to ratings — if a player is injured, adjust the team's rating accordingly (Claude)
 - Explore adding a pre-tournament filter for NCAA Player stats and Team Rankings
 - Backtest the Cinderella Index to verify formula and weights are optimal (Claude)
 - Check team migrations for historical seasons since some teams go in/out of Division I (Claude)
