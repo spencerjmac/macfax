@@ -19,6 +19,7 @@ from pathlib import Path
 import pandas as pd
 from django.core.management.base import BaseCommand
 
+from world_cup.elo_match_model import win_expectancy
 from world_cup.models import WorldCupTeam
 
 logger = logging.getLogger(__name__)
@@ -55,6 +56,11 @@ VALIDATION_BENCHMARKS = {
     "Netherlands": 1944,
     "Germany":     1925,
 }
+
+# 2026 World Cup co-hosts (USA, Canada, Mexico) play their group-stage matches
+# on home soil with full home-crowd support. Layer a flat Elo bonus onto their
+# base rating to reflect that advantage in the rankings/insights.
+HOST_ELO_BONUS = 100.0
 
 # Alternative dataset names to try for teams with name changes or aliases
 DATASET_ALIASES = {
@@ -105,11 +111,6 @@ def goal_diff_multiplier(goal_diff: int) -> float:
         return 1.75
     else:
         return 1.75 + (goal_diff - 3) / 8.0
-
-
-def win_expectancy(rating_a: float, rating_b: float, home_adv: float = 0.0) -> float:
-    dr = rating_a - rating_b + home_adv
-    return 1.0 / (1.0 + 10.0 ** (-dr / 400.0))
 
 
 def run_elo_calculation(
@@ -241,6 +242,9 @@ class Command(BaseCommand):
                         f"Using 1500 fallback."
                     )
                 )
+            if team.get("is_host"):
+                elo += HOST_ELO_BONUS
+
             team_elos.append({**team, "elo_rating": elo, "found_as": found_as})
 
         team_elos.sort(key=lambda t: t["elo_rating"], reverse=True)

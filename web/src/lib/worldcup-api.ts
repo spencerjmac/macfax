@@ -1,4 +1,8 @@
-import type { WorldCupTeam } from '@/types/worldcup';
+import type {
+  WorldCupTeam,
+  WorldCupMatchupResult,
+  WorldCupGroupResult,
+} from '@/types/worldcup';
 
 const API_BASE_URL = (
   process.env.API_INTERNAL_URL ||
@@ -21,5 +25,15 @@ export const worldCupApi = {
   async getRankings(): Promise<WorldCupTeam[]> {
     const data = await fetchJson<{ teams: WorldCupTeam[] }>(`${WORLDCUP_API_ROOT}/rankings/`);
     return data.teams;
+  },
+
+  async getMatchup(teamA: string, teamB: string): Promise<WorldCupMatchupResult> {
+    return fetchJson(
+      `${WORLDCUP_API_ROOT}/matchup/?teamA=${encodeURIComponent(teamA)}&teamB=${encodeURIComponent(teamB)}`
+    );
+  },
+
+  async getGroup(group: string): Promise<WorldCupGroupResult> {
+    return fetchJson(`${WORLDCUP_API_ROOT}/group/${encodeURIComponent(group)}/`);
   },
 };

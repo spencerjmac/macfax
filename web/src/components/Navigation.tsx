@@ -42,6 +42,8 @@ const NAV_ITEMS: NavSection[] = [
     href: '/world-cup',
     items: [
       { label: 'Elo Rankings', href: '/world-cup' },
+      { label: 'Matchup', href: '/world-cup/matchup' },
+      { label: 'Group Odds', href: '/world-cup/groups' },
       { label: 'Efficiency Landscape', href: '/world-cup/efficiency-landscape' },
     ],
   },

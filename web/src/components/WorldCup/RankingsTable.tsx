@@ -40,7 +40,7 @@ function HostBadge() {
       {show && (
         <div className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-slate-900 border border-slate-600 rounded-lg shadow-2xl">
           <p className="text-xs text-slate-200 leading-relaxed">
-            Home advantage (+100 Elo pts) applied to win probability calculations, not base rating.
+            +100 Elo pts added to base rating for hosting the 2026 World Cup on home soil.
           </p>
           <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-slate-900 border-r border-b border-slate-600 rotate-45" />
         </div>

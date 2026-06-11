@@ -101,9 +101,8 @@ export default async function WorldCupPage() {
                 </div>
                 <div>
                   <b className="font-mono font-semibold text-text-primary mr-1.5">Home Advantage</b>
-                  Hosts receive a +100 Elo point boost when calculating win probability for their
-                  home matches. This is not reflected in the base rating shown here — it&apos;s
-                  applied per match.
+                  USA, Canada, and Mexico get a +100 Elo point boost added to their base rating
+                  for hosting the 2026 World Cup on home soil.
                 </div>
               </div>
             </div>
