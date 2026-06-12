@@ -23,10 +23,10 @@ from .serializers import RankingsSerializer
 # Season-context helpers
 # ---------------------------------------------------------------------------
 
-def _build_season_context(ratings_qs):
+def _build_season_context(ratings_qs, metrics_map=None):
     """
     Pre-compute season-wide stats needed for the context-dependent checklist
-    items (trapezoid, title-favorite delta, off/def rank).
+    items (trapezoid, title-favorite delta, off/def rank, Z-score thresholds).
 
     Always built from ALL D1 teams regardless of any tournament filter so that
     rank thresholds stay stable when the user switches between "All" and
@@ -35,6 +35,8 @@ def _build_season_context(ratings_qs):
     ratings = list(ratings_qs)
     if not ratings:
         return {}
+
+    metrics_map = metrics_map or {}
 
     tempo_arr = np.array([r.adj_tempo for r in ratings])
     em_arr    = np.array([r.adj_em    for r in ratings])
@@ -60,6 +62,24 @@ def _build_season_context(ratings_qs):
     reb_edges = np.array([r.adj_reb_edge for r in ratings if r.adj_reb_edge is not None])
     ftr_margins = np.array([r.adj_ftr_margin for r in ratings if r.adj_ftr_margin is not None])
     ffis = np.array([r.ffi_adj for r in ratings if r.ffi_adj is not None])
+    adj_ems = np.array([r.adj_em for r in ratings if r.adj_em is not None])
+    adj_os = np.array([r.adj_o for r in ratings if r.adj_o is not None])
+    adj_ds = np.array([r.adj_d for r in ratings if r.adj_d is not None])
+    win_pcts = np.array([r.wins / r.games_played for r in ratings if r.games_played])
+
+    # Shooting percentages come from TeamSeasonMetrics, not TeamSeasonRatings
+    fg3_pct_list = []
+    ft_pct_list = []
+    for r in ratings:
+        m = metrics_map.get(r.team_id)
+        if not m:
+            continue
+        if m.total_fg3a:
+            fg3_pct_list.append(m.total_fg3m / m.total_fg3a)
+        if m.total_fta:
+            ft_pct_list.append(m.total_ftm / m.total_fta)
+    fg3_pcts = np.array(fg3_pct_list)
+    ft_pcts = np.array(ft_pct_list)
 
     stats = {
         "efg_mean": float(np.mean(efg_margins)) if len(efg_margins) else 0,
@@ -72,6 +92,18 @@ def _build_season_context(ratings_qs):
         "ftr_std": float(np.std(ftr_margins)) if len(ftr_margins) else 1,
         "ffi_mean": float(np.mean(ffis)) if len(ffis) else 0,
         "ffi_std": float(np.std(ffis)) if len(ffis) else 1,
+        "adjem_mean": float(np.mean(adj_ems)) if len(adj_ems) else 0,
+        "adjem_std": float(np.std(adj_ems)) if len(adj_ems) else 1,
+        "adjo_mean": float(np.mean(adj_os)) if len(adj_os) else 0,
+        "adjo_std": float(np.std(adj_os)) if len(adj_os) else 1,
+        "adjd_mean": float(np.mean(adj_ds)) if len(adj_ds) else 0,
+        "adjd_std": float(np.std(adj_ds)) if len(adj_ds) else 1,
+        "win_pct_mean": float(np.mean(win_pcts)) if len(win_pcts) else 0.5,
+        "win_pct_std": float(np.std(win_pcts)) if len(win_pcts) else 0.1,
+        "fg3_pct_mean": float(np.mean(fg3_pcts)) if len(fg3_pcts) else 0.33,
+        "fg3_pct_std": float(np.std(fg3_pcts)) if len(fg3_pcts) else 0.03,
+        "ft_pct_mean": float(np.mean(ft_pcts)) if len(ft_pcts) else 0.70,
+        "ft_pct_std": float(np.std(ft_pcts)) if len(ft_pcts) else 0.03,
     }
 
     return {
@@ -145,16 +177,14 @@ def _check_balanced_dominance(r, ctx):
 
 
 def _check_title_favorite(r, ctx):
-    max_em = ctx.get("max_adj_em")
-    if max_em is None:
-        return _item("title_favorite", "Title Favorite (AdjEM)", False,
-                     "N/A", "Within 6.0 of max")
-    threshold = max_em - 6.0
-    passed = r.adj_em >= threshold
-    return _item("title_favorite", "Title Favorite (AdjEM)", passed,
-                 f"{r.adj_em:.1f}",
-                 f"≥ {threshold:.1f} (max {max_em:.1f})",
-                 f"AdjEM {r.adj_em:.1f}, needs ≥ {threshold:.1f}")
+    rank = ctx.get("em_ranks", {}).get(r.team_id)
+    if rank is None:
+        return _item("title_favorite", "Title Favorite (AdjEM Top-22)", False,
+                     "N/A", "Rank ≤ 22")
+    passed = rank <= 22
+    return _item("title_favorite", "Title Favorite (AdjEM Top-22)", passed,
+                 f"#{rank}", "Rank ≤ 22",
+                 f"AdjEM rank #{rank}")
 
 
 def _check_win_pct(r, ctx):
@@ -313,6 +343,16 @@ def _check_ffi(r, ctx):
 
 def _check_wab(r, ctx):
     wab = r.wab
+    games = r.games_played or 0
+
+    # Short/anomalous seasons (e.g. 2021 COVID-truncated schedules) make a
+    # fixed WAB > 5.0 bar nearly unreachable, so exempt them.
+    if games < 27:
+        return _item("wab", "WAB (Wins Above Bubble)", True,
+                     f"{wab:.1f}" if wab is not None else "N/A",
+                     "> 5 (or <27-game season exception)",
+                     f"Short season ({games} games) - exempted, WAB={wab}")
+
     if wab is None:
         return _item("wab", "WAB (Wins Above Bubble)", False,
                      "N/A", "> 5", "WAB unavailable")
@@ -325,7 +365,7 @@ def _check_wab(r, ctx):
 def _check_ft_pct(r, ctx):
     stats = ctx.get("stats", {})
     metrics = ctx.get("metrics_map", {}).get(r.team_id)
-    MIN_Z_FT = -0.28
+    MIN_Z_FT = -0.50
     
     ft_mean = stats.get("ft_pct_mean", 0.70)
     ft_std = stats.get("ft_pct_std", 0.03)
@@ -412,11 +452,13 @@ class CrystalBallView(APIView):
             .select_related("team")
         )
 
-        ctx = _build_season_context(all_qs)
-
-        # Build metrics lookup for shooting pct checks
+        # Build metrics lookup for shooting pct checks (needed by _build_season_context
+        # for fg3_pct/ft_pct means+stds, and by individual checks below)
         metrics_qs = TeamSeasonMetrics.all_objects.filter(season=season, is_pre_tournament=True)
-        ctx["metrics_map"] = {m.team_id: m for m in metrics_qs}
+        metrics_map = {m.team_id: m for m in metrics_qs}
+
+        ctx = _build_season_context(all_qs, metrics_map)
+        ctx["metrics_map"] = metrics_map
 
         # Also attach conference lookup from serializer
         conf_serializer = RankingsSerializer()
