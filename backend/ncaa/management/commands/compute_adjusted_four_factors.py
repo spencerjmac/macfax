@@ -16,18 +16,29 @@ Formula for each game:
     Adj_OppORB_g = OppORB_g * (Nat_ORB / OppOff_ORB) * DefSiteFactor
     Adj_FTR_g    = OppFTR_g * (Nat_FTR / OppOff_FTR) * DefSiteFactor
 
-Aggregated using possession-weighted averaging.
+Each team-season value is the possession-weighted average of its game-level
+adjusted values, blended toward the national average with a shrinkage
+constant (in pseudo-possessions) — same approach as compute_adjusted_ratings.
+Without this shrinkage the ratio-based update (each team's value depends on
+its opponents' *previous-iteration* values) settles into a stable period-2
+oscillation rather than converging; shrinkage damps that into a single
+fixed point.
 
 Usage:
-    python manage.py compute_adjusted_four_factors --season 2026 --iterations 3
+    python manage.py compute_adjusted_four_factors --season 2026
 """
 
 from django.core.management.base import BaseCommand
-from django.db.models import Sum, Avg, Q
+from django.db.models import Q
 from ncaa.models import (
     Season, Team, TeamGameStats, TeamSeasonMetrics,
     TeamSeasonRatings, NationalAverages
 )
+
+KEYS = [
+    'adj_efg', 'adj_tov', 'adj_orb', 'adj_ftr',
+    'adj_opp_efg', 'adj_opp_tov', 'adj_opp_orb', 'adj_drb', 'adj_opp_ftr',
+]
 
 
 class Command(BaseCommand):
@@ -44,7 +55,19 @@ class Command(BaseCommand):
             '--iterations',
             type=int,
             default=None,
-            help='Number of iterations for convergence (default: from PipelineConfig)'
+            help='Maximum number of iterations (default: from PipelineConfig)'
+        )
+        parser.add_argument(
+            '--convergence',
+            type=float,
+            default=None,
+            help='Convergence threshold for max stat change in pct points (default: from PipelineConfig)'
+        )
+        parser.add_argument(
+            '--shrinkage',
+            type=float,
+            default=None,
+            help='Shrinkage constant in possessions (default: from PipelineConfig; auto-adjusts by schedule depth)',
         )
         parser.add_argument(
             "--pre-tournament",
@@ -57,7 +80,9 @@ class Command(BaseCommand):
         cfg = PipelineConfig.get_config()
 
         season_year = options['season']
-        iterations = options['iterations'] or cfg.adj_ff_iterations
+        max_iterations = options['iterations'] or cfg.adj_ff_iterations
+        convergence_threshold = options['convergence'] or cfg.adj_ff_convergence
+        shrinkage_k = options['shrinkage']  # None = dynamic (computed below)
         is_pre_tournament = options['pre_tournament']
 
         # Get season
@@ -79,11 +104,24 @@ class Command(BaseCommand):
 
         self.stdout.write(
             f"Computing adjusted four factors for {season.display_name} "
-            f"({iterations} iterations)..."
+            f"(max {max_iterations} iterations, convergence < {convergence_threshold})..."
         )
         self.stdout.write(f"National Averages: eFG={nat_avg.avg_efg:.2f}%, "
                          f"TOV={nat_avg.avg_tov:.2f}%, ORB={nat_avg.avg_orb:.2f}%, "
                          f"FTR={nat_avg.avg_ftr:.2f}")
+
+        # Per-stat shrinkage priors (national averages each stat regresses toward)
+        priors = {
+            'adj_efg': nat_avg.avg_efg,
+            'adj_tov': nat_avg.avg_tov,
+            'adj_orb': nat_avg.avg_orb,
+            'adj_ftr': nat_avg.avg_ftr,
+            'adj_opp_efg': nat_avg.avg_efg,
+            'adj_opp_tov': nat_avg.avg_tov,
+            'adj_opp_orb': nat_avg.avg_orb,
+            'adj_drb': 100.0 - nat_avg.avg_orb,
+            'adj_opp_ftr': nat_avg.avg_ftr,
+        }
 
         # Get all team season metrics
         all_teams = Team.objects.filter(
@@ -97,7 +135,7 @@ class Command(BaseCommand):
                 metrics = TeamSeasonMetrics.all_objects.get(team=team, season=season, is_pre_tournament=is_pre_tournament)
             except TeamSeasonMetrics.DoesNotExist:
                 continue
-                
+
             four_factors[team.id] = {
                 # Offensive four factors
                 'adj_efg': metrics.efg_pct,
@@ -114,151 +152,175 @@ class Command(BaseCommand):
 
         self.stdout.write(f"Initialized {len(four_factors)} teams with raw four factors")
 
-        # Iteratively compute adjusted four factors
-        for iteration in range(1, iterations + 1):
-            self.stdout.write(f"\n--- Iteration {iteration} ---")
-            
-            new_four_factors = {}
-            
-            for team in all_teams:
-                # Get all games for this team
-                tgs_filters = {'team': team, 'game__season_year': season.year}
-                if is_pre_tournament and season.selection_sunday_date:
-                    tgs_filters['game__game_date__lte'] = season.selection_sunday_date
-                
-                # Exclude canceled games (0-0 score)
-                team_games = TeamGameStats.objects.filter(
-                    ~Q(game__home_score=0, game__away_score=0),
-                    **tgs_filters
-                ).select_related('game')
+        # Pre-fetch per-game data once (used every iteration). Avoids re-querying
+        # the database on every one of up to `max_iterations` passes.
+        self.stdout.write("Pre-fetching game data...")
+        team_games_data = {}
+        total_team_games = 0
+        for team in all_teams:
+            if team.id not in four_factors:
+                continue
 
-                if not team_games.exists():
+            tgs_filters = {'team': team, 'game__season_year': season.year}
+            if is_pre_tournament and season.selection_sunday_date:
+                tgs_filters['game__game_date__lte'] = season.selection_sunday_date
+
+            # Exclude canceled games (0-0 score)
+            team_games = TeamGameStats.objects.filter(
+                ~Q(game__home_score=0, game__away_score=0),
+                **tgs_filters
+            ).select_related('game')
+
+            games_data = []
+            for tgs in team_games:
+                opp_tgs = tgs._get_opp_stats()
+                if not opp_tgs:
                     continue
 
-                # Accumulators for weighted averaging
-                sum_weighted_efg = 0.0
-                sum_weighted_tov = 0.0
-                sum_weighted_orb = 0.0
-                sum_weighted_ftr = 0.0
-                
-                sum_weighted_opp_efg = 0.0
-                sum_weighted_opp_tov = 0.0
-                sum_weighted_opp_orb = 0.0
-                sum_weighted_drb = 0.0
-                sum_weighted_opp_ftr = 0.0
-                
+                weight = tgs.poss_game or 0
+                if weight == 0:
+                    continue
+
+                raw_opp_orb = tgs.opp_orb_pct
+                games_data.append({
+                    'opp_id': opp_tgs.team_id,
+                    'weight': weight,
+                    'site_factor': tgs.site_factor,
+                    'def_site_factor': tgs.defensive_site_factor,
+                    'raw_efg': tgs.efg_pct,
+                    'raw_tov': tgs.tov_pct,
+                    'raw_orb': tgs.orb_pct,
+                    'raw_ftr': tgs.ftr,
+                    'raw_opp_efg': tgs.opp_efg_pct,
+                    'raw_opp_tov': tgs.opp_tov_pct,
+                    'raw_opp_orb': raw_opp_orb,
+                    'raw_drb': (100 - raw_opp_orb) if raw_opp_orb is not None else 0,
+                    'raw_opp_ftr': tgs.opp_ftr,
+                })
+
+            team_games_data[team.id] = games_data
+            total_team_games += len(games_data)
+
+        # Dynamic shrinkage k based on average games played (mirrors compute_adjusted_ratings)
+        avg_games_played = total_team_games / len(four_factors) if four_factors else 0
+
+        if shrinkage_k is None:
+            shrinkage_k = min(
+                cfg.adj_ff_shrinkage_ceiling,
+                max(
+                    cfg.adj_ff_shrinkage_floor,
+                    cfg.adj_ff_shrinkage_ceiling
+                    - (avg_games_played * cfg.adj_ff_shrinkage_decay),
+                ),
+            )
+            self.stdout.write(
+                f"Dynamic Shrinkage: k={shrinkage_k:.1f} (avg {avg_games_played:.1f} games/team)"
+            )
+        else:
+            self.stdout.write(
+                f"Fixed Shrinkage: k={shrinkage_k:.1f} possessions (user override)"
+            )
+
+        # Iteratively compute adjusted four factors
+        converged = False
+        iteration = 0
+
+        for iteration in range(1, max_iterations + 1):
+            new_four_factors = {}
+            max_change = 0.0
+
+            for team_id, games_data in team_games_data.items():
+                if not games_data:
+                    continue
+
+                sums = {k: 0.0 for k in KEYS}
                 sum_weights = 0.0
 
-                for tgs in team_games:
-                    # Get opponent stats
-                    opp_tgs = tgs._get_opp_stats()
-                    if not opp_tgs:
-                        continue
-
-                    opp_id = opp_tgs.team_id
-                    
-                    # Get opponent's current adjusted defensive four factors
+                for g in games_data:
+                    opp_id = g['opp_id']
                     if opp_id not in four_factors:
                         continue
-                    
-                    opp_adj_def_efg = four_factors[opp_id]['adj_opp_efg']
-                    opp_adj_def_tov = four_factors[opp_id]['adj_opp_tov']
-                    opp_adj_orb_allowed = four_factors[opp_id]['adj_opp_orb']  # Opponent's ORB-allowed (defensive rebounding weakness)
-                    opp_adj_def_ftr = four_factors[opp_id]['adj_opp_ftr']
-                    
-                    # Get opponent's adjusted offensive four factors (for our defense)
-                    opp_adj_off_efg = four_factors[opp_id]['adj_efg']
-                    opp_adj_off_tov = four_factors[opp_id]['adj_tov']
-                    opp_adj_off_orb = four_factors[opp_id]['adj_orb']
-                    opp_adj_off_ftr = four_factors[opp_id]['adj_ftr']
 
-                    # Get raw game stats
-                    raw_efg = tgs.efg_pct
-                    raw_tov = tgs.tov_pct
-                    raw_orb = tgs.orb_pct
-                    raw_ftr = tgs.ftr
-                    
-                    raw_opp_efg = tgs.opp_efg_pct
-                    raw_opp_tov = tgs.opp_tov_pct
-                    raw_opp_orb = tgs.opp_orb_pct if hasattr(tgs, 'opp_orb_pct') else (100 - tgs.drb_pct)  # Opponent ORB%
-                    raw_drb = (100 - raw_opp_orb) if raw_opp_orb is not None else 0  # DRB% = 100 - opp's ORB%
-                    raw_opp_ftr = tgs.opp_ftr
+                    opp = four_factors[opp_id]
+                    weight = g['weight']
 
-                    # Site factors (different for offense vs defense, matching compute_adjusted_ratings)
-                    site_factor = tgs.site_factor            # Offensive: Home=0.9862, Away=1.0140
-                    def_site_factor = tgs.defensive_site_factor  # Defensive: Home=1.0140, Away=0.9862
+                    # Opponent's current adjusted defensive four factors (for our offense)
+                    opp_adj_def_efg = opp['adj_opp_efg']
+                    opp_adj_def_tov = opp['adj_opp_tov']
+                    opp_adj_orb_allowed = opp['adj_opp_orb']
+                    opp_adj_def_ftr = opp['adj_opp_ftr']
 
-                    # Weight by possessions
-                    weight = tgs.poss_game or 0
-                    if weight == 0:
-                        continue
+                    # Opponent's current adjusted offensive four factors (for our defense)
+                    opp_adj_off_efg = opp['adj_efg']
+                    opp_adj_off_tov = opp['adj_tov']
+                    opp_adj_off_orb = opp['adj_orb']
+                    opp_adj_off_ftr = opp['adj_ftr']
 
-                    # Compute adjusted offensive four factors
-                    if raw_efg is not None and opp_adj_def_efg > 0:
-                        adj_efg_g = raw_efg * (nat_avg.avg_efg / opp_adj_def_efg) * site_factor
-                        sum_weighted_efg += weight * adj_efg_g
-                    
-                    if raw_tov is not None and opp_adj_def_tov > 0:
-                        adj_tov_g = raw_tov * (nat_avg.avg_tov / opp_adj_def_tov) * site_factor
-                        sum_weighted_tov += weight * adj_tov_g
-                    
-                    if raw_orb is not None and opp_adj_orb_allowed > 0:
-                        adj_orb_g = raw_orb * (nat_avg.avg_orb / opp_adj_orb_allowed) * site_factor
-                        sum_weighted_orb += weight * adj_orb_g
-                    
-                    if raw_ftr is not None and opp_adj_def_ftr > 0:
-                        adj_ftr_g = raw_ftr * (nat_avg.avg_ftr / opp_adj_def_ftr) * site_factor
-                        sum_weighted_ftr += weight * adj_ftr_g
+                    site_factor = g['site_factor']
+                    def_site_factor = g['def_site_factor']
 
-                    # Compute adjusted defensive four factors (opponent's adjusted offensive stats)
-                    if raw_opp_efg is not None and opp_adj_off_efg > 0:
-                        adj_opp_efg_g = raw_opp_efg * (nat_avg.avg_efg / opp_adj_off_efg) * def_site_factor
-                        sum_weighted_opp_efg += weight * adj_opp_efg_g
-                    
-                    if raw_opp_tov is not None and opp_adj_off_tov > 0:
-                        # For defense, we want high TOV% forced (opponent's low TOV%)
-                        adj_opp_tov_g = raw_opp_tov * (nat_avg.avg_tov / opp_adj_off_tov) * def_site_factor
-                        sum_weighted_opp_tov += weight * adj_opp_tov_g
-                    
-                    if raw_opp_orb is not None and opp_adj_off_orb > 0:
-                        # Opponent ORB% (defensive stat - lower is better)
-                        adj_opp_orb_g = raw_opp_orb * (nat_avg.avg_orb / opp_adj_off_orb) * def_site_factor
-                        sum_weighted_opp_orb += weight * adj_opp_orb_g
-                    
-                    if raw_drb is not None and opp_adj_off_orb > 0:
-                        adj_drb_g = raw_drb * (nat_avg.avg_orb / opp_adj_off_orb) * def_site_factor
-                        sum_weighted_drb += weight * adj_drb_g
-                    
-                    if raw_opp_ftr is not None and opp_adj_off_ftr > 0:
-                        adj_opp_ftr_g = raw_opp_ftr * (nat_avg.avg_ftr / opp_adj_off_ftr) * def_site_factor
-                        sum_weighted_opp_ftr += weight * adj_opp_ftr_g
+                    # Adjusted offensive four factors
+                    if g['raw_efg'] is not None and opp_adj_def_efg > 0:
+                        sums['adj_efg'] += weight * (g['raw_efg'] * (nat_avg.avg_efg / opp_adj_def_efg) * site_factor)
+
+                    if g['raw_tov'] is not None and opp_adj_def_tov > 0:
+                        sums['adj_tov'] += weight * (g['raw_tov'] * (nat_avg.avg_tov / opp_adj_def_tov) * site_factor)
+
+                    if g['raw_orb'] is not None and opp_adj_orb_allowed > 0:
+                        sums['adj_orb'] += weight * (g['raw_orb'] * (nat_avg.avg_orb / opp_adj_orb_allowed) * site_factor)
+
+                    if g['raw_ftr'] is not None and opp_adj_def_ftr > 0:
+                        sums['adj_ftr'] += weight * (g['raw_ftr'] * (nat_avg.avg_ftr / opp_adj_def_ftr) * site_factor)
+
+                    # Adjusted defensive four factors (opponent's adjusted offensive stats)
+                    if g['raw_opp_efg'] is not None and opp_adj_off_efg > 0:
+                        sums['adj_opp_efg'] += weight * (g['raw_opp_efg'] * (nat_avg.avg_efg / opp_adj_off_efg) * def_site_factor)
+
+                    if g['raw_opp_tov'] is not None and opp_adj_off_tov > 0:
+                        sums['adj_opp_tov'] += weight * (g['raw_opp_tov'] * (nat_avg.avg_tov / opp_adj_off_tov) * def_site_factor)
+
+                    if g['raw_opp_orb'] is not None and opp_adj_off_orb > 0:
+                        sums['adj_opp_orb'] += weight * (g['raw_opp_orb'] * (nat_avg.avg_orb / opp_adj_off_orb) * def_site_factor)
+
+                    if g['raw_drb'] is not None and opp_adj_off_orb > 0:
+                        sums['adj_drb'] += weight * (g['raw_drb'] * (nat_avg.avg_orb / opp_adj_off_orb) * def_site_factor)
+
+                    if g['raw_opp_ftr'] is not None and opp_adj_off_ftr > 0:
+                        sums['adj_opp_ftr'] += weight * (g['raw_opp_ftr'] * (nat_avg.avg_ftr / opp_adj_off_ftr) * def_site_factor)
 
                     sum_weights += weight
 
-                # Compute weighted averages (no shrinkage for four factors)
-                if sum_weights > 0:
-                    new_four_factors[team.id] = {
-                        'adj_efg': sum_weighted_efg / sum_weights,
-                        'adj_tov': sum_weighted_tov / sum_weights,
-                        'adj_orb': sum_weighted_orb / sum_weights,
-                        'adj_ftr': sum_weighted_ftr / sum_weights,
-                        'adj_opp_efg': sum_weighted_opp_efg / sum_weights,
-                        'adj_opp_tov': sum_weighted_opp_tov / sum_weights,
-                        'adj_opp_orb': sum_weighted_opp_orb / sum_weights,
-                        'adj_drb': sum_weighted_drb / sum_weights,
-                        'adj_opp_ftr': sum_weighted_opp_ftr / sum_weights,
-                    }
-                else:
-                    # No valid games, keep previous values
-                    new_four_factors[team.id] = four_factors[team.id]
+                # Blend possession-weighted average with national average prior
+                # (X_season = (sum_weighted_X + k*Prior_X) / (sum_weights + k))
+                new_vals = {
+                    k: (sums[k] + shrinkage_k * priors[k]) / (sum_weights + shrinkage_k)
+                    for k in KEYS
+                }
+                new_four_factors[team_id] = new_vals
 
-            # Update for next iteration
+                old_vals = four_factors[team_id]
+                for k in KEYS:
+                    max_change = max(max_change, abs(new_vals[k] - old_vals[k]))
+
             four_factors = new_four_factors
-            self.stdout.write(f"Iteration {iteration} complete: {len(four_factors)} teams updated")
+
+            if max_change < convergence_threshold:
+                self.stdout.write(f"Iteration {iteration}: max change={max_change:.5f} — converged")
+                converged = True
+                break
+            else:
+                self.stdout.write(f"Iteration {iteration}: max change={max_change:.5f}")
+
+        if converged:
+            self.stdout.write(self.style.SUCCESS(f"\nConverged after {iteration} iterations"))
+        else:
+            self.stdout.write(self.style.WARNING(
+                f"\nDid not converge after {max_iterations} iterations (max change: {max_change:.5f})"
+            ))
 
         # Save final adjusted four factors to TeamSeasonRatings
         self.stdout.write("\nSaving adjusted four factors to database...")
-        
+
         created_count = 0
         updated_count = 0
         error_count = 0
@@ -268,7 +330,7 @@ class Command(BaseCommand):
                 continue
 
             ff = four_factors[team.id]
-            
+
             try:
                 # Only update existing TeamSeasonRatings — never create stubs for teams
                 # that weren't processed by compute_adjusted_ratings (e.g. teams that

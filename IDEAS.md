@@ -118,3 +118,5 @@ Tabs: Overview, Four Factors, Offense, Defense, Game Log, Roster Charts (charts 
 
 - Update the update-all commands for both NBA and NCAA so all data is current
 - Update NBA players and teams command to have the missing steps
+
+- At the end of a lot of our changes we need to do a database copy or dump with our local database here to have it on our public server since doing individual commands is gonna take too long

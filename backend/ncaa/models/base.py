@@ -276,8 +276,24 @@ class PipelineConfig(models.Model):
 
     # ── Adjusted Four Factors ─────────────────────────────────────────────────
     adj_ff_iterations = models.IntegerField(
-        default=3,
-        help_text="Adjustment iterations for compute_adjusted_four_factors",
+        default=75,
+        help_text="Max solver iterations before declaring convergence (compute_adjusted_four_factors --iterations)",
+    )
+    adj_ff_convergence = models.FloatField(
+        default=0.01,
+        help_text="Max change (percentage points) in any adjusted four factor stat between iterations to declare convergence",
+    )
+    adj_ff_shrinkage_floor = models.IntegerField(
+        default=150,
+        help_text="Minimum shrinkage constant (possessions) regardless of games played",
+    )
+    adj_ff_shrinkage_ceiling = models.IntegerField(
+        default=300,
+        help_text="Starting/maximum shrinkage constant (possessions)",
+    )
+    adj_ff_shrinkage_decay = models.FloatField(
+        default=6.25,
+        help_text="Shrinkage k drops by this amount per average game played",
     )
 
     # ── Four Factor Index ─────────────────────────────────────────────────────

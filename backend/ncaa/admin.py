@@ -164,7 +164,13 @@ class PipelineConfigAdmin(admin.ModelAdmin):
             ),
         }),
         ("Adjusted Four Factors", {
-            "fields": ("adj_ff_iterations",),
+            "fields": (
+                "adj_ff_iterations",
+                "adj_ff_convergence",
+                "adj_ff_shrinkage_floor",
+                "adj_ff_shrinkage_ceiling",
+                "adj_ff_shrinkage_decay",
+            ),
         }),
         ("Four Factor Index Weights", {
             "description": "Weights must sum to 1.0. Defaults are derived from regression training.",

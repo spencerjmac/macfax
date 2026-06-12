@@ -1445,6 +1445,10 @@ class PipelineConfigSerializer(serializers.ModelSerializer):
             "adj_ratings_shrinkage_decay",
             # Adjusted Four Factors
             "adj_ff_iterations",
+            "adj_ff_convergence",
+            "adj_ff_shrinkage_floor",
+            "adj_ff_shrinkage_ceiling",
+            "adj_ff_shrinkage_decay",
             # Four Factor Index
             "ffi_weight_efg",
             "ffi_weight_tov",
