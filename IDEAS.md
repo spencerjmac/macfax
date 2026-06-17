@@ -1,26 +1,3 @@
-# Ideas & Backlog
-
-## Analytics / Ratings
-
-- Improve BPR ratings by backtesting and trying to match Evan Miya (Claude)
-- Analyze BPR ratings for NBA players, compare to RAPTOR or LEBRON to see improvements (Claude)
-- Explore adding a pre-tournament filter for NCAA Player stats and Team Rankings
-- Backtest the Cinderella Index to verify formula and weights are optimal (Claude)
-- Check team migrations for historical seasons since some teams go in/out of Division I (Claude)
-- Explore adding pace adjustment to matchup model — teams that play better in faster/slower games (Claude)
-- Explore adding a "clutch" factor to the Matchup Model based on close-game performance (Claude)
-- Do a deep dive into the NCAA Basketball Matchup Model — accuracy, missing adjustments (after adjusted ratings work)
-- Get all historical player data from past seasons to improve current data (Chat)
-- Explore if we should change/add/remove any criteria for the NCAA Champion Checklist (Claude)
-- Explore the Trapezoid of Excellence formula — is there a better shape formula? (Claude or Chat)
-- Refine player stats pipeline — verify BPR has everything it needs
-- Review four-factor player stats
--  Audit adjusted four-factors pipeline — only 3 iterations currently; verify correctness
-- Overhaul team profile pages — less dashboard, more direct and opinionated
-
-Reference: CBB Analytics, KenPom, EvanMiya, ESPN
-Tabs: Overview, Four Factors, Offense, Defense, Game Log, Roster Charts (charts empty)
-- 
 
 ## Stats & Metrics to Add to Database
 
@@ -66,57 +43,174 @@ Tabs: Overview, Four Factors, Offense, Defense, Game Log, Roster Charts (charts 
 - Audit team rankings table — verify correct stats shown, clean up layout and structure
 - Audit NCAA player stats tables — right stats, intentional column selection, clean presentation; no data blobs
 
+## Macfax Home Page
+- 
 
 
-## Team Profile
 
-- Update Game Log page format — include best stats for games (Chat)
-- Update format and design of Off/Def tab
-- Explore filling in the Charts tab
+## Content
 
-## Visualizations (NBA)
+- Top 10 NBA Players right now
+- Top 10 NBA Players of All Time
+- G.O.A.T post
+- Trade Analysis Post (Grade, Winners, Losers)
+- Top 10 PGs
+- Top 10 SGs
+- Top 10 SFs
+- Top 10 PFs
+- Top 10 Cs
+- Top 10 Teams of all time
+- Top 10 Clutchest Players of all time
+- Way Too early Rankings for NCAA and NBA
+- NBA Award Rankings, (MVP DPOY ROY and others)
+- Roster Outlook Analysis for NCAA
+- Top 10 College Basketball Teams of all time
+- NBA Top 10 Fastest Players of All time
+- One-and-Done vs. 4-Year Players: Who's Actually Better in the NBA?" Metric: Average MPS by years played. This is a research piece disguised as a list. The answer is probably more nuanced than the conventional wisdom.
+- Anatomy of a Dynasty" — Pick a championship team, show the Crystal Ball criteria they met. Build toward an explanation of why they won.
+- Head-to-Heads — Jordan vs. LeBron, not vibes. Pick 4–5 measurable dimensions, score each, render a verdict. The specific methodology is the content.
+- 1. “The Truth Score”
 
-- Add visualizations to NBA web app (Claude)
-- Explore Trapezoid of Excellence for NBA (30 teams — could work)
-- Add Efficiency Landscape to NBA Visualizations
-- Add NBA Crystal Ball (like NCAA Crystal Ball)
+This is the broadest and probably best umbrella series.
 
-## Features
+Concept: Take a common sports debate and create a composite score to answer it.
 
-- Explore adding Team Breakdown to Team Profile for NCAA and NBA (like Evan Miya's team report) (Claude)
-- Explore adding Keys to Victory to NCAA and NBA matchups (Claude)
-- Explore NIL value for players — incorporate player monetary value for front office insights (Claude)
-- NBA Awards scores: MVP Score, DPOY Score, ROY Score, etc. (Claude)
-- Roster Outlook fixes:
-  - Fix Offensive and Defensive Ranks in Scenario
-  - Add incoming freshmen to database or make freshman recruiting archetypes (Claude)
-  - Fix ranges to be more realistic (currently too wide)
-  - Fix logic when adding newcomer/transfer — All-Conference player added should slightly lower projected rating since not retained
-  - Review Offensive Fit and Defensive Fit grades
-- Explore adding player profiles like the team profile pages for specific players for both the NCAA and NBA
+Examples:
 
+Top 10 NBA Players Right Now
+Top 10 Best Players Under 25
+Top 10 Most Overrated NBA Players
+Top 10 Most Underrated NBA Players
+Top 10 Best NCAA Transfer Portal Adds
+Top 10 Best NBA Draft Fits
+Top 10 Best World Cup Teams
+Top 10 Most Dangerous March Madness Teams
+Top 10 Best Two-Way Players
+Top 10 Best Winning Players
 
-## NBA Draft / Prospects
+How to measure it:
 
-- Switch Prospect Score and Profiles from scraper to our own database (Claude)
-- Social media content templates (Claude):
-  - NBA Draft Prospect Rankings
-  - Draft Prospect Profiles (grades, measurements, comps)
-  - Roster Outlook pages for teams
-  - Way-too-early Top 25 for NCAA
-  - Offseason analysis for NBA teams (draft, free agency, coaching changes)
-  - Transfer Portal Rankings
-  - NBA Mock Draft
-  - NBA Trade Analysis with trade score
+For NBA players:
 
-## World Cup
+Truth Score =
+35% impact metrics
+25% box production
+15% efficiency
+15% role difficulty
+10% team context / winning impact
 
-- Explore adding a full World Cup web app with advanced soccer analytics — team rankings, player profiles, matchups, visualizations (Claude)
-- Social media: World Cup game predictions, World Cup rankings
+For college teams:
 
-## Infrastructure
+Truth Score =
+35% adjusted efficiency margin
+20% offense
+20% defense
+10% schedule strength
+10% recent form
+5% roster stability
 
-- Update the update-all commands for both NBA and NCAA so all data is current
-- Update NBA players and teams command to have the missing steps
+For World Cup teams:
 
-- At the end of a lot of our changes we need to do a database copy or dump with our local database here to have it on our public server since doing individual commands is gonna take too long
+Truth Score =
+30% market/team rating
+25% recent form
+20% attacking quality
+15% defensive quality
+10% squad depth
+
+TikTok hook examples:
+
+“I built a score to find the actual top 10 NBA players right now.”
+“This ranking is going to make people mad, but the numbers are the numbers.”
+“I ranked every World Cup team using a Mac Facts score. One favorite is way too high.”
+
+This is the easiest series to repeat forever.
+
+- 4. “Player Archetype Rankings”
+
+This fits your basketball brain and gives you a ton of repeatable content.
+
+Concept: Don’t just rank overall players. Rank specific player types.
+
+Examples:
+
+Top 10 Playmakers
+Top 10 Rim Pressure Guards
+Top 10 Pure Shooters
+Top 10 Shot Creators
+Top 10 Off-Ball Stars
+Top 10 Defensive Anchors
+Top 10 3-and-D Wings
+Top 10 Connector Players
+Top 10 Chaos Defenders
+Top 10 Transition Weapons
+Top 10 Half-Court Creators
+Top 10 “Playoff Players”
+
+How to measure it:
+
+Example: Shot Creator Score
+
+Shot Creator Score =
+30% self-created scoring volume
+20% isolation / pick-and-roll efficiency
+15% pull-up shooting
+15% rim pressure
+10% turnover control
+10% late-clock usage
+
+Example: 3-and-D Score
+
+3-and-D Score =
+30% defensive matchup difficulty
+25% defensive impact
+20% 3PT volume
+15% 3PT efficiency
+10% low-usage offensive value
+
+Example: Playmaker Score
+
+Playmaker Score =
+30% assist creation
+20% passing efficiency
+20% turnover control
+15% creation burden
+15% teammate shot quality
+
+This would be great because every player fanbase can argue.
+
+- 15. “The Player Stock Market”
+
+This could be a recurring weekly series.
+
+Concept: Players are stocks. Buy, sell, hold.
+
+Examples:
+
+NBA player stocks I’m buying
+College basketball teams I’m selling
+Draft prospects rising/falling
+World Cup teams to buy before everyone else notices
+Transfer portal stock watch
+Sophomore breakout stock watch
+
+How to measure it:
+
+Stock Score =
+30% recent performance trend
+20% underlying metrics
+20% role opportunity
+15% sustainability
+15% public perception gap
+
+Labels:
+
+Strong Buy
+Buy
+Hold
+Sell
+Crash Warning
+
+This format is easy, fun, and repeatable.
+
+- 

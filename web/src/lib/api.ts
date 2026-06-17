@@ -12,6 +12,7 @@ import type {
   VizScatterData,
   NCAAPlayerSeasonStats,
 } from '@/types';
+import type { NBALandscapeData, NBACrystalBallData, NBALuckChartData } from '@/types/nba';
 import type { GameDetailResponse } from '@/types/games';
 import type {
   RosterOutlookData,
@@ -125,6 +126,24 @@ export const api = {
   async getLandscape(params: { season?: number; conference?: string; top?: number }): Promise<EfficiencyLandscapeData> {
     return fetchJson<EfficiencyLandscapeData>(
       buildUrl('/viz/landscape', { season: params.season, conference: params.conference, top: params.top })
+    );
+  },
+
+  async getNBALandscape(params: { season?: number }): Promise<NBALandscapeData> {
+    return fetchJson<NBALandscapeData>(
+      buildUrl('/viz/nba-landscape', { season: params.season })
+    );
+  },
+
+  async getNBACrystalBall(params: { season?: number }): Promise<NBACrystalBallData> {
+    return fetchJson<NBACrystalBallData>(
+      buildUrl('/viz/nba-crystal-ball', { season: params.season })
+    );
+  },
+
+  async getNBALuckChart(params: { season?: number }): Promise<NBALuckChartData> {
+    return fetchJson<NBALuckChartData>(
+      buildUrl('/viz/nba-luck-chart', { season: params.season })
     );
   },
 

@@ -427,6 +427,25 @@ class NBATeamSeasonRatings(models.Model):
         null=True, blank=True, help_text="Derived rank by FFI. Not source of truth."
     )
 
+    # ── Standings / playoff results (filled by nba_sync_playoff_results) ─────
+    conference_seed = models.IntegerField(
+        null=True, blank=True,
+        help_text="Regular-season conference rank (1-15) from compute_standings()",
+    )
+
+    PLAYOFF_FINISH_CHOICES = [
+        ('Champion', 'Champion'),
+        ('Runner-Up', 'Runner-Up'),
+        ('Conf Finals', 'Conference Finals'),
+        ('Conf Semis', 'Conference Semifinals'),
+        ('Round 1', 'First Round'),
+    ]
+    playoff_finish = models.CharField(
+        max_length=20, null=True, blank=True,
+        choices=PLAYOFF_FINISH_CHOICES,
+        help_text="Playoff finish (null if missed playoffs)",
+    )
+
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:

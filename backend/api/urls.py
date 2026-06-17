@@ -18,7 +18,10 @@ from .views import (
 from .job_views import DataProcessingJobViewSet
 from .trapezoid_views import TrapezoidView
 from .landscape_views import EfficiencyLandscapeView
+from .nba_landscape_views import NBAEfficiencyLandscapeView
 from .crystal_ball_views import CrystalBallView
+from .nba_crystal_ball_views import NBACrystalBallView
+from .nba_luck_chart_views import NBALuckChartView
 from .cinderella_views import CinderellaView
 from .bracket_views import BracketView
 from .viz_builder_views import VizStatsView, VizScatterView
@@ -44,8 +47,11 @@ urlpatterns = [
     path("auth/logout/", logout_view, name="auth-logout"),
     path("auth/me/", me, name="auth-me"),
     path("viz/landscape/", EfficiencyLandscapeView.as_view(), name="viz-landscape"),
+    path("viz/nba-landscape/", NBAEfficiencyLandscapeView.as_view(), name="viz-nba-landscape"),
     path("viz/trapezoid/", TrapezoidView.as_view(), name="viz-trapezoid"),
     path("viz/crystal-ball/", CrystalBallView.as_view(), name="viz-crystal-ball"),
+    path("viz/nba-crystal-ball/", NBACrystalBallView.as_view(), name="viz-nba-crystal-ball"),
+    path("viz/nba-luck-chart/", NBALuckChartView.as_view(), name="viz-nba-luck-chart"),
     path("viz/cinderella/", CinderellaView.as_view(), name="viz-cinderella"),
     path("viz/bracket/", BracketView.as_view(), name="viz-bracket"),
     path("viz/stats/", VizStatsView.as_view(), name="viz-stats"),

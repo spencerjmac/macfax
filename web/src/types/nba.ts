@@ -4,6 +4,8 @@
  * These are NBA-specific and intentionally separate from the NCAA types in types/index.ts.
  */
 
+import type { ChecklistItem } from '@/types';
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Domain models
 // ─────────────────────────────────────────────────────────────────────────────
@@ -122,6 +124,95 @@ export interface NBATeamSeasonRatings {
   rank_ffi: number | null;
 
   updated_at: string;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Efficiency Landscape
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface NBALandscapeTeam {
+  team_name: string;
+  team_slug: string;
+  team_abbreviation: string;
+  conference: 'East' | 'West';
+  logo_url: string | null;
+  o_rate: number;
+  d_rate: number;
+  net: number;
+  rank: number | null;
+  record: string;
+  playoff_finish: string | null;
+}
+
+export interface NBALandscapeData {
+  season: number;
+  season_display: string;
+  max_net: number;
+  tier_lines: {
+    champion_net: number;
+    contender_net: number;
+    playoff_net: number;
+  };
+  teams: NBALandscapeTeam[];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Crystal Ball
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface NBACrystalBallTeam {
+  team_name: string;
+  team_slug: string;
+  team_logo: string | null;
+  conference: 'East' | 'West';
+  record: string;
+  rank: number | null;
+  adj_net: number;
+  adj_off: number;
+  adj_def: number;
+  conference_seed: number | null;
+  playoff_finish: string | null;
+  checklist: {
+    passedCount: number;
+    totalCount: number;
+    score: number;
+    items: ChecklistItem[];
+  };
+}
+
+export interface NBACrystalBallData {
+  season: number;
+  season_display: string;
+  total_teams: number;
+  teams: NBACrystalBallTeam[];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Luck Chart
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface NBALuckChartTeam {
+  team_name: string;
+  team_slug: string;
+  team_abbreviation: string;
+  conference: 'East' | 'West';
+  logo_url: string | null;
+  net_rating: number;
+  ortg: number;
+  drtg: number;
+  actual_wins: number;
+  actual_losses: number;
+  games_played: number;
+  expected_wins: number;
+  wins_above_expected: number;
+  quadrant: 'hot' | 'overachieving' | 'hidden_value' | 'struggling';
+}
+
+export interface NBALuckChartData {
+  season: number;
+  season_display: string;
+  league_avg_net_rating: number;
+  teams: NBALuckChartTeam[];
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

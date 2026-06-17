@@ -5,6 +5,18 @@ import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import type { EfficiencyLandscapeData, Conference } from '@/types';
 import SeasonSelect from '@/components/SeasonSelect';
+import {
+  ResponsiveContainer,
+  ScatterChart,
+  Scatter,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Customized,
+  useXAxisScale,
+  useYAxisScale,
+} from 'recharts';
 
 export default function EfficiencyLandscapePage() {
   const router = useRouter();
@@ -12,8 +24,6 @@ export default function EfficiencyLandscapePage() {
   const [conferences, setConferences] = useState<Conference[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [hoveredTeam, setHoveredTeam] = useState<string | null>(null);
-  
   // Filters
   const [season, setSeason] = useState(2026);
   const [conferenceFilter, setConferenceFilter] = useState('ALL');
@@ -150,10 +160,8 @@ export default function EfficiencyLandscapePage() {
         
         {!loading && !error && data && (
           <>
-            <EfficiencyLandscapeChart 
+            <EfficiencyLandscapeChart
               data={data}
-              hoveredTeam={hoveredTeam}
-              onTeamHover={setHoveredTeam}
               onTeamClick={handleTeamClick}
             />
             
@@ -198,387 +206,205 @@ export default function EfficiencyLandscapePage() {
 
 interface EfficiencyLandscapeChartProps {
   data: EfficiencyLandscapeData;
-  hoveredTeam: string | null;
-  onTeamHover: (slug: string | null) => void;
   onTeamClick: (slug: string) => void;
 }
 
-function EfficiencyLandscapeChart({ data, hoveredTeam, onTeamHover, onTeamClick }: EfficiencyLandscapeChartProps) {
-  const { teams, max_net, defaults } = data;
-  
-  // Chart dimensions
-  const width = 1000; // coordinate space — SVG scales to container via viewBox
-  const height = 600;
-  const margin = { top: 60, right: 100, bottom: 80, left: 80 };
-  const plotWidth = width - margin.left - margin.right;
-  const plotHeight = height - margin.top - margin.bottom;
-  
-  // Compute scales and tier lines
-  const { xScale, yScale, tierLines, xTicks, yTicks } = useMemo(() => {
-    // Find data bounds
-    const dRates = teams.map(t => t.d_rate);
-    const oRates = teams.map(t => t.o_rate);
-    
-    const minD = Math.min(...dRates);
-    const maxD = Math.max(...dRates);
-    const minO = Math.min(...oRates);
-    const maxO = Math.max(...oRates);
-    
-    // Add padding
-    const dPadding = (maxD - minD) * 0.1;
-    const oPadding = (maxO - minO) * 0.1;
-    
-    // Create linear scales
-    // X-axis: Adj D - REVERSED so lower (better) defense is on the RIGHT
-    const xScale = (d: number) => {
-      return margin.left + plotWidth - ((d - (minD - dPadding)) / ((maxD + dPadding) - (minD - dPadding))) * plotWidth;
-    };
-    
-    const yScale = (o: number) => {
-      return margin.top + plotHeight - ((o - (minO - oPadding)) / ((maxO + oPadding) - (minO - oPadding))) * plotHeight;
-    };
-    
-    // NATIONAL BASELINE: Use max_net from API (computed from ALL D1 teams)
-    // This ensures tier lines stay constant regardless of conference filter
-    // In the REVERSED X-axis, lower Adj D is on RIGHT, so slope becomes -1
-    
-    // Tier cutoffs based on net values (for diagonal lines: o - d = constant)
-    const titleFavoritesNet = max_net - defaults.title_delta;
-    const final4Net = max_net - defaults.final4_delta;
-    const hitMissNet = max_net - defaults.hit_miss_delta;
-    
-    // Compute diagonal lines (Adj O - Adj D = constant, so Adj O = Adj D + net)
-    // With reversed X-axis (lower d on right), this creates slope -1 in display space
-    const computeDiagonalLine = (netValue: number) => {
-      // Line equation: o = d + netValue
-      // Find intersection with plot boundaries
-      const points: [number, number][] = [];
-      
-      const dMin = minD - dPadding;
-      const dMax = maxD + dPadding;
-      const oMin = minO - oPadding;
-      const oMax = maxO + oPadding;
-      
-      // Check all four edges
-      // Left edge (d = dMax because axis is reversed)
-      const oAtDMax = dMax + netValue;
-      if (oAtDMax >= oMin && oAtDMax <= oMax) {
-        points.push([dMax, oAtDMax]);
-      }
-      
-      // Right edge (d = dMin because axis is reversed)
-      const oAtDMin = dMin + netValue;
-      if (oAtDMin >= oMin && oAtDMin <= oMax) {
-        points.push([dMin, oAtDMin]);
-      }
-      
-      // Bottom edge (o = oMin)
-      const dAtOMin = oMin - netValue;
-      if (dAtOMin >= dMin && dAtOMin <= dMax) {
-        points.push([dAtOMin, oMin]);
-      }
-      
-      // Top edge (o = oMax)
-      const dAtOMax = oMax - netValue;
-      if (dAtOMax >= dMin && dAtOMax <= dMax) {
-        points.push([dAtOMax, oMax]);
-      }
-      
-      // Remove duplicates and sort
-      const uniquePoints = points.filter((p, i, arr) => 
-        i === 0 || p[0] !== arr[i-1][0] || p[1] !== arr[i-1][1]
-      );
-      
-      return uniquePoints.slice(0, 2); // Should be exactly 2 points
-    };
-    
-    const tierLines = [
-      { net: titleFavoritesNet, label: 'Title Favorites', color: '#ED713A', width: 3, dash: 'none' },
-      { net: final4Net, label: 'Final 4', color: '#30A2DA', width: 2, dash: '5,5' },
-      { net: hitMissNet, label: 'Hit or Miss', color: '#999', width: 2, dash: '5,5' },
-    ].map(tier => ({
-      ...tier,
-      points: computeDiagonalLine(tier.net),
-    }));
-    
-    // Generate axis ticks
-    const xTicks = Array.from({ length: 7 }, (_, i) => {
-      const value = minD - dPadding + ((maxD + dPadding - (minD - dPadding)) / 6) * i;
-      return { value, label: value.toFixed(1) };
-    });
-    
-    const yTicks = Array.from({ length: 7 }, (_, i) => {
-      const value = minO - oPadding + ((maxO + oPadding - (minO - oPadding)) / 6) * i;
-      return { value, label: value.toFixed(1) };
-    });
-    
-    return { xScale, yScale, tierLines, xTicks, yTicks };
-  }, [teams, max_net, defaults]);
-  
-  // Find team for tooltip
-  const tooltipTeam = teams.find(t => t.team_slug === hoveredTeam);
-  
+// NCAA: XAxis=d_rate (reversed, lower d → right), YAxis=o_rate (normal, higher o → top)
+// Line equation: o - d = net → o = d + net. Returns [d, o] pairs matching axis dataKeys.
+function computeNCAADiagonal(
+  net: number,
+  dLo: number, dHi: number,
+  oLo: number, oHi: number,
+): [number, number][] {
+  const points: [number, number][] = [];
+
+  const oAtDLo = dLo + net;
+  if (oAtDLo >= oLo && oAtDLo <= oHi) points.push([dLo, oAtDLo]);
+
+  const oAtDHi = dHi + net;
+  if (oAtDHi >= oLo && oAtDHi <= oHi) points.push([dHi, oAtDHi]);
+
+  const dAtOLo = oLo - net;
+  if (dAtOLo >= dLo && dAtOLo <= dHi) points.push([dAtOLo, oLo]);
+
+  const dAtOHi = oHi - net;
+  if (dAtOHi >= dLo && dAtOHi <= dHi) points.push([dAtOHi, oHi]);
+
+  const unique = points.filter(
+    (p, i, arr) => i === 0 || p[0] !== arr[i - 1][0] || p[1] !== arr[i - 1][1],
+  );
+  return unique.slice(0, 2);
+}
+
+interface NCAADef {
+  net: number; label: string; color: string; strokeWidth: number; dash: string;
+}
+
+// Must be module-level for hooks rules. Recharts v3: useXAxisScale/useYAxisScale via context.
+function TierLinesNCAA(props: {
+  tierDefs?: NCAADef[];
+  dLo?: number; dHi?: number; oLo?: number; oHi?: number;
+  [k: string]: any;
+}) {
+  const xScale = useXAxisScale();
+  const yScale = useYAxisScale();
+  const { tierDefs, dLo, dHi, oLo, oHi } = props;
+  if (!xScale || !yScale || !tierDefs) return null;
+  if (dLo == null || dHi == null || oLo == null || oHi == null) return null;
   return (
-    <div className="relative">
-      <svg width="100%" viewBox={`0 0 ${width} ${height}`} className="block" style={{ maxWidth: width }}>
-        {/* Background */}
-        <rect 
-          x={margin.left} 
-          y={margin.top} 
-          width={plotWidth} 
-          height={plotHeight} 
-          fill="#f9fafb" 
-          stroke="#e5e7eb" 
-          strokeWidth={1}
-        />
-        
-        {/* Grid lines */}
-        {xTicks.map(tick => (
+    <g>
+      {tierDefs.map((tier, idx) => {
+        const pts = computeNCAADiagonal(tier.net, dLo, dHi, oLo, oHi);
+        if (pts.length < 2) return null;
+        const [p1, p2] = pts;
+        return (
           <line
-            key={`x-grid-${tick.value}`}
-            x1={xScale(tick.value)}
-            y1={margin.top}
-            x2={xScale(tick.value)}
-            y2={margin.top + plotHeight}
-            stroke="#e5e7eb"
-            strokeWidth={1}
-            strokeDasharray="2,2"
+            key={idx}
+            x1={xScale(p1[0])} y1={yScale(p1[1])}
+            x2={xScale(p2[0])} y2={yScale(p2[1])}
+            stroke={tier.color}
+            strokeWidth={tier.strokeWidth}
+            strokeDasharray={tier.dash === 'none' ? undefined : tier.dash}
+            opacity={0.8}
           />
-        ))}
-        {yTicks.map(tick => (
-          <line
-            key={`y-grid-${tick.value}`}
-            x1={margin.left}
-            y1={yScale(tick.value)}
-            x2={margin.left + plotWidth}
-            y2={yScale(tick.value)}
-            stroke="#e5e7eb"
-            strokeWidth={1}
-            strokeDasharray="2,2"
+        );
+      })}
+    </g>
+  );
+}
+
+function NCAALandscapeTooltip({ active, payload }: { active?: boolean; payload?: any[] }) {
+  if (!active || !payload?.length) return null;
+  const t = payload[0].payload;
+  const badge =
+    t.tournament_finish === 'Champ' ? '🏆' :
+    t.tournament_finish === 'Runner-Up' ? '🥈' :
+    t.tournament_finish === 'Final Four' ? '🥉' : null;
+  return (
+    <div className="bg-white border border-gray-300 rounded-lg shadow-lg p-4 max-w-xs text-sm">
+      <div className="font-bold text-lg mb-1">
+        {t.team_name}{badge && <span className="text-sm ml-1">{badge}</span>}
+      </div>
+      <div className="text-sm text-gray-600 mb-2">
+        {t.conference_name} ({t.conference})
+      </div>
+      <div className="border-t border-gray-200 pt-2 space-y-1 text-sm">
+        <div className="flex justify-between"><span className="font-medium">Adj O:</span><span className="font-mono">{t.o_rate.toFixed(1)}</span></div>
+        <div className="flex justify-between"><span className="font-medium">Adj D:</span><span className="font-mono">{t.d_rate.toFixed(1)}</span></div>
+        <div className="flex justify-between font-bold"><span>Adj EM:</span><span className="font-mono">{t.net.toFixed(1)}</span></div>
+        <div className="flex justify-between text-gray-600"><span>Rank:</span><span>#{t.rank || 'N/A'}</span></div>
+        <div className="flex justify-between text-gray-600"><span>Record:</span><span>{t.record}</span></div>
+      </div>
+    </div>
+  );
+}
+
+function EfficiencyLandscapeChart({ data, onTeamClick }: EfficiencyLandscapeChartProps) {
+  const { teams, max_net, defaults } = data;
+  const [hovered, setHovered] = useState<string | null>(null);
+
+  const { dLo, dHi, oLo, oHi, tierDefs } = useMemo(() => {
+    const dRates = teams.map((t) => t.d_rate);
+    const oRates = teams.map((t) => t.o_rate);
+    const dMin = Math.min(...dRates), dMax = Math.max(...dRates);
+    const oMin = Math.min(...oRates), oMax = Math.max(...oRates);
+    const dPad = (dMax - dMin) * 0.1;
+    const oPad = (oMax - oMin) * 0.1;
+
+    const tierDefs: NCAADef[] = [
+      { net: max_net - defaults.title_delta,  label: 'Title Favorites', color: '#ED713A', strokeWidth: 3, dash: 'none' },
+      { net: max_net - defaults.final4_delta,  label: 'Final 4',         color: '#30A2DA', strokeWidth: 2, dash: '5,5' },
+      { net: max_net - defaults.hit_miss_delta, label: 'Hit or Miss',     color: '#999',    strokeWidth: 2, dash: '5,5' },
+    ];
+
+    return {
+      dLo: dMin - dPad, dHi: dMax + dPad,
+      oLo: oMin - oPad, oHi: oMax + oPad,
+      tierDefs,
+    };
+  }, [teams, max_net, defaults]);
+
+  const renderDot = useCallback((props: any) => {
+    const { cx, cy, payload } = props;
+    if (cx == null || cy == null) return null as any;
+    const isHov = payload.team_slug === hovered;
+    const size = isHov ? 32 : 24;
+    if (payload.logo_url) {
+      return (
+        <image
+          href={payload.logo_url}
+          x={cx - size / 2} y={cy - size / 2}
+          width={size} height={size}
+          opacity={isHov ? 1 : 0.85}
+          style={{ cursor: 'pointer' }}
+          onMouseEnter={() => setHovered(payload.team_slug)}
+          onMouseLeave={() => setHovered(null)}
+        />
+      ) as any;
+    }
+    return (
+      <circle
+        cx={cx} cy={cy} r={isHov ? 8 : 6}
+        fill="#ED713A" opacity={isHov ? 1 : 0.7}
+        style={{ cursor: 'pointer' }}
+        onMouseEnter={() => setHovered(payload.team_slug)}
+        onMouseLeave={() => setHovered(null)}
+      />
+    ) as any;
+  }, [hovered]);
+
+  return (
+    <div>
+      <ResponsiveContainer width="100%" height={600}>
+        <ScatterChart margin={{ top: 20, right: 20, bottom: 50, left: 60 }}>
+          <CartesianGrid stroke="#e5e7eb" strokeDasharray="3 3" />
+          <XAxis
+            dataKey="d_rate"
+            type="number"
+            domain={[dLo, dHi]}
+            reversed
+            name="Adj D"
+            tick={{ fontSize: 11, fontFamily: 'monospace', fill: '#6b7280' }}
+            tickFormatter={(v) => v.toFixed(1)}
+            label={{ value: 'Adj D (lower is better) →', position: 'insideBottom', offset: -12, fontSize: 12, fill: '#374151' }}
           />
-        ))}
-        
-        {/* Average reference lines (at 0) */}
-        <line
-          x1={xScale(0)}
-          y1={margin.top}
-          x2={xScale(0)}
-          y2={margin.top + plotHeight}
-          stroke="#999"
-          strokeWidth={1}
-          strokeDasharray="3,3"
-        />
-        <line
-          x1={margin.left}
-          y1={yScale(0)}
-          x2={margin.left + plotWidth}
-          y2={yScale(0)}
-          stroke="#999"
-          strokeWidth={1}
-          strokeDasharray="3,3"
-        />
-        
-        {/* Tier diagonal lines */}
-        {tierLines.map((tier, idx) => {
-          if (tier.points.length < 2) return null;
-          const [p1, p2] = tier.points;
-          return (
-            <line
-              key={`tier-${idx}`}
-              x1={xScale(p1[0])}
-              y1={yScale(p1[1])}
-              x2={xScale(p2[0])}
-              y2={yScale(p2[1])}
-              stroke={tier.color}
-              strokeWidth={tier.width}
-              strokeDasharray={tier.dash}
-              opacity={0.8}
-            />
-          );
-        })}
-        
-        {/* Team logos */}
-        {teams.map(team => {
-          const x = xScale(team.d_rate);
-          const y = yScale(team.o_rate);
-          const isHovered = team.team_slug === hoveredTeam;
-          const logoSize = isHovered ? 32 : 24;
-          
-          return (
-            <g key={team.team_slug}>
-              {team.logo_url ? (
-                <image
-                  href={team.logo_url}
-                  x={x - logoSize / 2}
-                  y={y - logoSize / 2}
-                  width={logoSize}
-                  height={logoSize}
-                  style={{ cursor: 'pointer' }}
-                  onMouseEnter={() => onTeamHover(team.team_slug)}
-                  onMouseLeave={() => onTeamHover(null)}
-                  onClick={() => onTeamClick(team.team_slug)}
-                  className="transition-all duration-200"
-                  opacity={isHovered ? 1 : 0.85}
-                />
-              ) : (
-                <circle
-                  cx={x}
-                  cy={y}
-                  r={isHovered ? 8 : 6}
-                  fill="#ED713A"
-                  style={{ cursor: 'pointer' }}
-                  onMouseEnter={() => onTeamHover(team.team_slug)}
-                  onMouseLeave={() => onTeamHover(null)}
-                  onClick={() => onTeamClick(team.team_slug)}
-                  className="transition-all duration-200"
-                  opacity={isHovered ? 1 : 0.7}
-                />
-              )}
-            </g>
-          );
-        })}
-        
-        {/* X-axis */}
-        <line
-          x1={margin.left}
-          y1={margin.top + plotHeight}
-          x2={margin.left + plotWidth}
-          y2={margin.top + plotHeight}
-          stroke="#374151"
-          strokeWidth={2}
-        />
-        {xTicks.map(tick => (
-          <g key={`x-tick-${tick.value}`}>
-            <line
-              x1={xScale(tick.value)}
-              y1={margin.top + plotHeight}
-              x2={xScale(tick.value)}
-              y2={margin.top + plotHeight + 6}
-              stroke="#374151"
-              strokeWidth={2}
-            />
-            <text
-              x={xScale(tick.value)}
-              y={margin.top + plotHeight + 20}
-              textAnchor="middle"
-              className="font-mono text-xs fill-gray-700"
-            >
-              {tick.label}
-            </text>
-          </g>
-        ))}
-        <text
-          x={margin.left + plotWidth / 2}
-          y={height - 20}
-          textAnchor="middle"
-          className="font-bold text-sm fill-gray-900"
-        >
-          Adj D (lower is better) →
-        </text>
-        
-        {/* Y-axis */}
-        <line
-          x1={margin.left}
-          y1={margin.top}
-          x2={margin.left}
-          y2={margin.top + plotHeight}
-          stroke="#374151"
-          strokeWidth={2}
-        />
-        {yTicks.map(tick => (
-          <g key={`y-tick-${tick.value}`}>
-            <line
-              x1={margin.left - 6}
-              y1={yScale(tick.value)}
-              x2={margin.left}
-              y2={yScale(tick.value)}
-              stroke="#374151"
-              strokeWidth={2}
-            />
-            <text
-              x={margin.left - 10}
-              y={yScale(tick.value)}
-              textAnchor="end"
-              alignmentBaseline="middle"
-              className="font-mono text-xs fill-gray-700"
-            >
-              {tick.label}
-            </text>
-          </g>
-        ))}
-        <text
-          x={20}
-          y={margin.top + plotHeight / 2}
-          textAnchor="middle"
-          className="font-bold text-sm fill-gray-900"
-          transform={`rotate(-90, 20, ${margin.top + plotHeight / 2})`}
-        >
-          ↑ Adj O (higher is better)
-        </text>
-        
-        {/* Legend */}
-        <g transform={`translate(${margin.left + plotWidth + 20}, ${margin.top})`}>
-          <text className="font-bold text-sm fill-gray-900" y={0}>Tiers</text>
-          {tierLines.map((tier, idx) => (
-            <g key={`legend-${idx}`} transform={`translate(0, ${20 + idx * 25})`}>
-              <line
-                x1={0}
-                y1={0}
-                x2={20}
-                y2={0}
-                stroke={tier.color}
-                strokeWidth={tier.width}
-                strokeDasharray={tier.dash}
-              />
-              <text
-                x={25}
-                y={0}
-                alignmentBaseline="middle"
-                className="text-xs fill-gray-700"
-              >
-                {tier.label}
-              </text>
-            </g>
-          ))}
-        </g>
-      </svg>
-      
-      {/* Tooltip */}
-      {tooltipTeam && (
-        <div className="absolute top-4 left-4 bg-white border border-gray-300 rounded-lg shadow-lg p-4 max-w-xs z-10">
-          <div className="font-bold text-lg mb-1">
-            {tooltipTeam.team_name}
-            {tooltipTeam.tournament_finish === 'Champ' && <span title="National Champion" className="text-sm ml-1">🏆</span>}
-            {tooltipTeam.tournament_finish === 'Runner-Up' && <span title="Runner-Up" className="text-sm ml-1">🥈</span>}
-            {tooltipTeam.tournament_finish === 'Final Four' && <span title="Final Four" className="text-sm ml-1">🥉</span>}
+          <YAxis
+            dataKey="o_rate"
+            type="number"
+            domain={[oLo, oHi]}
+            name="Adj O"
+            tick={{ fontSize: 11, fontFamily: 'monospace', fill: '#6b7280' }}
+            tickFormatter={(v) => v.toFixed(1)}
+            label={{ value: '↑ Adj O (higher is better)', angle: -90, position: 'insideLeft', offset: 10, fontSize: 12, fill: '#374151' }}
+          />
+          <Tooltip content={<NCAALandscapeTooltip />} cursor={{ strokeDasharray: '3 3', stroke: '#d1d5db' }} />
+          <Customized
+            component={TierLinesNCAA as any}
+            tierDefs={tierDefs}
+            dLo={dLo} dHi={dHi} oLo={oLo} oHi={oHi}
+          />
+          <Scatter
+            data={teams}
+            shape={renderDot}
+            onClick={(pt: any) => onTeamClick(pt.team_slug)}
+            style={{ cursor: 'pointer' }}
+          />
+        </ScatterChart>
+      </ResponsiveContainer>
+
+      {/* Tier legend */}
+      <div className="flex items-center justify-center gap-6 mt-2 flex-wrap">
+        {tierDefs.map((tier) => (
+          <div key={tier.label} className="flex items-center gap-2 text-xs text-gray-500">
+            <svg width="24" height="8" aria-hidden>
+              <line x1="0" y1="4" x2="24" y2="4"
+                stroke={tier.color} strokeWidth={tier.strokeWidth}
+                strokeDasharray={tier.dash === 'none' ? undefined : tier.dash} />
+            </svg>
+            <span>{tier.label}</span>
           </div>
-          <div className="text-sm text-gray-600 mb-2">
-            {tooltipTeam.conference_name} ({tooltipTeam.conference})
-          </div>
-          <div className="border-t border-gray-200 pt-2 space-y-1 text-sm">
-            <div className="flex justify-between">
-              <span className="font-medium">Adj O:</span>
-              <span className="font-mono">{tooltipTeam.o_rate.toFixed(1)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="font-medium">Adj D:</span>
-              <span className="font-mono">{tooltipTeam.d_rate.toFixed(1)}</span>
-            </div>
-            <div className="flex justify-between font-bold">
-              <span>Adj EM:</span>
-              <span className="font-mono">{tooltipTeam.net.toFixed(1)}</span>
-            </div>
-            <div className="flex justify-between text-gray-600">
-              <span>Rank:</span>
-              <span>#{tooltipTeam.rank || 'N/A'}</span>
-            </div>
-            <div className="flex justify-between text-gray-600">
-              <span>Record:</span>
-              <span>{tooltipTeam.record}</span>
-            </div>
-          </div>
-        </div>
-      )}
+        ))}
+      </div>
     </div>
   );
 }

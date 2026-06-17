@@ -17,6 +17,7 @@ from django.shortcuts import get_object_or_404
 from ncaa.models import Season, TeamSeasonRatings, TeamSeasonMetrics
 from .trapezoid_views import compute_trapezoid_boundaries, is_inside_trapezoid, trapezoid_margin
 from .serializers import RankingsSerializer
+from .checklist_utils import _item
 
 
 # ---------------------------------------------------------------------------
@@ -119,17 +120,6 @@ def _build_season_context(ratings_qs, metrics_map=None):
 # ---------------------------------------------------------------------------
 # Checklist – each item returns {"key", "label", "pass", "value", "threshold"}
 # ---------------------------------------------------------------------------
-
-def _item(key, label, passed, value, threshold, details=""):
-    return {
-        "key":       key,
-        "label":     label,
-        "pass":      passed,
-        "value":     value,
-        "threshold": threshold,
-        "details":   details,
-    }
-
 
 def _check_trapezoid(r, ctx):
     trap = ctx.get("trapezoid")

@@ -1,0 +1,301 @@
+season,team,playoff_finish,conference_seed,adj_net,adj_off,adj_def,ffi,passedCount,totalCount,net_rating_rank,net_rating_z,top_conference_seed,elite_offense,elite_defense,ffi_z,efg_margin_z,tov_edge_z,no_glaring_weakness,star_player
+2016,SAS,Conf Semis,2,11.77,115.11,103.34,75.95,10,10,True,True,True,True,True,True,True,True,True,True
+2016,GSW,Runner-Up,1,11.73,119.31,107.58,70.24,9,10,True,True,True,True,True,True,True,False,True,True
+2016,OKC,Conf Finals,3,7.32,116.79,109.47,56.5,7,10,True,True,True,True,True,False,True,False,False,True
+2016,LAC,Round 1,4,6.17,113.48,107.31,68.75,8,10,True,True,False,True,True,True,True,True,False,True
+2016,CLE,Champion,1,6.16,115.26,109.11,60.84,10,10,True,True,True,True,True,True,True,True,True,True
+2016,ATL,Conf Semis,6,5.01,110.51,105.51,59.16,6,10,True,False,False,False,True,True,True,True,False,True
+2016,TOR,Conf Finals,2,4.77,114.33,109.56,57.9,7,10,True,False,True,True,True,False,False,True,True,True
+2016,CHA,Round 1,3,3.73,112.33,108.6,56.79,6,10,False,False,True,True,True,False,False,True,True,True
+2016,BOS,Round 1,4,3.63,111.34,107.71,61.45,5,10,False,False,False,True,True,True,False,True,False,True
+2016,MIA,Conf Semis,5,3.41,111.63,108.22,52.95,4,10,False,False,False,True,True,False,False,False,True,True
+2016,IND,Round 1,7,3.04,109.92,106.87,55.96,4,10,False,False,False,False,True,False,False,True,True,True
+2016,UTA,,9,2.55,110.38,107.83,51.17,3,10,False,False,False,False,True,False,False,False,True,True
+2016,DAL,Round 1,6,1.81,112.13,110.32,51.14,4,10,False,False,False,True,True,False,False,True,False,True
+2016,POR,Conf Semis,5,1.72,113.4,111.68,46.89,2,10,False,False,False,True,False,False,False,False,False,True
+2016,HOU,Round 1,8,1.2,112.87,111.67,54.22,4,10,False,False,False,True,False,False,False,True,True,True
+2016,DET,Round 1,8,0.94,110.89,109.95,54.47,5,10,False,False,False,True,True,False,False,True,True,True
+2016,WAS,,10,0.58,110.65,110.08,54.51,4,10,False,False,False,False,True,False,False,True,True,True
+2016,CHI,,9,-0.62,109.82,110.44,39.67,2,10,False,False,False,False,True,False,False,False,False,True
+2016,ORL,,11,-0.71,110.33,111.04,48.81,3,10,False,False,False,False,True,False,False,True,False,True
+2016,SAC,,11,-1.5,110.73,112.23,45.66,4,10,False,False,False,True,False,False,False,True,True,True
+2016,MEM,Round 1,7,-1.53,109.95,111.48,51.48,2,10,False,False,False,False,False,False,False,True,False,True
+2016,MIN,,13,-1.54,111.6,113.15,41.96,4,10,False,False,False,True,False,False,False,True,True,True
+2016,NYK,,13,-1.57,109.66,111.23,37.08,2,10,False,False,False,False,True,False,False,False,False,True
+2016,MIL,,12,-2.03,110.01,112.03,44.61,3,10,False,False,False,False,False,False,False,True,True,True
+2016,DEN,,10,-2.23,110.19,112.42,40.55,2,10,False,False,False,False,False,False,False,True,False,True
+2016,NOP,,12,-2.51,110.71,113.22,43.06,3,10,False,False,False,False,False,False,False,True,True,True
+2016,BKN,,14,-5.93,108.77,114.7,34.04,2,10,False,False,False,False,False,False,False,True,False,True
+2016,PHX,,14,-5.97,106.99,112.96,30.0,1,10,False,False,False,False,False,False,False,False,False,True
+2016,PHI,,15,-8.13,104.66,112.8,30.01,1,10,False,False,False,False,False,False,False,False,False,True
+2016,LAL,,15,-8.42,106.52,114.94,24.18,1,10,False,False,False,False,False,False,False,False,False,True
+2017,GSW,Champion,1,11.25,118.08,106.83,79.15,10,10,True,True,True,True,True,True,True,True,True,True
+2017,SAS,Conf Finals,2,7.34,113.92,106.58,68.98,10,10,True,True,True,True,True,True,True,True,True,True
+2017,HOU,Conf Semis,3,5.17,117.08,111.9,61.48,10,10,True,True,True,True,True,True,True,True,True,True
+2017,UTA,Conf Semis,5,4.54,112.72,108.18,57.14,6,10,True,True,False,True,True,False,True,False,False,True
+2017,LAC,Round 1,4,4.47,115.63,111.16,62.31,9,10,True,True,False,True,True,True,True,True,True,True
+2017,TOR,Conf Semis,2,4.25,114.97,110.72,64.68,9,10,True,True,True,True,True,True,False,True,True,True
+2017,CLE,Runner-Up,3,2.65,116.27,113.62,55.15,5,10,True,False,True,True,False,False,True,False,False,True
+2017,BOS,Conf Finals,1,2.58,113.84,111.26,56.87,6,10,False,False,True,True,True,False,True,True,False,True
+2017,WAS,Conf Semis,4,1.19,113.87,112.68,55.57,4,10,False,False,False,True,False,False,False,True,True,True
+2017,MEM,Round 1,7,0.68,110.39,109.71,52.61,3,10,False,False,False,False,True,False,False,True,False,True
+2017,MIA,,9,0.68,110.56,109.89,56.86,4,10,False,False,False,False,True,False,False,True,True,True
+2017,MIL,Round 1,6,0.31,112.41,112.09,53.17,4,10,False,False,False,True,False,False,False,True,True,True
+2017,OKC,Round 1,6,0.18,110.47,110.29,47.78,3,10,False,False,False,False,True,False,False,False,True,True
+2017,POR,Round 1,8,0.16,113.29,113.13,48.09,3,10,False,False,False,True,False,False,False,False,True,True
+2017,CHA,,11,0.14,111.94,111.79,51.2,5,10,False,False,False,True,True,False,False,True,True,True
+2017,CHI,Round 1,8,-0.12,110.05,110.17,47.4,4,10,False,False,False,False,True,False,False,True,True,True
+2017,DEN,,9,-0.15,115.46,115.62,41.73,2,10,False,False,False,True,False,False,False,False,False,True
+2017,IND,Round 1,7,-0.38,111.59,111.97,52.57,4,10,False,False,False,True,True,False,False,True,False,True
+2017,MIN,,13,-0.52,113.62,114.14,45.88,4,10,False,False,False,True,False,False,False,True,True,True
+2017,ATL,Round 1,5,-0.99,107.87,108.86,48.6,4,10,False,False,False,False,True,False,False,True,True,True
+2017,NOP,,10,-1.18,108.95,110.13,49.0,3,10,False,False,False,False,True,False,False,True,False,True
+2017,DET,,10,-1.96,108.85,110.81,50.72,3,10,False,False,False,False,True,False,False,True,False,True
+2017,DAL,,11,-2.08,109.35,111.43,50.98,3,10,False,False,False,False,True,False,False,True,False,True
+2017,SAC,,12,-3.52,110.35,113.87,38.86,2,10,False,False,False,False,False,False,False,False,True,True
+2017,NYK,,12,-3.98,110.3,114.27,38.77,1,10,False,False,False,False,False,False,False,False,False,True
+2017,PHX,,15,-4.69,109.58,114.27,36.67,2,10,False,False,False,False,False,False,False,True,False,True
+2017,PHI,,14,-5.31,106.52,111.83,34.06,2,10,False,False,False,False,True,False,False,False,False,True
+2017,BKN,,15,-5.75,107.66,113.41,27.08,1,10,False,False,False,False,False,False,False,False,False,True
+2017,LAL,,14,-6.08,109.35,115.42,32.01,2,10,False,False,False,False,False,False,False,True,False,True
+2017,ORL,,13,-6.44,107.07,113.51,34.66,2,10,False,False,False,False,False,False,False,True,False,True
+2018,HOU,Conf Finals,1,5.76,116.36,110.6,68.3,10,10,True,True,True,True,True,True,True,True,True,True
+2018,GSW,Champion,2,5.44,116.45,111.01,63.59,8,10,True,True,True,True,True,True,True,False,False,True
+2018,TOR,Conf Semis,1,4.75,115.1,110.36,69.58,10,10,True,True,True,True,True,True,True,True,True,True
+2018,PHI,Conf Semis,3,2.97,111.75,108.78,58.93,8,10,True,True,True,True,True,True,True,False,False,True
+2018,UTA,Conf Semis,5,2.66,110.72,108.05,60.89,9,10,True,True,False,True,True,True,True,True,True,True
+2018,BOS,Conf Finals,2,1.22,109.61,108.4,58.8,8,10,True,False,True,False,True,True,True,True,True,True
+2018,SAS,Round 1,8,0.97,110.0,109.03,58.39,5,10,True,False,False,False,True,False,False,True,True,True
+2018,OKC,Round 1,4,0.88,112.09,111.21,63.86,6,10,False,False,False,True,True,True,False,True,True,True
+2018,MIN,Round 1,7,0.4,115.2,114.8,59.18,5,10,False,False,False,True,False,True,False,True,True,True
+2018,NOP,Conf Semis,6,0.2,112.22,112.02,53.77,4,10,False,False,False,True,True,False,True,False,False,True
+2018,POR,Round 1,3,0.01,110.6,110.58,51.38,4,10,False,False,True,False,True,False,False,False,True,True
+2018,IND,Round 1,5,-0.63,111.6,112.23,58.33,5,10,False,False,False,True,True,False,False,True,True,True
+2018,DEN,,9,-1.08,114.1,115.18,48.33,3,10,False,False,False,True,False,False,False,False,True,True
+2018,WAS,Round 1,8,-1.29,111.48,112.76,52.44,5,10,False,False,False,True,True,False,False,True,True,True
+2018,CLE,Runner-Up,4,-1.34,114.85,116.19,49.46,4,10,False,False,False,True,False,False,False,True,True,True
+2018,MIL,Round 1,7,-1.46,112.29,113.75,54.59,4,10,False,False,False,True,True,False,False,True,False,True
+2018,LAC,,10,-1.83,112.24,114.07,50.23,4,10,False,False,False,True,False,False,False,True,True,True
+2018,MIA,Round 1,6,-1.86,108.91,110.77,52.98,3,10,False,False,False,False,True,False,False,True,False,True
+2018,DET,,9,-2.08,109.36,111.44,54.22,4,10,False,False,False,False,True,False,False,True,True,True
+2018,CHA,,10,-2.13,111.43,113.57,52.25,5,10,False,False,False,True,True,False,False,True,True,True
+2018,LAL,,11,-3.23,108.68,111.91,45.72,2,10,False,False,False,False,True,False,False,False,False,True
+2018,DAL,,13,-4.65,108.89,113.54,45.28,3,10,False,False,False,False,True,False,False,True,False,True
+2018,BKN,,12,-5.74,109.09,114.82,32.96,1,10,False,False,False,False,False,False,False,False,False,True
+2018,NYK,,11,-5.95,108.83,114.78,38.45,1,10,False,False,False,False,False,False,False,False,False,True
+2018,ORL,,14,-6.65,107.44,114.09,37.7,2,10,False,False,False,False,False,False,False,True,False,True
+2018,ATL,,15,-7.22,107.29,114.51,34.85,2,10,False,False,False,False,False,False,False,True,False,True
+2018,MEM,,14,-7.75,106.76,114.51,34.24,2,10,False,False,False,False,False,False,False,True,False,True
+2018,SAC,,12,-8.84,106.09,114.93,35.31,2,10,False,False,False,False,False,False,False,True,False,True
+2018,CHI,,13,-9.1,106.18,115.28,32.64,2,10,False,False,False,False,False,False,False,True,False,True
+2018,PHX,,15,-10.56,105.93,116.49,23.34,1,10,False,False,False,False,False,False,False,False,False,True
+2019,MIL,Conf Finals,1,4.55,114.19,109.63,67.07,10,10,True,True,True,True,True,True,True,True,True,True
+2019,GSW,Runner-Up,1,4.04,116.66,112.62,64.24,8,10,True,True,True,True,True,True,True,False,False,True
+2019,TOR,Champion,2,2.86,113.65,110.78,65.18,10,10,True,True,True,True,True,True,True,True,True,True
+2019,UTA,Round 1,5,2.55,111.76,109.22,60.44,8,10,True,True,False,True,True,True,True,False,True,True
+2019,HOU,Conf Semis,4,1.61,115.47,113.86,61.97,7,10,True,True,False,True,True,True,False,True,False,True
+2019,BOS,Conf Semis,4,1.51,112.88,111.37,65.07,7,10,True,False,False,True,True,True,True,True,False,True
+2019,POR,Conf Finals,3,0.57,114.5,113.93,52.9,6,10,True,False,True,True,True,False,False,False,True,True
+2019,DEN,Conf Semis,2,0.33,112.77,112.44,57.56,5,10,False,False,True,True,True,False,False,True,False,True
+2019,OKC,Round 1,6,0.05,110.63,110.58,65.02,5,10,False,False,False,False,True,True,False,True,True,True
+2019,PHI,Conf Semis,3,-0.05,113.34,113.38,52.31,5,10,False,False,True,True,True,False,True,False,False,True
+2019,SAS,Round 1,8,-0.07,114.07,114.15,53.14,4,10,False,False,False,True,False,False,False,True,True,True
+2019,IND,Round 1,5,-0.26,110.25,110.5,62.57,5,10,False,False,False,False,True,True,False,True,True,True
+2019,LAC,Round 1,7,-1.84,112.91,114.75,48.12,2,10,False,False,False,True,False,False,False,False,False,True
+2019,ORL,Round 1,6,-2.42,109.62,112.05,50.97,4,10,False,False,False,False,True,False,False,True,True,True
+2019,SAC,,9,-2.83,111.52,114.35,56.14,4,10,False,False,False,True,False,False,False,True,True,True
+2019,BKN,Round 1,7,-3.15,109.94,113.1,46.93,2,10,False,False,False,False,True,False,False,False,False,True
+2019,MIA,,10,-3.47,107.74,111.21,51.39,4,10,False,False,False,False,True,False,False,True,True,True
+2019,DET,Round 1,8,-3.7,109.33,113.03,48.84,4,10,False,False,False,False,True,False,False,True,True,True
+2019,DAL,,13,-3.93,109.97,113.9,45.08,3,10,False,False,False,False,True,False,False,False,True,True
+2019,MIN,,11,-4.25,111.63,115.88,48.7,3,10,False,False,False,True,False,False,False,True,False,True
+2019,NOP,,14,-4.28,111.83,116.11,44.23,3,10,False,False,False,True,False,False,False,False,True,True
+2019,LAL,,10,-4.39,108.41,112.8,46.64,2,10,False,False,False,False,True,False,False,False,False,True
+2019,CHA,,9,-4.51,111.5,116.01,48.25,3,10,False,False,False,False,False,False,False,True,True,True
+2019,MEM,,12,-4.61,107.15,111.76,47.94,3,10,False,False,False,False,True,False,False,True,False,True
+2019,WAS,,11,-5.59,111.75,117.34,47.42,3,10,False,False,False,True,False,False,False,True,False,True
+2019,ATL,,12,-8.27,108.83,117.1,32.9,1,10,False,False,False,False,False,False,False,False,False,True
+2019,PHX,,15,-10.32,107.14,117.45,28.59,2,10,False,False,False,False,False,False,False,True,False,True
+2019,CHI,,13,-10.49,106.09,116.58,28.41,1,10,False,False,False,False,False,False,False,False,False,True
+2019,NYK,,15,-10.69,105.81,116.5,28.3,1,10,False,False,False,False,False,False,False,False,False,True
+2019,CLE,,14,-11.98,108.63,120.61,23.69,1,10,False,False,False,False,False,False,False,False,False,True
+2020,MIL,Conf Semis,1,5.6,112.63,107.03,71.6,9,10,True,True,True,True,True,True,True,False,True,True
+2020,TOR,Conf Semis,2,2.98,111.33,108.34,68.1,10,10,True,True,True,True,True,True,True,True,True,True
+2020,LAL,Champion,1,2.51,111.96,109.45,68.04,10,10,True,True,True,True,True,True,True,True,True,True
+2020,LAC,Conf Semis,2,2.26,113.25,110.99,60.18,10,10,True,True,True,True,True,True,True,True,True,True
+2020,BOS,Conf Finals,3,1.8,112.62,110.82,65.79,10,10,True,True,True,True,True,True,True,True,True,True
+2020,DAL,Round 1,7,0.66,115.77,115.1,56.51,6,10,True,False,False,True,False,False,True,True,True,True
+2020,HOU,Conf Semis,5,-0.46,112.53,113.0,56.59,5,10,True,False,False,True,True,False,False,True,False,True
+2020,PHI,Round 1,6,-0.73,111.59,112.33,56.49,5,10,False,False,False,True,True,False,False,True,True,True
+2020,UTA,Round 1,6,-0.76,112.29,113.05,48.81,4,10,False,False,False,True,True,False,True,False,False,True
+2020,MIA,Runner-Up,5,-0.92,112.28,113.2,54.71,5,10,False,False,False,True,True,False,True,False,True,True
+2020,IND,Round 1,4,-0.93,110.44,111.36,59.06,5,10,False,False,False,False,True,True,True,True,False,True
+2020,OKC,Round 1,4,-1.09,110.8,111.89,54.16,4,10,False,False,False,True,True,False,False,True,False,True
+2020,DEN,Conf Finals,3,-1.65,112.42,114.07,55.22,6,10,False,False,True,True,True,False,False,True,True,True
+2020,PHX,,9,-1.98,112.0,113.99,52.71,5,10,False,False,False,True,True,False,False,True,True,True
+2020,POR,Round 1,8,-3.39,113.63,117.02,47.73,4,10,False,False,False,True,False,False,False,True,True,True
+2020,SAS,,11,-3.42,112.78,116.2,48.82,4,10,False,False,False,True,False,False,False,True,True,True
+2020,MEM,,10,-3.84,109.3,113.15,50.14,3,10,False,False,False,False,True,False,False,True,False,True
+2020,ORL,Round 1,8,-3.97,108.82,112.78,52.17,4,10,False,False,False,False,True,False,False,True,True,True
+2020,NOP,,13,-4.04,110.7,114.75,46.6,2,10,False,False,False,False,True,False,False,False,False,True
+2020,SAC,,12,-4.51,110.36,114.87,49.4,2,10,False,False,False,False,False,False,False,True,False,True
+2020,BKN,Round 1,7,-4.63,108.54,113.17,43.94,2,10,False,False,False,False,True,False,False,False,False,True
+2020,MIN,,14,-7.53,107.89,115.42,41.62,3,10,False,False,False,False,False,False,False,True,True,True
+2020,CHI,,11,-7.59,106.37,113.96,49.04,3,10,False,False,False,False,True,False,False,True,False,True
+2020,DET,,13,-7.89,108.57,116.47,39.14,1,10,False,False,False,False,False,False,False,False,False,True
+2020,WAS,,10,-8.11,110.62,118.74,43.65,2,10,False,False,False,False,False,False,False,True,False,True
+2020,CHA,,9,-9.58,106.78,116.36,34.44,2,10,False,False,False,False,False,False,False,True,False,True
+2020,NYK,,12,-9.84,106.37,116.21,38.74,2,10,False,False,False,False,False,False,False,True,False,True
+2020,ATL,,14,-10.48,107.28,117.76,29.46,1,10,False,False,False,False,False,False,False,False,False,True
+2020,GSW,,15,-10.54,105.58,116.12,32.68,2,10,False,False,False,False,False,False,False,True,False,True
+2020,CLE,,15,-11.97,107.25,119.22,24.5,1,10,False,False,False,False,False,False,False,False,False,True
+2021,UTA,Conf Semis,1,9.92,118.33,108.42,60.76,8,10,True,True,True,True,True,True,True,False,False,True
+2021,LAC,Conf Finals,4,7.2,118.49,111.28,61.08,9,10,True,True,False,True,True,True,True,True,True,True
+2021,PHX,Runner-Up,2,7.07,118.32,111.25,64.31,10,10,True,True,True,True,True,True,True,True,True,True
+2021,BKN,Conf Semis,2,6.47,119.72,113.25,58.41,7,10,True,True,True,True,False,True,True,False,False,True
+2021,PHI,Conf Semis,1,6.37,114.33,107.95,65.66,9,10,True,True,True,True,True,True,False,True,True,True
+2021,MIL,Champion,3,6.27,118.11,111.84,61.49,10,10,True,True,True,True,True,True,True,True,True,True
+2021,DEN,Conf Semis,3,5.13,117.56,112.43,60.61,7,10,True,False,True,True,True,True,False,True,False,True
+2021,DAL,Round 1,7,3.8,116.51,112.71,56.33,5,10,False,False,False,True,True,False,False,True,True,True
+2021,LAL,Round 1,5,3.68,111.12,107.44,57.7,4,10,False,False,False,False,True,False,False,True,True,True
+2021,ATL,Conf Finals,5,3.61,116.63,113.02,52.11,3,10,False,False,False,True,False,False,False,False,True,True
+2021,NYK,Round 1,4,3.55,111.88,108.33,54.01,4,10,False,False,False,False,True,False,False,True,True,True
+2021,POR,Round 1,6,2.85,118.46,115.61,54.87,4,10,False,False,False,True,False,False,False,True,True,True
+2021,MEM,Round 1,9,2.66,113.41,110.75,57.9,5,10,False,False,False,True,True,False,False,True,True,True
+2021,GSW,,8,2.47,112.56,110.09,52.08,4,10,False,False,False,False,True,False,True,True,False,True
+2021,BOS,Round 1,7,2.12,114.69,112.57,53.32,4,10,False,False,False,True,True,False,False,True,False,True
+2021,MIA,Round 1,6,1.82,112.84,111.02,53.5,4,10,False,False,False,False,True,False,False,True,True,True
+2021,IND,,8,1.71,113.78,112.08,53.4,4,10,False,False,False,True,True,False,False,True,False,True
+2021,TOR,,12,0.85,113.1,112.25,55.91,3,10,False,False,False,False,True,False,False,True,False,True
+2021,NOP,,11,0.72,114.5,113.79,48.45,3,10,False,False,False,True,False,False,False,False,True,True
+2021,CHI,,11,0.37,112.65,112.28,41.09,2,10,False,False,False,False,True,False,False,False,False,True
+2021,WAS,Round 1,9,-0.02,112.8,112.83,47.67,3,10,False,False,False,False,False,False,False,True,True,True
+2021,SAS,,10,-0.3,112.44,112.74,48.93,4,10,False,False,False,False,True,False,False,True,True,True
+2021,CHA,,10,-0.84,112.03,112.87,43.42,3,10,False,False,False,False,False,False,False,True,True,True
+2021,SAC,,12,-1.64,114.98,116.62,44.71,3,10,False,False,False,True,False,False,False,True,False,True
+2021,DET,,15,-3.06,109.48,112.54,36.39,3,10,False,False,False,False,True,False,False,False,True,True
+2021,MIN,,13,-3.07,110.99,114.06,42.13,2,10,False,False,False,False,False,False,False,True,False,True
+2021,HOU,,15,-5.24,109.02,114.26,34.25,2,10,False,False,False,False,False,False,False,True,False,True
+2021,CLE,,13,-6.63,107.45,114.08,28.86,1,10,False,False,False,False,False,False,False,False,False,True
+2021,ORL,,14,-7.01,107.12,114.13,30.19,2,10,False,False,False,False,False,False,False,True,False,True
+2021,OKC,,14,-7.89,105.71,113.6,20.45,1,10,False,False,False,False,False,False,False,False,False,True
+2022,BOS,Runner-Up,4,5.68,114.34,108.66,67.63,9,10,True,True,False,True,True,True,True,True,True,True
+2022,PHX,Conf Semis,1,5.01,114.76,109.76,71.41,8,10,True,True,True,True,True,True,True,True,False,False
+2022,GSW,Champion,3,4.27,112.91,108.63,64.24,10,10,True,True,True,True,True,True,True,True,True,True
+2022,UTA,Round 1,5,3.58,116.2,112.62,59.34,6,10,True,True,False,True,True,False,True,False,False,True
+2022,MEM,Conf Semis,2,2.96,113.94,110.97,67.8,8,10,True,True,True,True,True,True,False,True,True,False
+2022,MIA,Conf Finals,1,2.71,113.61,110.9,61.46,8,10,True,False,True,True,True,True,True,True,True,False
+2022,DAL,Conf Finals,4,1.4,113.0,111.6,59.45,6,10,True,False,False,True,True,True,False,True,True,False
+2022,MIL,Conf Semis,2,1.1,115.0,113.89,55.65,6,10,False,False,True,True,True,False,False,True,True,True
+2022,PHI,Conf Semis,3,0.6,113.56,112.96,55.67,4,10,False,False,True,True,True,False,False,True,False,False
+2022,CLE,,7,0.49,111.85,111.37,53.94,2,10,False,False,False,False,True,False,False,False,True,False
+2022,ATL,Round 1,10,0.14,116.57,116.43,55.37,3,10,False,False,False,True,False,False,False,True,True,False
+2022,TOR,Round 1,5,0.13,112.31,112.18,62.04,4,10,False,False,False,False,True,True,False,True,True,False
+2022,MIN,Round 1,7,0.06,113.82,113.76,59.12,3,10,False,False,False,True,True,False,False,True,False,False
+2022,BKN,Round 1,8,-0.52,113.63,114.16,51.07,5,10,False,False,False,True,True,False,True,False,True,True
+2022,DEN,Round 1,6,-0.68,114.22,114.9,48.76,3,10,False,False,False,True,False,False,True,False,False,True
+2022,CHA,,9,-1.0,114.35,115.35,56.02,3,10,False,False,False,True,False,False,False,True,True,False
+2022,NYK,,11,-1.4,110.58,111.98,49.27,3,10,False,False,False,False,True,False,False,True,True,False
+2022,LAC,,8,-1.61,110.4,112.0,49.99,2,10,False,False,False,False,True,False,False,True,False,False
+2022,CHI,Round 1,6,-1.71,113.71,115.42,49.54,3,10,False,False,False,True,False,False,False,True,True,False
+2022,SAS,,10,-2.41,112.13,114.54,52.09,3,10,False,False,False,False,True,False,False,True,True,False
+2022,NOP,Round 1,9,-3.06,111.74,114.8,46.12,1,10,False,False,False,False,False,False,False,True,False,False
+2022,WAS,,12,-4.25,111.64,115.89,41.95,0,10,False,False,False,False,False,False,False,False,False,False
+2022,LAL,,11,-4.77,110.65,115.42,42.99,1,10,False,False,False,False,False,False,False,True,False,False
+2022,IND,,13,-5.85,112.07,117.92,38.14,1,10,False,False,False,False,False,False,False,False,True,False
+2022,SAC,,12,-7.01,110.19,117.2,35.66,1,10,False,False,False,False,False,False,False,False,True,False
+2022,DET,,14,-8.88,106.27,115.15,31.31,1,10,False,False,False,False,False,False,False,True,False,False
+2022,OKC,,14,-9.22,105.21,114.42,30.4,1,10,False,False,False,False,True,False,False,False,False,False
+2022,ORL,,15,-9.36,104.91,114.28,27.18,1,10,False,False,False,False,True,False,False,False,False,False
+2022,POR,,13,-9.56,108.55,118.11,28.95,1,10,False,False,False,False,False,False,False,True,False,False
+2022,HOU,,15,-10.22,108.42,118.63,27.42,0,10,False,False,False,False,False,False,False,False,False,False
+2023,BOS,Conf Finals,2,4.12,116.28,112.16,62.64,10,10,True,True,True,True,True,True,True,True,True,True
+2023,CLE,Round 1,4,3.16,114.28,111.12,66.13,8,10,True,True,False,True,True,True,True,True,True,False
+2023,PHI,Conf Semis,3,2.57,116.03,113.46,59.81,10,10,True,True,True,True,True,True,True,True,True,True
+2023,MEM,Round 1,2,0.94,112.6,111.66,62.94,7,10,True,False,True,False,True,True,False,True,True,True
+2023,MIL,Round 1,1,0.82,113.42,112.6,56.56,6,10,True,False,True,True,True,False,True,False,False,True
+2023,NYK,Conf Semis,5,0.66,115.49,114.83,56.7,6,10,True,False,False,True,True,False,False,True,True,True
+2023,DEN,Champion,1,0.38,115.27,114.89,58.3,8,10,True,False,True,True,True,True,True,False,True,True
+2023,SAC,Round 1,3,0.15,117.34,117.19,57.1,4,10,False,False,True,True,False,False,False,True,True,False
+2023,CHI,,10,-0.03,112.46,112.5,55.97,3,10,False,False,False,False,True,False,False,True,True,False
+2023,BKN,Round 1,6,-0.15,113.74,113.89,54.16,4,10,False,False,False,True,True,False,True,True,False,False
+2023,GSW,Conf Semis,5,-0.5,114.02,114.52,52.17,3,10,False,False,False,True,True,False,True,False,False,False
+2023,PHX,Conf Semis,4,-0.5,112.67,113.17,54.55,2,10,False,False,False,False,True,False,False,True,False,False
+2023,NOP,,9,-0.86,112.23,113.09,53.75,3,10,False,False,False,False,True,False,False,True,True,False
+2023,TOR,,8,-1.49,113.04,114.53,54.98,3,10,False,False,False,True,True,False,False,True,False,False
+2023,OKC,,10,-1.73,112.81,114.55,53.62,4,10,False,False,False,True,True,False,False,True,False,True
+2023,ATL,Round 1,9,-2.04,114.65,116.68,50.86,3,10,False,False,False,True,False,False,False,True,True,False
+2023,LAC,Round 1,6,-2.16,112.88,115.03,49.23,3,10,False,False,False,True,False,False,False,False,True,True
+2023,LAL,Conf Finals,7,-2.23,112.25,114.49,49.97,3,10,False,False,False,False,True,False,False,False,True,True
+2023,DAL,,11,-2.29,114.76,117.04,53.37,2,10,False,False,False,True,False,False,False,True,False,False
+2023,MIA,Runner-Up,7,-2.29,111.33,113.62,48.05,2,10,False,False,False,False,True,False,False,True,False,False
+2023,MIN,Round 1,8,-2.4,111.77,114.17,52.11,3,10,False,False,False,False,True,False,True,True,False,False
+2023,UTA,,12,-3.43,113.29,116.71,44.41,1,10,False,False,False,True,False,False,False,False,False,False
+2023,WAS,,12,-3.68,112.51,116.19,46.32,0,10,False,False,False,False,False,False,False,False,False,False
+2023,ORL,,13,-4.48,109.96,114.44,44.29,3,10,False,False,False,False,True,False,False,True,True,False
+2023,POR,,13,-6.16,112.66,118.83,39.33,1,10,False,False,False,False,False,False,False,False,False,True
+2023,IND,,11,-6.18,112.02,118.2,41.87,1,10,False,False,False,False,False,False,False,True,False,False
+2023,CHA,,14,-7.54,107.86,115.4,38.81,2,10,False,False,False,False,False,False,False,True,True,False
+2023,DET,,15,-9.61,109.07,118.68,29.03,1,10,False,False,False,False,False,False,False,False,False,True
+2023,HOU,,14,-10.85,108.64,119.49,27.71,0,10,False,False,False,False,False,False,False,False,False,False
+2023,SAS,,15,-12.07,108.19,120.25,25.28,0,10,False,False,False,False,False,False,False,False,False,False
+2024,BOS,Champion,1,8.05,119.97,111.92,70.95,10,10,True,True,True,True,True,True,True,True,True,True
+2024,OKC,Conf Semis,1,5.4,117.38,111.98,72.3,9,10,True,True,True,True,True,True,True,True,False,True
+2024,MIN,Conf Finals,3,4.42,113.56,109.13,64.79,8,10,True,True,True,False,True,True,True,True,True,False
+2024,NOP,Round 1,6,2.79,115.56,112.77,63.73,6,10,True,False,False,True,True,True,False,True,True,False
+2024,DEN,Conf Semis,2,2.63,116.07,113.44,60.44,9,10,True,False,True,True,True,True,True,True,True,True
+2024,LAC,Round 1,4,1.92,116.73,114.81,55.47,6,10,True,False,False,True,True,False,False,True,True,True
+2024,PHX,Round 1,7,1.21,115.38,114.17,50.14,5,10,True,False,False,True,True,False,True,False,False,True
+2024,MIL,Round 1,3,0.77,116.27,115.5,54.87,5,10,False,False,True,True,False,False,True,False,True,True
+2024,NYK,Conf Semis,2,0.7,114.49,113.79,56.43,6,10,False,False,True,True,True,False,False,True,True,True
+2024,GSW,,9,0.61,115.4,114.79,52.38,2,10,False,False,False,True,True,False,False,False,False,False
+2024,CLE,Conf Semis,4,0.5,113.15,112.64,56.86,4,10,False,False,False,False,True,False,True,True,True,False
+2024,DAL,Runner-Up,5,0.49,115.81,115.32,58.21,3,10,False,False,False,True,True,False,False,True,False,False
+2024,PHI,Round 1,5,0.24,114.02,113.78,60.86,6,10,False,False,False,True,True,True,False,True,True,True
+2024,IND,Conf Finals,7,0.18,118.12,117.94,57.78,3,10,False,False,False,True,False,False,True,True,False,False
+2024,ORL,Round 1,6,-0.44,110.99,111.43,56.24,3,10,False,False,False,False,True,False,False,True,True,False
+2024,SAC,,10,-0.5,114.61,115.11,56.42,3,10,False,False,False,True,True,False,False,True,False,False
+2024,MIA,Round 1,8,-0.51,111.97,112.48,55.02,3,10,False,False,False,False,True,False,False,True,True,False
+2024,LAL,Round 1,8,-0.73,114.44,115.17,50.67,3,10,False,False,False,True,True,False,False,False,False,True
+2024,HOU,,11,-0.97,112.27,113.24,54.49,3,10,False,False,False,False,True,False,False,True,True,False
+2024,CHI,,9,-2.93,112.91,115.84,52.36,2,10,False,False,False,False,False,False,False,True,True,False
+2024,ATL,,10,-4.48,114.61,119.09,45.56,2,10,False,False,False,True,False,False,False,True,False,False
+2024,BKN,,11,-4.59,111.05,115.64,44.6,2,10,False,False,False,False,False,False,False,True,True,False
+2024,UTA,,12,-6.74,113.01,119.75,28.53,0,10,False,False,False,False,False,False,False,False,False,False
+2024,SAS,,14,-7.18,108.7,115.88,32.7,1,10,False,False,False,False,False,False,False,False,False,True
+2024,TOR,,12,-7.64,110.47,118.11,38.11,2,10,False,False,False,False,False,False,False,True,True,False
+2024,MEM,,13,-8.65,105.45,114.09,34.94,2,10,False,False,False,False,True,False,False,True,False,False
+2024,WAS,,14,-9.84,109.15,118.99,32.33,1,10,False,False,False,False,False,False,False,True,False,False
+2024,DET,,15,-9.94,108.17,118.1,25.55,0,10,False,False,False,False,False,False,False,False,False,False
+2024,POR,,15,-10.32,106.32,116.64,28.11,1,10,False,False,False,False,False,False,False,True,False,False
+2024,CHA,,13,-11.12,107.98,119.1,29.18,1,10,False,False,False,False,False,False,False,True,False,False
+2025,OKC,Champion,1,10.37,118.31,107.94,82.01,9,10,True,True,True,True,True,True,True,True,False,True
+2025,CLE,Conf Semis,1,7.63,120.02,112.4,72.98,10,10,True,True,True,True,True,True,True,True,True,True
+2025,BOS,Conf Semis,2,6.97,118.45,111.48,69.27,10,10,True,True,True,True,True,True,True,True,True,True
+2025,MIN,Conf Finals,6,3.6,114.94,111.34,60.12,6,10,True,False,False,True,True,False,True,True,True,False
+2025,LAC,Round 1,3,3.3,113.77,110.47,59.01,7,10,True,False,True,True,True,False,False,True,True,True
+2025,MEM,Round 1,8,2.9,115.71,112.81,58.2,7,10,True,False,False,True,True,False,True,True,True,True
+2025,DEN,Conf Semis,4,2.75,118.46,115.71,58.72,5,10,True,False,False,True,False,False,True,False,True,True
+2025,HOU,Round 1,2,2.46,113.1,110.64,58.2,5,10,False,False,True,False,True,False,False,True,True,True
+2025,GSW,Conf Semis,7,1.8,113.45,111.65,57.85,3,10,False,False,False,False,True,False,False,True,True,False
+2025,NYK,Conf Finals,3,1.36,116.23,114.87,58.38,5,10,False,False,True,True,True,False,False,True,True,False
+2025,MIL,Round 1,5,1.02,114.94,113.92,57.6,5,10,False,False,False,True,True,False,True,True,False,True
+2025,IND,Runner-Up,4,0.95,115.41,114.47,57.46,3,10,False,False,False,True,True,False,False,True,False,False
+2025,LAL,Round 1,5,0.79,114.78,113.99,54.08,4,10,False,False,False,True,True,False,False,True,True,False
+2025,DET,Round 1,6,0.43,113.48,113.05,54.55,3,10,False,False,False,True,True,False,False,True,False,False
+2025,SAC,,9,-0.76,115.22,115.98,50.47,3,10,False,False,False,True,False,False,False,True,True,False
+2025,MIA,Round 1,10,-1.3,112.33,113.63,50.59,3,10,False,False,False,False,True,False,False,True,True,False
+2025,DAL,,10,-1.7,113.77,115.47,48.11,1,10,False,False,False,True,False,False,False,False,False,False
+2025,ATL,,8,-2.01,113.47,115.48,49.23,2,10,False,False,False,False,False,False,False,True,True,False
+2025,ORL,Round 1,7,-2.06,108.02,110.08,50.16,4,10,False,False,False,False,True,False,False,True,True,True
+2025,CHI,,9,-2.16,113.29,115.46,45.23,0,10,False,False,False,False,False,False,False,False,False,False
+2025,PHX,,11,-3.17,115.35,118.52,42.36,1,10,False,False,False,True,False,False,False,False,False,False
+2025,SAS,,13,-3.18,113.33,116.51,45.29,3,10,False,False,False,False,False,False,False,True,True,True
+2025,POR,,12,-4.63,109.67,114.29,42.63,3,10,False,False,False,False,True,False,False,True,True,False
+2025,TOR,,11,-5.28,109.33,114.61,41.69,2,10,False,False,False,False,True,False,False,True,False,False
+2025,PHI,,13,-7.11,110.83,117.94,39.54,1,10,False,False,False,False,False,False,False,True,False,False
+2025,BKN,,12,-7.71,107.6,115.32,32.99,2,10,False,False,False,False,True,False,False,True,False,False
+2025,NOP,,14,-8.99,109.64,118.63,31.08,1,10,False,False,False,False,False,False,False,True,False,False
+2025,UTA,,15,-9.88,109.8,119.68,22.8,0,10,False,False,False,False,False,False,False,False,False,False
+2025,CHA,,14,-10.46,105.96,116.42,26.81,0,10,False,False,False,False,False,False,False,False,False,False
+2025,WAS,,15,-12.54,106.0,118.54,22.61,0,10,False,False,False,False,False,False,False,False,False,False
