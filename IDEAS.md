@@ -27,11 +27,6 @@
 ## Design System
 
 - Work on design system to upgrade look and feel of website (Claude)
-- Home Page — better layout, better graphics on NBA and NCAA cards
-- Change the subtitle on the NCAA Basketball Homepage
-- Remove "Teams 365 Conferences 32 Games modeled 5.4k" from NCAA homepage
-- Remove "30 teams 2 conferences 1.2k games modeled" from NBA homepage
-- Update NCAA Rankings page to match Claude design; add red back to heatmap
 - Update ranking tables — Efficiency, Four Factors, Adjusted Four Factor, Traditional/Impact/Four Factor player tables
 - Make design and format consistent between NCAA and NBA (rankings, team profile, visualizations)
 - Fix Bracket Simulator icon on NCAA Visualizations homepage
@@ -44,9 +39,76 @@
 - Audit NCAA player stats tables — right stats, intentional column selection, clean presentation; no data blobs
 
 ## Macfax Home Page
-- 
 
+## NCAA Homepage
+- Take out the part where it says 365 teams and amound of games modeled and stuff thats pointless
+- Claude Overview of it, give screenshots of the homepage and tell whats wrong with it in terms of the content of whats on there like words and placement and reference what its suppoesed to look like
+- Should we display the number 1 team in the model?
+- Change the subtitle on the NCAA Basketball Homepage
 
+## NCAA Rankings
+- Claude Overview of it, give screenshots of the homepage and tell whats wrong with it in terms of the content of whats on there like words and placement and reference what its suppoesed to look like
+- Update the design on the rankings table like how claude design has it or at least update the look so it looks better and nicer
+- Update the player stats table to be consistent with the team rankings table in terms of design and stuff
+- Make sure for team and player ratings that the stats that we are showing on the correct ones we want to show and are desinged, formatted and structured right
+- Make sure all the seasons for team ratings and player ratings are updated with the changes we have made
+- Improve and backtest the NCAA BPR so that it is as accurate as possible (we need to deep dive into this)
+- Should the name be NCAA Rankings or Ratings
+- Should we have seperate tabs and entire pages for Team and Player ratings?
+- Fix the Four Factor Player Stats
+- Make sure on the raw four factors page the FFI stat is showing the raw FFI not adjsuted FFI
+- Go over the Adjusted Ratings and go over it with claude code and backtesting to make sure its as accurate as it can be and adjust it or add things to it. We should compare it to KenPom and Evan Miya if we haven't already and compare it truly
+- Western Michigan and Eastern Michigan are both missing their logos
+- Update NCAA Rankings page to match Claude design; add red back to heatmap
+
+## NCAA Matchup Tool
+- Claude Overview of it, give screenshots of the homepage and tell whats wrong with it in terms of the content of whats on there like words and placement and reference what its suppoesed to look like
+- Make sure the Game Forcast Calculations are all correct for everything
+- Go over the Four Factor Breakdown and make sure all of the math is accurate and the translation to points is all correct as well
+- Go over the Volatility score deeply and make sure this all makes sense
+
+## NCAA Roster Outlook
+- Claude Overview of it, give screenshots of the homepage and tell whats wrong with it in terms of the content of whats on there like words and placement and reference what its suppoesed to look like
+- We need to get the Incoming Freshman data in for big name prospects somehow and calculate the correct impact they would have like specific names
+- We need to go over all the ranks and ranges and math and code of everything to make sure its accurate (The ranks and ranges of things seem to be off)
+- This could also maybe be for player stats, but we should find a way to incorporate NIL money into this like how much a player is worth vs how much they are getting paid and add budgets to this and for teams 
+
+## NCAA Visualization Homepage
+- We need to change the icons of the visulizations that we have for Efficiency Landscape, Crystal Ball Kinda, Cinderella Index, Bracket Simulator, Viz Builder, And Killshot
+- Claude Overview of it, give screenshots of the homepage and tell whats wrong with it in terms of the content of whats on there like words and placement and reference what its suppoesed to look like
+- We need to change the Titles and subtitles of Viz pages so that its not sounding AI generated
+
+## Trapezoid of Excellence
+- Claude Overview of it, give screenshots of the homepage and tell whats wrong with it in terms of the content of whats on there like words and placement and reference what its suppoesed to look like (Its honestly pretty good just putting it on here just in case)
+
+## NCAA Efficiency Landscape
+- We have made changes in Our Crystal Ball in our Title Favorite Tier to capture all past champions and we might need to update that in our viz. So orginally this Title Favorite Tier was based off the last 6 champions which would make sense since the game changes a lot but we need to make sure that the math in our viz matches the crystal ball math
+- Claude Overview of it, give screenshots of the homepage and tell whats wrong with it in terms of the content of whats on there like words and placement and reference what its suppoesed to look like 
+- And just refine all of the tier on the Efficiency Landscape
+
+## NCAA Crystall Ball
+- Claude Overview of it, give screenshots of the homepage and tell whats wrong with it in terms of the content of whats on there like words and placement and reference what its suppoesed to look like 
+- Change up the Tiers and Tier names so that it makes more sense, like for example the Championship Tier should be only teams that are 15/15
+- There is still some errors in accuracy meaning some past champions still dont pass some criteria except for the Uconn rule those champions are Baylor 2020-21: Balanced Dominance
+O: 119.9 / D: 94.8((O ≥ 112.2 & D ≤ 94.7) or EM ≥ 25.9), Louisville 2012-13: 
+3-Point %
+32.2%(≥ 32.2%), 
+- Fix so that when you click on a team on the Crystal Ball like the name itself, it either takes you to their team profile page or the drop down right now it comes up with a 404 error
+
+## Cinderella Index
+- Claude Overview of it, give screenshots of the homepage and tell whats wrong with it in terms of the content of whats on there like words and placement and reference what its suppoesed to look like 
+- We need to fix the tiers so that it is more rerpresentative
+- Backtest all the code and math and make sure its as accurate as possible
+
+## NBA Homepage
+- Claude Overview of it, give screenshots of the homepage and tell whats wrong with it in terms of the content of whats on there like words and placement and reference what its suppoesed to look like
+- Should we display the number 1 team in the model?
+- Take out the part where it says 30 teams, 2 conferences and games modeled
+
+## NBA Crystal Ball
+- We are missing the seed data for the crystal ball so that criteria is left blank for every team
+- We need pre-playoff data for this we might already have that though
+- we need historical season data as well
 
 ## Content
 
@@ -213,4 +275,7 @@ Crash Warning
 
 This format is easy, fun, and repeatable.
 
-- 
+- Next season outlooks for the NCAA College Teams, since there are like 365 teams in College Basketball I say we go through each conference and then we have like the homepage be the title with the conference and then like the projected standings for next season for that conference, then each slide go through each team with like their projected record, seed in the tournament if they make it, lineup and starting five and just like all the different things and insights we would want to show an audience for each team in that conferece. Like Im thinking expected record, seed, and all that stuff i might help with ideas on what content to put on each slide
+
+- Next season outlooks for NBA teams, I really wanna do this one and maybe for all NBA teams, maybe starting after the NBA draft we can go through each team and have slides for offseason outlook, maybe a capspace thing idk if we can, projected starting five, and then projected record and help me with other ideas in what to also put on there
+

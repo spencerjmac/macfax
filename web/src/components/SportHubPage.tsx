@@ -228,7 +228,7 @@ export default function SportHubPage({
                 key={tm.id}
                 href={tm.href}
                 className="grid items-center gap-4 w-full px-[22px] py-4 border-t border-ui-border first:border-t-0 hover:bg-ui-surface transition-colors text-left"
-                style={{ gridTemplateColumns: '56px 40px 1fr 130px 110px' }}
+                style={{ gridTemplateColumns: '56px 40px 1fr 110px 110px 110px' }}
               >
                 <span className="font-display font-bold text-[26px] text-text-primary">{i + 1}</span>
                 {tm.logoUrl ? (
@@ -245,6 +245,10 @@ export default function SportHubPage({
                 <span>
                   <span className="block font-sans font-semibold text-[10px] tracking-[0.08em] uppercase text-muted-2 mb-[5px]">AdjO</span>
                   <span className="font-mono font-bold text-[18px]">{tm.off.toFixed(1)}</span>
+                </span>
+                <span>
+                  <span className="block font-sans font-semibold text-[10px] tracking-[0.08em] uppercase text-muted-2 mb-[5px]">AdjD</span>
+                  <span className="font-mono font-bold text-[18px]">{tm.def.toFixed(1)}</span>
                 </span>
                 <span className="text-right">
                   <span className="block font-sans font-semibold text-[10px] tracking-[0.08em] uppercase text-muted-2 mb-[5px]">AdjEM</span>

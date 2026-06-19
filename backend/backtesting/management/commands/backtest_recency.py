@@ -6,14 +6,15 @@ RECENCY_LAMBDA values. Unlike the HCA backtest, ratings must be re-run for
 each lambda at every cutoff because the lambda changes the weighting inside
 the rating computation itself.
 
-Primary metric   : spread MAE (full season)
-Secondary metrics: spread RMSE, win-prob log-loss / Brier
-Diagnostic       : metrics split by season phase (Nov–Dec / Jan / Feb–Mar)
+Primary metric   : SU accuracy + Brier (win-prob, all games incl. OT)
+Secondary metrics: spread MAE (regulation), phase breakdown (Nov–Dec / Jan / Feb–Mar)
+Decision signal  : Feb–Mar SU accuracy vs KenPom benchmark 70.4%
 
 Usage:
     python manage.py backtest_recency --season 2026
-    python manage.py backtest_recency --season 2026 --lam-vals 0.000 0.002 0.004 0.006
-    python manage.py backtest_recency --season 2026 --k 150
+    python manage.py backtest_recency --seasons 2016 2017 2018 2019 2020 2022 2023 2024 2025 2026
+    python manage.py backtest_recency --seasons 2016 ... 2026 --lam-vals 0 0.002 0.004 0.006 0.010
+    python manage.py backtest_recency --seasons 2016 ... 2026 --no-importance
 """
 
 import math
@@ -87,7 +88,7 @@ def _time_weights(train_stats, game_dates, ref_date, lam):
 # ── Iterative ratings (parameterised by lam via pre-computed gtw/tts) ──────
 
 def _run_ratings(by_team_train, train_stats, stats_lookup,
-                 team_ids, nat_avg, gtw, tts, k):
+                 team_ids, nat_avg, gtw, tts, k, use_importance=True):
     """Iterative opponent-adjusted ratings — identical to other backtests."""
     ratings = {
         tid: {"aor": nat_avg.avg_ortg, "adr": nat_avg.avg_ortg, "pace": nat_avg.avg_pace}
@@ -132,7 +133,9 @@ def _run_ratings(by_team_train, train_stats, stats_lookup,
                 w_time = gtw.get(gs.game_id, 1.0) * tts.get(tid, 1.0)
 
                 imp_key = (tid, gs.game_id)
-                if iteration <= FREEZE_ITERATION:
+                if not use_importance:
+                    w_imp = 1.0
+                elif iteration <= FREEZE_ITERATION:
                     t_aem = ratings[tid]["aor"] - ratings[tid]["adr"]
                     o_aem = opp_aor - opp_adr
                     gap = abs(t_aem - o_aem)
@@ -163,7 +166,7 @@ def _run_ratings(by_team_train, train_stats, stats_lookup,
             max_change = max(max_change, abs(new_aem - old_aem))
             new_r[tid] = {"aor": aor_s, "adr": adr_s, "pace": pace_s}
 
-        if iteration == FREEZE_ITERATION:
+        if use_importance and iteration == FREEZE_ITERATION:
             frozen_imp = dict(cur_imp)
             sb: defaultdict = defaultdict(float)
             si: defaultdict = defaultdict(float)
@@ -206,13 +209,34 @@ def _predict_margin(home_r, away_r, nat_avg, neutral_site):
     return pts_home - pts_away
 
 
+def _empty_acc(lam_values, phase_keys):
+    return {
+        lam: {
+            "spread_ae":  [],
+            "spread_se":  [],
+            "spread_err": [],
+            "brier":      [],
+            "logloss":    [],
+            "correct":    [],
+            "phase": {
+                ph: {"ae": [], "se": [], "err": [], "correct": []}
+                for ph in phase_keys
+            },
+        }
+        for lam in lam_values
+    }
+
+
 # ── management command ─────────────────────────────────────────────────────
 
 class Command(BaseCommand):
-    help = "Backtest recency-decay lambda values (spread MAE + phase breakdown)"
+    help = "Backtest recency-decay lambda values (SU accuracy + Brier + phase breakdown, multi-season)"
 
     def add_arguments(self, parser):
-        parser.add_argument("--season", type=int, required=True)
+        parser.add_argument("--season", type=int, default=None,
+                            help="Single season year (use --seasons for multi-season)")
+        parser.add_argument("--seasons", type=int, nargs="+", default=None,
+                            help="List of season years to pool (e.g. 2016 2017 ... 2026)")
         parser.add_argument(
             "--lam-vals",
             type=float,
@@ -220,12 +244,10 @@ class Command(BaseCommand):
             default=[0.0000, 0.0020, 0.0030, 0.0040, 0.0050, 0.0060],
             help="Lambda values to test (default: 0 0.002 0.003 0.004 0.005 0.006)",
         )
-        parser.add_argument(
-            "--k",
-            type=float,
-            default=150.0,
-            help="Fixed shrinkage k (default: 150)",
-        )
+        parser.add_argument("--no-importance", action="store_true", default=False,
+                            help="Disable importance weighting (default: enabled)")
+        parser.add_argument("--k", type=float, default=150.0,
+                            help="Fixed shrinkage k (default: 150)")
         parser.add_argument("--start", type=str, default=None,
                             help="First cutoff date YYYY-MM-DD")
         parser.add_argument("--end",   type=str, default=None,
@@ -236,337 +258,282 @@ class Command(BaseCommand):
                             help="Test window in days after each cutoff (default: 7)")
 
     def handle(self, *args, **options):
-        season_year = options["season"]
-        lam_values  = options["lam_vals"]
-        k           = options["k"]
-        step        = options["step"]
-        window      = options["window"]
-
-        nat_avg = NationalAverages.objects.get(season__year=season_year)
-        sigma   = nat_avg.prediction_sigma or 11.08
-        EPS     = 1e-9
-
-        # ── Load all data once ───────────────────────────────────────────── #
-        self.stdout.write(
-            f"Loading data...  (k={k:.0f}, σ={sigma:.3f}, "
-            f"hca={nat_avg.hca_points or 3.20:.4f})"
-        )
-
-        all_stats = list(
-            TeamGameStats.objects.filter(
-                game__season_year=season_year,
-                game__status="final",
-                team__is_d1=True,
-                opponent__is_d1=True,
-            ).select_related("game", "opponent", "team")
-        )
-        self.stdout.write(f"  {len(all_stats)} team-game stats loaded")
-
-        all_game_ids = list({gs.game_id for gs in all_stats})
-        stats_lookup = {
-            (gs.game_id, gs.team_id): gs
-            for gs in TeamGameStats.objects.filter(
-                game_id__in=all_game_ids
-            ).select_related("team")
-        }
-
-        game_dates = {gs.game_id: gs.game.game_date for gs in all_stats}
-
-        # Spread test games: D1vD1, final, regulation (no OT), non-neutral
-        spread_all = list(
-            Game.objects.filter(
-                season_year=season_year,
-                status="final",
-                home_team__is_d1=True,
-                away_team__is_d1=True,
-                home_score__isnull=False,
-                away_score__isnull=False,
-                went_to_ot=False,
-            ).values(
-                "id", "game_date", "home_team_id", "away_team_id",
-                "home_score", "away_score", "neutral_site", "went_to_ot",
-            )
-        )
-        # Win-prob games: D1vD1, final (OT included)
-        wp_all = list(
-            Game.objects.filter(
-                season_year=season_year,
-                status="final",
-                home_team__is_d1=True,
-                away_team__is_d1=True,
-                home_score__isnull=False,
-                away_score__isnull=False,
-            ).values(
-                "id", "game_date", "home_team_id", "away_team_id",
-                "home_score", "away_score", "neutral_site", "went_to_ot",
-            )
-        )
-        self.stdout.write(
-            f"  {len(spread_all)} spread games (reg, D1vD1)  |  "
-            f"{len(wp_all)} win-prob games (D1vD1)"
-        )
-
-        team_ids = [t.id for t in Team.objects.filter(is_d1=True)]
-
-        # ── Build cutoff schedule ─────────────────────────────────────────── #
-        all_dates = sorted(game_dates.values())
-        if not all_dates:
-            self.stderr.write("No games found.")
+        seasons = options["seasons"] or ([options["season"]] if options["season"] else None)
+        if not seasons:
+            self.stderr.write("Provide --season YEAR or --seasons YEAR [YEAR ...]")
             return
 
-        start_cutoff = (
-            date.fromisoformat(options["start"])
-            if options["start"]
-            else all_dates[0] + timedelta(days=14)
-        )
-        end_cutoff = (
-            date.fromisoformat(options["end"])
-            if options["end"]
-            else all_dates[-1] - timedelta(days=window)
-        )
+        use_importance = not options["no_importance"]
+        lam_values = options["lam_vals"]
+        k          = options["k"]
+        step       = options["step"]
+        window     = options["window"]
+        EPS        = 1e-9
 
-        cutoffs = []
-        c = start_cutoff
-        while c <= end_cutoff:
-            cutoffs.append(c)
-            c += timedelta(days=step)
-
-        self.stdout.write(
-            f"  {len(cutoffs)} cutoffs: {cutoffs[0]} → {cutoffs[-1]}  "
-            f"(step={step}d, window={window}d)"
-        )
-        self.stdout.write(
-            f"  λ values: {lam_values}\n"
-        )
-
-        # ── Result accumulators ───────────────────────────────────────────── #
-        # Full-season totals
         phase_keys = list(PHASES.keys()) + ["other"]
-        acc = {
-            lam: {
-                "spread_ae":  [],
-                "spread_se":  [],
-                "spread_err": [],
-                "brier":      [],
-                "logloss":    [],
-                "correct":    [],
-                # Per-phase spread accumulators
-                "phase": {ph: {"ae": [], "se": [], "err": []} for ph in phase_keys},
-                # Per-cutoff store for the detail table
-                "per_cutoff": {},
+        pooled = _empty_acc(lam_values, phase_keys)
+
+        imp_label = "ON" if use_importance else "OFF"
+        self.stdout.write(
+            f"\nbacktest_recency  |  seasons={seasons}  "
+            f"k={k:.0f}  importance={imp_label}  λ={lam_values}"
+        )
+
+        for season_year in seasons:
+            self.stdout.write(f"\n{'─'*60} {season_year} {'─'*20}")
+
+            nat_avg = NationalAverages.objects.get(season__year=season_year)
+            sigma   = nat_avg.prediction_sigma or 11.08
+
+            # Load all data for this season
+            all_stats = list(
+                TeamGameStats.objects.filter(
+                    game__season_year=season_year,
+                    game__status="final",
+                    team__is_d1=True,
+                    opponent__is_d1=True,
+                ).select_related("game", "opponent", "team")
+            )
+            self.stdout.write(f"  {len(all_stats)} team-game stats  σ={sigma:.3f}  hca={nat_avg.hca_points or 3.20:.4f}")
+
+            all_game_ids = list({gs.game_id for gs in all_stats})
+            stats_lookup = {
+                (gs.game_id, gs.team_id): gs
+                for gs in TeamGameStats.objects.filter(
+                    game_id__in=all_game_ids
+                ).select_related("team")
             }
-            for lam in lam_values
-        }
+            game_dates = {gs.game_id: gs.game.game_date for gs in all_stats}
 
-        # ── Main loop ─────────────────────────────────────────────────────── #
-        for ci, cutoff in enumerate(cutoffs):
-            wend = cutoff + timedelta(days=window)
+            spread_all = list(
+                Game.objects.filter(
+                    season_year=season_year, status="final",
+                    home_team__is_d1=True, away_team__is_d1=True,
+                    home_score__isnull=False, away_score__isnull=False,
+                    went_to_ot=False,
+                ).values("id", "game_date", "home_team_id", "away_team_id",
+                         "home_score", "away_score", "neutral_site", "went_to_ot")
+            )
+            wp_all = list(
+                Game.objects.filter(
+                    season_year=season_year, status="final",
+                    home_team__is_d1=True, away_team__is_d1=True,
+                    home_score__isnull=False, away_score__isnull=False,
+                ).values("id", "game_date", "home_team_id", "away_team_id",
+                         "home_score", "away_score", "neutral_site", "went_to_ot")
+            )
+            team_ids = [t.id for t in Team.objects.filter(is_d1=True)]
 
-            train_stats = [gs for gs in all_stats if game_dates[gs.game_id] < cutoff]
-            if len(train_stats) < 20:
+            # Build cutoff schedule
+            all_dates = sorted(game_dates.values())
+            if not all_dates:
+                self.stdout.write(f"  No games found, skipping.")
+                continue
+
+            start_cutoff = (
+                date.fromisoformat(options["start"])
+                if options["start"]
+                else all_dates[0] + timedelta(days=14)
+            )
+            end_cutoff = (
+                date.fromisoformat(options["end"])
+                if options["end"]
+                else all_dates[-1] - timedelta(days=window)
+            )
+            cutoffs = []
+            c = start_cutoff
+            while c <= end_cutoff:
+                cutoffs.append(c)
+                c += timedelta(days=step)
+
+            self.stdout.write(
+                f"  {len(cutoffs)} cutoffs: {cutoffs[0]} → {cutoffs[-1]}  "
+                f"(step={step}d, window={window}d)"
+            )
+
+            # Main loop
+            for ci, cutoff in enumerate(cutoffs):
+                wend = cutoff + timedelta(days=window)
+
+                train_stats = [gs for gs in all_stats if game_dates[gs.game_id] < cutoff]
+                if len(train_stats) < 20:
+                    continue
+
+                by_team_train: defaultdict = defaultdict(list)
+                for gs in train_stats:
+                    by_team_train[gs.team_id].append(gs)
+
+                test_spread = [g for g in spread_all if cutoff <= g["game_date"] < wend]
+                test_wp     = [g for g in wp_all     if cutoff <= g["game_date"] < wend]
+
                 self.stdout.write(
                     f"  [{ci+1:2d}/{len(cutoffs)}] {cutoff}  "
-                    f"skip (only {len(train_stats)} train rows)"
-                )
-                continue
-
-            by_team_train: defaultdict = defaultdict(list)
-            for gs in train_stats:
-                by_team_train[gs.team_id].append(gs)
-
-            test_spread = [g for g in spread_all if cutoff <= g["game_date"] < wend]
-            test_wp     = [g for g in wp_all     if cutoff <= g["game_date"] < wend]
-
-            self.stdout.write(
-                f"  [{ci+1:2d}/{len(cutoffs)}] {cutoff}  "
-                f"train={len(train_stats):5d}  "
-                f"spread_test={len(test_spread):3d}  wp_test={len(test_wp):3d}",
-                ending="",
-            )
-
-            for lam in lam_values:
-                gtw, tts = _time_weights(train_stats, game_dates, cutoff, lam)
-
-                ratings = _run_ratings(
-                    by_team_train, train_stats, stats_lookup,
-                    team_ids, nat_avg, gtw, tts, k,
+                    f"train={len(train_stats):5d}  spread={len(test_spread):3d}  wp={len(test_wp):3d}",
+                    ending="",
                 )
 
-                pc = {"n_s": 0, "ae_sum": 0.0, "se_sum": 0.0, "err_sum": 0.0,
-                      "n_w": 0, "brier_sum": 0.0}
-
-                for g in test_spread:
-                    home_r = ratings.get(g["home_team_id"])
-                    away_r = ratings.get(g["away_team_id"])
-                    if not home_r or not away_r:
-                        continue
-
-                    pred   = _predict_margin(home_r, away_r, nat_avg, g["neutral_site"])
-                    actual = g["home_score"] - g["away_score"]
-                    err    = pred - actual
-                    ae     = abs(err)
-
-                    acc[lam]["spread_ae"].append(ae)
-                    acc[lam]["spread_se"].append(err ** 2)
-                    acc[lam]["spread_err"].append(err)
-
-                    ph = _phase(g["game_date"])
-                    acc[lam]["phase"][ph]["ae"].append(ae)
-                    acc[lam]["phase"][ph]["se"].append(err ** 2)
-                    acc[lam]["phase"][ph]["err"].append(err)
-
-                    pc["n_s"] += 1
-                    pc["ae_sum"] += ae
-                    pc["se_sum"] += err ** 2
-                    pc["err_sum"] += err
-
-                for g in test_wp:
-                    home_r = ratings.get(g["home_team_id"])
-                    away_r = ratings.get(g["away_team_id"])
-                    if not home_r or not away_r:
-                        continue
-
-                    pred_margin = _predict_margin(
-                        home_r, away_r, nat_avg, g["neutral_site"]
+                for lam in lam_values:
+                    gtw, tts = _time_weights(train_stats, game_dates, cutoff, lam)
+                    ratings = _run_ratings(
+                        by_team_train, train_stats, stats_lookup,
+                        team_ids, nat_avg, gtw, tts, k,
+                        use_importance=use_importance,
                     )
-                    prob_home = scipy_stats.norm.cdf(pred_margin / sigma)
-                    prob_home = max(EPS, min(1.0 - EPS, prob_home))
 
-                    y = 1.0 if g["home_score"] > g["away_score"] else 0.0
-                    acc[lam]["brier"].append((prob_home - y) ** 2)
-                    acc[lam]["logloss"].append(
-                        -(y * math.log(prob_home) + (1 - y) * math.log(1 - prob_home))
-                    )
-                    acc[lam]["correct"].append(1 if (prob_home >= 0.5) == (y >= 0.5) else 0)
-                    pc["n_w"] += 1
-                    pc["brier_sum"] += (prob_home - y) ** 2
+                    for g in test_spread:
+                        home_r = ratings.get(g["home_team_id"])
+                        away_r = ratings.get(g["away_team_id"])
+                        if not home_r or not away_r:
+                            continue
+                        pred   = _predict_margin(home_r, away_r, nat_avg, g["neutral_site"])
+                        actual = g["home_score"] - g["away_score"]
+                        err    = pred - actual
+                        ae     = abs(err)
+                        pooled[lam]["spread_ae"].append(ae)
+                        pooled[lam]["spread_se"].append(err ** 2)
+                        pooled[lam]["spread_err"].append(err)
 
-                acc[lam]["per_cutoff"][cutoff] = pc
+                        ph = _phase(g["game_date"])
+                        pooled[lam]["phase"][ph]["ae"].append(ae)
+                        pooled[lam]["phase"][ph]["se"].append(err ** 2)
+                        pooled[lam]["phase"][ph]["err"].append(err)
 
-            self.stdout.write("")  # newline after all lambdas for this cutoff
+                    for g in test_wp:
+                        home_r = ratings.get(g["home_team_id"])
+                        away_r = ratings.get(g["away_team_id"])
+                        if not home_r or not away_r:
+                            continue
+                        pred_margin = _predict_margin(home_r, away_r, nat_avg, g["neutral_site"])
+                        prob_home = scipy_stats.norm.cdf(pred_margin / sigma)
+                        prob_home = max(EPS, min(1.0 - EPS, prob_home))
+                        y = 1.0 if g["home_score"] > g["away_score"] else 0.0
+                        brier = (prob_home - y) ** 2
+                        correct = 1 if (prob_home >= 0.5) == (y >= 0.5) else 0
+                        pooled[lam]["brier"].append(brier)
+                        pooled[lam]["logloss"].append(
+                            -(y * math.log(prob_home) + (1 - y) * math.log(1 - prob_home))
+                        )
+                        pooled[lam]["correct"].append(correct)
 
-        # ── Summary tables ─────────────────────────────────────────────────── #
-        W = 82
-        self.stdout.write("\n" + "=" * W)
-        self.stdout.write(
-            f"BACKTEST RESULTS — season {season_year}  (k={k:.0f}, "
-            f"hca={nat_avg.hca_points or 3.20:.4f})"
+                        ph = _phase(g["game_date"])
+                        pooled[lam]["phase"][ph]["correct"].append(correct)
+
+                self.stdout.write("")  # newline
+
+        # ── Summary tables ───────────────────────────────────────────────── #
+        season_label = (
+            f"season {seasons[0]}" if len(seasons) == 1
+            else f"{len(seasons)} seasons ({seasons[0]}–{seasons[-1]})"
         )
-        self.stdout.write("=" * W)
+        W = 90
+        self.stdout.write(f"\n{'='*W}")
+        self.stdout.write(f"POOLED RESULTS — {season_label}  (k={k:.0f}, importance={imp_label})")
+        self.stdout.write(f"{'='*W}")
 
-        # Full-season spread table — sorted by MAE ascending
+        # Primary decision table: SU accuracy + Brier + Feb-Mar SU
+        self.stdout.write(
+            f"\n{'KenPom benchmark — Feb-Mar SU: 70.4%  |  Overall OOS ~69.5% baseline':^{W}}"
+        )
+        hdr = f"  {'λ':>7}  {'half-life':>10}  {'n_wp':>6}  {'SU Acc%':>8}  {'Brier':>8}  "
+        hdr += f"{'Feb-Mar SU%':>12}  {'Feb-Mar MAE':>12}  {'Full MAE':>9}  Δsua"
+        self.stdout.write(f"\n{hdr}")
+        self.stdout.write("─" * (len(hdr) + 2))
+
         rows = []
+        base_sua = None
         for lam in lam_values:
-            r = acc[lam]
-            if not r["spread_ae"]:
+            r = pooled[lam]
+            if not r["correct"]:
                 continue
-            mae  = statistics.fmean(r["spread_ae"])
-            rmse = math.sqrt(statistics.fmean(r["spread_se"]))
-            bias = statistics.fmean(r["spread_err"])
-            rows.append((lam, len(r["spread_ae"]), mae, rmse, bias))
+            sua     = 100 * statistics.fmean(r["correct"])
+            brier   = statistics.fmean(r["brier"]) if r["brier"] else float("nan")
+            fmsu_vals = r["phase"]["Feb–Mar"]["correct"]
+            fmsu    = 100 * statistics.fmean(fmsu_vals) if fmsu_vals else float("nan")
+            fmmae_vals = r["phase"]["Feb–Mar"]["ae"]
+            fmmae   = statistics.fmean(fmmae_vals) if fmmae_vals else float("nan")
+            mae     = statistics.fmean(r["spread_ae"]) if r["spread_ae"] else float("nan")
+            rows.append((lam, len(r["correct"]), sua, brier, fmsu, fmmae, mae))
+            if base_sua is None:
+                base_sua = sua
 
-        rows_by_mae = sorted(rows, key=lambda x: x[2])
-        best_mae = rows_by_mae[0][2] if rows_by_mae else 0.0
+        best_sua = max(r[2] for r in rows) if rows else 0.0
 
-        self.stdout.write("\nFULL-SEASON SPREAD ACCURACY  (regulation, D1vD1) — sorted by MAE")
-        hdr = f"  {'λ':>7}  {'half-life':>10}  {'n':>6}  {'MAE':>8}  {'RMSE':>8}  {'bias':>8}  Δmae"
-        self.stdout.write(hdr)
-        self.stdout.write("-" * len(hdr))
-        for lam, n, mae, rmse, bias in rows_by_mae:
+        for lam, n_wp, sua, brier, fmsu, fmmae, mae in rows:
             hl = f"{math.log(2)/lam:.0f}d" if lam > 0 else "∞"
-            marker = " ◄" if mae == best_mae else ""
+            marker = " ◄" if sua == best_sua else ""
+            fmsu_str  = f"{fmsu:>12.1f}%" if not math.isnan(fmsu) else f"{'—':>12}"
+            fmmae_str = f"{fmmae:>12.3f}" if not math.isnan(fmmae) else f"{'—':>12}"
             self.stdout.write(
-                f"  {lam:>7.4f}  {hl:>10}  {n:>6}  "
-                f"{mae:>8.3f}  {rmse:>8.3f}  {bias:>+8.3f}  "
-                f"{mae - best_mae:>+.3f}{marker}"
+                f"  {lam:>7.4f}  {hl:>10}  {n_wp:>6}  "
+                f"{sua:>7.1f}%  {brier:>8.4f}  "
+                f"{fmsu_str}  {fmmae_str}  "
+                f"{mae:>9.3f}  "
+                f"{sua - (base_sua or sua):>+.1f}%{marker}"
             )
 
-        # Win-prob table
-        self.stdout.write("\nWIN PROBABILITY ACCURACY  (all D1vD1 incl. OT)")
-        hdr2 = f"  {'λ':>7}  {'n':>6}  {'Brier':>8}  {'LogLoss':>9}  {'Acc%':>6}"
-        self.stdout.write(hdr2)
-        self.stdout.write("-" * len(hdr2))
-        for lam in lam_values:
-            r = acc[lam]
-            if not r["brier"]:
-                continue
-            brier   = statistics.fmean(r["brier"])
-            logloss = statistics.fmean(r["logloss"])
-            accp    = 100 * statistics.fmean(r["correct"])
-            self.stdout.write(
-                f"  {lam:>7.4f}  {len(r['brier']):>6}  "
-                f"{brier:>8.4f}  {logloss:>9.4f}  {accp:>6.1f}"
-            )
-
-        # Phase breakdown
-        self.stdout.write("\nSPREAD MAE BY SEASON PHASE  (regulation, D1vD1)")
-        phase_names = [ph for ph in PHASES]
-        col_w = 10
-        hdr3 = f"  {'λ':>7}"
+        # Phase breakdown table
+        self.stdout.write(f"\n\nSPREAD MAE BY PHASE")
+        phase_names = list(PHASES.keys())
+        hdr2 = f"  {'λ':>7}"
         for ph in phase_names:
-            hdr3 += f"  {ph:>{col_w}}"
-        hdr3 += f"  {'full':>{col_w}}"
-        self.stdout.write(hdr3)
-        self.stdout.write("-" * (len(hdr3) + 2))
+            hdr2 += f"  {ph:>10}"
+        hdr2 += f"  {'full':>10}"
+        self.stdout.write(hdr2)
+        self.stdout.write("─" * (len(hdr2) + 2))
         for lam in lam_values:
-            r = acc[lam]
+            r = pooled[lam]
             row = f"  {lam:>7.4f}"
             for ph in phase_names:
                 vals = r["phase"][ph]["ae"]
-                row += f"  {statistics.fmean(vals):>{col_w}.3f}" if vals else f"  {'—':>{col_w}}"
+                row += f"  {statistics.fmean(vals):>10.3f}" if vals else f"  {'—':>10}"
             full_mae = statistics.fmean(r["spread_ae"]) if r["spread_ae"] else float("nan")
-            row += f"  {full_mae:>{col_w}.3f}"
+            row += f"  {full_mae:>10.3f}"
             self.stdout.write(row)
 
-        # Phase n-counts (printed once, same for all lambdas since test sets are identical)
-        self.stdout.write(
-            f"\n  (n per phase — same for all λ, based on first λ)"
-        )
-        first_lam = lam_values[0]
-        count_row = f"  {'n':>7}"
+        # Phase SU breakdown
+        self.stdout.write(f"\n\nSU ACCURACY BY PHASE  (%)")
+        hdr3 = f"  {'λ':>7}"
         for ph in phase_names:
-            n_ph = len(acc[first_lam]["phase"][ph]["ae"])
-            count_row += f"  {n_ph:>{col_w}}"
-        count_row += f"  {len(acc[first_lam]['spread_ae']):>{col_w}}"
-        self.stdout.write(count_row)
-
-        # Per-cutoff MAE detail
-        self.stdout.write("\nPER-CUTOFF SPREAD MAE")
-        hdr4 = f"  {'cutoff':<12}  {'phase':<8}  {'n_reg':>5}"
+            hdr3 += f"  {ph:>10}"
+        hdr3 += f"  {'full':>10}"
+        self.stdout.write(hdr3)
+        self.stdout.write("─" * (len(hdr3) + 2))
         for lam in lam_values:
-            hdr4 += f"  {'λ='+f'{lam:.4f}':>10}"
-        self.stdout.write(hdr4)
-        self.stdout.write("-" * (len(hdr4) + 2))
-        for cutoff in cutoffs:
-            ph = _phase(cutoff)
-            n_reg = next(
-                (acc[lam]["per_cutoff"][cutoff]["n_s"]
-                 for lam in lam_values
-                 if acc[lam]["per_cutoff"].get(cutoff, {}).get("n_s", 0) > 0),
-                0,
-            )
-            row = f"  {str(cutoff):<12}  {ph:<8}  {n_reg:>5}"
-            for lam in lam_values:
-                pc = acc[lam]["per_cutoff"].get(cutoff, {})
-                n_s = pc.get("n_s", 0)
-                row += (
-                    f"  {pc['ae_sum']/n_s:>10.3f}" if n_s > 0 else f"  {'—':>10}"
-                )
+            r = pooled[lam]
+            row = f"  {lam:>7.4f}"
+            for ph in phase_names:
+                vals = r["phase"][ph]["correct"]
+                row += f"  {100*statistics.fmean(vals):>9.1f}%" if vals else f"  {'—':>10}"
+            full_su = 100 * statistics.fmean(r["correct"]) if r["correct"] else float("nan")
+            row += f"  {full_su:>9.1f}%"
             self.stdout.write(row)
+
+        # Phase n-counts
+        self.stdout.write(f"\n  (wp-game counts per phase — same for all λ)")
+        first_lam = lam_values[0]
+        cnt_row = f"  {'n':>7}"
+        for ph in phase_names:
+            n_ph = len(pooled[first_lam]["phase"][ph]["correct"])
+            cnt_row += f"  {n_ph:>10}"
+        cnt_row += f"  {len(pooled[first_lam]['correct']):>10}"
+        self.stdout.write(cnt_row)
 
         # Recommendation
-        self.stdout.write(f"\n{'─' * W}")
-        if rows_by_mae:
-            best_lam, _, best_m, _, best_b = rows_by_mae[0]
+        self.stdout.write(f"\n{'─'*W}")
+        if rows:
+            best_row = max(rows, key=lambda x: x[2])  # best SU accuracy
+            best_lam, _, best_sua_val, best_brier, best_fmsu, _, best_mae = best_row
             hl = f"{math.log(2)/best_lam:.0f}d" if best_lam > 0 else "∞ (flat)"
+            fmsu_note = f"  Feb-Mar SU={best_fmsu:.1f}%" if not math.isnan(best_fmsu) else ""
             self.stdout.write(
-                f"RECOMMENDATION: λ={best_lam:.4f}  (half-life {hl})  "
-                f"MAE={best_m:.3f}  bias={best_b:+.3f}"
+                f"BEST SU: λ={best_lam:.4f} (half-life {hl})  "
+                f"SU={best_sua_val:.1f}%  Brier={best_brier:.4f}  "
+                f"MAE={best_mae:.3f}{fmsu_note}"
             )
-            cur_lam = 0.0040
-            self.stdout.write(
-                f"Production λ is {cur_lam:.4f}  (half-life "
-                f"{math.log(2)/cur_lam:.0f}d).  "
-                f"Change: {best_lam - cur_lam:+.4f}"
-            )
+            best_brier_row = min(rows, key=lambda x: x[3])
+            if best_brier_row[0] != best_lam:
+                self.stdout.write(
+                    f"BEST Brier: λ={best_brier_row[0]:.4f}  "
+                    f"Brier={best_brier_row[3]:.4f}  SU={best_brier_row[2]:.1f}%"
+                )
         self.stdout.write("")

@@ -257,6 +257,14 @@ class PipelineConfig(models.Model):
         default=75,
         help_text="Max solver iterations before declaring convergence (compute_adjusted_ratings --iterations)",
     )
+    recency_lambda = models.FloatField(
+        default=0.0040,
+        help_text="Exponential decay λ for recency weighting in adj ratings solver (0 = disabled)",
+    )
+    importance_enabled = models.BooleanField(
+        default=True,
+        help_text="Enable Lorentzian importance weighting in adj ratings solver",
+    )
     adj_ratings_convergence = models.FloatField(
         default=0.001,
         help_text="Max AdjEM change between iterations to declare convergence",

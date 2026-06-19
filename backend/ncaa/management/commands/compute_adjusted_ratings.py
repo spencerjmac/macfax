@@ -60,8 +60,8 @@ class Command(BaseCommand):
         parser.add_argument(
             "--recency-lambda",
             type=float,
-            default=0.0040,
-            help="Exponential decay rate for recency weighting (default: 0.0040; set to 0 to disable)",
+            default=None,
+            help="Exponential decay rate for recency weighting (default: from PipelineConfig; set to 0 to disable)",
         )
         parser.add_argument(
             "--no-importance",
@@ -122,8 +122,8 @@ class Command(BaseCommand):
         shrinkage_k = options[
             "shrinkage"
         ]  # None = dynamic (from cfg below), float = fixed override
-        recency_lambda = options["recency_lambda"]
-        importance_enabled = not options["no_importance"]
+        recency_lambda = options["recency_lambda"] if options["recency_lambda"] is not None else cfg.recency_lambda
+        importance_enabled = False if options["no_importance"] else cfg.importance_enabled
         update_natavg = options["update_natavg"]
         is_pre_tournament = options["pre_tournament"]
 
@@ -268,7 +268,7 @@ class Command(BaseCommand):
                 tgs_qs = tgs_qs.filter(game__game_date__lte=season.selection_sunday_date)
 
             for row in tgs_qs.values("team_id", "game_id", "fga", "oreb", "tov", "fta"):
-                poss = row["fga"] - row["oreb"] + row["tov"] + 0.475 * (row["fta"] or 0)
+                poss = row["fga"] - row["oreb"] + row["tov"] + 0.44 * (row["fta"] or 0)
                 w = game_time_weights.get(row["game_id"], 1.0)
                 sum_poss[row["team_id"]] += poss
                 sum_poss_w[row["team_id"]] += poss * w
@@ -284,6 +284,49 @@ class Command(BaseCommand):
             self.stdout.write(
                 "\nRecency weighting disabled — using uniform game weights"
             )
+        # -----------------------------------------------------------------------
+
+        # ── Bulk-load all game data before the iteration loop ─────────────────
+        # Prevents up to 75 × 365 ≈ 27,000 DB round-trips inside the loop.
+        # All iteration math reads from these in-memory dicts — zero DB queries inside the loop.
+        self.stdout.write("\nPre-loading game data into memory...")
+        _tgs_filter = dict(
+            game__season_year=season_year,
+            game__status="final",
+            team__is_d1=True,
+            opponent__is_d1=True,
+        )
+        if is_pre_tournament and season.selection_sunday_date:
+            _tgs_filter["game__game_date__lte"] = season.selection_sunday_date
+
+        _all_tgs_rows = list(
+            TeamGameStats.objects.filter(**_tgs_filter).values(
+                "team_id", "opponent_id", "game_id",
+                "fga", "oreb", "tov", "fta", "pts",
+                "home_away", "minutes",
+                "game__neutral_site", "game__elevation",
+                "opponent__elevation",
+            )
+        )
+
+        # (game_id, team_id) → row  — for opponent stat lookups
+        _stats_lookup: dict = {(r["game_id"], r["team_id"]): r for r in _all_tgs_rows}
+
+        # team_id → list[row]  — for per-team game iteration
+        _by_team: dict = defaultdict(list)
+        for _r in _all_tgs_rows:
+            _by_team[_r["team_id"]].append(_r)
+
+        # elevation per entity — merged from team objects + preloaded opponent__elevation
+        _team_elevation: dict = {t.id: (t.elevation or 0) for t in teams}
+        for _r in _all_tgs_rows:
+            oid = _r["opponent_id"]
+            if oid not in _team_elevation:
+                _team_elevation[oid] = _r["opponent__elevation"] or 0
+
+        self.stdout.write(
+            f"Loaded {len(_all_tgs_rows)} team-game rows across {len(_by_team)} teams"
+        )
         # -----------------------------------------------------------------------
 
         # Initialize ratings dictionary {team_id: {'aor': float, 'adr': float, 'pace': float}}
@@ -317,171 +360,109 @@ class Command(BaseCommand):
             max_aem_change = 0.0
 
             for team in teams:
-                # Get all games for this team (D1 vs D1 only)
-                tgs_filters = Q(
-                    team=team,
-                    game__season_year=season_year,
-                    game__status="final",
-                    opponent__is_d1=True,  # Only include games vs D1 opponents
-                )
-                if is_pre_tournament and season.selection_sunday_date:
-                    tgs_filters &= Q(game__game_date__lte=season.selection_sunday_date)
+                team_id = team.id
+                team_elev = _team_elevation.get(team_id, 0)
 
-                games = TeamGameStats.objects.filter(tgs_filters).select_related("game", "opponent")
-
-                if games.count() == 0:
-                    continue
-
-                # Pre-fetch opponent stats for all games (optimize: single query instead of N queries)
-                game_ids = [g.game_id for g in games]
-                all_game_stats = TeamGameStats.objects.filter(
-                    game_id__in=game_ids
-                ).select_related("team")
-
-                # Build dict: (game_id, team_id) -> stats
-                stats_lookup = {(gs.game_id, gs.team_id): gs for gs in all_game_stats}
-
-                # Compute game-level adjusted ratings
                 sum_weighted_aor = 0.0
                 sum_weighted_adr = 0.0
                 sum_weighted_pace = 0.0
                 sum_weights = 0.0
 
-                for game_stat in games:
-                    # Get opponent's current ratings
-                    opp_id = game_stat.opponent.id
+                for row in _by_team.get(team_id, []):
+                    opp_id = row["opponent_id"]
                     if opp_id not in ratings:
-                        continue  # Skip if opponent has no ratings
+                        continue
 
                     opp_aor = ratings[opp_id]["aor"]
                     opp_adr = ratings[opp_id]["adr"]
                     opp_pace = ratings[opp_id]["pace"]
 
-                    # Get game possessions (use poss_team directly to avoid property queries)
-                    poss_g = game_stat.poss_team
-                    if not poss_g or poss_g == 0:
-                        continue
-
-                    # Get opponent stats for this game (use dict lookup)
-                    opp_stats = stats_lookup.get(
-                        (game_stat.game_id, game_stat.opponent_id)
+                    poss_g = (
+                        (row["fga"] or 0)
+                        - (row["oreb"] or 0)
+                        + (row["tov"] or 0)
+                        + 0.44 * (row["fta"] or 0)
                     )
-
-                    if not opp_stats:
+                    if poss_g <= 0:
                         continue
 
-                    # Calculate raw game efficiencies and pace manually
-                    raw_oe_g = 100 * game_stat.pts / poss_g if poss_g > 0 else None
-                    raw_de_g = 100 * opp_stats.pts / poss_g if poss_g > 0 else None
-                    minutes = game_stat.game_minutes or 40
-                    raw_pace_g = 40 * poss_g / minutes if minutes > 0 else None
-
-                    if raw_oe_g is None or raw_de_g is None or raw_pace_g is None:
+                    opp_row = _stats_lookup.get((row["game_id"], opp_id))
+                    if not opp_row:
                         continue
 
-                    # Get site factors (different for offense vs defense)
-                    off_site_factor = game_stat.site_factor  # Home: 0.9862, Away: 1.0140
-                    def_site_factor = game_stat.defensive_site_factor  # Home: 1.0140, Away: 0.9862
-                    
-                    # --- ELEVATION PENALTY ---
-                    # If an away team travels to a higher altitude, they suffer an efficiency penalty.
-                    # Coefficient: +0.2 margin per 100 poss per 1,000 feet of altitude difference.
-                    # This converts to roughly a +/- 0.001 multiplier penalty per 1,000 feet.
-                    if not game_stat.game.neutral_site:
-                        game_elev = game_stat.game.elevation or 0
-                        team_elev = team.elevation or 0
-                        opp_elev = game_stat.opponent.elevation or 0
-                        
+                    raw_oe_g = 100 * row["pts"] / poss_g
+                    raw_de_g = 100 * opp_row["pts"] / poss_g
+                    minutes = row["minutes"] or 40
+                    raw_pace_g = 40 * poss_g / minutes
+
+                    # Site factors (inlined: avoids property call overhead)
+                    ha = row["home_away"]
+                    if ha == "H":
+                        off_site_factor, def_site_factor = 0.9862, 1.0140
+                    elif ha == "A":
+                        off_site_factor, def_site_factor = 1.0140, 0.9862
+                    else:
+                        off_site_factor, def_site_factor = 1.0, 1.0
+
+                    # Elevation penalty: +0.2 margin/100poss per 1,000 ft for away team
+                    if not row["game__neutral_site"]:
+                        game_elev = row["game__elevation"] or 0
+                        opp_elev = _team_elevation.get(opp_id, 0)
                         elev_diff_team = max(0, game_elev - team_elev) / 1000.0
                         elev_diff_opp = max(0, game_elev - opp_elev) / 1000.0
-                        
                         if elev_diff_team > 0:
-                            # Team is playing up, so their offense/defense suffered. Inflate/deflate to adjust back to neutral.
-                            off_site_factor += (0.001 * elev_diff_team)
-                            def_site_factor -= (0.001 * elev_diff_team)
-                            
+                            off_site_factor += 0.001 * elev_diff_team
+                            def_site_factor -= 0.001 * elev_diff_team
                         if elev_diff_opp > 0:
-                            # Opponent played up, so they suffered. Team had it easier. Deflate/inflate to adjust back to neutral.
-                            off_site_factor -= (0.001 * elev_diff_opp)
-                            def_site_factor += (0.001 * elev_diff_opp)
+                            off_site_factor -= 0.001 * elev_diff_opp
+                            def_site_factor += 0.001 * elev_diff_opp
 
-                    # Compute adjusted game ratings
-                    # AOR_g = RawOE_g * (NatAvg / OppAdjD) * OffSiteFactor
                     aor_g = (
                         raw_oe_g * (nat_avg.avg_ortg / opp_adr) * off_site_factor
-                        if opp_adr > 0
-                        else raw_oe_g
+                        if opp_adr > 0 else raw_oe_g
                     )
-
-                    # ADR_g = RawDE_g * (NatAvg / OppAdjO) * DefSiteFactor
                     adr_g = (
                         raw_de_g * (nat_avg.avg_ortg / opp_aor) * def_site_factor
-                        if opp_aor > 0
-                        else raw_de_g
+                        if opp_aor > 0 else raw_de_g
                     )
-
-                    # AdjPace_g = RawPace_g * (NatAvgPace / OppPace)
-                    # Note: Site factor is typically not applied to pace
                     pace_g = (
                         raw_pace_g * (nat_avg.avg_pace / opp_pace)
-                        if opp_pace > 0
-                        else raw_pace_g
+                        if opp_pace > 0 else raw_pace_g
                     )
 
-                    # Weight by possessions * recency (w_time=1.0 when recency disabled)
                     w_time = (
-                        (
-                            game_time_weights.get(game_stat.game_id, 1.0)
-                            * team_time_scale.get(game_stat.team_id, 1.0)
-                        )
-                        if recency_lambda > 0
-                        else 1.0
+                        game_time_weights.get(row["game_id"], 1.0)
+                        * team_time_scale.get(team_id, 1.0)
+                        if recency_lambda > 0 else 1.0
                     )
 
-                    # --- Importance weight ---
-                    imp_key = (team.id, game_stat.game_id)
+                    imp_key = (team_id, row["game_id"])
                     if not importance_enabled:
                         w_imp = 1.0
                     elif iteration <= FREEZE_ITERATION:
-                        # Compute from current ratings
                         team_aem = (
-                            (ratings[team.id]["aor"] - ratings[team.id]["adr"])
-                            if team.id in ratings
-                            else 0.0
+                            ratings[team_id]["aor"] - ratings[team_id]["adr"]
+                            if team_id in ratings else 0.0
                         )
                         opp_aem = opp_aor - opp_adr
                         gap = abs(team_aem - opp_aem)
-
-                        # Lorentzian base: smooth downweight for mismatches
-                        base = 1.0 / (1.0 + (gap / IMP_C) ** 2)
-                        base = max(IMP_FLOOR, base)
-
-                        # Closeness boost: use site-adjusted margin (aor_g - adr_g) so the
-                        # observed performance is in the same neutral world as the expected margin.
+                        base = max(IMP_FLOOR, 1.0 / (1.0 + (gap / IMP_C) ** 2))
                         obs_margin_100 = aor_g - adr_g
                         exp_margin_100 = team_aem - opp_aem
-                        
                         closer_than_expected = max(0.0, abs(exp_margin_100) - abs(obs_margin_100))
                         closeness_factor = 1.0 - math.exp(-closer_than_expected / CLOSE_M)
-                        
                         boost = 1.0 + (BOOST_MAX - 1.0) * closeness_factor
-
                         w_imp = min(1.0, base * boost)
-
                         current_importance_weights[imp_key] = w_imp
                     else:
-                        # After freeze: reuse locked weights
                         w_imp = frozen_importance_weights.get(imp_key, 1.0)
 
-                    weight = poss_g * w_time * w_imp * team_imp_scale.get(team.id, 1.0)
-
+                    weight = poss_g * w_time * w_imp * team_imp_scale.get(team_id, 1.0)
                     sum_weighted_aor += weight * aor_g
                     sum_weighted_adr += weight * adr_g
                     sum_weighted_pace += weight * pace_g
                     sum_weights += weight
 
-                # Aggregate to season rating with shrinkage
-                # AOR = (SUM(w*AOR_g) + k*NatAvg) / (SUM(w) + k)
                 if sum_weights > 0:
                     aor_season = (sum_weighted_aor + shrinkage_k * nat_avg.avg_ortg) / (
                         sum_weights + shrinkage_k
@@ -489,23 +470,22 @@ class Command(BaseCommand):
                     adr_season = (sum_weighted_adr + shrinkage_k * nat_avg.avg_ortg) / (
                         sum_weights + shrinkage_k
                     )
-                    pace_season = (
-                        sum_weighted_pace + shrinkage_k * nat_avg.avg_pace
-                    ) / (sum_weights + shrinkage_k)
+                    pace_season = (sum_weighted_pace + shrinkage_k * nat_avg.avg_pace) / (
+                        sum_weights + shrinkage_k
+                    )
                 else:
                     aor_season = nat_avg.avg_ortg
                     adr_season = nat_avg.avg_ortg
                     pace_season = nat_avg.avg_pace
 
-                new_ratings[team.id] = {
+                new_ratings[team_id] = {
                     "aor": aor_season,
                     "adr": adr_season,
                     "pace": pace_season,
                 }
 
-                # Track max change in AdjEM for convergence check
-                if team.id in ratings:
-                    old_aem = ratings[team.id]["aor"] - ratings[team.id]["adr"]
+                if team_id in ratings:
+                    old_aem = ratings[team_id]["aor"] - ratings[team_id]["adr"]
                     new_aem = aor_season - adr_season
                     aem_change = abs(new_aem - old_aem)
                     max_aem_change = max(max_aem_change, aem_change)
@@ -522,23 +502,15 @@ class Command(BaseCommand):
                 # Note: poss_team is a @property, so we recompute from box score fields.
                 sum_base: defaultdict = defaultdict(float)
                 sum_weighted_imp: defaultdict = defaultdict(float)
-                tgs_imp_qs = TeamGameStats.objects.filter(
-                    game__season_year=season_year,
-                    game__status="final",
-                    team__is_d1=True,
-                    opponent__is_d1=True,
-                )
-                if is_pre_tournament and season.selection_sunday_date:
-                    tgs_imp_qs = tgs_imp_qs.filter(game__game_date__lte=season.selection_sunday_date)
 
-                for row in tgs_imp_qs.values("team_id", "game_id", "fga", "oreb", "tov", "fta"):
+                for row in _all_tgs_rows:
                     tid = row["team_id"]
                     gid = row["game_id"]
                     poss = (
                         row["fga"]
                         - row["oreb"]
                         + row["tov"]
-                        + 0.475 * (row["fta"] or 0)
+                        + 0.44 * (row["fta"] or 0)
                     )
                     if poss <= 0:
                         continue

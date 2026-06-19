@@ -135,7 +135,7 @@ class GameLog(models.Model):
                 self.fta is not None,
             ]
         ):
-            self.possessions = self.fga - self.or_total + self.to + 0.475 * self.fta
+            self.possessions = self.fga - self.or_total + self.to + 0.44 * self.fta
             if self.possessions > 0:
                 self.raw_oe = 100 * (self.pts / self.possessions)
                 self.raw_de = 100 * (self.pts_allowed / self.possessions)
@@ -370,8 +370,8 @@ class TeamGameStats(models.Model):
 
     @property
     def poss_team(self):
-        """Team possessions: fga - oreb + tov + 0.475*fta"""
-        return self.fga - self.oreb + self.tov + 0.475 * self.fta
+        """Team possessions: fga - oreb + tov + 0.44*fta"""
+        return self.fga - self.oreb + self.tov + 0.44 * self.fta
 
     @property
     def poss_opp(self):
@@ -379,7 +379,7 @@ class TeamGameStats(models.Model):
         opp = self._get_opp_stats()
         if not opp:
             return None
-        return opp.fga - opp.oreb + opp.tov + 0.475 * opp.fta
+        return opp.fga - opp.oreb + opp.tov + 0.44 * opp.fta
 
     @property
     def poss_game(self):

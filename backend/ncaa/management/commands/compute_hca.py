@@ -114,8 +114,9 @@ class Command(BaseCommand):
             # Actual margin
             actual_margin = game_stat.pts - opp_stat.pts
             
-            # Expected margin on neutral court (using adjusted efficiency margin)
-            neutral_expected = home_team_stats.adj_em - away_team_stats.adj_em
+            # Expected margin on neutral court: convert adj_em (pts/100 poss) to per-game points
+            avg_tempo = (home_team_stats.adj_tempo + away_team_stats.adj_tempo) / 2
+            neutral_expected = (home_team_stats.adj_em - away_team_stats.adj_em) * avg_tempo / 100
             
             # HCA contribution = actual - neutral_expected
             hca_contribution = actual_margin - neutral_expected

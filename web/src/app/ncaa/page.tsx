@@ -17,7 +17,7 @@ const NCAA_CONFIG: Omit<HubConfig, 'facts'> = {
   eyebrow: 'College Basketball · Updated daily',
   title: 'College Basketball',
   teamCount: 365,
-  lede: 'Adjusted efficiency, four factors, and matchup forecasts for all 365 Division I teams — ranked by what they actually do on the floor, not their record.',
+  lede: 'Ratings and forecasts for Division I college basketball, built from schedule-adjusted efficiency, opponent strength, and matchup-level projections.',
   rankingsHref: '/ncaa/rankings',
   secondaryCta: 'Matchup tool',
   secondaryCtaHref: '/ncaa/matchup',
@@ -61,11 +61,7 @@ export default async function NCAAHubPage() {
 
   const config: HubConfig = {
     ...NCAA_CONFIG,
-    facts: [
-      { k: 'Teams',         v: '365' },
-      { k: 'Conferences',   v: '32' },
-      { k: 'Games modeled', v: '5.4', sub: 'k' },
-    ],
+    facts: [],
   };
 
   return <SportHubPage config={config} teams={teams} />;
