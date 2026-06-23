@@ -1,5 +1,5 @@
 {
-  "fetched_at": "2026-06-09T15:32:37.959281+00:00",
+  "fetched_at": "2026-06-23T19:20:02.811438+00:00",
   "players": {
     "Matthew Able": {
       "height_in": 75.75,
@@ -853,14 +853,14 @@
       "on_move_college3_pct": 0.76
     },
     "Sergio De Larrea": {
-      "height_in": null,
+      "height_in": 78.0,
       "height_w_shoes_in": null,
-      "wingspan_in": null,
+      "wingspan_in": 81.0,
       "standing_reach_in": null,
-      "weight_lbs": null,
+      "weight_lbs": 204.2,
       "body_fat_pct": null,
-      "hand_length_in": null,
-      "hand_width_in": null,
+      "hand_length_in": 8.75,
+      "hand_width_in": 9.5,
       "max_vertical_in": null,
       "no_step_vertical_in": null,
       "lane_agility_sec": null,

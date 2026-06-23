@@ -29,6 +29,7 @@ const NAV_ITEMS: NavSection[] = [
     items: [
       { label: 'Overview', href: '/nba' },
       { label: 'Rankings', href: '/nba/rankings' },
+      { label: 'Team Outlooks', href: '/nba/teams' },
       { label: 'Matchup Tool', href: '/nba/matchup' },
       { label: 'Player Value', href: '/nba/player-value' },
       { label: '2026 Draft', href: '/nba/prospects' },

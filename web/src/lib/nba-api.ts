@@ -15,6 +15,8 @@ import type {
   NBAModelCalibration,
   NBAPlayerSeasonStats,
   TeamRosterValueResponse,
+  TeamSeasonOutlookSummary,
+  TeamSeasonOutlookDetail,
 } from '@/types/nba';
 import type { GameDetailResponse } from '@/types/games';
 
@@ -125,5 +127,15 @@ export const nbaApi = {
   /** Roster wins-added summary for a team in a given season. */
   async getTeamRosterValue(slug: string, season?: number, season_type?: string): Promise<TeamRosterValueResponse> {
     return fetchJson<TeamRosterValueResponse>(buildUrl(`/teams/${slug}/roster-value/`, { season, season_type }));
+  },
+
+  /** All 30 teams ordered by adj_net_rating — Season Outlook list. */
+  async getTeamOutlooks(): Promise<TeamSeasonOutlookSummary[]> {
+    return fetchJson<TeamSeasonOutlookSummary[]>(buildUrl('/outlook/'));
+  },
+
+  /** Full outlook + editorial for one team. */
+  async getTeamOutlook(slug: string): Promise<TeamSeasonOutlookDetail> {
+    return fetchJson<TeamSeasonOutlookDetail>(buildUrl(`/outlook/${slug}/`));
   },
 };

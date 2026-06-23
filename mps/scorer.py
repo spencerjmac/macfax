@@ -421,6 +421,35 @@ MANUAL_STATS: dict[str, dict] = {
         "usg_pct":      19.0,
         "games_played": 32,
     },
+    "Jayden Quaintance": {
+        # 2025-26 Kentucky season = 4 games (setback after ACL, Mar 2025 at ASU).
+        # Using 2024-25 Arizona State (24 GP, 29.5 mpg) — the real talent sample.
+        "bpm_college":  6.5,
+        "obpm":         1.7,
+        "dbpm":         4.9,
+        "ts_pct":       0.536,
+        "per":          18.6,
+        "orb_pct":      11.8,
+        "blk_pct":      9.8,
+        "stl_pct":      2.2,
+        "ast_pct":      10.6,
+        "usg_pct":      18.4,
+        "ws_40":        0.107,
+        "ows":          0.7,
+        "dws":          1.2,
+        "fg_pct":       0.525,
+        "trb_pg":       7.9,
+        "stl_pg":       1.1,
+        "blk_pg":       2.6,
+        "ast_pg":       1.5,
+        "pts_pg":       9.4,
+        "ft_pct":       0.479,
+        "three_par":    0.181,
+        "ast_to_tov":   0.789,  # 1.5 ast / 1.9 tov
+        "games_played": 24,
+        "school_name":  "Arizona St.",
+        "college_season_year": 2025,
+    },
 }
 
 # ── Manual NBA player comps (top 30 / projected first round) ─────────────────
@@ -523,8 +552,9 @@ PROSPECTS_2026 = [
         "position":    "PF",
         "college":     "Kentucky",
         "cbb_url":     _CBB.format(slug="jayden-quaintance-1"),
+        "team_games":  33,  # ASU 2024-25 full schedule (24/33 GP = 73%, no avail penalty)
         "combine":     None,
-        "note":        "ACL injury (Mar 2025 at ASU) — Kentucky season severely limited",
+        "note":        "Stats from 2024-25 ASU (24 GP) — 2025-26 Kentucky = 4 games only (ACL setback)",
     },
     {
         "player_name": "Keaton Wagler",
@@ -1743,6 +1773,8 @@ def score_all_prospects(prospects: list[dict]) -> pd.DataFrame:
         # scale_verification.py confirmed r=1.000 for these stats — identical source as CBB.
         # Overwrites potentially stale CBB cache values with real-time Tankathon data.
         # Group C stats (ts_pct, ows, dws, pts_pg, ast_pg, fg_pct) excluded — different scale.
+        # Skip promotion for any stat explicitly set in MANUAL_STATS — override takes priority.
+        _manual_keys = set(MANUAL_STATS.get(name, {}).keys())
         if tank_stats:
             for _tank_k, _stat_k in [
                 ("tank_bpm",     "bpm_college"),
@@ -1755,6 +1787,8 @@ def score_all_prospects(prospects: list[dict]) -> pd.DataFrame:
                 ("tank_blk_pg",  "blk_pg"),
                 ("tank_fg3_pct", "fg3_pct"),
             ]:
+                if _stat_k in _manual_keys:
+                    continue
                 _tv = tank_stats.get(_tank_k)
                 if _tv is not None:
                     college_stats[_stat_k] = _tv

@@ -829,3 +829,140 @@ class NBAPlayerAvailability(models.Model):
     @property
     def weight(self) -> float:
         return self.STATUS_WEIGHTS.get(self.status, 0.0)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Season Outlook — editorial + projection layer
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TeamSeasonOutlook(models.Model):
+    """
+    One row per team. Holds 2025-26 final results (denormalized from
+    NBATeamSeasonRatings for read simplicity) plus editorial / projection
+    fields populated via Django admin.
+
+    Four-factor fields stored as raw percentages (e.g. 56.1 for 56.1%),
+    consistent with the seed data format.
+    """
+
+    OUTLOOK_TIER_CHOICES = [
+        ("title_contender", "Title Contender"),
+        ("playoff_contender", "Playoff Contender"),
+        ("bubble", "Bubble Team"),
+        ("lottery", "Lottery Team"),
+        ("rebuilding", "Rebuilding"),
+    ]
+
+    # ── Identity ──────────────────────────────────────────────────────────────
+    team_name = models.CharField(max_length=100)
+    team_abbr = models.CharField(max_length=5)
+    team_slug = models.SlugField(unique=True, db_index=True)
+    conference = models.CharField(max_length=10, choices=CONFERENCE_CHOICES)
+    primary_color = models.CharField(max_length=7, default="#000000")
+    secondary_color = models.CharField(max_length=7, default="#FFFFFF")
+
+    # ── 2025-26 season results ────────────────────────────────────────────────
+    wins = models.IntegerField(null=True, blank=True)
+    losses = models.IntegerField(null=True, blank=True)
+    adj_offensive_rating = models.FloatField(null=True, blank=True)
+    adj_defensive_rating = models.FloatField(null=True, blank=True)
+    adj_net_rating = models.FloatField(null=True, blank=True)
+    ffi = models.FloatField(null=True, blank=True)
+
+    # ── Four factors (raw percentages, e.g. 56.1 for 56.1%) ─────────────────
+    efg_pct = models.FloatField(null=True, blank=True)
+    opp_efg_pct = models.FloatField(null=True, blank=True)
+    tov_pct = models.FloatField(null=True, blank=True)
+    opp_tov_pct = models.FloatField(null=True, blank=True)
+    oreb_pct = models.FloatField(null=True, blank=True)
+    opp_oreb_pct = models.FloatField(null=True, blank=True)
+    fta_rate = models.FloatField(null=True, blank=True)
+    opp_fta_rate = models.FloatField(null=True, blank=True)
+    pace = models.FloatField(null=True, blank=True)
+
+    # ── 2026-27 projections (populated after offseason settles) ───────────────
+    projected_wins = models.IntegerField(null=True, blank=True)
+    projected_losses = models.IntegerField(null=True, blank=True)
+    projected_adj_net = models.FloatField(null=True, blank=True)
+    outlook_tier = models.CharField(
+        max_length=20, choices=OUTLOOK_TIER_CHOICES, null=True, blank=True
+    )
+
+    # ── Hand-authored editorial ───────────────────────────────────────────────
+    season_headline = models.CharField(max_length=200, blank=True)
+    macfax_take = models.TextField(blank=True)
+    development_spotlight_player = models.CharField(max_length=100, blank=True)
+    development_spotlight_text = models.TextField(blank=True)
+    season_defining_variable = models.TextField(blank=True)
+
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-adj_net_rating"]
+
+    def __str__(self):
+        return self.team_name
+
+    @property
+    def league_rank(self) -> int:
+        return (
+            TeamSeasonOutlook.objects.filter(
+                adj_net_rating__gt=self.adj_net_rating
+            ).count()
+            + 1
+        )
+
+
+class TeamOutseasonMove(models.Model):
+    """One offseason roster transaction for a team."""
+
+    MOVE_TYPE_CHOICES = [
+        ("signed", "Free Agent Signed"),
+        ("lost", "Free Agent Lost"),
+        ("drafted", "Drafted"),
+        ("traded_in", "Acquired via Trade"),
+        ("traded_out", "Traded Away"),
+        ("extended", "Extension Signed"),
+        ("waived", "Waived"),
+    ]
+    IMPACT_CHOICES = [
+        ("high", "High"),
+        ("medium", "Medium"),
+        ("low", "Low"),
+    ]
+
+    team = models.ForeignKey(
+        TeamSeasonOutlook, on_delete=models.CASCADE, related_name="offseason_moves"
+    )
+    move_type = models.CharField(max_length=20, choices=MOVE_TYPE_CHOICES)
+    player_name = models.CharField(max_length=100)
+    detail = models.CharField(max_length=200, blank=True)
+    impact_rating = models.CharField(max_length=10, choices=IMPACT_CHOICES, default="medium")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-impact_rating", "move_type"]
+
+    def __str__(self):
+        return f"{self.get_move_type_display()}: {self.player_name} ({self.team.team_abbr})"
+
+
+class ProjectedStarter(models.Model):
+    """One projected starter slot for a team's 2026-27 lineup."""
+
+    team = models.ForeignKey(
+        TeamSeasonOutlook, on_delete=models.CASCADE, related_name="projected_starters"
+    )
+    position = models.CharField(max_length=5)
+    player_name = models.CharField(max_length=100)
+    position_order = models.IntegerField(default=0, help_text="1-5 display order")
+    role_note = models.CharField(max_length=200, blank=True)
+    bpr_rating = models.FloatField(null=True, blank=True)
+    key_question = models.CharField(max_length=200, blank=True)
+
+    class Meta:
+        ordering = ["position_order"]
+
+    def __str__(self):
+        return f"{self.team.team_abbr} {self.position}: {self.player_name}"

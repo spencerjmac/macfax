@@ -16,6 +16,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from django.shortcuts import get_object_or_404
 from .models import (
     NBASeason,
     NBATeam,
@@ -25,6 +26,7 @@ from .models import (
     NBAPlayerSeasonStats,
     NBATeamSeasonRatings,
     NBAModelCalibration,
+    TeamSeasonOutlook,
 )
 from .serializers import (
     NBASeasonSerializer,
@@ -35,6 +37,8 @@ from .serializers import (
     NBAPlayerSeasonStatsSerializer,
     NBATeamSeasonRatingsSerializer,
     NBAModelCalibrationSerializer,
+    TeamSeasonOutlookListSerializer,
+    TeamSeasonOutlookDetailSerializer,
 )
 
 
@@ -898,4 +902,20 @@ class NBATeamRosterValueView(APIView):
             "team_wins_added_total": round(total_wins, 2),
             "players": NBAPlayerSeasonStatsSerializer(players_qs, many=True).data,
         })
+
+
+class TeamOutlookListView(APIView):
+    """GET /api/nba/outlook/ — all 30 teams ordered by adj_net_rating desc."""
+
+    def get(self, request):
+        qs = TeamSeasonOutlook.objects.all().order_by("-adj_net_rating")
+        return Response(TeamSeasonOutlookListSerializer(qs, many=True).data)
+
+
+class TeamOutlookDetailView(APIView):
+    """GET /api/nba/outlook/<slug>/ — single team full outlook."""
+
+    def get(self, request, slug):
+        obj = get_object_or_404(TeamSeasonOutlook, team_slug=slug)
+        return Response(TeamSeasonOutlookDetailSerializer(obj).data)
 

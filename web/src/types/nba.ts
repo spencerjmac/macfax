@@ -547,3 +547,72 @@ export interface NBAPlayerSeasonStats {
   bpr_last_updated: string | null;
   updated_at: string;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Season Outlook types
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type OutlookTier =
+  | 'title_contender'
+  | 'playoff_contender'
+  | 'bubble'
+  | 'lottery'
+  | 'rebuilding';
+
+export interface TeamOutseasonMove {
+  id: number;
+  move_type: 'signed' | 'lost' | 'drafted' | 'traded_in' | 'traded_out' | 'extended' | 'waived';
+  player_name: string;
+  detail: string;
+  impact_rating: 'high' | 'medium' | 'low';
+}
+
+export interface ProjectedStarter {
+  id: number;
+  position: string;
+  player_name: string;
+  position_order: number;
+  role_note: string;
+  bpr_rating: number | null;
+  key_question: string;
+}
+
+export interface TeamSeasonOutlookSummary {
+  team_name: string;
+  team_abbr: string;
+  team_slug: string;
+  conference: 'East' | 'West';
+  primary_color: string;
+  secondary_color: string;
+  logo_url: string | null;
+  wins: number | null;
+  losses: number | null;
+  adj_offensive_rating: number | null;
+  adj_defensive_rating: number | null;
+  adj_net_rating: number | null;
+  ffi: number | null;
+  outlook_tier: OutlookTier | null;
+  projected_wins: number | null;
+  season_headline: string;
+  league_rank: number;
+}
+
+export interface TeamSeasonOutlookDetail extends TeamSeasonOutlookSummary {
+  projected_losses: number | null;
+  projected_adj_net: number | null;
+  pace: number | null;
+  efg_pct: number | null;
+  opp_efg_pct: number | null;
+  tov_pct: number | null;
+  opp_tov_pct: number | null;
+  oreb_pct: number | null;
+  opp_oreb_pct: number | null;
+  fta_rate: number | null;
+  opp_fta_rate: number | null;
+  macfax_take: string;
+  development_spotlight_player: string;
+  development_spotlight_text: string;
+  season_defining_variable: string;
+  offseason_moves: TeamOutseasonMove[];
+  projected_starters: ProjectedStarter[];
+}

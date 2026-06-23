@@ -13,6 +13,9 @@ from .models import (
     NBAPlayerSeasonStats,
     NBATeamSeasonRatings,
     NBAModelCalibration,
+    TeamSeasonOutlook,
+    TeamOutseasonMove,
+    ProjectedStarter,
 )
 
 
@@ -185,3 +188,84 @@ class NBAModelCalibrationSerializer(serializers.ModelSerializer):
             "ffi_current_weight_efg", "ffi_current_weight_tov",
             "ffi_current_weight_oreb", "ffi_current_weight_fta",
         ]
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Season Outlook serializers
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TeamOutseasonMoveSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TeamOutseasonMove
+        fields = ["id", "move_type", "player_name", "detail", "impact_rating"]
+
+
+class ProjectedStarterSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProjectedStarter
+        fields = [
+            "id", "position", "player_name", "position_order",
+            "role_note", "bpr_rating", "key_question",
+        ]
+
+
+class TeamSeasonOutlookListSerializer(serializers.ModelSerializer):
+    league_rank = serializers.SerializerMethodField()
+    logo_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = TeamSeasonOutlook
+        fields = [
+            "team_name", "team_abbr", "team_slug", "conference",
+            "primary_color", "secondary_color", "logo_url",
+            "wins", "losses",
+            "adj_offensive_rating", "adj_defensive_rating", "adj_net_rating",
+            "ffi", "outlook_tier", "projected_wins", "season_headline",
+            "league_rank",
+        ]
+
+    def get_league_rank(self, obj) -> int:
+        return obj.league_rank
+
+    def get_logo_url(self, obj) -> str | None:
+        return (
+            NBATeam.objects.filter(abbreviation=obj.team_abbr)
+            .values_list("logo_url", flat=True)
+            .first()
+        )
+
+
+class TeamSeasonOutlookDetailSerializer(serializers.ModelSerializer):
+    offseason_moves = TeamOutseasonMoveSerializer(many=True, read_only=True)
+    projected_starters = ProjectedStarterSerializer(many=True, read_only=True)
+    league_rank = serializers.SerializerMethodField()
+    logo_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = TeamSeasonOutlook
+        fields = [
+            "team_name", "team_abbr", "team_slug", "conference",
+            "primary_color", "secondary_color", "logo_url",
+            "wins", "losses",
+            "adj_offensive_rating", "adj_defensive_rating", "adj_net_rating",
+            "ffi", "pace",
+            "efg_pct", "opp_efg_pct", "tov_pct", "opp_tov_pct",
+            "oreb_pct", "opp_oreb_pct", "fta_rate", "opp_fta_rate",
+            "projected_wins", "projected_losses", "projected_adj_net",
+            "outlook_tier", "season_headline", "macfax_take",
+            "development_spotlight_player", "development_spotlight_text",
+            "season_defining_variable",
+            "offseason_moves", "projected_starters",
+            "league_rank",
+        ]
+
+    def get_league_rank(self, obj) -> int:
+        return obj.league_rank
+
+    def get_logo_url(self, obj) -> str | None:
+        return (
+            NBATeam.objects.filter(abbreviation=obj.team_abbr)
+            .values_list("logo_url", flat=True)
+            .first()
+        )

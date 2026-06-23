@@ -11,6 +11,9 @@ from .models import (
     NBAPlayer,
     NBAPlayerGameStats,
     NBATeamSeasonRatings,
+    TeamSeasonOutlook,
+    TeamOutseasonMove,
+    ProjectedStarter,
 )
 
 
@@ -65,3 +68,61 @@ class NBATeamSeasonRatingsAdmin(admin.ModelAdmin):
     ]
     list_filter = ["season"]
     search_fields = ["team__name"]
+
+
+# ── Season Outlook admin ──────────────────────────────────────────────────────
+
+class TeamOutseasonMoveInline(admin.TabularInline):
+    model = TeamOutseasonMove
+    extra = 1
+    fields = ["move_type", "player_name", "detail", "impact_rating"]
+
+
+class ProjectedStarterInline(admin.TabularInline):
+    model = ProjectedStarter
+    extra = 0
+    fields = ["position_order", "position", "player_name", "bpr_rating", "role_note", "key_question"]
+
+
+@admin.register(TeamSeasonOutlook)
+class TeamSeasonOutlookAdmin(admin.ModelAdmin):
+    list_display = [
+        "team_name", "conference", "wins", "losses",
+        "adj_net_rating", "ffi", "outlook_tier", "updated_at",
+    ]
+    list_filter = ["conference", "outlook_tier"]
+    list_editable = ["outlook_tier"]
+    search_fields = ["team_name", "team_abbr"]
+    inlines = [TeamOutseasonMoveInline, ProjectedStarterInline]
+    fieldsets = [
+        ("Identity", {
+            "fields": [
+                "team_name", "team_abbr", "team_slug",
+                "conference", "primary_color", "secondary_color",
+            ],
+        }),
+        ("2025-26 Results", {
+            "fields": [
+                "wins", "losses",
+                "adj_offensive_rating", "adj_defensive_rating", "adj_net_rating",
+                "ffi", "pace",
+                "efg_pct", "opp_efg_pct",
+                "tov_pct", "opp_tov_pct",
+                "oreb_pct", "opp_oreb_pct",
+                "fta_rate", "opp_fta_rate",
+            ],
+        }),
+        ("2026-27 Outlook", {
+            "fields": [
+                "projected_wins", "projected_losses",
+                "projected_adj_net", "outlook_tier",
+            ],
+        }),
+        ("Editorial", {
+            "fields": [
+                "season_headline", "macfax_take",
+                "development_spotlight_player", "development_spotlight_text",
+                "season_defining_variable",
+            ],
+        }),
+    ]

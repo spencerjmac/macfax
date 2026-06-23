@@ -110,6 +110,18 @@ class Command(BaseCommand):
             action="store_true",
             help="If set, compute ratings using only games on or before Selection Sunday.",
         )
+        parser.add_argument(
+            "--use-bpr-prior",
+            action="store_true",
+            default=False,
+            help="Anchor early-season shrinkage to team BPR projections (default: disabled)",
+        )
+        parser.add_argument(
+            "--prior-decay-games",
+            type=int,
+            default=30,
+            help="Games over which BPR prior fades to league average (default: 30)",
+        )
 
     def handle(self, *args, **options):
         from ncaa.models import PipelineConfig
@@ -126,6 +138,8 @@ class Command(BaseCommand):
         importance_enabled = False if options["no_importance"] else cfg.importance_enabled
         update_natavg = options["update_natavg"]
         is_pre_tournament = options["pre_tournament"]
+        use_bpr_prior = options["use_bpr_prior"]
+        prior_decay_games = options["prior_decay_games"]
 
         # --- Importance weight constants ---
         IMP_C = 40.0          # gap (AdjEM pts) where base weight drops to 0.5
@@ -165,6 +179,24 @@ class Command(BaseCommand):
             f"Importance Weighting: {'enabled' if importance_enabled else 'disabled'} "
             f"(IMP_C={IMP_C}, IMP_FLOOR={IMP_FLOOR}, freeze@iter {FREEZE_ITERATION})"
         )
+
+        # Bulk-load BPR projections (one-time query, used inside iteration loop)
+        proj_ratings = {}
+        if use_bpr_prior:
+            from ncaa.models import TeamSeasonProjection
+            for r in TeamSeasonProjection.objects.filter(
+                projected_season_year=season_year,
+                projected_adj_o__isnull=False,
+                projected_adj_d__isnull=False,
+            ).values("team_id", "projected_adj_o", "projected_adj_d"):
+                proj_ratings[r["team_id"]] = {
+                    "adj_o": r["projected_adj_o"],
+                    "adj_d": r["projected_adj_d"],
+                }
+            self.stdout.write(
+                f"BPR prior: {len(proj_ratings)} teams with projections "
+                f"(decay over {prior_decay_games} games)"
+            )
 
         # Get all D1 teams with season metrics
         teams = Team.objects.filter(season_metrics__season=season, season_metrics__is_pre_tournament=is_pre_tournament, is_d1=True)
@@ -367,6 +399,7 @@ class Command(BaseCommand):
                 sum_weighted_adr = 0.0
                 sum_weighted_pace = 0.0
                 sum_weights = 0.0
+                n_valid_games = 0
 
                 for row in _by_team.get(team_id, []):
                     opp_id = row["opponent_id"]
@@ -390,6 +423,7 @@ class Command(BaseCommand):
                     if not opp_row:
                         continue
 
+                    n_valid_games += 1
                     raw_oe_g = 100 * row["pts"] / poss_g
                     raw_de_g = 100 * opp_row["pts"] / poss_g
                     minutes = row["minutes"] or 40
@@ -463,19 +497,29 @@ class Command(BaseCommand):
                     sum_weighted_pace += weight * pace_g
                     sum_weights += weight
 
+                # BPR prior blend: alpha=1 at 0 games (full projection), 0 at decay_games (flat)
+                if use_bpr_prior and team_id in proj_ratings:
+                    alpha = max(0.0, 1.0 - n_valid_games / prior_decay_games)
+                    proj = proj_ratings[team_id]
+                    prior_off = alpha * proj["adj_o"] + (1 - alpha) * nat_avg.avg_ortg
+                    prior_def = alpha * proj["adj_d"] + (1 - alpha) * nat_avg.avg_ortg
+                else:
+                    prior_off = nat_avg.avg_ortg
+                    prior_def = nat_avg.avg_ortg
+
                 if sum_weights > 0:
-                    aor_season = (sum_weighted_aor + shrinkage_k * nat_avg.avg_ortg) / (
+                    aor_season = (sum_weighted_aor + shrinkage_k * prior_off) / (
                         sum_weights + shrinkage_k
                     )
-                    adr_season = (sum_weighted_adr + shrinkage_k * nat_avg.avg_ortg) / (
+                    adr_season = (sum_weighted_adr + shrinkage_k * prior_def) / (
                         sum_weights + shrinkage_k
                     )
                     pace_season = (sum_weighted_pace + shrinkage_k * nat_avg.avg_pace) / (
                         sum_weights + shrinkage_k
                     )
                 else:
-                    aor_season = nat_avg.avg_ortg
-                    adr_season = nat_avg.avg_ortg
+                    aor_season = prior_off
+                    adr_season = prior_def
                     pace_season = nat_avg.avg_pace
 
                 new_ratings[team_id] = {
