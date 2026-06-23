@@ -60,13 +60,13 @@
       "positionGroup": "big",
       "college": "Duke",
       "age": 18.93,
-      "bpm": 18.7,
+      "bpm": 17.8,
       "dbpm": 6.0,
       "obpm": 12.7,
       "per": 33.7,
       "ts": 0.653,
       "fgPct": 0.556,
-      "ws40": 0.327,
+      "ws40": 0.3273013375295043,
       "ppg": 22.5,
       "rpg": 10.2,
       "apg": 4.1,
@@ -102,9 +102,9 @@
       "comp1Year": 2008,
       "comp1Pick": 5,
       "comp1Sim": null,
-      "comp2": "Zion Williamson",
-      "comp2Year": 2019,
-      "comp2Pick": 1,
+      "comp2": "Frank Kaminsky",
+      "comp2Year": 2015,
+      "comp2Pick": 9,
       "comp2Sim": 94
     },
     {
@@ -686,6 +686,60 @@
     },
     {
       "rank": 14,
+      "name": "Jayden Quaintance",
+      "position": "PF",
+      "positionGroup": "big",
+      "college": "Kentucky",
+      "age": 18.95,
+      "bpm": 6.5,
+      "dbpm": 4.9,
+      "obpm": 1.7,
+      "per": 18.6,
+      "ts": 0.536,
+      "fgPct": 0.525,
+      "ws40": 0.107,
+      "ppg": 9.4,
+      "rpg": 7.9,
+      "apg": 1.5,
+      "stlPg": 1.1,
+      "blkPg": 2.6,
+      "orbPct": 11.8,
+      "astPct": 10.6,
+      "mpsComposite": 52.3,
+      "srsAdj": 4.3,
+      "ageAdj": 7.0,
+      "scoutAdj": 3.6,
+      "availAdj": 0.0,
+      "mps": 67.2,
+      "grade": "D",
+      "tankRank": 21,
+      "tier": "full",
+      "note": "Stats from 2024-25 ASU (24 GP) \u2014 2025-26 Kentucky = 4 games only (ACL setback); Youth bonus +7.0; Scout tier adj +3.6 (Tank #21); Stats: partial manual override (BPM from BBRef)",
+      "heightFloor": 0.0,
+      "combinePen": 0.0,
+      "headshot": "https://a.espncdn.com/i/headshots/mens-college-basketball/players/full/5101845.png",
+      "strengths": [
+        "Positive defensive impact",
+        "Strong rebounder",
+        "Top-tier youth upside",
+        "Lottery consensus prospect"
+      ],
+      "weaknesses": [
+        "Inconsistent scoring efficiency",
+        "Limited box-score production",
+        "Low college scoring output"
+      ],
+      "comp1": "Chris McCullough",
+      "comp1Year": 2015,
+      "comp1Pick": 29,
+      "comp1Sim": 96,
+      "comp2": "Nic Claxton",
+      "comp2Year": 2019,
+      "comp2Pick": 31,
+      "comp2Sim": 96
+    },
+    {
+      "rank": 15,
       "name": "Ebuka Okorie",
       "position": "PG",
       "positionGroup": "guard",
@@ -714,7 +768,7 @@
       "grade": "D",
       "tankRank": 27,
       "tier": "full",
-      "note": "Youth bonus +7.0; Scout tier adj +3.6 (Tank #27); Model #14 vs Tankathon #27 (13 spots below consensus)",
+      "note": "Youth bonus +7.0; Scout tier adj +3.6 (Tank #27); Model #15 vs Tankathon #27 (12 spots below consensus)",
       "heightFloor": 0.0,
       "combinePen": 0.0,
       "headshot": "https://a.espncdn.com/i/headshots/mens-college-basketball/players/full/5258459.png",
@@ -737,7 +791,7 @@
       "comp2Sim": 96
     },
     {
-      "rank": 15,
+      "rank": 16,
       "name": "Dailyn Swain",
       "position": "SF",
       "positionGroup": "wing",
@@ -789,7 +843,7 @@
       "comp2Sim": 97
     },
     {
-      "rank": 16,
+      "rank": 17,
       "name": "Tarris Reed Jr.",
       "position": "C",
       "positionGroup": "big",
@@ -818,7 +872,7 @@
       "grade": "D",
       "tankRank": 33,
       "tier": "full",
-      "note": "Age penalty -3.7 (22.6y); Scout tier adj +1.6 (Tank #33); Model #16 vs Tankathon #33 (17 spots below consensus)",
+      "note": "Age penalty -3.7 (22.6y); Scout tier adj +1.6 (Tank #33); Model #17 vs Tankathon #33 (16 spots below consensus)",
       "heightFloor": 0.0,
       "combinePen": 0.0,
       "headshot": "https://a.espncdn.com/i/headshots/mens-college-basketball/players/full/5105809.png",
@@ -841,7 +895,7 @@
       "comp2Sim": 97
     },
     {
-      "rank": 17,
+      "rank": 18,
       "name": "Koa Peat",
       "position": "PF",
       "positionGroup": "big",
@@ -892,7 +946,7 @@
       "comp2Sim": 97
     },
     {
-      "rank": 18,
+      "rank": 19,
       "name": "Allen Graves",
       "position": "PF",
       "positionGroup": "big",
@@ -943,7 +997,7 @@
       "comp2Sim": 96
     },
     {
-      "rank": 19,
+      "rank": 20,
       "name": "Joshua Jefferson",
       "position": "PF",
       "positionGroup": "big",
@@ -997,7 +1051,7 @@
       "comp2Sim": 96
     },
     {
-      "rank": 20,
+      "rank": 21,
       "name": "Hannes Steinbach",
       "position": "PF",
       "positionGroup": "big",
@@ -1050,7 +1104,7 @@
       "comp2Sim": 96
     },
     {
-      "rank": 21,
+      "rank": 22,
       "name": "Morez Johnson Jr.",
       "position": "PF",
       "positionGroup": "big",
@@ -1102,7 +1156,7 @@
       "comp2Sim": 96
     },
     {
-      "rank": 22,
+      "rank": 23,
       "name": "Zuby Ejiofor",
       "position": "PF",
       "positionGroup": "big",
@@ -1131,7 +1185,7 @@
       "grade": "D",
       "tankRank": 36,
       "tier": "full",
-      "note": "Age penalty -2.0 (22.1y); Scout tier adj +1.6 (Tank #36); Model #22 vs Tankathon #36 (14 spots below consensus)",
+      "note": "Age penalty -2.0 (22.1y); Scout tier adj +1.6 (Tank #36); Model #23 vs Tankathon #36 (13 spots below consensus)",
       "heightFloor": 0.0,
       "combinePen": 0.0,
       "headshot": "https://a.espncdn.com/i/headshots/mens-college-basketball/players/full/5106262.png",
@@ -1153,54 +1207,6 @@
       "comp2Year": 2021,
       "comp2Pick": 3,
       "comp2Sim": 96
-    },
-    {
-      "rank": 23,
-      "name": "Karim Lopez",
-      "position": "SF",
-      "positionGroup": "wing",
-      "college": "International",
-      "age": 19.2,
-      "bpm": null,
-      "dbpm": null,
-      "obpm": null,
-      "per": 17.5,
-      "ts": 0.58,
-      "fgPct": 0.494,
-      "ws40": null,
-      "ppg": 11.9,
-      "rpg": 6.1,
-      "apg": 1.9,
-      "stlPg": 1.2,
-      "blkPg": 1.0,
-      "orbPct": null,
-      "astPct": null,
-      "mpsComposite": 50.9,
-      "srsAdj": 0.0,
-      "ageAdj": 7.0,
-      "scoutAdj": 0.0,
-      "availAdj": 0.0,
-      "mps": 62.9,
-      "grade": "D",
-      "tankRank": 13,
-      "tier": "medium",
-      "note": "INTL PARTIAL \u2014 9 features (medium), no CBB data; treat as directional; International (Real Madrid, Spain) \u2014 BPM unavailable; MPS based on available box stats only. Likely underrated.",
-      "heightFloor": 0.0,
-      "combinePen": 0.0,
-      "headshot": null,
-      "strengths": [
-        "Above-average scorer efficiency",
-        "Top-tier youth upside"
-      ],
-      "weaknesses": [],
-      "comp1": "Michael Kidd-Gilchrist",
-      "comp1Year": 2012,
-      "comp1Pick": 2,
-      "comp1Sim": 97,
-      "comp2": "Keldon Johnson",
-      "comp2Year": 2019,
-      "comp2Pick": 29,
-      "comp2Sim": 97
     },
     {
       "rank": 24,
@@ -1255,6 +1261,54 @@
     },
     {
       "rank": 25,
+      "name": "Karim Lopez",
+      "position": "SF",
+      "positionGroup": "wing",
+      "college": "International",
+      "age": 19.2,
+      "bpm": null,
+      "dbpm": null,
+      "obpm": null,
+      "per": 17.5,
+      "ts": 0.58,
+      "fgPct": 0.494,
+      "ws40": null,
+      "ppg": 11.9,
+      "rpg": 6.1,
+      "apg": 1.9,
+      "stlPg": 1.2,
+      "blkPg": 1.0,
+      "orbPct": null,
+      "astPct": null,
+      "mpsComposite": 50.9,
+      "srsAdj": 0.0,
+      "ageAdj": 7.0,
+      "scoutAdj": 0.0,
+      "availAdj": 0.0,
+      "mps": 62.9,
+      "grade": "D",
+      "tankRank": 13,
+      "tier": "medium",
+      "note": "INTL PARTIAL \u2014 9 features (medium), no CBB data; treat as directional; International (Real Madrid, Spain) \u2014 BPM unavailable; MPS based on available box stats only. Likely underrated.; Model #25 vs Tankathon #13 (12 spots above consensus)",
+      "heightFloor": 0.0,
+      "combinePen": 0.0,
+      "headshot": null,
+      "strengths": [
+        "Above-average scorer efficiency",
+        "Top-tier youth upside"
+      ],
+      "weaknesses": [],
+      "comp1": "Michael Kidd-Gilchrist",
+      "comp1Year": 2012,
+      "comp1Pick": 2,
+      "comp1Sim": 97,
+      "comp2": "Keldon Johnson",
+      "comp2Year": 2019,
+      "comp2Pick": 29,
+      "comp2Sim": 97
+    },
+    {
+      "rank": 26,
       "name": "Luigi Suigo",
       "position": "C",
       "positionGroup": "big",
@@ -1283,7 +1337,7 @@
       "grade": "D",
       "tankRank": 37,
       "tier": "medium",
-      "note": "INTL PARTIAL \u2014 9 features (medium), no CBB data; treat as directional; International (Aquila Basket Trento, Italy) \u2014 BPM unavailable; scored on available stats.; Model #25 vs Tankathon #37 (12 spots below consensus)",
+      "note": "INTL PARTIAL \u2014 9 features (medium), no CBB data; treat as directional; International (Aquila Basket Trento, Italy) \u2014 BPM unavailable; scored on available stats.; Model #26 vs Tankathon #37 (11 spots below consensus)",
       "heightFloor": 0.0,
       "combinePen": 0.0,
       "headshot": null,
@@ -1304,7 +1358,7 @@
       "comp2Sim": 96
     },
     {
-      "rank": 26,
+      "rank": 27,
       "name": "Bruce Thornton",
       "position": "PG",
       "positionGroup": "guard",
@@ -1333,7 +1387,7 @@
       "grade": "D",
       "tankRank": 47,
       "tier": "full",
-      "note": "Age penalty -2.0 (22.1y); Scout tier adj +1.6 (Tank #47); Model #26 vs Tankathon #47 (21 spots below consensus)",
+      "note": "Age penalty -2.0 (22.1y); Scout tier adj +1.6 (Tank #47); Model #27 vs Tankathon #47 (20 spots below consensus)",
       "heightFloor": 0.0,
       "combinePen": 0.0,
       "headshot": "https://a.espncdn.com/i/headshots/mens-college-basketball/players/full/5105837.png",
@@ -1356,7 +1410,7 @@
       "comp2Sim": 96
     },
     {
-      "rank": 27,
+      "rank": 28,
       "name": "Maliq Brown",
       "position": "SF",
       "positionGroup": "wing",
@@ -1385,7 +1439,7 @@
       "grade": "D",
       "tankRank": 56,
       "tier": "full",
-      "note": "Age penalty -4.6 (22.8y); Scout tier adj +1.6 (Tank #56); Wing position: 50/50 weight blend (guard/big) \u2014 physical projection not fully captured in model; Model #27 vs Tankathon #56 (29 spots below consensus)",
+      "note": "Age penalty -4.6 (22.8y); Scout tier adj +1.6 (Tank #56); Wing position: 50/50 weight blend (guard/big) \u2014 physical projection not fully captured in model; Model #28 vs Tankathon #56 (28 spots below consensus)",
       "heightFloor": 0.0,
       "combinePen": 0.0,
       "headshot": "https://a.espncdn.com/i/headshots/mens-college-basketball/players/full/5105337.png",
@@ -1408,7 +1462,7 @@
       "comp2Sim": 92
     },
     {
-      "rank": 28,
+      "rank": 29,
       "name": "Henri Veesaar",
       "position": "C",
       "positionGroup": "big",
@@ -1461,7 +1515,7 @@
       "comp2Sim": 97
     },
     {
-      "rank": 29,
+      "rank": 30,
       "name": "Pavle Backo",
       "position": "C",
       "positionGroup": "big",
@@ -1490,7 +1544,7 @@
       "grade": "D",
       "tankRank": 61,
       "tier": "medium",
-      "note": "INTL PARTIAL \u2014 8 features (medium), no CBB data; treat as directional; International (KK Mega Basket, Serbia) \u2014 BPM unavailable; scored on available stats.; Model #29 vs Tankathon #61 (32 spots below consensus)",
+      "note": "INTL PARTIAL \u2014 8 features (medium), no CBB data; treat as directional; International (KK Mega Basket, Serbia) \u2014 BPM unavailable; scored on available stats.; Model #30 vs Tankathon #61 (31 spots below consensus)",
       "heightFloor": 0.0,
       "combinePen": 0.0,
       "headshot": null,
@@ -1509,7 +1563,7 @@
       "comp2Sim": 96
     },
     {
-      "rank": 30,
+      "rank": 31,
       "name": "Christian Anderson",
       "position": "PG",
       "positionGroup": "guard",
@@ -1561,7 +1615,7 @@
       "comp2Sim": 96
     },
     {
-      "rank": 31,
+      "rank": 32,
       "name": "Cameron Carr",
       "position": "SF",
       "positionGroup": "wing",
@@ -1590,7 +1644,7 @@
       "grade": "D",
       "tankRank": 16,
       "tier": "full",
-      "note": "Age penalty -0.2 (21.6y); Scout tier adj +3.6 (Tank #16); BPM from Tankathon (CBB unavailable \u2014 same scale confirmed); Wing position: 50/50 weight blend (guard/big) \u2014 physical projection not fully captured in model; Model #31 vs Tankathon #16 (15 spots above consensus)",
+      "note": "Age penalty -0.2 (21.6y); Scout tier adj +3.6 (Tank #16); BPM from Tankathon (CBB unavailable \u2014 same scale confirmed); Wing position: 50/50 weight blend (guard/big) \u2014 physical projection not fully captured in model; Model #32 vs Tankathon #16 (16 spots above consensus)",
       "heightFloor": 0.0,
       "combinePen": 0.0,
       "headshot": "https://a.espncdn.com/i/headshots/mens-college-basketball/players/full/5113969.png",
@@ -1611,7 +1665,7 @@
       "comp2Sim": 97
     },
     {
-      "rank": 32,
+      "rank": 33,
       "name": "Baba Miller",
       "position": "SF",
       "positionGroup": "wing",
@@ -1640,7 +1694,7 @@
       "grade": "D",
       "tankRank": 46,
       "tier": "full",
-      "note": "Age penalty -3.1 (22.4y); Scout tier adj +1.6 (Tank #46); Wing position: 50/50 weight blend (guard/big) \u2014 physical projection not fully captured in model; Model #32 vs Tankathon #46 (14 spots below consensus)",
+      "note": "Age penalty -3.1 (22.4y); Scout tier adj +1.6 (Tank #46); Wing position: 50/50 weight blend (guard/big) \u2014 physical projection not fully captured in model; Model #33 vs Tankathon #46 (13 spots below consensus)",
       "heightFloor": 0.0,
       "combinePen": 0.0,
       "headshot": "https://a.espncdn.com/i/headshots/mens-college-basketball/players/full/5075626.png",
@@ -1661,7 +1715,7 @@
       "comp2Sim": 95
     },
     {
-      "rank": 33,
+      "rank": 34,
       "name": "Chris Cenac Jr.",
       "position": "PF",
       "positionGroup": "big",
@@ -1690,7 +1744,7 @@
       "grade": "D",
       "tankRank": 15,
       "tier": "full",
-      "note": "Scout tier adj +3.6 (Tank #15); Model #33 vs Tankathon #15 (18 spots above consensus)",
+      "note": "Scout tier adj +3.6 (Tank #15); Model #34 vs Tankathon #15 (19 spots above consensus)",
       "heightFloor": 0.0,
       "combinePen": 0.0,
       "headshot": "https://a.espncdn.com/i/headshots/mens-college-basketball/players/full/5142621.png",
@@ -1713,7 +1767,7 @@
       "comp2Sim": 97
     },
     {
-      "rank": 34,
+      "rank": 35,
       "name": "Bennett Stirtz",
       "position": "PG",
       "positionGroup": "guard",
@@ -1742,7 +1796,7 @@
       "grade": "D",
       "tankRank": 22,
       "tier": "full",
-      "note": "Age penalty -3.7 (22.6y); Scout tier adj +3.6 (Tank #22); Model #34 vs Tankathon #22 (12 spots above consensus)",
+      "note": "Age penalty -3.7 (22.6y); Scout tier adj +3.6 (Tank #22); Model #35 vs Tankathon #22 (13 spots above consensus)",
       "heightFloor": 0.0,
       "combinePen": 0.0,
       "headshot": "https://a.espncdn.com/i/headshots/mens-college-basketball/players/full/5241364.png",
@@ -1767,7 +1821,7 @@
       "comp2Sim": 97
     },
     {
-      "rank": 35,
+      "rank": 36,
       "name": "Izaiyah Nelson",
       "position": "PF",
       "positionGroup": "big",
@@ -1796,7 +1850,7 @@
       "grade": "D",
       "tankRank": 50,
       "tier": "full",
-      "note": "Low-major (South Florida) \u2014 SRS adjustment partially corrects inflated BPM; Age penalty -4.3 (22.7y); Scout tier adj +1.6 (Tank #50); Model #35 vs Tankathon #50 (15 spots below consensus)",
+      "note": "Low-major (South Florida) \u2014 SRS adjustment partially corrects inflated BPM; Age penalty -4.3 (22.7y); Scout tier adj +1.6 (Tank #50); Model #36 vs Tankathon #50 (14 spots below consensus)",
       "heightFloor": 0.0,
       "combinePen": 0.0,
       "headshot": "https://a.espncdn.com/i/headshots/mens-college-basketball/players/full/5107251.png",
@@ -1818,7 +1872,7 @@
       "comp2Sim": 97
     },
     {
-      "rank": 36,
+      "rank": 37,
       "name": "Isaiah Evans",
       "position": "SG",
       "positionGroup": "guard",
@@ -1847,7 +1901,7 @@
       "grade": "D",
       "tankRank": 26,
       "tier": "full",
-      "note": "Youth bonus +2.0; Scout tier adj +3.6 (Tank #26)",
+      "note": "Youth bonus +2.0; Scout tier adj +3.6 (Tank #26); Model #37 vs Tankathon #26 (11 spots above consensus)",
       "heightFloor": 0.0,
       "combinePen": 0.0,
       "headshot": "https://a.espncdn.com/i/headshots/mens-college-basketball/players/full/5061585.png",
@@ -1868,7 +1922,7 @@
       "comp2Sim": 97
     },
     {
-      "rank": 37,
+      "rank": 38,
       "name": "Quadir Copeland",
       "position": "SG",
       "positionGroup": "guard",
@@ -1917,7 +1971,7 @@
       "comp2Sim": 97
     },
     {
-      "rank": 38,
+      "rank": 39,
       "name": "Meleek Thomas",
       "position": "SG",
       "positionGroup": "guard",
@@ -1968,7 +2022,7 @@
       "comp2Sim": 97
     },
     {
-      "rank": 39,
+      "rank": 40,
       "name": "Tamin Lipsey",
       "position": "PG",
       "positionGroup": "guard",
@@ -1997,7 +2051,7 @@
       "grade": "D",
       "tankRank": 60,
       "tier": "full",
-      "note": "G League combine only \u2014 not invited to NBA Draft Combine; Age penalty -3.7 (22.6y); Combine penalty -3.0 (G League invite only); Scout tier adj +1.6 (Tank #60); Model #39 vs Tankathon #60 (21 spots below consensus)",
+      "note": "G League combine only \u2014 not invited to NBA Draft Combine; Age penalty -3.7 (22.6y); Combine penalty -3.0 (G League invite only); Scout tier adj +1.6 (Tank #60); Model #40 vs Tankathon #60 (20 spots below consensus)",
       "heightFloor": 0.0,
       "combinePen": -3.0,
       "headshot": "https://a.espncdn.com/i/headshots/mens-college-basketball/players/full/5106254.png",
@@ -2020,7 +2074,7 @@
       "comp2Sim": 96
     },
     {
-      "rank": 40,
+      "rank": 41,
       "name": "Ja'Kobi Gillespie",
       "position": "PG",
       "positionGroup": "guard",
@@ -2073,7 +2127,7 @@
       "comp2Sim": 96
     },
     {
-      "rank": 41,
+      "rank": 42,
       "name": "Malik Reneau",
       "position": "PF",
       "positionGroup": "big",
@@ -2102,7 +2156,7 @@
       "grade": "D",
       "tankRank": 70,
       "tier": "full",
-      "note": "Age penalty -4.6 (22.8y); Model #41 vs Tankathon #70 (29 spots below consensus)",
+      "note": "Age penalty -4.6 (22.8y); Model #42 vs Tankathon #70 (28 spots below consensus)",
       "heightFloor": 0.0,
       "combinePen": 0.0,
       "headshot": "https://a.espncdn.com/i/headshots/mens-college-basketball/players/full/5105798.png",
@@ -2124,7 +2178,7 @@
       "comp2Sim": 96
     },
     {
-      "rank": 42,
+      "rank": 43,
       "name": "Braden Smith",
       "position": "PG",
       "positionGroup": "guard",
@@ -2153,7 +2207,7 @@
       "grade": "D",
       "tankRank": 55,
       "tier": "full",
-      "note": "Age penalty -4.9 (22.9y); Scout tier adj +1.6 (Tank #55); Model #42 vs Tankathon #55 (13 spots below consensus)",
+      "note": "Age penalty -4.9 (22.9y); Scout tier adj +1.6 (Tank #55); Model #43 vs Tankathon #55 (12 spots below consensus)",
       "heightFloor": 0.0,
       "combinePen": 0.0,
       "headshot": "https://a.espncdn.com/i/headshots/mens-college-basketball/players/full/5105854.png",
@@ -2175,7 +2229,7 @@
       "comp2Sim": 95
     },
     {
-      "rank": 43,
+      "rank": 44,
       "name": "Trevon Brazile",
       "position": "PF",
       "positionGroup": "big",
@@ -2226,7 +2280,7 @@
       "comp2Sim": 96
     },
     {
-      "rank": 44,
+      "rank": 45,
       "name": "Nick Martinelli",
       "position": "SF",
       "positionGroup": "wing",
@@ -2277,7 +2331,7 @@
       "comp2Sim": 97
     },
     {
-      "rank": 45,
+      "rank": 46,
       "name": "Felix Okpara",
       "position": "C",
       "positionGroup": "big",
@@ -2306,7 +2360,7 @@
       "grade": "D",
       "tankRank": 58,
       "tier": "full",
-      "note": "Age penalty -2.4 (22.2y); Scout tier adj +1.6 (Tank #58); Model #45 vs Tankathon #58 (13 spots below consensus)",
+      "note": "Age penalty -2.4 (22.2y); Scout tier adj +1.6 (Tank #58); Model #46 vs Tankathon #58 (12 spots below consensus)",
       "heightFloor": 0.0,
       "combinePen": 0.0,
       "headshot": "https://a.espncdn.com/i/headshots/mens-college-basketball/players/full/5105841.png",
@@ -2329,7 +2383,7 @@
       "comp2Sim": 96
     },
     {
-      "rank": 46,
+      "rank": 47,
       "name": "Ryan Conwell",
       "position": "SG",
       "positionGroup": "guard",
@@ -2377,7 +2431,7 @@
       "comp2Sim": 97
     },
     {
-      "rank": 47,
+      "rank": 48,
       "name": "Trey Kaufman-Renn",
       "position": "PF",
       "positionGroup": "big",
@@ -2406,7 +2460,7 @@
       "grade": "D",
       "tankRank": 67,
       "tier": "full",
-      "note": "Age penalty -6.3 (23.3y); Model #47 vs Tankathon #67 (20 spots below consensus)",
+      "note": "Age penalty -6.3 (23.3y); Model #48 vs Tankathon #67 (19 spots below consensus)",
       "heightFloor": 0.0,
       "combinePen": 0.0,
       "headshot": "https://a.espncdn.com/i/headshots/mens-college-basketball/players/full/4897438.png",
@@ -2428,7 +2482,7 @@
       "comp2Sim": 97
     },
     {
-      "rank": 48,
+      "rank": 49,
       "name": "Jaden Bradley",
       "position": "PG",
       "positionGroup": "guard",
@@ -2478,7 +2532,7 @@
       "comp2Sim": 96
     },
     {
-      "rank": 49,
+      "rank": 50,
       "name": "Richie Saunders",
       "position": "SG",
       "positionGroup": "guard",
@@ -2507,7 +2561,7 @@
       "grade": "D",
       "tankRank": 38,
       "tier": "full",
-      "note": "Age penalty -12.5 (25.1y); Scout tier adj +1.6 (Tank #38); Model #49 vs Tankathon #38 (11 spots above consensus)",
+      "note": "Age penalty -12.5 (25.1y); Scout tier adj +1.6 (Tank #38); Model #50 vs Tankathon #38 (12 spots above consensus)",
       "heightFloor": 0.0,
       "combinePen": 0.0,
       "headshot": "https://a.espncdn.com/i/headshots/mens-college-basketball/players/full/5105462.png",
@@ -2530,7 +2584,7 @@
       "comp2Sim": 96
     },
     {
-      "rank": 50,
+      "rank": 51,
       "name": "Tyler Bilodeau",
       "position": "PF",
       "positionGroup": "big",
@@ -2581,7 +2635,7 @@
       "comp2Sim": 96
     },
     {
-      "rank": 51,
+      "rank": 52,
       "name": "Nate Bittle",
       "position": "C",
       "positionGroup": "big",
@@ -2610,7 +2664,7 @@
       "grade": "D",
       "tankRank": 66,
       "tier": "full",
-      "note": "Age penalty -3.7 (22.6y); Model #51 vs Tankathon #66 (15 spots below consensus)",
+      "note": "Age penalty -3.7 (22.6y); Model #52 vs Tankathon #66 (14 spots below consensus)",
       "heightFloor": 0.0,
       "combinePen": 0.0,
       "headshot": "https://a.espncdn.com/i/headshots/mens-college-basketball/players/full/4432586.png",
@@ -2631,7 +2685,7 @@
       "comp2Sim": 96
     },
     {
-      "rank": 52,
+      "rank": 53,
       "name": "Alex Karaban",
       "position": "PF",
       "positionGroup": "big",
@@ -2660,7 +2714,7 @@
       "grade": "D",
       "tankRank": 35,
       "tier": "full",
-      "note": "Age penalty -6.3 (23.3y); Scout tier adj +1.6 (Tank #35); Model #52 vs Tankathon #35 (17 spots above consensus)",
+      "note": "Age penalty -6.3 (23.3y); Scout tier adj +1.6 (Tank #35); Model #53 vs Tankathon #35 (18 spots above consensus)",
       "heightFloor": 0.0,
       "combinePen": 0.0,
       "headshot": "https://a.espncdn.com/i/headshots/mens-college-basketball/players/full/4917149.png",
@@ -2681,7 +2735,7 @@
       "comp2Sim": 97
     },
     {
-      "rank": 53,
+      "rank": 54,
       "name": "Otega Oweh",
       "position": "SG",
       "positionGroup": "guard",
@@ -2732,7 +2786,7 @@
       "comp2Sim": 97
     },
     {
-      "rank": 54,
+      "rank": 55,
       "name": "Emanuel Sharp",
       "position": "SG",
       "positionGroup": "guard",
@@ -2784,7 +2838,7 @@
       "comp2Sim": 96
     },
     {
-      "rank": 55,
+      "rank": 56,
       "name": "Kylan Boswell",
       "position": "PG",
       "positionGroup": "guard",
@@ -2834,7 +2888,7 @@
       "comp2Sim": 96
     },
     {
-      "rank": 56,
+      "rank": 57,
       "name": "Peter Suder",
       "position": "C",
       "positionGroup": "big",
@@ -2886,7 +2940,7 @@
       "comp2Sim": 94
     },
     {
-      "rank": 57,
+      "rank": 58,
       "name": "Keyshawn Hall",
       "position": "SF",
       "positionGroup": "wing",
@@ -2938,7 +2992,7 @@
       "comp2Sim": 97
     },
     {
-      "rank": 58,
+      "rank": 59,
       "name": "Tyler Nickel",
       "position": "SG",
       "positionGroup": "guard",
@@ -2988,7 +3042,7 @@
       "comp2Sim": 97
     },
     {
-      "rank": 59,
+      "rank": 60,
       "name": "Bryce Hopkins",
       "position": "SF",
       "positionGroup": "wing",
@@ -3036,59 +3090,6 @@
       "comp2Year": 2017,
       "comp2Pick": 33,
       "comp2Sim": 97
-    },
-    {
-      "rank": 60,
-      "name": "Jayden Quaintance",
-      "position": "PF",
-      "positionGroup": "big",
-      "college": "Kentucky",
-      "age": 18.95,
-      "bpm": 1.9,
-      "dbpm": 1.8,
-      "obpm": 0.0,
-      "per": 13.2,
-      "ts": 0.496,
-      "fgPct": 0.571,
-      "ws40": 0.06,
-      "ppg": 5.0,
-      "rpg": 5.0,
-      "apg": 0.5,
-      "stlPg": 0.5,
-      "blkPg": 0.8,
-      "orbPct": 13.7,
-      "astPct": 5.2,
-      "mpsComposite": 37.2,
-      "srsAdj": 2.7,
-      "ageAdj": 7.0,
-      "scoutAdj": 3.6,
-      "availAdj": -8.0,
-      "mps": 42.5,
-      "grade": "D",
-      "tankRank": 21,
-      "tier": "full",
-      "note": "ACL injury (Mar 2025 at ASU) \u2014 Kentucky season severely limited; Availability: 12% GP (4/33g); Youth bonus +7.0; Scout tier adj +3.6 (Tank #21); Model #60 vs Tankathon #21 (39 spots above consensus)",
-      "heightFloor": 0.0,
-      "combinePen": 0.0,
-      "headshot": "https://a.espncdn.com/i/headshots/mens-college-basketball/players/full/5101845.png",
-      "strengths": [
-        "Top-tier youth upside",
-        "Lottery consensus prospect"
-      ],
-      "weaknesses": [
-        "Below-average scoring efficiency",
-        "Limited box-score production",
-        "Low college scoring output",
-        "Injury/availability history"
-      ],
-      "comp1": "Ike Anigbogu",
-      "comp1Year": 2017,
-      "comp1Pick": 47,
-      "comp1Sim": 95,
-      "comp2": "Greg Brown III",
-      "comp2Year": 2021,
-      "comp2Pick": 43,
-      "comp2Sim": 95
     },
     {
       "rank": 61,
