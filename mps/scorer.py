@@ -617,6 +617,7 @@ PROSPECTS_2026 = [
         "cbb_url":     None,
         "combine":     None,
         "note":        "International (Aquila Basket Trento, Italy) — BPM unavailable; scored on available stats.",
+        "withdrew":    True,
     },
     # ── 2006-born tier ────────────────────────────────────────────────────────
     {
@@ -644,6 +645,7 @@ PROSPECTS_2026 = [
         "cbb_url":     None,
         "combine":     None,
         "note":        "International (KK Mega Basket, Serbia) — BPM unavailable; scored on available stats.",
+        "withdrew":    True,
     },
     {
         "player_name": "Darius Acuff Jr.",

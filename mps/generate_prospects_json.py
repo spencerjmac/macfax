@@ -302,6 +302,55 @@ def main() -> None:
             "comp2Sim":      _safe(row.get("comp2_sim"), int),
         })
 
+    # ── Apply consensus rank ordering ──────────────────────────────────────────
+    # Override model rank with consensus ordering (avg of MF/Tank/Ring/ESPN).
+    # Mara kept at #6 per editorial preference. Scores reassigned rank-order
+    # so displayed MPS decreases monotonically with rank.
+    CONSENSUS_ORDER = [
+        "Darryn Peterson", "Cameron Boozer", "AJ Dybantsa", "Caleb Wilson", "Keaton Wagler",
+        "Aday Mara", "Kingston Flemings", "Darius Acuff Jr.", "Brayden Burries", "Yaxel Lendeborg",
+        "Mikel Brown Jr.", "Nate Ament", "Labaron Philon", "Hannes Steinbach", "Morez Johnson Jr.",
+        "Jayden Quaintance", "Dailyn Swain", "Ebuka Okorie", "Allen Graves", "Cameron Carr",
+        "Bennett Stirtz", "Karim Lopez", "Christian Anderson", "Koa Peat", "Joshua Jefferson",
+        "Henri Veesaar", "Zuby Ejiofor", "Chris Cenac Jr.", "Tarris Reed Jr.", "Isaiah Evans",
+        "Meleek Thomas", "Baba Miller", "Ryan Conwell", "Alex Karaban", "Richie Saunders",
+        "Sergio De Larrea", "Ugonna Onyenso", "Bruce Thornton", "Maliq Brown", "Trevon Brazile",
+        "Jack Kayil", "Emanuel Sharp", "Izaiyah Nelson", "Braden Smith", "Ja'Kobi Gillespie",
+        "Jaden Bradley", "Nick Martinelli", "Felix Okpara", "Otega Oweh", "Tyler Nickel",
+        "Quadir Copeland", "Bryce Hopkins", "Aaron Nkrumah", "Tyler Bilodeau", "Tamin Lipsey",
+        "Kylan Boswell", "Nate Bittle", "Milos Uzan", "Trey Kaufman-Renn", "Keyshawn Hall",
+        "Malik Reneau", "Mark Mitchell", "Peter Suder", "Darrion Williams", "Tucker DeVries",
+    ]
+    by_name = {p["name"]: p for p in prospects}
+    known = [n for n in CONSENSUS_ORDER if n in by_name]
+    remaining = [p for p in prospects if p["name"] not in set(known)]
+    sorted_scores = sorted([p["mps"] for p in prospects], reverse=True)
+
+    def _grade(mps: float) -> str:
+        if mps >= 90.0: return "S"
+        if mps >= 80.0: return "A"
+        return "D"
+
+    reordered = []
+    score_idx = 0
+    for name in known:
+        p = dict(by_name[name])
+        new_mps = round(sorted_scores[score_idx], 1)
+        p["rank"] = score_idx + 1
+        p["mps"] = new_mps
+        p["grade"] = _grade(new_mps)
+        reordered.append(p)
+        score_idx += 1
+    for p in remaining:
+        p = dict(p)
+        new_mps = round(sorted_scores[score_idx], 1) if score_idx < len(sorted_scores) else p["mps"]
+        p["rank"] = score_idx + 1
+        p["mps"] = new_mps
+        p["grade"] = _grade(new_mps)
+        reordered.append(p)
+        score_idx += 1
+    prospects = reordered
+
     output = {
         "updatedAt": "2026-05-30",
         "totalProspects": len(prospects),
