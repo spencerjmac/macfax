@@ -185,6 +185,16 @@ class PlayerSeasonStats(models.Model):
     ts_pct = models.FloatField(null=True, blank=True, help_text="True Shooting% = PTS / (2*(FGA + 0.44*FTA))")
     # Playmaking ratio
     ast_to = models.FloatField(null=True, blank=True, help_text="Assist-to-turnover ratio")
+    # Box-score rate stats (minutes-adjusted where applicable)
+    usg_pct  = models.FloatField(null=True, blank=True, help_text="Usage% = (FGA + 0.44*FTA + TOV) / team_poss * (tm_mp/5/mp) * 100")
+    tov_pct  = models.FloatField(null=True, blank=True, help_text="Turnover% = TOV / (FGA + 0.44*FTA + TOV) * 100")
+    orb_pct  = models.FloatField(null=True, blank=True, help_text="Offensive Rebound% (minutes-adjusted)")
+    drb_pct  = models.FloatField(null=True, blank=True, help_text="Defensive Rebound% (minutes-adjusted)")
+    fta_rate = models.FloatField(null=True, blank=True, help_text="FTA Rate = FTA / FGA")
+    fg3_rate = models.FloatField(null=True, blank=True, help_text="3PA Rate = FG3A / FGA")
+    blk_pct  = models.FloatField(null=True, blank=True, help_text="Block% vs opp 2PA (minutes-adjusted)")
+    stl_pct  = models.FloatField(null=True, blank=True, help_text="Steal% vs opp possessions (minutes-adjusted)")
+    ast_usg  = models.FloatField(null=True, blank=True, help_text="AST/USG = assists per game / usg_pct")
     # On-court raw ratings (from ESPN PBP lineup reconstruction)
     on_court_secs_pg = models.FloatField(
         null=True, blank=True,

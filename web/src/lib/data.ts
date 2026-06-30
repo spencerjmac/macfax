@@ -7,6 +7,7 @@ const API_SEASONS_PATH = '/api/seasons/'
 /** Map API ranking row (snake_case) to frontend TeamSeason */
 function mapApiRowToTeamSeason(team: Record<string, unknown>): TeamSeason {
   const record = (team.record as string) || '0-0';
+  const lastUpdated = (team.updated_at as string) || (team.computed_at as string) || new Date().toISOString().slice(0, 10);
   const [wins, losses] = record.split('-').map(Number);
   const games = (wins || 0) + (losses || 0);
   const pct = (v: unknown): number | null =>
@@ -20,7 +21,7 @@ function mapApiRowToTeamSeason(team: Record<string, unknown>): TeamSeason {
     conference: (team.conference as string) || 'Ind',
     logoUrl: (team.team_logo as string) || '/logos/default.png',
     season: (team.season_display as string) || '',
-    lastUpdated: (team.updated_at as string) || new Date().toISOString().slice(0, 10),
+    lastUpdated,
     games,
     record,
     rank: (team.rank as number) ?? 0,
@@ -109,9 +110,9 @@ async function fetchRankingsFromApi(season?: number, isPreTournament?: boolean):
   const results = json.results ?? [];
   const teams = results.map(r => mapApiRowToTeamSeason(r));
 
-  // Use the most recent updated_at from any result row; fall back to now only if absent
+  // Use the most recent ratings timestamp from any result row; fall back to now only if absent.
   const apiTimestamps = results
-    .map(r => r.updated_at as string | undefined)
+    .map(r => (r.updated_at as string | undefined) || (r.computed_at as string | undefined))
     .filter(Boolean) as string[];
   const latestTimestamp = apiTimestamps.length
     ? apiTimestamps.reduce((a, b) => (a > b ? a : b))

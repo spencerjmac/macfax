@@ -16,6 +16,7 @@ import { TeamSeason, SeasonInfo } from '@/types';
 import Link from 'next/link';
 import clsx from 'clsx';
 import HeaderWithTooltip from './HeaderWithTooltip';
+import MetricDefinitionsCard, { type MetricDefinition } from './MetricDefinitionsCard';
 import { METRIC_DEFINITIONS, MetricMeta } from '@/lib/metricMetadata';
 import { computeRanks, heatStyleFromPercentile, RankData } from '@/lib/rankingUtils';
 
@@ -35,6 +36,36 @@ interface SubColSpec {
   /** Short label shown in the sub-column header (e.g. "Off", "Def", "Edge") */
   label: string;
 }
+
+const TEAM_METRIC_DEFINITIONS: Record<TabId, MetricDefinition[]> = {
+  overview: [
+    { k: 'AdjEM', v: 'Adjusted Efficiency Margin (AdjO - AdjD): expected points per 100 possessions above or below an average D-I team on a neutral court.' },
+    { k: 'AdjO', v: 'Adjusted Offensive Efficiency: points scored per 100 possessions, adjusted for opponent defense.' },
+    { k: 'AdjD', v: 'Adjusted Defensive Efficiency: points allowed per 100 possessions, adjusted for opponent offense; lower is better.' },
+    { k: 'Tempo', v: 'Adjusted pace: estimated possessions per 40 minutes, adjusted for opponent pace.' },
+    { k: 'FFI', v: 'Four Factor Index: 0-100 composite of shooting, turnovers, rebounding, and free throw rate; 50 is average and higher is better.' },
+  ],
+  'four-factors': [
+    { k: 'Raw', v: 'Unadjusted box-score four-factor rates before opponent-strength adjustments.' },
+    { k: 'eFG%', v: 'Effective Field Goal %: shooting efficiency that gives made threes extra credit.' },
+    { k: 'TOV%', v: 'Turnover rate: turnovers per possession; lower is better on offense and higher is better on defense.' },
+    { k: 'ORB%', v: 'Offensive rebounding rate: share of available offensive rebounds secured.' },
+    { k: 'DRB%', v: 'Defensive rebounding rate: share of opponent misses rebounded by the defense.' },
+    { k: 'FTR', v: 'Free throw rate: free throw attempts per field goal attempt.' },
+    { k: 'Margin / Edge', v: 'Team rate minus opponent rate, with TOV Edge using opponent TOV% minus team TOV%; positive is better.' },
+    { k: 'FFI', v: 'Raw Four Factor Index: 0-100 composite of raw shooting, turnovers, rebounding, and free throw rate.' },
+  ],
+  'adjusted-four-factors': [
+    { k: 'Adjusted', v: 'Four-factor rates adjusted for opponent quality so teams can be compared across schedules.' },
+    { k: 'eFG%', v: 'Adjusted effective field goal percentage: shooting efficiency with made threes receiving extra credit.' },
+    { k: 'TOV%', v: 'Adjusted turnover rate: turnovers per possession; lower is better on offense and higher is better on defense.' },
+    { k: 'ORB%', v: 'Adjusted offensive rebounding rate: share of available offensive rebounds secured.' },
+    { k: 'DRB%', v: 'Adjusted defensive rebounding rate: share of opponent misses rebounded by the defense.' },
+    { k: 'FTR', v: 'Adjusted free throw rate: free throw attempts per field goal attempt.' },
+    { k: 'Margin / Edge', v: 'Adjusted team advantage over opponents, with positive values meaning the four-factor battle favors the team.' },
+    { k: 'FFI', v: 'Adjusted Four Factor Index: 0-100 composite of adjusted four-factor margins; higher is better.' },
+  ],
+};
 
 export default function RankingsTable({ data, seasons = [], selectedSeason, isPreTournament = false }: RankingsTableProps) {
   const router = useRouter();
@@ -582,6 +613,8 @@ export default function RankingsTable({ data, seasons = [], selectedSeason, isPr
           No teams found matching your search.
         </div>
       )}
+
+      <MetricDefinitionsCard definitions={TEAM_METRIC_DEFINITIONS[activeTab]} />
     </div>
   );
 }

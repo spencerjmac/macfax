@@ -162,6 +162,8 @@ class RankingsSerializer(serializers.Serializer):
     season_display = serializers.CharField(source="season.display_name")
     conference = serializers.SerializerMethodField()
     record = serializers.SerializerMethodField()
+    computed_at = serializers.DateTimeField()
+    updated_at = serializers.DateTimeField(source="computed_at")
 
     # Adjusted ratings from TeamSeasonRatings
     adj_em = serializers.FloatField()

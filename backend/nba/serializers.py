@@ -16,6 +16,7 @@ from .models import (
     TeamSeasonOutlook,
     TeamOutseasonMove,
     ProjectedStarter,
+    NBAProjectedRosterSlot,
 )
 
 
@@ -90,6 +91,10 @@ class NBAPlayerSeasonStatsSerializer(serializers.ModelSerializer):
     team_slug = serializers.CharField(source="team.slug", read_only=True, allow_null=True)
     season_display = serializers.CharField(source="season.display_name", read_only=True)
 
+    # RAPM aliases — expose baseline RAPM under display-friendly names
+    rapm_o = serializers.FloatField(source="baseline_obpr", read_only=True, allow_null=True)
+    rapm_d = serializers.FloatField(source="baseline_dbpr", read_only=True, allow_null=True)
+
     # Replacement-adjusted BPR — computed at serialization time, never stored
     # Replacement level = BPR -2.0 (freely available player, industry standard)
     # Displayed as 0 = replacement, positive = above replacement
@@ -135,8 +140,9 @@ class NBAPlayerSeasonStatsSerializer(serializers.ModelSerializer):
             "wins_added",
             # Box BPR (intermediate — not displayed directly)
             "box_obpr", "box_dbpr", "box_bpr", "nba_archetype",
-            # Baseline RAPM
+            # Baseline RAPM (raw, no prior) — also exposed as rapm_o/rapm_d aliases
             "baseline_obpr", "baseline_dbpr",
+            "rapm_o", "rapm_d",
             "bpr_last_updated",
             "updated_at",
         ]
@@ -210,6 +216,17 @@ class ProjectedStarterSerializer(serializers.ModelSerializer):
         ]
 
 
+class NBAProjectedRosterSlotSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = NBAProjectedRosterSlot
+        fields = [
+            "id", "player_name", "position", "archetype", "age",
+            "acquisition_type", "confidence",
+            "projected_obpr", "projected_dbpr", "projected_bpr",
+            "projected_minutes_share", "projected_wins_added",
+        ]
+
+
 class TeamSeasonOutlookListSerializer(serializers.ModelSerializer):
     league_rank = serializers.SerializerMethodField()
     logo_url = serializers.SerializerMethodField()
@@ -239,24 +256,36 @@ class TeamSeasonOutlookListSerializer(serializers.ModelSerializer):
 class TeamSeasonOutlookDetailSerializer(serializers.ModelSerializer):
     offseason_moves = TeamOutseasonMoveSerializer(many=True, read_only=True)
     projected_starters = ProjectedStarterSerializer(many=True, read_only=True)
+    projected_roster_slots = NBAProjectedRosterSlotSerializer(many=True, read_only=True)
     league_rank = serializers.SerializerMethodField()
     logo_url = serializers.SerializerMethodField()
 
     class Meta:
         model = TeamSeasonOutlook
         fields = [
+            # Identity
             "team_name", "team_abbr", "team_slug", "conference",
             "primary_color", "secondary_color", "logo_url",
+            # Prior season
             "wins", "losses",
             "adj_offensive_rating", "adj_defensive_rating", "adj_net_rating",
             "ffi", "pace",
             "efg_pct", "opp_efg_pct", "tov_pct", "opp_tov_pct",
             "oreb_pct", "opp_oreb_pct", "fta_rate", "opp_fta_rate",
+            # Projections
             "projected_wins", "projected_losses", "projected_adj_net",
+            "projected_adj_o", "projected_adj_d",
+            "projected_floor_wins", "projected_ceil_wins",
+            # Roster construction metrics
+            "continuity_score", "weighted_effective_age", "top2_bpr_concentration",
+            # Cap
+            "cap_total_salary", "cap_status_tier",
+            # Editorial
             "outlook_tier", "season_headline", "macfax_take",
             "development_spotlight_player", "development_spotlight_text",
             "season_defining_variable",
-            "offseason_moves", "projected_starters",
+            # Relations
+            "offseason_moves", "projected_starters", "projected_roster_slots",
             "league_rank",
         ]
 

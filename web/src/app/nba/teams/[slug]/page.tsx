@@ -5,6 +5,8 @@ import type {
   TeamSeasonOutlookDetail,
   TeamOutseasonMove,
   ProjectedStarter,
+  NBAProjectedRosterSlot,
+  CapStatusTier,
   OutlookTier,
 } from '@/types/nba';
 import { nbaApi } from '@/lib/nba-api';
@@ -181,6 +183,320 @@ function StarterCard({ starter }: { starter: ProjectedStarter }) {
         </p>
       )}
     </div>
+  );
+}
+
+// ── BPR color helper ─────────────────────────────────────────────────────────
+function bprColor(v: number | null): string {
+  if (v === null) return 'text-text-muted';
+  if (v >= 5) return 'text-emerald-400';
+  if (v >= 3) return 'text-teal-400';
+  if (v >= 0) return 'text-text-primary';
+  return 'text-negative';
+}
+
+function fmtBpr(v: number | null): string {
+  if (v === null) return '—';
+  return (v >= 0 ? '+' : '') + v.toFixed(1);
+}
+
+// ── Acquisition type badge ────────────────────────────────────────────────────
+const ACQTYPE_STYLES: Record<NBAProjectedRosterSlot['acquisition_type'], string> = {
+  returner: 'bg-blue-500/15 text-blue-400 border border-blue-500/25',
+  extended: 'bg-blue-500/15 text-blue-400 border border-blue-500/25',
+  signed: 'bg-positive/15 text-positive border border-positive/25',
+  traded_in: 'bg-amber-500/15 text-amber-400 border border-amber-500/25',
+  drafted: 'bg-purple-500/15 text-purple-400 border border-purple-500/25',
+};
+const ACQTYPE_LABELS: Record<NBAProjectedRosterSlot['acquisition_type'], string> = {
+  returner: 'Rtr',
+  extended: 'Ext',
+  signed: 'FA',
+  traded_in: 'Trd',
+  drafted: 'Rk',
+};
+
+// ── Cap thresholds 2026-27 ────────────────────────────────────────────────────
+const CAP_THRESHOLDS = [
+  { label: 'Floor', value: 149_000_000, color: '#6b7280' },
+  { label: 'Cap', value: 165_000_000, color: '#6b7280' },
+  { label: 'Tax', value: 201_000_000, color: '#eab308' },
+  { label: '1st Apron', value: 209_000_000, color: '#f97316' },
+  { label: '2nd Apron', value: 222_000_000, color: '#ef4444' },
+];
+const CAP_MIN = 130_000_000;
+const CAP_MAX = 240_000_000;
+const CAP_TIER_LABELS: Record<CapStatusTier, string> = {
+  under_cap: 'Under Cap',
+  over_cap: 'Over Cap',
+  taxpayer: 'Luxury Taxpayer',
+  first_apron: 'First Apron',
+  second_apron: 'Second Apron',
+};
+const CAP_TIER_CONSEQUENCES: Record<CapStatusTier, string> = {
+  under_cap: 'Full cap room; can sign any player.',
+  over_cap: 'Non-Taxpayer MLE (~$15M); sign-and-trade in/out.',
+  taxpayer: 'Taxpayer MLE (~$6M); paying tax dollar-for-dollar.',
+  first_apron: 'No BAE/Non-Taxpayer MLE; sign-and-trade restricted.',
+  second_apron: 'Cannot aggregate salaries in trades; no buyout signings.',
+};
+const CAP_TIER_CLASSES: Record<CapStatusTier, string> = {
+  under_cap: 'bg-ui-surface text-text-muted border border-ui-border',
+  over_cap: 'bg-amber-500/15 text-amber-400 border border-amber-500/25',
+  taxpayer: 'bg-orange-500/15 text-orange-400 border border-orange-500/25',
+  first_apron: 'bg-orange-600/15 text-orange-500 border border-orange-600/25',
+  second_apron: 'bg-negative/15 text-negative border border-negative/25',
+};
+
+function fmtSalaryM(v: number): string {
+  return `$${(v / 1_000_000).toFixed(0)}M`;
+}
+
+// ── Projected Roster Table ────────────────────────────────────────────────────
+function ProjectedRosterTable({ slots }: { slots: NBAProjectedRosterSlot[] }) {
+  const sorted = [...slots].sort(
+    (a, b) => (b.projected_minutes_share ?? 0) - (a.projected_minutes_share ?? 0),
+  );
+  return (
+    <div className="bg-ui-card border border-ui-border rounded-lg overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-ui-border">
+              <th className="table-header text-left py-2.5 px-4">Player</th>
+              <th className="table-header text-center py-2.5 px-3">Arch</th>
+              <th className="table-header text-center py-2.5 px-3">OBPR</th>
+              <th className="table-header text-center py-2.5 px-3">DBPR</th>
+              <th className="table-header text-center py-2.5 px-3">BPR</th>
+              <th className="table-header text-center py-2.5 px-3">Min%</th>
+              <th className="table-header text-center py-2.5 px-3">W+</th>
+              <th className="table-header text-center py-2.5 px-3">Type</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((slot) => (
+              <tr key={slot.id} className="border-b border-ui-border last:border-0 hover:bg-ui-surface/40">
+                <td className="py-2 px-4">
+                  <span className="text-[13px] font-medium text-text-primary">{slot.player_name}</span>
+                </td>
+                <td className="py-2 px-3 text-center">
+                  {slot.archetype ? (
+                    <span className="text-[11px] text-text-muted font-mono uppercase tracking-wide">
+                      {slot.archetype.replace(/_/g, ' ')}
+                    </span>
+                  ) : (
+                    <span className="text-[11px] text-text-muted">—</span>
+                  )}
+                </td>
+                <td className={`py-2 px-3 text-center font-mono text-[13px] ${bprColor(slot.projected_obpr)}`}>
+                  {fmtBpr(slot.projected_obpr)}
+                </td>
+                <td className={`py-2 px-3 text-center font-mono text-[13px] ${bprColor(slot.projected_dbpr)}`}>
+                  {fmtBpr(slot.projected_dbpr)}
+                </td>
+                <td className={`py-2 px-3 text-center font-mono text-[13px] font-semibold ${bprColor(slot.projected_bpr)}`}>
+                  {fmtBpr(slot.projected_bpr)}
+                </td>
+                <td className="py-2 px-3 text-center font-mono text-[13px] text-text-muted">
+                  {slot.projected_minutes_share !== null
+                    ? `${((slot.projected_minutes_share / 5) * 100).toFixed(0)}%`
+                    : '—'}
+                </td>
+                <td className={`py-2 px-3 text-center font-mono text-[13px] ${slot.projected_wins_added !== null && slot.projected_wins_added >= 0 ? 'text-positive' : 'text-negative'}`}>
+                  {slot.projected_wins_added !== null
+                    ? (slot.projected_wins_added >= 0 ? '+' : '') + slot.projected_wins_added.toFixed(1)
+                    : '—'}
+                </td>
+                <td className="py-2 px-3 text-center">
+                  <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${ACQTYPE_STYLES[slot.acquisition_type]}`}>
+                    {ACQTYPE_LABELS[slot.acquisition_type]}
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ── StatBar ───────────────────────────────────────────────────────────────────
+function StatBar({
+  value,
+  max = 100,
+  colorClass = 'bg-brand',
+}: {
+  value: number;
+  max?: number;
+  colorClass?: string;
+}) {
+  const pct = Math.min(100, Math.max(0, (value / max) * 100));
+  return (
+    <div className="h-1.5 bg-ui-border rounded-full overflow-hidden">
+      <div className={`h-full rounded-full ${colorClass}`} style={{ width: `${pct}%` }} />
+    </div>
+  );
+}
+
+// ── Roster Construction Section ───────────────────────────────────────────────
+function RosterConstructionSection({
+  detail,
+  slots,
+}: {
+  detail: TeamSeasonOutlookDetail;
+  slots: NBAProjectedRosterSlot[];
+}) {
+  const continuity = detail.continuity_score;
+  const age = detail.weighted_effective_age;
+  const concentration = detail.top2_bpr_concentration;
+
+  // Top-2 players by wins added for the concentration label
+  const sorted = [...slots].sort(
+    (a, b) => (b.projected_wins_added ?? -99) - (a.projected_wins_added ?? -99),
+  );
+  const top2Names = sorted.slice(0, 2).map((s) => s.player_name);
+
+  return (
+    <div className="grid grid-cols-3 gap-4">
+      {/* Continuity */}
+      {continuity !== null && (
+        <div className="bg-ui-card border border-ui-border rounded-lg p-5 flex flex-col gap-3">
+          <p className="table-header text-text-muted m-0">Roster Continuity</p>
+          <p className="font-mono text-[2rem] font-bold leading-none text-text-primary m-0">
+            {continuity.toFixed(0)}
+            <span className="text-[1rem] font-normal text-text-muted ml-1">%</span>
+          </p>
+          <StatBar
+            value={continuity}
+            colorClass={continuity >= 70 ? 'bg-positive' : continuity >= 40 ? 'bg-brand' : 'bg-amber-500'}
+          />
+          <p className="text-[11px] text-text-muted m-0">
+            {continuity >= 70 ? 'High continuity — chemistry advantage' :
+             continuity >= 40 ? 'Mixed returning core' :
+             'Low continuity — new-roster integration risk'}
+          </p>
+        </div>
+      )}
+
+      {/* Weighted Age */}
+      {age !== null && (
+        <div className="bg-ui-card border border-ui-border rounded-lg p-5 flex flex-col gap-3">
+          <p className="table-header text-text-muted m-0">Weighted Avg Age</p>
+          <p className="font-mono text-[2rem] font-bold leading-none text-text-primary m-0">
+            {age.toFixed(1)}
+          </p>
+          {/* Age spectrum: 20–36, peak window 27–29 highlighted */}
+          <div className="relative h-1.5 bg-ui-border rounded-full overflow-visible">
+            {/* Peak window band */}
+            <div
+              className="absolute top-0 h-full bg-positive/30 rounded"
+              style={{ left: `${((27 - 20) / 16) * 100}%`, width: `${((29 - 27) / 16) * 100}%` }}
+            />
+            {/* Marker */}
+            <div
+              className="absolute top-[-3px] w-[3px] h-[9px] bg-brand rounded-full"
+              style={{ left: `${Math.min(100, Math.max(0, ((age - 20) / 16) * 100))}%` }}
+            />
+          </div>
+          <p className="text-[11px] text-text-muted m-0">
+            {age < 25 ? 'Young — ascending' :
+             age <= 29 ? 'Peak window (27–29)' :
+             age <= 32 ? 'Aging window' :
+             'Veteran core'}
+          </p>
+        </div>
+      )}
+
+      {/* Star Concentration */}
+      {concentration !== null && (
+        <div className="bg-ui-card border border-ui-border rounded-lg p-5 flex flex-col gap-3">
+          <p className="table-header text-text-muted m-0">Star Concentration</p>
+          <p className={`font-mono text-[2rem] font-bold leading-none m-0 ${concentration >= 0.65 ? 'text-amber-400' : 'text-text-primary'}`}>
+            {(concentration * 100).toFixed(0)}
+            <span className="text-[1rem] font-normal text-text-muted ml-1">%</span>
+          </p>
+          <StatBar
+            value={concentration * 100}
+            colorClass={concentration >= 0.65 ? 'bg-amber-500' : 'bg-brand'}
+          />
+          {top2Names.length > 0 && (
+            <p className="text-[11px] text-text-muted m-0">
+              Top 2: {top2Names.join(' + ')}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Cap Snapshot ──────────────────────────────────────────────────────────────
+function CapSnapshotSection({ detail }: { detail: TeamSeasonOutlookDetail }) {
+  const total = detail.cap_total_salary;
+  const tier = detail.cap_status_tier;
+  if (total === null || tier === null) return null;
+
+  const pct = (v: number) =>
+    Math.min(100, Math.max(0, ((v - CAP_MIN) / (CAP_MAX - CAP_MIN)) * 100));
+  const teamPct = pct(total);
+
+  return (
+    <section>
+      <h2 className="font-display font-bold text-[18px] uppercase tracking-wide text-text-primary mb-4">
+        Cap Snapshot
+      </h2>
+      <div className="bg-ui-card border border-ui-border rounded-lg p-6 flex flex-col gap-5">
+        {/* Tier badge + total + consequence */}
+        <div className="flex items-center gap-3 flex-wrap">
+          <span className={`text-[11px] font-medium px-2.5 py-1 rounded ${CAP_TIER_CLASSES[tier]}`}>
+            {CAP_TIER_LABELS[tier]}
+          </span>
+          <span className="font-mono text-[18px] font-bold text-text-primary">
+            {fmtSalaryM(total)}
+          </span>
+          <span className="text-[13px] text-text-muted">{CAP_TIER_CONSEQUENCES[tier]}</span>
+        </div>
+
+        {/* Cap meter bar */}
+        <div className="relative h-3 bg-ui-border rounded-full overflow-visible">
+          {/* Color zones */}
+          <div className="absolute inset-0 flex rounded-full overflow-hidden">
+            <div className="bg-positive/20" style={{ width: `${pct(165_000_000)}%` }} />
+            <div className="bg-amber-500/20" style={{ width: `${pct(201_000_000) - pct(165_000_000)}%` }} />
+            <div className="bg-orange-500/20" style={{ width: `${pct(209_000_000) - pct(201_000_000)}%` }} />
+            <div className="bg-orange-700/20" style={{ width: `${pct(222_000_000) - pct(209_000_000)}%` }} />
+            <div className="bg-negative/20 flex-1" />
+          </div>
+          {/* Threshold ticks */}
+          {CAP_THRESHOLDS.map((t) => (
+            <div
+              key={t.label}
+              className="absolute top-0 bottom-0 w-[2px]"
+              style={{ left: `${pct(t.value)}%`, background: t.color }}
+            />
+          ))}
+          {/* Team marker */}
+          <div
+            className="absolute top-[-4px] w-[4px] h-[19px] bg-brand rounded-full shadow"
+            style={{ left: `${teamPct}%`, marginLeft: '-2px' }}
+          />
+        </div>
+
+        {/* Threshold labels */}
+        <div className="relative h-4">
+          {CAP_THRESHOLDS.map((t) => (
+            <div
+              key={t.label}
+              className="absolute text-[10px] text-text-muted"
+              style={{ left: `${pct(t.value)}%`, transform: 'translateX(-50%)' }}
+            >
+              {t.label}
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -384,6 +700,18 @@ export default async function TeamOutlookPage({ params }: Props) {
           </section>
         )}
 
+        {/* ── Section 3b: Roster Construction ──────────────────────────────── */}
+        {(detail.continuity_score !== null ||
+          detail.weighted_effective_age !== null ||
+          detail.top2_bpr_concentration !== null) && (
+          <section>
+            <h2 className="font-display font-bold text-[18px] uppercase tracking-wide text-text-primary mb-4">
+              Roster Construction
+            </h2>
+            <RosterConstructionSection detail={detail} slots={detail.projected_roster_slots} />
+          </section>
+        )}
+
         {/* ── Section 4: Projected Starting Five (conditional) ──────────── */}
         {detail.projected_starters.length > 0 && (
           <section>
@@ -395,6 +723,16 @@ export default async function TeamOutlookPage({ params }: Props) {
                 <StarterCard key={s.id} starter={s} />
               ))}
             </div>
+          </section>
+        )}
+
+        {/* ── Section 4b: Projected Roster ─────────────────────────────────── */}
+        {detail.projected_roster_slots.length > 0 && (
+          <section>
+            <h2 className="font-display font-bold text-[18px] uppercase tracking-wide text-text-primary mb-4">
+              2026-27 Projected Roster
+            </h2>
+            <ProjectedRosterTable slots={detail.projected_roster_slots} />
           </section>
         )}
 
@@ -417,28 +755,88 @@ export default async function TeamOutlookPage({ params }: Props) {
           </section>
         )}
 
-        {/* ── Section 6: 2026-27 Outlook (conditional) ──────────────────── */}
+        {/* ── Section 6: 2026-27 Outlook ────────────────────────────────────── */}
         {(detail.projected_wins !== null || detail.macfax_take) && (
           <section>
             <h2 className="font-display font-bold text-[18px] uppercase tracking-wide text-text-primary mb-4">
               2026-27 Outlook
             </h2>
-            <div className="bg-ui-card border border-ui-border rounded-lg p-6 flex flex-col gap-4">
+            <div className="bg-ui-card border border-ui-border rounded-lg p-6 flex flex-col gap-5">
               {detail.projected_wins !== null && (
-                <div className="flex items-center gap-3">
-                  <span className="table-header text-text-muted">Projected Record</span>
-                  <span className="font-mono text-[18px] font-bold text-text-primary">
-                    {detail.projected_wins}–{detail.projected_losses ?? '?'}
-                  </span>
-                  {detail.projected_adj_net !== null && (
-                    <span className={`font-mono text-[14px] font-semibold ${netColor(detail.projected_adj_net)}`}>
-                      ({fmtNet(detail.projected_adj_net)} AdjNet)
-                    </span>
+                <div className="flex flex-col gap-3">
+                  {/* Projected record + ratings row */}
+                  <div className="flex items-center gap-4 flex-wrap">
+                    <div>
+                      <p className="table-header text-text-muted m-0 mb-1">Projected Record</p>
+                      <span className="font-mono text-[22px] font-bold text-text-primary">
+                        {detail.projected_wins}–{detail.projected_losses ?? '?'}
+                      </span>
+                    </div>
+                    {detail.projected_adj_net !== null && (
+                      <div>
+                        <p className="table-header text-text-muted m-0 mb-1">AdjEM</p>
+                        <span className={`font-mono text-[18px] font-semibold ${netColor(detail.projected_adj_net)}`}>
+                          {fmtNet(detail.projected_adj_net)}
+                        </span>
+                      </div>
+                    )}
+                    {detail.projected_adj_o !== null && (
+                      <div>
+                        <p className="table-header text-text-muted m-0 mb-1">AdjO</p>
+                        <span className="font-mono text-[18px] font-semibold text-positive">
+                          {fmtRating(detail.projected_adj_o)}
+                        </span>
+                      </div>
+                    )}
+                    {detail.projected_adj_d !== null && (
+                      <div>
+                        <p className="table-header text-text-muted m-0 mb-1">AdjD</p>
+                        <span className="font-mono text-[18px] font-semibold text-negative">
+                          {fmtRating(detail.projected_adj_d)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Floor / ceiling range bar */}
+                  {detail.projected_floor_wins !== null && detail.projected_ceil_wins !== null && (
+                    <div className="flex flex-col gap-1.5">
+                      <p className="table-header text-text-muted m-0">Win Range</p>
+                      <div className="flex items-center gap-3">
+                        <span className="font-mono text-[13px] text-text-muted w-8">
+                          {detail.projected_floor_wins}W
+                        </span>
+                        <div className="flex-1 relative h-2 bg-ui-border rounded-full overflow-hidden">
+                          {/* Fill from floor to ceil */}
+                          {(() => {
+                            const scale = (v: number) => ((v - 15) / 65) * 100;
+                            const floorPct = Math.max(0, scale(detail.projected_floor_wins!));
+                            const ceilPct  = Math.min(100, scale(detail.projected_ceil_wins!));
+                            const midPct   = scale(detail.projected_wins!);
+                            return (
+                              <>
+                                <div
+                                  className="absolute top-0 h-full bg-brand/30 rounded"
+                                  style={{ left: `${floorPct}%`, width: `${ceilPct - floorPct}%` }}
+                                />
+                                <div
+                                  className="absolute top-[-1px] w-[3px] h-[10px] bg-brand rounded-full"
+                                  style={{ left: `${midPct}%`, marginLeft: '-1.5px' }}
+                                />
+                              </>
+                            );
+                          })()}
+                        </div>
+                        <span className="font-mono text-[13px] text-text-muted w-8 text-right">
+                          {detail.projected_ceil_wins}W
+                        </span>
+                      </div>
+                    </div>
                   )}
                 </div>
               )}
               {detail.macfax_take && (
-                <p className="text-[15px] text-text-primary leading-relaxed m-0">
+                <p className="text-[15px] text-text-primary leading-relaxed m-0 border-t border-ui-border pt-4">
                   {detail.macfax_take}
                 </p>
               )}
@@ -451,7 +849,10 @@ export default async function TeamOutlookPage({ params }: Props) {
           </section>
         )}
 
-        {/* ── Section 7: Footer ─────────────────────────────────────────── */}
+        {/* ── Section 7: Cap Snapshot (conditional) ─────────────────────── */}
+        <CapSnapshotSection detail={detail} />
+
+        {/* ── Footer ────────────────────────────────────────────────────── */}
         <div className="border-t border-ui-border pt-6">
           <Link
             href="/nba/teams"

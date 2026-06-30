@@ -115,6 +115,8 @@ class RawPlayerBoxScore:
     minutes_clock: str      # raw clock string e.g. "34:21" — seconds_played computed by caller
     pts: int
     reb: int
+    oreb: int
+    dreb: int
     ast: int
     stl: int
     blk: int

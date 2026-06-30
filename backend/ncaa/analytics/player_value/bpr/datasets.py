@@ -384,3 +384,134 @@ def build_rapm_dataset(season_years: "int | list[int]", verbose: bool = True) ->
         "n_players":     len(target_season_player_ids),
         "possession_totals": possession_totals_target,   # always target-season (v1.3.1)
     }
+
+
+# ── Date-bounded dataset builder (for within-season walk-forward backtesting) ─
+
+def build_rapm_dataset_through_date(
+    season_year: int,
+    cutoff_date,
+    verbose: bool = False,
+) -> dict:
+    """
+    Build a RAPM dataset for a single season using only games on/before cutoff_date.
+
+    Additive — production code never calls this. Used by backtest_bpr_walkforward
+    to train BPR on the first N% of games and freeze those ratings for OOS
+    evaluation on the remaining games.
+
+    Returns the same dict shape as build_rapm_dataset (single-season mode).
+    """
+    from ncaa.models import Game, PlayerGameStint
+
+    years = [season_year]
+
+    games_qs = (
+        Game.objects
+        .filter(season_year=season_year, game_date__lte=cutoff_date)
+        .values("id", "home_team_id", "away_team_id", "neutral_site", "season_year")
+    )
+    game_list = list(games_qs)
+    n_games = len(game_list)
+
+    if verbose:
+        logger.info(
+            f"BPR dataset (through {cutoff_date}): loading stints for {n_games} games "
+            f"(season {season_year})"
+        )
+
+    stints_qs = (
+        PlayerGameStint.objects
+        .filter(game__season_year=season_year, game__game_date__lte=cutoff_date)
+        .values(
+            "game_id", "player_id", "team_id", "period",
+            "clock_start_secs", "clock_end_secs", "secs_on",
+            "pts_scored", "pts_allowed",
+            "team_fga", "team_fta", "team_tov", "team_oreb",
+            "opp_fga", "opp_fta", "opp_tov", "opp_oreb",
+        )
+    )
+
+    stints_by_game: dict = defaultdict(list)
+    for s in stints_qs.iterator(chunk_size=10000):
+        stints_by_game[s["game_id"]].append(s)
+
+    game_lookup = {g["id"]: g for g in game_list}
+
+    all_observations: list[dict] = []
+    games_with_data = 0
+    games_skipped = 0
+
+    for gid, game_stints in stints_by_game.items():
+        game_meta = game_lookup.get(gid)
+        if game_meta is None:
+            games_skipped += 1
+            continue
+        obs = extract_lineup_segments(
+            game_id=gid,
+            home_team_id=game_meta["home_team_id"],
+            away_team_id=game_meta["away_team_id"],
+            stints=game_stints,
+            season_year=game_meta["season_year"],
+            is_neutral=bool(game_meta.get("neutral_site", False)),
+        )
+        if obs:
+            all_observations.extend(obs)
+            games_with_data += 1
+        else:
+            games_skipped += 1
+
+    if verbose:
+        logger.info(
+            f"BPR dataset (through {cutoff_date}): {len(all_observations)} segments "
+            f"from {games_with_data} games ({games_skipped} skipped)"
+        )
+
+    # Identical to build_rapm_dataset single-season path from here
+    all_player_season_pairs: list[tuple[int, int]] = sorted({
+        (pid, obs["season_year"])
+        for obs in all_observations
+        for pid in obs["home_player_ids"] + obs["away_player_ids"]
+    })
+    player_season_index: dict[tuple[int, int], int] = {
+        ps: i for i, ps in enumerate(all_player_season_pairs)
+    }
+    n_player_seasons = len(all_player_season_pairs)
+
+    possession_totals_all: dict[tuple[int, int], dict] = {
+        ps: {"off": 0.0, "def": 0.0} for ps in all_player_season_pairs
+    }
+    for obs in all_observations:
+        yr = obs["season_year"]
+        for pid in obs["home_player_ids"]:
+            possession_totals_all[(pid, yr)]["off"] += obs["home_poss"]
+            possession_totals_all[(pid, yr)]["def"] += obs["away_poss"]
+        for pid in obs["away_player_ids"]:
+            possession_totals_all[(pid, yr)]["off"] += obs["away_poss"]
+            possession_totals_all[(pid, yr)]["def"] += obs["home_poss"]
+
+    possession_totals_target: dict[int, dict] = {
+        pid: possession_totals_all[(pid, season_year)]
+        for (pid, yr) in all_player_season_pairs
+        if yr == season_year
+    }
+    target_season_player_ids: list[int] = [
+        pid for (pid, yr) in all_player_season_pairs if yr == season_year
+    ]
+
+    return {
+        "player_season_index":      player_season_index,
+        "player_season_keys":       all_player_season_pairs,
+        "n_player_seasons":         n_player_seasons,
+        "possession_totals_all":    possession_totals_all,
+        "possession_totals_target": possession_totals_target,
+        "target_season_player_ids": target_season_player_ids,
+        "observations":             all_observations,
+        "n_observations":           len(all_observations),
+        "season_years":             years,
+        "rapm_window":              "single_season",
+        "player_index":  {pid: i for i, pid in enumerate(target_season_player_ids)},
+        "player_ids":    target_season_player_ids,
+        "n_players":     len(target_season_player_ids),
+        "possession_totals": possession_totals_target,
+    }

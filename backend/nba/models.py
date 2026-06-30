@@ -280,6 +280,8 @@ class NBAPlayerGameStats(models.Model):
     # ── Counting stats ────────────────────────────────────────────────────────
     pts = models.IntegerField(null=True, blank=True)
     reb = models.IntegerField(null=True, blank=True)
+    oreb = models.IntegerField(null=True, blank=True)
+    dreb = models.IntegerField(null=True, blank=True)
     ast = models.IntegerField(null=True, blank=True)
     stl = models.IntegerField(null=True, blank=True)
     blk = models.IntegerField(null=True, blank=True)
@@ -885,8 +887,38 @@ class TeamSeasonOutlook(models.Model):
     projected_wins = models.IntegerField(null=True, blank=True)
     projected_losses = models.IntegerField(null=True, blank=True)
     projected_adj_net = models.FloatField(null=True, blank=True)
+    projected_adj_o = models.FloatField(null=True, blank=True)
+    projected_adj_d = models.FloatField(null=True, blank=True)
+    projected_floor_wins = models.IntegerField(null=True, blank=True)
+    projected_ceil_wins = models.IntegerField(null=True, blank=True)
     outlook_tier = models.CharField(
         max_length=20, choices=OUTLOOK_TIER_CHOICES, null=True, blank=True
+    )
+
+    # ── Computed roster construction metrics ──────────────────────────────────
+    continuity_score = models.FloatField(
+        null=True, blank=True, help_text="0-100: returner minutes fraction × 100"
+    )
+    weighted_effective_age = models.FloatField(
+        null=True, blank=True, help_text="BPR-weighted average age of projected rotation"
+    )
+    top2_bpr_concentration = models.FloatField(
+        null=True, blank=True, help_text="0-1: fraction of projected wins added from top-2 players"
+    )
+
+    # ── Cap data (computed from NBAPlayerContract or manually overridden) ─────
+    CAP_STATUS_CHOICES = [
+        ("under_cap", "Under Cap"),
+        ("over_cap", "Over Cap"),
+        ("taxpayer", "Luxury Taxpayer"),
+        ("first_apron", "First Apron"),
+        ("second_apron", "Second Apron"),
+    ]
+    cap_total_salary = models.BigIntegerField(
+        null=True, blank=True, help_text="Total guaranteed salary commitment in dollars"
+    )
+    cap_status_tier = models.CharField(
+        max_length=20, choices=CAP_STATUS_CHOICES, null=True, blank=True
     )
 
     # ── Hand-authored editorial ───────────────────────────────────────────────
@@ -966,3 +998,103 @@ class ProjectedStarter(models.Model):
 
     def __str__(self):
         return f"{self.team.team_abbr} {self.position}: {self.player_name}"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Computed projected roster — one slot per player per team for next season
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class NBAProjectedRosterSlot(models.Model):
+    """
+    Per-player next-season projection computed by compute_nba_team_outlooks.
+    One row per (team, season, player_name). season is the TARGET season (e.g. 2026-27).
+    prior_stats links to the source season stats used to derive projections.
+    """
+
+    ACQUISITION_CHOICES = [
+        ("returner", "Returner"),
+        ("signed", "Free Agent Signed"),
+        ("traded_in", "Acquired via Trade"),
+        ("drafted", "Drafted"),
+        ("extended", "Extension"),
+    ]
+    CONFIDENCE_CHOICES = [
+        ("high", "High"),
+        ("medium", "Medium"),
+        ("low", "Low"),
+    ]
+
+    team = models.ForeignKey(
+        TeamSeasonOutlook, on_delete=models.CASCADE, related_name="projected_roster_slots"
+    )
+    season = models.ForeignKey(NBASeason, on_delete=models.CASCADE)
+    player = models.ForeignKey(
+        NBAPlayer, on_delete=models.SET_NULL, null=True, blank=True
+    )
+    prior_stats = models.ForeignKey(
+        NBAPlayerSeasonStats, on_delete=models.SET_NULL, null=True, blank=True
+    )
+    player_name = models.CharField(max_length=150)
+    position = models.CharField(max_length=10, blank=True)
+    archetype = models.CharField(max_length=32, null=True, blank=True)
+    age = models.IntegerField(null=True, blank=True)
+    acquisition_type = models.CharField(max_length=20, choices=ACQUISITION_CHOICES, default="returner")
+    projected_obpr = models.FloatField(null=True, blank=True)
+    projected_dbpr = models.FloatField(null=True, blank=True)
+    projected_bpr = models.FloatField(null=True, blank=True)
+    projected_minutes_share = models.FloatField(
+        null=True, blank=True, help_text="Fraction of 200 team-minutes (0–1)"
+    )
+    projected_wins_added = models.FloatField(null=True, blank=True)
+    confidence = models.CharField(max_length=10, choices=CONFIDENCE_CHOICES, default="medium")
+
+    class Meta:
+        ordering = ["-projected_minutes_share"]
+        unique_together = [("team", "season", "player_name")]
+
+    def __str__(self):
+        return f"{self.team.team_abbr} {self.player_name} ({self.season})"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Player contracts — annual salary data for cap computation
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class NBAPlayerContract(models.Model):
+    """
+    One player's salary for a given season. Imported via import_nba_contracts command.
+    Used by compute_nba_team_cap to populate TeamSeasonOutlook.cap_total_salary.
+    """
+
+    CONTRACT_TYPE_CHOICES = [
+        ("max", "Max Contract"),
+        ("mid", "Mid-Level Exception"),
+        ("mini", "Mini Mid-Level"),
+        ("veteran", "Veteran Exception"),
+        ("two_way", "Two-Way Contract"),
+        ("rookie", "Rookie Scale"),
+        ("vet_min", "Veteran Minimum"),
+        ("other", "Other"),
+    ]
+
+    player = models.ForeignKey(NBAPlayer, on_delete=models.CASCADE, related_name="contracts")
+    team = models.ForeignKey(NBATeam, on_delete=models.CASCADE, related_name="contracts")
+    season = models.ForeignKey(NBASeason, on_delete=models.CASCADE, related_name="contracts")
+    salary = models.BigIntegerField(help_text="Annual salary in dollars")
+    years_remaining = models.IntegerField(
+        default=0, help_text="Contract years remaining after this season"
+    )
+    contract_type = models.CharField(max_length=20, choices=CONTRACT_TYPE_CHOICES, default="other")
+    player_option = models.BooleanField(default=False)
+    team_option = models.BooleanField(default=False)
+    is_guaranteed = models.BooleanField(default=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = [("player", "team", "season")]
+        ordering = ["-salary"]
+
+    def __str__(self):
+        return f"{self.player.name} ({self.team.abbreviation}) ${self.salary:,}"

@@ -265,6 +265,18 @@ class PipelineConfig(models.Model):
         default=True,
         help_text="Enable Lorentzian importance weighting in adj ratings solver",
     )
+    use_bpr_prior = models.BooleanField(
+        default=False,
+        help_text="Anchor early-season shrinkage to BPR projections (auto-disabled if coverage < 95%)",
+    )
+    bpr_prior_decay_games = models.IntegerField(
+        default=30,
+        help_text="Games per team over which BPR prior fades to league average",
+    )
+    bpr_prior_min_coverage = models.FloatField(
+        default=0.95,
+        help_text="Minimum fraction of D1 teams with projections required to enable BPR prior",
+    )
     adj_ratings_convergence = models.FloatField(
         default=0.001,
         help_text="Max AdjEM change between iterations to declare convergence",

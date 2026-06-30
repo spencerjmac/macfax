@@ -283,6 +283,8 @@ class NBAApiProvider(NBADataProvider):
                             minutes_clock=str(row.get("minutes") or ""),
                             pts=self._safe_int(row.get("points")) or 0,
                             reb=self._safe_int(row.get("reboundsTotal")) or 0,
+                            oreb=self._safe_int(row.get("reboundsOffensive")) or 0,
+                            dreb=self._safe_int(row.get("reboundsDefensive")) or 0,
                             ast=self._safe_int(row.get("assists")) or 0,
                             stl=self._safe_int(row.get("steals")) or 0,
                             blk=self._safe_int(row.get("blocks")) or 0,

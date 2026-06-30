@@ -597,9 +597,40 @@ export interface TeamSeasonOutlookSummary {
   league_rank: number;
 }
 
+export interface NBAProjectedRosterSlot {
+  id: number;
+  player_name: string;
+  position: string;
+  archetype: string | null;
+  age: number | null;
+  acquisition_type: 'returner' | 'signed' | 'traded_in' | 'drafted' | 'extended';
+  confidence: 'high' | 'medium' | 'low';
+  projected_obpr: number | null;
+  projected_dbpr: number | null;
+  projected_bpr: number | null;
+  projected_minutes_share: number | null;
+  projected_wins_added: number | null;
+}
+
+export type CapStatusTier =
+  | 'under_cap'
+  | 'over_cap'
+  | 'taxpayer'
+  | 'first_apron'
+  | 'second_apron';
+
 export interface TeamSeasonOutlookDetail extends TeamSeasonOutlookSummary {
   projected_losses: number | null;
   projected_adj_net: number | null;
+  projected_adj_o: number | null;
+  projected_adj_d: number | null;
+  projected_floor_wins: number | null;
+  projected_ceil_wins: number | null;
+  continuity_score: number | null;
+  weighted_effective_age: number | null;
+  top2_bpr_concentration: number | null;
+  cap_total_salary: number | null;
+  cap_status_tier: CapStatusTier | null;
   pace: number | null;
   efg_pct: number | null;
   opp_efg_pct: number | null;
@@ -615,4 +646,5 @@ export interface TeamSeasonOutlookDetail extends TeamSeasonOutlookSummary {
   season_defining_variable: string;
   offseason_moves: TeamOutseasonMove[];
   projected_starters: ProjectedStarter[];
+  projected_roster_slots: NBAProjectedRosterSlot[];
 }

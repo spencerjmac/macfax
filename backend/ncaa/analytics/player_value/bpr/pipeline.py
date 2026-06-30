@@ -60,7 +60,10 @@ from ncaa.analytics.player_value.bpr.constants import (
     OBPR_PLAUSIBLE_RANGE,
     DBPR_PLAUSIBLE_RANGE,
 )
-from ncaa.analytics.player_value.bpr.datasets import build_rapm_dataset
+from ncaa.analytics.player_value.bpr.datasets import (
+    build_rapm_dataset,
+    build_rapm_dataset_through_date,
+)
 from ncaa.analytics.player_value.bpr.rapm import (
     fit_baseline_rapm,
     fit_prior_informed_rapm,
@@ -95,6 +98,10 @@ def run_bpr_season(
     rapm_window_size: int = 4,
     em_calibrate: bool = True,
     verbose: bool = True,
+    cutoff_date=None,
+    persist: bool = True,
+    sd_scale_off_override: "float | None" = None,
+    sd_scale_def_override: "float | None" = None,
 ) -> dict:
     """
     Run the full BPR pipeline for `season_year`.
@@ -130,8 +137,12 @@ def run_bpr_season(
         # e.g. season_year=2026, window=4 → [2023, 2024, 2025, 2026]
 
     # ── Phase 1: Build RAPM dataset ───────────────────────────────────────────
-    logger.info(f"[BPR] Phase 1: Building RAPM dataset for seasons {_rapm_years}")
-    dataset = build_rapm_dataset(_rapm_years, verbose=verbose)
+    if cutoff_date is not None:
+        logger.info(f"[BPR] Phase 1: Building date-bounded RAPM dataset (season {season_year} through {cutoff_date})")
+        dataset = build_rapm_dataset_through_date(season_year, cutoff_date, verbose=verbose)
+    else:
+        logger.info(f"[BPR] Phase 1: Building RAPM dataset for seasons {_rapm_years}")
+        dataset = build_rapm_dataset(_rapm_years, verbose=verbose)
     n_obs            = dataset["n_observations"]
     n_player_seasons = dataset["n_player_seasons"]
     n_target_players = len(dataset["target_season_player_ids"])
@@ -206,15 +217,16 @@ def run_bpr_season(
 
         # Phase 2c: Write Box BPR training targets (from lower-lambda fit) to DB.
         # Future seasons' Box BPR will train on these wider-range values.
-        logger.info("[BPR] Phase 2c: Writing Box BPR training targets to DB")
-        n_baseline_written = _write_baseline_rapm(
-            season_year=season_year,
-            baseline_obpr=_box_training_obpr,
-            baseline_dbpr=_box_training_dbpr,
-            off_poss_map=_write_poss_totals,
-            def_poss_map=_write_poss_totals,
-        )
-        summary["phases"]["baseline_rapm"]["n_baseline_written"] = n_baseline_written
+        if persist:
+            logger.info("[BPR] Phase 2c: Writing Box BPR training targets to DB")
+            n_baseline_written = _write_baseline_rapm(
+                season_year=season_year,
+                baseline_obpr=_box_training_obpr,
+                baseline_dbpr=_box_training_dbpr,
+                off_poss_map=_write_poss_totals,
+                def_poss_map=_write_poss_totals,
+            )
+            summary["phases"]["baseline_rapm"]["n_baseline_written"] = n_baseline_written
 
     # ── Phase 3: Load PlayerSeasonStats for box feature extraction ────────────
     logger.info(f"[BPR] Phase 3: Loading PlayerSeasonStats for season {season_year}")
@@ -465,7 +477,8 @@ def run_bpr_season(
         summary["phases"].setdefault("sd_scale_cv", {})["n_preseason_priors"] = n_preseason
 
         # Write preseason predictions to DB (preseason_obpr/dbpr already exist on PSS)
-        _write_preseason_predictions(season_year, preseason_preds)
+        if persist:
+            _write_preseason_predictions(season_year, preseason_preds)
 
         prior_mean_obpr, prior_mean_dbpr, prior_sd_obpr, prior_sd_dbpr = build_prior_maps(
             player_ids=dataset["target_season_player_ids"],
@@ -511,67 +524,84 @@ def run_bpr_season(
                 f"{n_neutral_priors} neutral non-target priors (multi-year mode)"
             )
 
-        # Tune prior SD scales by CV:
-        # a) Joint global scale (single multiplier for off + def)
-        # b) Separate off/def scales (1D coordinate descent)
-        # Pick whichever gives lower held-out WMSE.
-        logger.info("[BPR] Phase 5: Tuning prior SD scale (joint) by CV")
-        joint_scale, joint_cv = tune_prior_sd_scale(
-            observations=dataset["observations"],
-            player_season_index=dataset["player_season_index"],
-            n_player_seasons=n_player_seasons,
-            prior_mean_obpr=ps_prior_mean_obpr,
-            prior_mean_dbpr=ps_prior_mean_dbpr,
-            prior_sd_obpr=ps_prior_sd_obpr,
-            prior_sd_dbpr=ps_prior_sd_dbpr,
-            baseline_lambda=baseline_rapm["lambda"],
-        )
-
-        logger.info("[BPR] Phase 5: Tuning prior SD scales (separate off/def) by CV")
-        sep_off, sep_def, sep_wmse, sep_cv = tune_prior_sd_scales_separate(
-            observations=dataset["observations"],
-            player_season_index=dataset["player_season_index"],
-            n_player_seasons=n_player_seasons,
-            prior_mean_obpr=ps_prior_mean_obpr,
-            prior_mean_dbpr=ps_prior_mean_dbpr,
-            prior_sd_obpr=ps_prior_sd_obpr,
-            prior_sd_dbpr=ps_prior_sd_dbpr,
-            baseline_lambda=baseline_rapm["lambda"],
-        )
-
-        # Select whichever tuning approach gives lower held-out WMSE
-        joint_wmse = joint_cv["mean_wmse"][joint_scale]
-        if sep_wmse < joint_wmse:
-            sd_scale_off = sep_off
-            sd_scale_def = sep_def
-            chosen_tuning = "separate"
+        # Tune prior SD scales by CV (or use explicit override for sweep experiments).
+        # Override: skip CV tuning entirely, use provided scale values directly.
+        if sd_scale_off_override is not None or sd_scale_def_override is not None:
+            sd_scale_off = sd_scale_off_override if sd_scale_off_override is not None else (sd_scale_def_override or 1.0)
+            sd_scale_def = sd_scale_def_override if sd_scale_def_override is not None else (sd_scale_off_override or 1.0)
+            chosen_tuning = "override"
             logger.info(
-                f"[BPR] Separate SD tuning wins: off={sep_off:.3f}, def={sep_def:.3f}, "
-                f"WMSE={sep_wmse:.4f} vs joint WMSE={joint_wmse:.4f}"
+                f"[BPR] Phase 5: SD scale override — off={sd_scale_off:.4f}, def={sd_scale_def:.4f} (CV tuning skipped)"
             )
+            summary["phases"]["sd_scale_cv"] = {
+                "chosen_tuning": "override",
+                "sd_scale_off": sd_scale_off,
+                "sd_scale_def": sd_scale_def,
+                "best_sd_scale": sd_scale_off,
+                "prior_keying": "player_season",
+                "n_target_priors": n_target_priors,
+                "n_neutral_non_target_priors": n_neutral_priors,
+                "n_recruiting_priors": n_recruiting,
+            }
         else:
-            sd_scale_off = joint_scale
-            sd_scale_def = joint_scale
-            chosen_tuning = "joint"
-            logger.info(
-                f"[BPR] Joint SD tuning wins: scale={joint_scale:.3f}, "
-                f"WMSE={joint_wmse:.4f} vs separate WMSE={sep_wmse:.4f}"
+            # a) Joint global scale (single multiplier for off + def)
+            # b) Separate off/def scales (1D coordinate descent)
+            # Pick whichever gives lower held-out WMSE.
+            logger.info("[BPR] Phase 5: Tuning prior SD scale (joint) by CV")
+            joint_scale, joint_cv = tune_prior_sd_scale(
+                observations=dataset["observations"],
+                player_season_index=dataset["player_season_index"],
+                n_player_seasons=n_player_seasons,
+                prior_mean_obpr=ps_prior_mean_obpr,
+                prior_mean_dbpr=ps_prior_mean_dbpr,
+                prior_sd_obpr=ps_prior_sd_obpr,
+                prior_sd_dbpr=ps_prior_sd_dbpr,
+                baseline_lambda=baseline_rapm["lambda"],
             )
 
-        summary["phases"]["sd_scale_cv"] = {
-            "joint": joint_cv,
-            "separate": sep_cv,
-            "chosen_tuning": chosen_tuning,
-            "sd_scale_off": sd_scale_off,
-            "sd_scale_def": sd_scale_def,
-            # For backward-compat with validation which reads best_sd_scale
-            "best_sd_scale": sd_scale_off if chosen_tuning == "joint" else sep_off,
-            # Prior-keying audit fields
-            "prior_keying": "player_season",
-            "n_target_priors": n_target_priors,
-            "n_neutral_non_target_priors": n_neutral_priors,
-            "n_recruiting_priors": n_recruiting,
-        }
+            logger.info("[BPR] Phase 5: Tuning prior SD scales (separate off/def) by CV")
+            sep_off, sep_def, sep_wmse, sep_cv = tune_prior_sd_scales_separate(
+                observations=dataset["observations"],
+                player_season_index=dataset["player_season_index"],
+                n_player_seasons=n_player_seasons,
+                prior_mean_obpr=ps_prior_mean_obpr,
+                prior_mean_dbpr=ps_prior_mean_dbpr,
+                prior_sd_obpr=ps_prior_sd_obpr,
+                prior_sd_dbpr=ps_prior_sd_dbpr,
+                baseline_lambda=baseline_rapm["lambda"],
+            )
+
+            # Select whichever tuning approach gives lower held-out WMSE
+            joint_wmse = joint_cv["mean_wmse"][joint_scale]
+            if sep_wmse < joint_wmse:
+                sd_scale_off = sep_off
+                sd_scale_def = sep_def
+                chosen_tuning = "separate"
+                logger.info(
+                    f"[BPR] Separate SD tuning wins: off={sep_off:.3f}, def={sep_def:.3f}, "
+                    f"WMSE={sep_wmse:.4f} vs joint WMSE={joint_wmse:.4f}"
+                )
+            else:
+                sd_scale_off = joint_scale
+                sd_scale_def = joint_scale
+                chosen_tuning = "joint"
+                logger.info(
+                    f"[BPR] Joint SD tuning wins: scale={joint_scale:.3f}, "
+                    f"WMSE={joint_wmse:.4f} vs separate WMSE={sep_wmse:.4f}"
+                )
+
+            summary["phases"]["sd_scale_cv"] = {
+                "joint": joint_cv,
+                "separate": sep_cv,
+                "chosen_tuning": chosen_tuning,
+                "sd_scale_off": sd_scale_off,
+                "sd_scale_def": sd_scale_def,
+                "best_sd_scale": sd_scale_off if chosen_tuning == "joint" else sep_off,
+                "prior_keying": "player_season",
+                "n_target_priors": n_target_priors,
+                "n_neutral_non_target_priors": n_neutral_priors,
+                "n_recruiting_priors": n_recruiting,
+            }
 
         logger.info("[BPR] Phase 5: Fitting prior-informed RAPM")
         prior_rapm = fit_prior_informed_rapm(
@@ -601,24 +631,25 @@ def run_bpr_season(
         final_dbpr = extract_target_season(baseline_rapm["dbpr"], target_year)
 
     # ── Phase 6: Write results to PlayerSeasonStats ───────────────────────────
-    logger.info("[BPR] Phase 6: Writing BPR results to database")
-    written = _write_bpr_results(
-        season_year=season_year,
-        final_obpr=final_obpr or {},
-        final_dbpr=final_dbpr or {},
-        box_bpr_preds=box_bpr_preds or {},
-        prior_mean_obpr=prior_mean_obpr if has_stint_data and not skip_prior_rapm else {},
-        prior_mean_dbpr=prior_mean_dbpr if has_stint_data and not skip_prior_rapm else {},
-        prior_sd_obpr=prior_sd_obpr if has_stint_data and not skip_prior_rapm else {},
-        prior_sd_dbpr=prior_sd_dbpr if has_stint_data and not skip_prior_rapm else {},
-        off_poss_map=off_poss_map,
-        def_poss_map=def_poss_map,
-        now=now,
-    )
-    summary["phases"]["write"] = written
+    if persist:
+        logger.info("[BPR] Phase 6: Writing BPR results to database")
+        written = _write_bpr_results(
+            season_year=season_year,
+            final_obpr=final_obpr or {},
+            final_dbpr=final_dbpr or {},
+            box_bpr_preds=box_bpr_preds or {},
+            prior_mean_obpr=prior_mean_obpr if has_stint_data and not skip_prior_rapm else {},
+            prior_mean_dbpr=prior_mean_dbpr if has_stint_data and not skip_prior_rapm else {},
+            prior_sd_obpr=prior_sd_obpr if has_stint_data and not skip_prior_rapm else {},
+            prior_sd_dbpr=prior_sd_dbpr if has_stint_data and not skip_prior_rapm else {},
+            off_poss_map=off_poss_map,
+            def_poss_map=def_poss_map,
+            now=now,
+        )
+        summary["phases"]["write"] = written
 
     # ── Phase 7: Save model artifacts to DB ───────────────────────────────────
-    if model_artifacts is not None:
+    if persist and model_artifacts is not None:
         _save_model_artifact(
             season_year=season_year,
             model_artifacts=model_artifacts,
@@ -630,6 +661,43 @@ def run_bpr_season(
             n_target_players=n_target_players,
         )
         summary["phases"]["artifact_saved"] = True
+
+    # ── In-memory BPR map (returned when persist=False) ───────────────────────
+    if not persist:
+        _final_obpr = final_obpr or {}
+        _final_dbpr = final_dbpr or {}
+        _box = box_bpr_preds or {}
+        summary["player_bpr_map"] = {
+            pid: {
+                "obpr":     _final_obpr.get(pid),
+                "dbpr":     _final_dbpr.get(pid),
+                "bpr":      (_final_obpr.get(pid) or 0.0) + (_final_dbpr.get(pid) or 0.0),
+                "box_bpr":  (
+                    ((_box.get(pid) or {}).get("box_obpr") or 0.0)
+                    + ((_box.get(pid) or {}).get("box_dbpr") or 0.0)
+                ) if _box.get(pid) else None,
+                "off_poss": off_poss_map.get(pid, 0.0),
+            }
+            for pid in set(list(_final_obpr.keys()) + list(_final_dbpr.keys()))
+        }
+        # Expose intermediate state so callers can re-run only fit_prior_informed_rapm
+        # with different SD scales (used by backtest_bpr_shrinkage_sweep).
+        if has_stint_data and not skip_prior_rapm and baseline_rapm is not None:
+            summary["_intermediate_state"] = {
+                "observations":       dataset["observations"],
+                "player_season_index": dataset["player_season_index"],
+                "n_player_seasons":   n_player_seasons,
+                "prior_mean_obpr":    ps_prior_mean_obpr,
+                "prior_mean_dbpr":    ps_prior_mean_dbpr,
+                "prior_sd_obpr":      ps_prior_sd_obpr,
+                "prior_sd_dbpr":      ps_prior_sd_dbpr,
+                "baseline_lambda":    baseline_rapm["lambda"],
+                "target_year":        target_year,
+                "tuned_sd_scale_off": sd_scale_off if not (sd_scale_off_override is not None or sd_scale_def_override is not None) else None,
+                "tuned_sd_scale_def": sd_scale_def if not (sd_scale_off_override is not None or sd_scale_def_override is not None) else None,
+                "off_poss_map":       off_poss_map,
+                "box_bpr_preds":      _box,
+            }
 
     logger.info(f"[BPR] Pipeline complete for season {season_year}. Summary: {summary['phases']}")
     return summary
@@ -1535,3 +1603,53 @@ def _save_model_artifact(
             },
         },
     )
+
+
+# ── In-memory re-run helpers (for shrinkage sweep) ───────────────────────────
+
+def bpr_from_state(state: dict, sd_scale_off: float, sd_scale_def: float) -> dict:
+    """
+    Re-run only fit_prior_informed_rapm using cached intermediate pipeline state.
+
+    Skips all expensive phases (dataset build, baseline RAPM, box BPR, prior maps,
+    CV tuning). Only Phase 5 final fit runs, ~10s vs ~3 min for the full pipeline.
+
+    Args:
+        state:        Dict from summary["_intermediate_state"] (run_bpr_season with persist=False).
+        sd_scale_off: Explicit offensive SD scale (bypasses CV tuning).
+        sd_scale_def: Explicit defensive SD scale.
+
+    Returns:
+        {player_id: {obpr, dbpr, bpr, box_bpr, off_poss}} — same shape as summary["player_bpr_map"].
+    """
+    prior_rapm = fit_prior_informed_rapm(
+        observations=state["observations"],
+        player_season_index=state["player_season_index"],
+        n_player_seasons=state["n_player_seasons"],
+        prior_mean_obpr=state["prior_mean_obpr"],
+        prior_mean_dbpr=state["prior_mean_dbpr"],
+        prior_sd_obpr=state["prior_sd_obpr"],
+        prior_sd_dbpr=state["prior_sd_dbpr"],
+        baseline_lambda=state["baseline_lambda"],
+        sd_scale_off=sd_scale_off,
+        sd_scale_def=sd_scale_def,
+    )
+    final_obpr = extract_target_season(prior_rapm["obpr"], state["target_year"])
+    final_dbpr = extract_target_season(prior_rapm["dbpr"], state["target_year"])
+
+    _box = state.get("box_bpr_preds") or {}
+    off_poss_map = state.get("off_poss_map") or {}
+
+    return {
+        pid: {
+            "obpr":    final_obpr.get(pid),
+            "dbpr":    final_dbpr.get(pid),
+            "bpr":     (final_obpr.get(pid) or 0.0) + (final_dbpr.get(pid) or 0.0),
+            "box_bpr": (
+                ((_box.get(pid) or {}).get("box_obpr") or 0.0)
+                + ((_box.get(pid) or {}).get("box_dbpr") or 0.0)
+            ) if _box.get(pid) else None,
+            "off_poss": off_poss_map.get(pid, 0.0),
+        }
+        for pid in set(list(final_obpr.keys()) + list(final_dbpr.keys()))
+    }

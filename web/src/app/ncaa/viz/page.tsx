@@ -198,7 +198,7 @@ const ARTICLES = [
     cat: 'Efficiency',
     status: 'live' as const,
     title: 'Efficiency Landscape',
-    stand: 'Every D-I team on one offense-vs-defense plane. The closer to the top-right, the more complete the team.',
+    stand: 'Maps every D-I team by adjusted offense and defense with championship tier lines, separating balanced contenders from offense-first, defense-first, and lower-tier profiles.',
     date: 'Updated daily',
     href: '/ncaa/viz/landscape',
   },
@@ -207,7 +207,7 @@ const ARTICLES = [
     cat: 'Forecast',
     status: 'live' as const,
     title: 'Crystal Ball',
-    stand: 'Every team scored against 15 historical championship benchmarks. Ranks contenders from pretenders to title favorites.',
+    stand: 'Scores every D-I team against 15 historical championship benchmarks across efficiency, four factors, resume, shooting, and poll signals to rank contender profiles.',
     date: 'Updated daily',
     href: '/ncaa/viz/crystal-ball',
   },
@@ -216,7 +216,7 @@ const ARTICLES = [
     cat: 'Bracket',
     status: 'live' as const,
     title: 'Cinderella Index',
-    stand: 'Which double-digit seeds are built to cause chaos? Five pillars combine into a single upset-potential score.',
+    stand: 'Identifies underseeded upset threats using five pillars: team strength, defense, possession control, variance, and resume legitimacy.',
     date: 'Updated daily',
     href: '/ncaa/viz/cinderella',
   },
@@ -225,7 +225,7 @@ const ARTICLES = [
     cat: 'Bracket',
     status: 'live' as const,
     title: 'Bracket Simulator',
-    stand: 'Monte Carlo win probabilities for all 68 tournament teams — Sweet 16 through champion.',
+    stand: 'Monte Carlo tournament simulations for all 68 bracket teams, showing each team\'s path odds from Sweet 16 through national champion.',
     date: 'Updated daily',
     href: '/ncaa/viz/bracket',
   },
@@ -234,7 +234,7 @@ const ARTICLES = [
     cat: 'Custom',
     status: 'live' as const,
     title: 'Viz Builder',
-    stand: 'Build custom scatterplots using any two stats. Explore correlations with regression and conference coloring.',
+    stand: 'Build custom team scatterplots from any two MacFax stats, with regression, zooming, and conference coloring.',
     date: 'Updated daily',
     href: '/ncaa/viz/builder',
   },
@@ -243,7 +243,7 @@ const ARTICLES = [
     cat: 'Matchup',
     status: 'soon' as const,
     title: 'Kill Shot Analysis',
-    stand: 'The single factor most likely to decide a matchup — where one team can land the knockout blow.',
+    stand: 'Coming soon: momentum analysis of kill-shot runs, showing which teams create and allow game-swinging scoring bursts.',
     date: 'Coming soon',
     href: '/ncaa/viz/kill-shot',
   },
@@ -288,8 +288,8 @@ export default function NCAAVizPage() {
                 Trapezoid of Excellence
               </h2>
               <p className="text-[16.5px] leading-[1.6] text-ink-fg m-0 max-w-[46ch]">
-                Twenty years of champions cluster inside one shape: elite efficiency at a balanced
-                tempo. Plot all 365 teams and see — instantly — who has a real title profile.
+                Plots every D-I team by adjusted tempo and AdjEM against a season-calibrated
+                contender zone, showing which efficiency-tempo profiles resemble deep-run teams.
               </p>
               <div className="flex items-center gap-[10px] font-sans text-[12.5px] text-ink-fg2">
                 <span>MacFax Model</span>

@@ -119,8 +119,8 @@ class Command(BaseCommand):
         parser.add_argument(
             "--prior-decay-games",
             type=int,
-            default=30,
-            help="Games over which BPR prior fades to league average (default: 30)",
+            default=None,
+            help="Games over which BPR prior fades to league average (default: from PipelineConfig)",
         )
 
     def handle(self, *args, **options):
@@ -138,8 +138,8 @@ class Command(BaseCommand):
         importance_enabled = False if options["no_importance"] else cfg.importance_enabled
         update_natavg = options["update_natavg"]
         is_pre_tournament = options["pre_tournament"]
-        use_bpr_prior = options["use_bpr_prior"]
-        prior_decay_games = options["prior_decay_games"]
+        use_bpr_prior = options["use_bpr_prior"] or cfg.use_bpr_prior
+        prior_decay_games = options["prior_decay_games"] if options["prior_decay_games"] is not None else cfg.bpr_prior_decay_games
 
         # --- Importance weight constants ---
         IMP_C = 40.0          # gap (AdjEM pts) where base weight drops to 0.5
@@ -206,6 +206,25 @@ class Command(BaseCommand):
             return
 
         num_d1_teams = teams.count()
+
+        # Coverage guard: auto-disable BPR prior if projection coverage is too low.
+        # Count only D1 teams (not extras in proj_ratings from non-D1 teams).
+        if use_bpr_prior and num_d1_teams > 0:
+            d1_team_ids = {t.id for t in teams}
+            n_covered = len(d1_team_ids & proj_ratings.keys())
+            coverage = n_covered / num_d1_teams
+            if coverage < cfg.bpr_prior_min_coverage:
+                self.stdout.write(
+                    f"WARNING: BPR prior disabled — only {n_covered}/{num_d1_teams} "
+                    f"D1 teams have projections ({coverage:.1%} < {cfg.bpr_prior_min_coverage:.0%} threshold). "
+                    f"Falling back to flat prior."
+                )
+                use_bpr_prior = False
+                proj_ratings = {}
+            else:
+                self.stdout.write(
+                    f"BPR prior coverage: {n_covered}/{num_d1_teams} D1 teams ({coverage:.1%}) ✓"
+                )
 
         # Calculate dynamic shrinkage k based on average games played
         # Count team-games (NOT matchups - each game counts twice, once per team)

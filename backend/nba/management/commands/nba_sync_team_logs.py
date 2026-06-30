@@ -70,6 +70,9 @@ class Command(BaseCommand):
                                  "you get ~5 req/s total.")
         parser.add_argument("--dry-run", action="store_true",
                             help="Fetch data but do not write to database")
+        parser.add_argument("--force", action="store_true",
+                            help="Re-process games that already have player stats "
+                                 "(use to backfill newly added fields)")
 
     def handle(self, *args, **options):
         season_year: int = options["season"]
@@ -77,6 +80,7 @@ class Command(BaseCommand):
         workers: int = max(1, options["workers"])
         sleep: float = options["sleep"]
         dry_run: bool = options["dry_run"]
+        force: bool = options["force"]
 
         try:
             season = NBASeason.objects.get(year=season_year)
@@ -97,7 +101,7 @@ class Command(BaseCommand):
             .select_related("home_team", "away_team")
             .order_by("date")
         )
-        pending = [g for g in games_qs if g.game_id not in synced_game_ids]
+        pending = [g for g in games_qs if force or g.game_id not in synced_game_ids]
 
         if limit:
             pending = pending[:limit]
@@ -177,6 +181,8 @@ class Command(BaseCommand):
                             "seconds_played": _parse_seconds(ps.minutes_clock),
                             "pts": ps.pts,
                             "reb": ps.reb,
+                            "oreb": ps.oreb,
+                            "dreb": ps.dreb,
                             "ast": ps.ast,
                             "stl": ps.stl,
                             "blk": ps.blk,

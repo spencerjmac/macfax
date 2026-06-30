@@ -36,6 +36,10 @@ export default async function RankingsPage({ searchParams }: RankingsPageProps) 
 
   const seasonParam = seasonYear ? `&season=${seasonYear}` : '';
   const preTourneyParam = isPreTournament ? `&pre_tournament=true` : '';
+  const pageTitle = activeTab === 'players' ? 'NCAA Player Rankings' : 'NCAA Rankings';
+  const pageSubtitle = activeTab === 'players'
+    ? 'Player leaderboards across BPR impact, traditional production, and four-factor impact, with filters for season, minutes, conference, and ranking mode.'
+    : 'Complete team and player rankings powered by opponent-adjusted ratings, four factors, resume metrics, and sortable season filters.';
 
   return (
     <div>
@@ -44,11 +48,11 @@ export default async function RankingsPage({ searchParams }: RankingsPageProps) 
         <div className="max-w-[1240px] mx-auto px-8 py-10 pb-[34px]">
           <p className="kicker-sport text-brand mb-[9px]">College Basketball · {meta.season}</p>
           <h1 className="font-display font-bold text-[clamp(32px,4vw,48px)] leading-none uppercase tracking-[0.005em] m-0 mb-[14px]">
-            NCAA Rankings
+            {pageTitle}
           </h1>
           <div className="flex items-center gap-[14px] flex-wrap">
             <p className="text-[15px] text-muted m-0">
-              Complete rankings for {meta.teamCount} Division I teams
+              {pageSubtitle}
             </p>
             <span className="font-mono text-[12px] text-muted-2 inline-flex items-center gap-[7px] px-[10px] py-[5px] bg-ui-surface border border-ui-border rounded-md">
               <span className="w-1.5 h-1.5 rounded-full bg-brand2" />
@@ -64,7 +68,7 @@ export default async function RankingsPage({ searchParams }: RankingsPageProps) 
           <div className="flex gap-0">
             {[
               { id: 'teams',   label: 'Team Rankings', icon: BarChart3 },
-              { id: 'players', label: 'Player Stats',   icon: Users    },
+              { id: 'players', label: 'Player Rankings', icon: Users    },
             ].map(({ id, label, icon: Icon }) => (
               <Link
                 key={id}
@@ -87,27 +91,6 @@ export default async function RankingsPage({ searchParams }: RankingsPageProps) 
         ) : (
           <RankingsTable data={teams} seasons={seasons} selectedSeason={seasonYear} isPreTournament={isPreTournament} />
         )}
-
-        {/* Legend */}
-        <div className="mt-8 p-6 bg-ui-surface border border-ui-border rounded-lg">
-          <h2 className="font-display font-bold text-[16px] uppercase tracking-[0.02em] mb-[14px]">Metric Definitions</h2>
-          <div className="grid md:grid-cols-2 gap-3 text-[13.5px]">
-            {[
-              { k: 'AdjEM', v: 'Adjusted Efficiency Margin (AdjO − AdjD). Predicted point margin vs average team on neutral court.' },
-              { k: 'AdjO',  v: 'Adjusted Offensive Efficiency — points scored per 100 possessions vs average D1 defense.' },
-              { k: 'AdjD',  v: 'Adjusted Defensive Efficiency — points allowed per 100 possessions vs average D1 offense.' },
-              { k: 'Tempo', v: 'Adjusted possessions per 40 minutes.' },
-              { k: 'eFG%',  v: 'Effective Field Goal % — accounts for 3-pointers being worth more than 2s.' },
-              { k: 'TOV%',  v: 'Turnover rate per 100 possessions.' },
-              { k: 'ORB%',  v: 'Offensive rebound % of available boards.' },
-              { k: 'FTR',   v: 'Free throw rate — FTA per field goal attempt.' },
-            ].map(d => (
-              <div key={d.k} className="text-muted">
-                <b className="font-mono font-semibold text-text-primary mr-1.5">{d.k}</b>{d.v}
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
     </div>
   );

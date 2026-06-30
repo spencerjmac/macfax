@@ -15,6 +15,7 @@ import {
 } from '@tanstack/react-table';
 import clsx from 'clsx';
 import HeaderWithTooltip from './HeaderWithTooltip';
+import MetricDefinitionsCard, { type MetricDefinition } from './MetricDefinitionsCard';
 import { computeRanks, heatStyleFromPercentile } from '@/lib/rankingUtils';
 import {
   PLAYER_TRADITIONAL_METRICS,
@@ -27,6 +28,49 @@ import type { NCAAPlayerSeasonStats } from '@/types';
 
 type TabId = 'traditional' | 'impact' | 'fourfactors';
 type BprMode = 'strict_bpr' | 'full_two_sided' | 'all_players';
+
+const PLAYER_METRIC_DEFINITIONS: Record<TabId, MetricDefinition[]> = {
+  traditional: [
+    { k: 'GP', v: 'Games played.' },
+    { k: 'MPG', v: 'Minutes per game; the minutes filter uses total minutes played.' },
+    { k: 'PPG', v: 'Points per game.' },
+    { k: 'RPG', v: 'Total rebounds per game.' },
+    { k: 'APG', v: 'Assists per game.' },
+    { k: 'SPG', v: 'Steals per game.' },
+    { k: 'BPG', v: 'Blocks per game.' },
+    { k: 'TOV', v: 'Turnovers per game; lower is usually better.' },
+    { k: 'TS%', v: 'True Shooting %: scoring efficiency that accounts for twos, threes, and free throws.' },
+    { k: 'eFG%', v: 'Effective Field Goal %: shooting efficiency that gives made threes extra credit.' },
+    { k: 'AST/TO', v: 'Assist-to-turnover ratio; higher means more playmaking per turnover.' },
+    { k: '3P% / FT%', v: 'Three-point and free throw shooting percentages.' },
+    { k: 'FGA / 3PA / FTA', v: 'Field goal, three-point, and free throw attempts per game.' },
+    { k: 'ORB / DRB', v: 'Offensive and defensive rebounds per game.' },
+  ],
+  impact: [
+    { k: 'BPR', v: 'Bayesian Performance Rating (OBPR + DBPR): estimated total player impact in points per 100 possessions above an average D-I player.' },
+    { k: 'OBPR', v: 'Offensive BPR: estimated offensive points per 100 possessions added relative to an average D-I player.' },
+    { k: 'DBPR', v: 'Defensive BPR: estimated defensive points per 100 possessions prevented relative to an average D-I player; higher is better.' },
+    { k: 'Poss', v: 'Offensive possessions played from lineup segments; used to qualify and stabilize player impact ratings.' },
+    { k: 'Box BPR', v: 'Box-score-only BPR estimate used when lineup data is limited; trained to approximate RAPM-based impact.' },
+    { k: 'Adj Off', v: 'Opponent-adjusted team offensive efficiency while the player is on court.' },
+    { k: 'Adj Def', v: 'Opponent-adjusted team defensive efficiency while the player is on court; lower is better.' },
+    { k: 'Adj Net', v: 'On-court adjusted net efficiency: Adj Off minus Adj Def.' },
+    { k: 'Source', v: 'BPR source label: RAPM uses lineup data, box uses box-score estimates, and mixed or partial means a fallback was needed.' },
+  ],
+  fourfactors: [
+    { k: 'FFII', v: 'Four Factor Impact Index: 0-100 RAPM-based estimate of how much a player moves shooting, turnovers, rebounding, and free throw rate.' },
+    { k: 'Off Impact', v: 'Estimated player effect on the team offensive factor while on offense; positive is better.' },
+    { k: 'Def Impact', v: 'Estimated player effect on the opponent factor while defending; positive is better.' },
+    { k: 'Total', v: 'Two-way factor impact: offensive impact plus defensive impact.' },
+    { k: 'eFG Impact', v: 'Estimated effect on team shot efficiency and opponent shot efficiency.' },
+    { k: 'TOV Impact', v: 'Estimated effect on reducing team turnovers and forcing opponent turnovers.' },
+    { k: 'Rebound Impact', v: 'Estimated effect on team offensive rebounding and limiting opponent offensive rebounds.' },
+    { k: 'FTR Impact', v: 'Estimated effect on getting to the line and limiting opponent free throws.' },
+    { k: 'On-Court Rates', v: 'Team and opponent four-factor rates while the player is on the floor; these describe lineup environment, not pure individual impact.' },
+    { k: 'Margin / Edge', v: 'Team on-court advantage over opponents; positive values favor the player\'s lineup.' },
+    { k: 'On-Ct FFI', v: 'On-court Four Factor Index: team four-factor profile while the player is on court, scaled 0-100.' },
+  ],
+};
 
 const PLAYER_SEASONS = [2020, 2021, 2022, 2023, 2024, 2025, 2026];
 
@@ -812,6 +856,8 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
           </div>
         </div>
       )}
+
+      <MetricDefinitionsCard definitions={PLAYER_METRIC_DEFINITIONS[activeTab]} />
     </div>
   );
 }

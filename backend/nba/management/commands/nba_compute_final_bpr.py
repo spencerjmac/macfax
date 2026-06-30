@@ -65,6 +65,7 @@ import numpy as np
 from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 
+from nba.analytics.lebron_utils import check_all_lebron_files
 from nba.analytics.rapm import (
     build_design_matrix,
     build_nba_observations,
@@ -87,6 +88,7 @@ LEBRON_PRIOR_W       = 0.5   # weight given to O-LEBRON in offensive prior blend
 LEBRON_PRIOR_DEF_W   = 0.5   # weight given to D-LEBRON in defensive prior blend
                               # Tested 0.2: hurt star stability (0.462→0.436) more than helped Giannis (+0.17).
                               # Keeping symmetric at 0.5 — D-LEBRON is multi-year stabilized, good anchor.
+LEBRON_DATA_DIR      = SCRIPT_DIR / "data" / "nba"
 LEBRON_LAMBDA_SCALE  = 0.7   # scales λ UP for low-LEBRON role players: lam = base * (1 + scale * max(0, 7-LEBRON))
                               # Validated: 0.3→0.5→0.7→1.0 all monotonically improved stability (0.431→0.462→0.480→0.481)
                               # 0.7 chosen: below 4x cap for most moderate players, cleaner than 1.0
@@ -336,6 +338,28 @@ class Command(BaseCommand):
         lebron_prior_w: float = options.get("lebron_prior_weight", LEBRON_PRIOR_W)
         lebron_prior_def_w: float = options.get("lebron_prior_def_weight", LEBRON_PRIOR_DEF_W)
         lebron_lambda_scale: float = options.get("lebron_lambda_scale", LEBRON_LAMBDA_SCALE)
+
+        # ── LEBRON freshness gate ─────────────────────────────────────────────
+        for _result in check_all_lebron_files(str(LEBRON_DATA_DIR), season_year):
+            _label = f"lebron-data-{_result['year']}.csv"
+            if _result["status"] == "error":
+                raise CommandError(
+                    f"LEBRON data missing: {_result['path']}\n"
+                    f"NBA BPR cannot run without current-season LEBRON prior.\n"
+                    f"Download from BBall Index and place at: {_result['path']}"
+                )
+            elif _result["status"] == "warning":
+                logger.warning(
+                    "LEBRON data may be stale: %s  (%.0f days old, season_active=%s)",
+                    _label,
+                    _result["age_days"],
+                    _result["season_active"],
+                )
+                self.stdout.write(
+                    self.style.WARNING(f"  ⚠  {_label}: {_result['message']}")
+                )
+            else:
+                logger.info("LEBRON data OK: %s (%.1f days old)", _label, _result["age_days"])
 
         if sweep:
             self._run_sweep(season_year, rapm_window, within_season_half_life, cross_season_decay, lebron_prior_w)

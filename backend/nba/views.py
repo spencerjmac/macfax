@@ -916,6 +916,11 @@ class TeamOutlookDetailView(APIView):
     """GET /api/nba/outlook/<slug>/ — single team full outlook."""
 
     def get(self, request, slug):
-        obj = get_object_or_404(TeamSeasonOutlook, team_slug=slug)
+        obj = get_object_or_404(
+            TeamSeasonOutlook.objects.prefetch_related(
+                "offseason_moves", "projected_starters", "projected_roster_slots"
+            ),
+            team_slug=slug,
+        )
         return Response(TeamSeasonOutlookDetailSerializer(obj).data)
 
