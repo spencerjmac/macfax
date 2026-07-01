@@ -1,16 +1,45 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import { ArrowLeft, ChevronDown } from 'lucide-react';
+import TeamLogo from '@/components/TeamLogo';
 import type {
-  TeamSeasonOutlookDetail,
-  TeamOutseasonMove,
-  ProjectedStarter,
-  NBAProjectedRosterSlot,
   CapStatusTier,
-  OutlookTier,
+  DevelopmentWatchPlayer,
+  NBAProjectedRosterSlot,
+  ProjectedStarter,
+  TeamOutseasonMove,
+  TeamSeasonOutlookDetail,
 } from '@/types/nba';
 import { nbaApi } from '@/lib/nba-api';
-import TeamLogo from '@/components/TeamLogo';
+import {
+  formatArchetype,
+  formatMoveDetail,
+  formatPercent,
+  formatProjectedRecord,
+  formatRating,
+  formatRecord,
+  formatSignedNumber,
+  formatTeamNameFromSlug,
+  getAgeLabel,
+  getBprTier,
+  getContinuityLabel,
+  getDevelopmentRead,
+  getDisplayAdjD,
+  getDisplayAdjNet,
+  getDisplayAdjO,
+  getEfficiencyInterpretation,
+  getFourFactorEdge,
+  getMetricColor,
+  getMoveVerb,
+  getMpsTier,
+  getOutlookTierLabel,
+  getPickLabel,
+  getPlayerRoleLabel,
+  getStarConcentrationLabel,
+  getTeamRiskSignal,
+  getTierClass,
+} from '@/lib/nba-outlook-helpers';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -21,36 +50,10 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  return { title: `Team Outlook | macfax` };
+  return { title: `${formatTeamNameFromSlug(slug)} Team Outlook | macfax` };
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
-const TIER_LABELS: Record<OutlookTier, string> = {
-  title_contender: 'Title Contender',
-  playoff_contender: 'Playoff Contender',
-  bubble: 'Bubble Team',
-  lottery: 'Lottery Team',
-  rebuilding: 'Rebuilding',
-};
-
-const TIER_CLASSES: Record<OutlookTier, string> = {
-  title_contender: 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/30',
-  playoff_contender: 'bg-brand/20 text-brand border border-brand/30',
-  bubble: 'bg-amber-500/20 text-amber-500 border border-amber-500/30',
-  lottery: 'bg-orange-400/20 text-orange-400 border border-orange-400/30',
-  rebuilding: 'bg-ui-surface text-text-muted border border-ui-border',
-};
-
-const MOVE_TYPE_LABELS: Record<TeamOutseasonMove['move_type'], string> = {
-  signed: 'Signed',
-  lost: 'Lost',
-  drafted: 'Drafted',
-  traded_in: 'Acquired',
-  traded_out: 'Traded Away',
-  extended: 'Extended',
-  waived: 'Waived',
-};
+const ADDITION_TYPES: TeamOutseasonMove['move_type'][] = ['signed', 'drafted', 'traded_in', 'extended'];
 
 const IMPACT_CLASSES: Record<TeamOutseasonMove['impact_rating'], string> = {
   high: 'bg-positive/15 text-positive border border-positive/25',
@@ -58,288 +61,477 @@ const IMPACT_CLASSES: Record<TeamOutseasonMove['impact_rating'], string> = {
   low: 'bg-ui-surface text-text-muted border border-ui-border',
 };
 
-const ADDITION_TYPES: TeamOutseasonMove['move_type'][] = [
-  'signed', 'drafted', 'traded_in', 'extended',
-];
+const ACQUISITION_LABELS: Record<NBAProjectedRosterSlot['acquisition_type'], string> = {
+  returner: 'Returner',
+  extended: 'Extended',
+  signed: 'Signed',
+  traded_in: 'Trade',
+  drafted: 'Rookie',
+};
 
-function fmtRating(v: number | null): string {
-  if (v === null) return '—';
-  return v.toFixed(1);
-}
+const ACQUISITION_CLASSES: Record<NBAProjectedRosterSlot['acquisition_type'], string> = {
+  returner: 'bg-brandBlue/10 text-brandBlue border border-brandBlue/20',
+  extended: 'bg-brandBlue/10 text-brandBlue border border-brandBlue/20',
+  signed: 'bg-positive/10 text-positive border border-positive/20',
+  traded_in: 'bg-orange-500/10 text-orange-600 border border-orange-500/25',
+  drafted: 'bg-brand/10 text-brand border border-brand/25',
+};
 
-function netColor(v: number | null): string {
-  if (v === null) return '';
-  if (v > 0) return 'text-positive';
-  if (v < 0) return 'text-negative';
-  return 'text-text-muted';
-}
+const CAP_TIER_LABELS: Record<CapStatusTier, string> = {
+  under_cap: 'Under Cap',
+  over_cap: 'Over Cap',
+  taxpayer: 'Tax',
+  first_apron: 'First Apron',
+  second_apron: 'Second Apron',
+};
 
-function fmtNet(v: number | null): string {
-  if (v === null) return '—';
-  const s = v.toFixed(1);
-  return v > 0 ? `+${s}` : s;
-}
+const CAP_TIER_TEXT: Record<CapStatusTier, string> = {
+  under_cap: 'Cap room gives the front office more ways to reshape the roster.',
+  over_cap: 'The team can still maneuver, but most upgrades have to come through exceptions or trades.',
+  taxpayer: 'Tax pressure makes the current rotation more expensive to adjust.',
+  first_apron: 'Apron rules reduce flexibility, so internal continuity matters more.',
+  second_apron: 'Second-apron restrictions make major roster pivots harder.',
+};
 
-// ── Sub-components ────────────────────────────────────────────────────────────
-
-function StatCard({
-  label,
-  value,
-  rank,
-  colorClass = '',
-}: {
-  label: string;
-  value: string;
-  rank?: number;
-  colorClass?: string;
-}) {
+function sectionTitle(kicker: string, title: string, text?: string) {
   return (
-    <div className="bg-ui-card border border-ui-border rounded-lg p-5 flex flex-col gap-2">
-      <p className="table-header text-text-muted m-0">{label}</p>
-      <p className={`font-mono text-[2.25rem] font-bold leading-none m-0 ${colorClass}`}>
-        {value}
-      </p>
-      {rank !== undefined && (
-        <p className="text-[12px] text-text-muted m-0">
-          #{rank} <span className="text-text-muted/60">in league</span>
-        </p>
-      )}
+    <div className="mb-4">
+      <p className="kicker-sport text-brand mb-2">{kicker}</p>
+      <h2 className="font-display text-[24px] font-bold uppercase leading-none tracking-[0.005em] text-text-primary m-0">
+        {title}
+      </h2>
+      {text && <p className="mt-2 max-w-[760px] text-[14px] leading-relaxed text-text-muted m-0">{text}</p>}
     </div>
   );
 }
 
-function FourFactorRow({
+function formatMinutesShare(value: number | null): string {
+  if (value === null) return '-';
+  if (value <= 1) return `${formatRating(value * 100, 0)}%`;
+  if (value <= 5) return `${formatRating((value / 5) * 100, 0)}%`;
+  return `${formatRating(value, 0)}%`;
+}
+
+function formatSalary(value: number): string {
+  return `$${(value / 1_000_000).toFixed(0)}M`;
+}
+
+function generateMacFaxRead(detail: TeamSeasonOutlookDetail): string {
+  const adjNet = getDisplayAdjNet(detail);
+  const tier = getOutlookTierLabel(detail.outlook_tier, adjNet, detail.projected_wins ?? detail.wins);
+  const continuity = getContinuityLabel(detail.continuity_score).label.toLowerCase();
+  const age = getAgeLabel(detail.weighted_effective_age).label.toLowerCase();
+  const risk = getTeamRiskSignal(detail).toLowerCase();
+
+  if (tier === 'Title Favorite' || tier === 'Contender') {
+    return `The model sees ${detail.team_name} as a real contender because the baseline is strong and the roster shape is ${continuity}. The question is less whether the team is good and more whether ${risk} keeps the ceiling from matching the regular-season profile.`;
+  }
+  if (tier === 'Playoff Lock' || tier === 'Playoff Mix') {
+    return `${detail.team_name} lands in the playoff conversation because the model sees enough efficiency and roster value to clear the middle of the league. The swing comes from whether the ${age} pieces can turn a solid baseline into something sturdier.`;
+  }
+  if (tier === 'Play-In Range') {
+    return `${detail.team_name} projects close to the league middle: good enough to matter, but not clean enough to separate. The projection is sensitive to ${risk} and small changes in two-way depth.`;
+  }
+  return `The model is skeptical of ${detail.team_name} because the current roster profile does not create enough bankable efficiency. The upside case needs development or roster movement to beat a low baseline.`;
+}
+
+function getSwingText(detail: TeamSeasonOutlookDetail): string {
+  if (detail.season_defining_variable) return detail.season_defining_variable;
+  const risk = getTeamRiskSignal(detail);
+  if (risk === 'Star health') return 'The season turns on whether the top-end players stay available enough to support a top-heavy value profile.';
+  if (risk === 'Chemistry') return 'The season turns on how quickly a changed rotation finds roles that make sense.';
+  if (risk === 'Development curve') return 'The season turns on whether the under-25 core arrives ahead of the model curve.';
+  if (risk === 'Aging curve') return 'The season turns on whether veteran production holds up over 82 games.';
+  if (risk === 'Defensive floor') return 'The season turns on whether the defense can avoid becoming the limiting factor.';
+  if (risk === 'Shot creation') return 'The season turns on whether the offense has enough reliable creation late in possessions.';
+  return 'The season turns on normal health, shooting, and rotation variance.';
+}
+
+function WinRangeBar({
+  floor,
+  baseline,
+  ceiling,
+}: {
+  floor: number | null;
+  baseline: number | null;
+  ceiling: number | null;
+}) {
+  if (floor === null || baseline === null || ceiling === null) return null;
+
+  const scale = (wins: number) => Math.max(0, Math.min(100, ((wins - 10) / 65) * 100));
+  const floorPct = scale(floor);
+  const baselinePct = scale(baseline);
+  const ceilingPct = scale(ceiling);
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center justify-between gap-3 text-[12px] text-text-muted">
+        <span><span className="font-mono font-semibold text-text-primary">{floor}W</span> floor</span>
+        <span><span className="font-mono font-semibold text-text-primary">{baseline}W</span> baseline</span>
+        <span><span className="font-mono font-semibold text-text-primary">{ceiling}W</span> ceiling</span>
+      </div>
+      <div className="relative h-3 rounded-full bg-ui-border">
+        <div
+          className="absolute top-0 h-full rounded-full bg-brand/30"
+          style={{ left: `${floorPct}%`, width: `${Math.max(2, ceilingPct - floorPct)}%` }}
+        />
+        <div
+          className="absolute top-[-4px] h-5 w-1.5 rounded-full bg-brand shadow"
+          style={{ left: `${baselinePct}%`, marginLeft: '-3px' }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function TeamHero({ detail }: { detail: TeamSeasonOutlookDetail }) {
+  const adjNet = getDisplayAdjNet(detail);
+  const tier = getOutlookTierLabel(detail.outlook_tier, adjNet, detail.projected_wins ?? detail.wins);
+  const summary = detail.season_headline || generateMacFaxRead(detail);
+
+  return (
+    <header className="relative overflow-hidden border-b-4 border-brand bg-ink text-white">
+      <div className="max-w-[1240px] mx-auto px-5 sm:px-8 py-10 sm:py-12">
+        <Link
+          href="/nba/teams"
+          className="mb-7 inline-flex items-center gap-2 text-[13px] font-semibold text-ink-fg2 no-underline transition-colors hover:text-white"
+        >
+          <ArrowLeft className="h-4 w-4" strokeWidth={1.75} />
+          All Team Outlooks
+        </Link>
+
+        <div className="grid gap-7 lg:grid-cols-[1fr_320px] lg:items-end">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
+            <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-xl bg-white p-3 shadow-[0_18px_50px_-28px_rgba(0,0,0,0.65)]">
+              <TeamLogo
+                src={detail.logo_url}
+                alt={detail.team_abbr}
+                width={72}
+                height={72}
+                className="max-h-[72px] max-w-[72px] object-contain"
+                fallbackColor={detail.primary_color}
+              />
+            </div>
+            <div className="min-w-0">
+              <p className="kicker-sport text-brand2 mb-3">
+                {detail.conference}ern Conference · {formatProjectedRecord(detail)} projected · #{detail.league_rank} in NBA
+              </p>
+              <h1 className="font-display text-[clamp(40px,6vw,76px)] font-bold uppercase leading-[0.94] tracking-[0.005em] text-white m-0">
+                {detail.team_name}
+              </h1>
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                <span className={`font-mono text-[32px] font-bold leading-none ${getMetricColor(adjNet, 'net')}`}>
+                  {formatSignedNumber(adjNet)}
+                  <span className="ml-2 text-[14px] font-normal text-ink-fg2">AdjNet</span>
+                </span>
+                <span className={`rounded px-2.5 py-1 text-[12px] font-semibold ${getTierClass(tier)}`}>
+                  {tier}
+                </span>
+              </div>
+              <p className="mt-5 max-w-[760px] text-[16px] leading-relaxed text-ink-fg m-0">
+                {summary}
+              </p>
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-ink-line bg-ink/55 p-5">
+            <p className="font-display text-[15px] font-bold uppercase tracking-wide text-brand2 m-0">
+              Model Baseline
+            </p>
+            <div className="mt-4 grid grid-cols-3 gap-2">
+              <div>
+                <p className="text-[11px] uppercase tracking-wide text-ink-fg2 m-0">Record</p>
+                <p className="mt-1 font-mono text-[20px] font-bold text-white m-0">{formatProjectedRecord(detail)}</p>
+              </div>
+              <div>
+                <p className="text-[11px] uppercase tracking-wide text-ink-fg2 m-0">AdjO</p>
+                <p className={`mt-1 font-mono text-[20px] font-bold m-0 ${getMetricColor(getDisplayAdjO(detail), 'offense')}`}>
+                  {formatRating(getDisplayAdjO(detail))}
+                </p>
+              </div>
+              <div>
+                <p className="text-[11px] uppercase tracking-wide text-ink-fg2 m-0">AdjD</p>
+                <p className={`mt-1 font-mono text-[20px] font-bold m-0 ${getMetricColor(getDisplayAdjD(detail), 'defense')}`}>
+                  {formatRating(getDisplayAdjD(detail))}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+function SnapshotCard({
   label,
-  teamVal,
-  oppVal,
+  value,
+  detail,
+  className = 'text-text-primary',
 }: {
   label: string;
-  teamVal: number | null;
-  oppVal: number | null;
+  value: string;
+  detail: string;
+  className?: string;
 }) {
-  const teamLeads =
-    teamVal !== null && oppVal !== null && teamVal > oppVal;
-  const oppLeads =
-    teamVal !== null && oppVal !== null && oppVal > teamVal;
   return (
-    <tr className="border-b border-ui-border last:border-0">
-      <td className="py-2.5 pr-4 text-[13px] text-text-muted w-1/3">{label}</td>
-      <td
-        className={`py-2.5 text-center font-mono text-[13px] font-medium ${
-          teamLeads ? 'text-positive' : oppLeads ? 'text-negative' : 'text-text-primary'
-        }`}
-      >
-        {teamVal !== null ? `${teamVal.toFixed(1)}%` : '—'}
-      </td>
-      <td
-        className={`py-2.5 text-center font-mono text-[13px] font-medium ${
-          oppLeads ? 'text-positive' : teamLeads ? 'text-negative' : 'text-text-primary'
-        }`}
-      >
-        {oppVal !== null ? `${oppVal.toFixed(1)}%` : '—'}
-      </td>
-    </tr>
+    <div className="rounded-lg border border-ui-border bg-ui-card p-5">
+      <p className="table-header m-0 mb-3">{label}</p>
+      <p className={`font-mono text-[28px] font-bold leading-none m-0 ${className}`}>{value}</p>
+      <p className="mt-3 text-[12px] leading-snug text-text-muted m-0">{detail}</p>
+    </div>
+  );
+}
+
+function ProjectionSnapshot({ detail }: { detail: TeamSeasonOutlookDetail }) {
+  const adjNet = getDisplayAdjNet(detail);
+  const adjO = getDisplayAdjO(detail);
+  const adjD = getDisplayAdjD(detail);
+
+  return (
+    <section>
+      {sectionTitle('10-second read', 'The Projection At A Glance')}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <SnapshotCard
+          label="Projected Record"
+          value={formatProjectedRecord(detail)}
+          detail="Baseline outcome from the roster projection."
+        />
+        <SnapshotCard
+          label="AdjNet"
+          value={formatSignedNumber(adjNet)}
+          detail="Projected team strength per 100 possessions."
+          className={getMetricColor(adjNet, 'net')}
+        />
+        <SnapshotCard
+          label="Offensive Rating"
+          value={formatRating(adjO)}
+          detail={getEfficiencyInterpretation(adjO, 'offense').label}
+          className={getMetricColor(adjO, 'offense')}
+        />
+        <SnapshotCard
+          label="Defensive Rating"
+          value={formatRating(adjD)}
+          detail={`${getEfficiencyInterpretation(adjD, 'defense').label} - lower is better.`}
+          className={getMetricColor(adjD, 'defense')}
+        />
+        <SnapshotCard
+          label="Win Range"
+          value={
+            detail.projected_floor_wins !== null && detail.projected_ceil_wins !== null
+              ? `${detail.projected_floor_wins}-${detail.projected_ceil_wins}W`
+              : '-'
+          }
+          detail="Model floor-to-ceiling band."
+        />
+        <SnapshotCard
+          label="Main Risk"
+          value={getTeamRiskSignal(detail)}
+          detail="The clearest variable that could move the projection."
+        />
+      </div>
+    </section>
+  );
+}
+
+function MacFaxReadCard({ detail }: { detail: TeamSeasonOutlookDetail }) {
+  const read = detail.macfax_take || generateMacFaxRead(detail);
+  const swing = getSwingText(detail);
+
+  return (
+    <section>
+      <div className="rounded-lg border border-brand/25 bg-brand/5 p-6 sm:p-7">
+        <p className="kicker-sport text-brand mb-3">MacFax Read</p>
+        <p className="max-w-[880px] text-[18px] leading-relaxed text-text-primary m-0">
+          {read}
+        </p>
+        <div className="mt-6 grid gap-4 md:grid-cols-2">
+          <div className="border-t border-brand/20 pt-4">
+            <p className="font-display text-[15px] font-bold uppercase tracking-wide text-text-primary m-0">
+              What would make this wrong?
+            </p>
+            <p className="mt-2 text-[14px] leading-relaxed text-text-muted m-0">
+              {getTeamRiskSignal(detail)} moving more than the model expects.
+            </p>
+          </div>
+          <div className="border-t border-brand/20 pt-4">
+            <p className="font-display text-[15px] font-bold uppercase tracking-wide text-text-primary m-0">
+              Season-defining variable
+            </p>
+            <p className="mt-2 text-[14px] leading-relaxed text-text-muted m-0">{swing}</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function EfficiencyProfile({ detail }: { detail: TeamSeasonOutlookDetail }) {
+  const cards = [
+    { label: 'Adjusted Offense', value: getDisplayAdjO(detail), kind: 'offense' as const },
+    { label: 'Adjusted Defense', value: getDisplayAdjD(detail), kind: 'defense' as const },
+    { label: 'Adjusted Net', value: getDisplayAdjNet(detail), kind: 'net' as const },
+  ];
+
+  return (
+    <section>
+      {sectionTitle('Efficiency', 'Efficiency Profile', 'Adjusted ratings summarize how the team projects possession by possession.')}
+      <div className="grid gap-4 md:grid-cols-3">
+        {cards.map((card) => {
+          const interpretation = getEfficiencyInterpretation(card.value, card.kind);
+          const value = card.kind === 'net' ? formatSignedNumber(card.value) : formatRating(card.value);
+          return (
+            <div key={card.label} className="rounded-lg border border-ui-border bg-ui-card p-5">
+              <p className="table-header m-0 mb-3">{card.label}</p>
+              <p className={`font-mono text-[34px] font-bold leading-none m-0 ${getMetricColor(card.value, card.kind)}`}>
+                {value}
+              </p>
+              <p className={`mt-3 text-[13px] font-semibold m-0 ${interpretation.className}`}>
+                {interpretation.label}
+              </p>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function FourFactorsCard({ detail }: { detail: TeamSeasonOutlookDetail }) {
+  const factors = [
+    { key: 'shooting' as const, label: 'Shooting', stat: 'eFG%', team: detail.efg_pct, opp: detail.opp_efg_pct },
+    { key: 'ball-security' as const, label: 'Ball Security', stat: 'Turnover%', team: detail.tov_pct, opp: detail.opp_tov_pct },
+    { key: 'glass' as const, label: 'Offensive Glass', stat: 'OREB%', team: detail.oreb_pct, opp: detail.opp_oreb_pct },
+    { key: 'free-throws' as const, label: 'Free Throws', stat: 'FTA/FGA', team: detail.fta_rate, opp: detail.opp_fta_rate },
+  ];
+
+  return (
+    <section>
+      {sectionTitle('Possession detail', 'Four Factors', 'The four factors show where the rating is coming from: shooting, turnovers, rebounding, and free throws.')}
+      <div className="overflow-hidden rounded-lg border border-ui-border bg-ui-card">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[640px]">
+            <thead>
+              <tr className="border-b border-ui-border">
+                <th className="table-header px-5 py-3 text-left">Factor</th>
+                <th className="table-header px-4 py-3 text-center">Team</th>
+                <th className="table-header px-4 py-3 text-center">Opponent</th>
+                <th className="table-header px-5 py-3 text-right">Edge</th>
+              </tr>
+            </thead>
+            <tbody>
+              {factors.map((factor) => {
+                const edge = getFourFactorEdge(factor.key, factor.team, factor.opp);
+                return (
+                  <tr key={factor.key} className="border-b border-ui-border last:border-0">
+                    <td className="px-5 py-4">
+                      <p className="text-[14px] font-semibold text-text-primary m-0">{factor.label}</p>
+                      <p className="mt-1 text-[12px] text-text-muted m-0">{factor.stat}</p>
+                    </td>
+                    <td className="px-4 py-4 text-center font-mono text-[14px] text-text-primary">
+                      {formatPercent(factor.team)}
+                    </td>
+                    <td className="px-4 py-4 text-center font-mono text-[14px] text-text-primary">
+                      {formatPercent(factor.opp)}
+                    </td>
+                    <td className={`px-5 py-4 text-right text-[13px] font-semibold ${edge.className}`}>
+                      {edge.label}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        {detail.pace !== null && (
+          <div className="border-t border-ui-border px-5 py-3 text-[12px] text-text-muted">
+            Pace: <span className="font-mono text-text-primary">{formatRating(detail.pace)}</span> possessions per 48 minutes.
+          </div>
+        )}
+      </div>
+    </section>
   );
 }
 
 function MoveCard({ move }: { move: TeamOutseasonMove }) {
+  const mps = getMpsTier(move.mps_score);
   return (
-    <div className="flex items-start gap-3 py-2.5 border-b border-ui-border last:border-0">
-      <div className="flex-1 min-w-0">
-        <p className="text-[14px] font-medium text-text-primary m-0">{move.player_name}</p>
-        {move.detail && (
-          <p className="text-[12px] text-text-muted m-0 mt-0.5">{move.detail}</p>
-        )}
+    <div className="flex items-start justify-between gap-3 border-b border-ui-border py-3 last:border-0">
+      <div className="min-w-0">
+        <p className="text-[14px] font-semibold text-text-primary m-0">{move.player_name}</p>
+        <p className="mt-1 text-[12px] leading-snug text-text-muted m-0">
+          {getMoveVerb(move)} · {formatMoveDetail(move)}
+        </p>
       </div>
-      <span
-        className={`text-[11px] font-medium px-2 py-0.5 rounded flex-shrink-0 ${IMPACT_CLASSES[move.impact_rating]}`}
-      >
-        {move.impact_rating}
-      </span>
-    </div>
-  );
-}
-
-function StarterCard({ starter }: { starter: ProjectedStarter }) {
-  return (
-    <div className="bg-ui-card border border-ui-border rounded-lg p-4 flex flex-col gap-2">
-      <div className="flex items-center justify-between">
-        <span className="kicker-sport text-brand text-[11px]">{starter.position}</span>
-        {starter.bpr_rating !== null && (
-          <span className="font-mono text-[12px] text-text-muted">
-            {starter.bpr_rating > 0 ? '+' : ''}{starter.bpr_rating.toFixed(1)} BPR
+      <div className="flex shrink-0 flex-col items-end gap-1">
+        <span className={`rounded px-2 py-0.5 text-[10px] font-semibold uppercase ${IMPACT_CLASSES[move.impact_rating]}`}>
+          {move.impact_rating}
+        </span>
+        {move.mps_score !== null && (
+          <span className={`rounded px-2 py-0.5 text-[10px] font-semibold ${mps.className}`}>
+            {mps.label}
           </span>
         )}
       </div>
-      <p className="text-[15px] font-semibold text-text-primary m-0 leading-tight">
-        {starter.player_name}
-      </p>
-      {starter.role_note && (
-        <p className="text-[12px] text-text-muted m-0">{starter.role_note}</p>
-      )}
-      {starter.key_question && (
-        <p className="text-[12px] text-brand/80 m-0 italic border-t border-ui-border pt-2 mt-1">
-          {starter.key_question}
-        </p>
-      )}
     </div>
   );
 }
 
-// ── BPR color helper ─────────────────────────────────────────────────────────
-function bprColor(v: number | null): string {
-  if (v === null) return 'text-text-muted';
-  if (v >= 5) return 'text-emerald-400';
-  if (v >= 3) return 'text-teal-400';
-  if (v >= 0) return 'text-text-primary';
-  return 'text-negative';
-}
+function OffseasonMovesSection({
+  additions,
+  departures,
+}: {
+  additions: TeamOutseasonMove[];
+  departures: TeamOutseasonMove[];
+}) {
+  if (additions.length === 0 && departures.length === 0) return null;
 
-function fmtBpr(v: number | null): string {
-  if (v === null) return '—';
-  return (v >= 0 ? '+' : '') + v.toFixed(1);
-}
-
-// ── Acquisition type badge ────────────────────────────────────────────────────
-const ACQTYPE_STYLES: Record<NBAProjectedRosterSlot['acquisition_type'], string> = {
-  returner: 'bg-blue-500/15 text-blue-400 border border-blue-500/25',
-  extended: 'bg-blue-500/15 text-blue-400 border border-blue-500/25',
-  signed: 'bg-positive/15 text-positive border border-positive/25',
-  traded_in: 'bg-amber-500/15 text-amber-400 border border-amber-500/25',
-  drafted: 'bg-purple-500/15 text-purple-400 border border-purple-500/25',
-};
-const ACQTYPE_LABELS: Record<NBAProjectedRosterSlot['acquisition_type'], string> = {
-  returner: 'Rtr',
-  extended: 'Ext',
-  signed: 'FA',
-  traded_in: 'Trd',
-  drafted: 'Rk',
-};
-
-// ── Cap thresholds 2026-27 ────────────────────────────────────────────────────
-const CAP_THRESHOLDS = [
-  { label: 'Floor', value: 149_000_000, color: '#6b7280' },
-  { label: 'Cap', value: 165_000_000, color: '#6b7280' },
-  { label: 'Tax', value: 201_000_000, color: '#eab308' },
-  { label: '1st Apron', value: 209_000_000, color: '#f97316' },
-  { label: '2nd Apron', value: 222_000_000, color: '#ef4444' },
-];
-const CAP_MIN = 130_000_000;
-const CAP_MAX = 240_000_000;
-const CAP_TIER_LABELS: Record<CapStatusTier, string> = {
-  under_cap: 'Under Cap',
-  over_cap: 'Over Cap',
-  taxpayer: 'Luxury Taxpayer',
-  first_apron: 'First Apron',
-  second_apron: 'Second Apron',
-};
-const CAP_TIER_CONSEQUENCES: Record<CapStatusTier, string> = {
-  under_cap: 'Full cap room; can sign any player.',
-  over_cap: 'Non-Taxpayer MLE (~$15M); sign-and-trade in/out.',
-  taxpayer: 'Taxpayer MLE (~$6M); paying tax dollar-for-dollar.',
-  first_apron: 'No BAE/Non-Taxpayer MLE; sign-and-trade restricted.',
-  second_apron: 'Cannot aggregate salaries in trades; no buyout signings.',
-};
-const CAP_TIER_CLASSES: Record<CapStatusTier, string> = {
-  under_cap: 'bg-ui-surface text-text-muted border border-ui-border',
-  over_cap: 'bg-amber-500/15 text-amber-400 border border-amber-500/25',
-  taxpayer: 'bg-orange-500/15 text-orange-400 border border-orange-500/25',
-  first_apron: 'bg-orange-600/15 text-orange-500 border border-orange-600/25',
-  second_apron: 'bg-negative/15 text-negative border border-negative/25',
-};
-
-function fmtSalaryM(v: number): string {
-  return `$${(v / 1_000_000).toFixed(0)}M`;
-}
-
-// ── Projected Roster Table ────────────────────────────────────────────────────
-function ProjectedRosterTable({ slots }: { slots: NBAProjectedRosterSlot[] }) {
-  const sorted = [...slots].sort(
-    (a, b) => (b.projected_minutes_share ?? 0) - (a.projected_minutes_share ?? 0),
-  );
   return (
-    <div className="bg-ui-card border border-ui-border rounded-lg overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-ui-border">
-              <th className="table-header text-left py-2.5 px-4">Player</th>
-              <th className="table-header text-center py-2.5 px-3">Arch</th>
-              <th className="table-header text-center py-2.5 px-3">OBPR</th>
-              <th className="table-header text-center py-2.5 px-3">DBPR</th>
-              <th className="table-header text-center py-2.5 px-3">BPR</th>
-              <th className="table-header text-center py-2.5 px-3">Min%</th>
-              <th className="table-header text-center py-2.5 px-3">W+</th>
-              <th className="table-header text-center py-2.5 px-3">Type</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sorted.map((slot) => (
-              <tr key={slot.id} className="border-b border-ui-border last:border-0 hover:bg-ui-surface/40">
-                <td className="py-2 px-4">
-                  <span className="text-[13px] font-medium text-text-primary">{slot.player_name}</span>
-                </td>
-                <td className="py-2 px-3 text-center">
-                  {slot.archetype ? (
-                    <span className="text-[11px] text-text-muted font-mono uppercase tracking-wide">
-                      {slot.archetype.replace(/_/g, ' ')}
-                    </span>
-                  ) : (
-                    <span className="text-[11px] text-text-muted">—</span>
-                  )}
-                </td>
-                <td className={`py-2 px-3 text-center font-mono text-[13px] ${bprColor(slot.projected_obpr)}`}>
-                  {fmtBpr(slot.projected_obpr)}
-                </td>
-                <td className={`py-2 px-3 text-center font-mono text-[13px] ${bprColor(slot.projected_dbpr)}`}>
-                  {fmtBpr(slot.projected_dbpr)}
-                </td>
-                <td className={`py-2 px-3 text-center font-mono text-[13px] font-semibold ${bprColor(slot.projected_bpr)}`}>
-                  {fmtBpr(slot.projected_bpr)}
-                </td>
-                <td className="py-2 px-3 text-center font-mono text-[13px] text-text-muted">
-                  {slot.projected_minutes_share !== null
-                    ? `${((slot.projected_minutes_share / 5) * 100).toFixed(0)}%`
-                    : '—'}
-                </td>
-                <td className={`py-2 px-3 text-center font-mono text-[13px] ${slot.projected_wins_added !== null && slot.projected_wins_added >= 0 ? 'text-positive' : 'text-negative'}`}>
-                  {slot.projected_wins_added !== null
-                    ? (slot.projected_wins_added >= 0 ? '+' : '') + slot.projected_wins_added.toFixed(1)
-                    : '—'}
-                </td>
-                <td className="py-2 px-3 text-center">
-                  <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${ACQTYPE_STYLES[slot.acquisition_type]}`}>
-                    {ACQTYPE_LABELS[slot.acquisition_type]}
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+    <section>
+      {sectionTitle('Roster movement', 'Offseason Moves', 'The model weighs offseason movement by projected role, player value, and minutes likely to change hands.')}
+      <div className="grid gap-5 lg:grid-cols-2">
+        <div className="rounded-lg border border-ui-border bg-ui-card">
+          <div className="border-b border-ui-border px-5 py-4">
+            <p className="font-display text-[17px] font-bold uppercase tracking-wide text-positive m-0">Additions</p>
+          </div>
+          <div className="px-5">
+            {additions.length > 0 ? additions.map((move) => <MoveCard key={move.id} move={move} />) : (
+              <p className="py-4 text-[13px] text-text-muted m-0">No major additions listed.</p>
+            )}
+          </div>
+        </div>
+        <div className="rounded-lg border border-ui-border bg-ui-card">
+          <div className="border-b border-ui-border px-5 py-4">
+            <p className="font-display text-[17px] font-bold uppercase tracking-wide text-negative m-0">Departures</p>
+          </div>
+          <div className="px-5">
+            {departures.length > 0 ? departures.map((move) => <MoveCard key={move.id} move={move} />) : (
+              <p className="py-4 text-[13px] text-text-muted m-0">No major departures listed.</p>
+            )}
+          </div>
+        </div>
       </div>
-    </div>
+    </section>
   );
 }
 
-// ── StatBar ───────────────────────────────────────────────────────────────────
 function StatBar({
   value,
   max = 100,
-  colorClass = 'bg-brand',
+  className = 'bg-brand',
 }: {
   value: number;
   max?: number;
-  colorClass?: string;
+  className?: string;
 }) {
-  const pct = Math.min(100, Math.max(0, (value / max) * 100));
+  const pct = Math.max(0, Math.min(100, (value / max) * 100));
   return (
-    <div className="h-1.5 bg-ui-border rounded-full overflow-hidden">
-      <div className={`h-full rounded-full ${colorClass}`} style={{ width: `${pct}%` }} />
+    <div className="h-2 overflow-hidden rounded-full bg-ui-border">
+      <div className={`h-full rounded-full ${className}`} style={{ width: `${pct}%` }} />
     </div>
   );
 }
 
-// ── Roster Construction Section ───────────────────────────────────────────────
 function RosterConstructionSection({
   detail,
   slots,
@@ -347,160 +539,329 @@ function RosterConstructionSection({
   detail: TeamSeasonOutlookDetail;
   slots: NBAProjectedRosterSlot[];
 }) {
-  const continuity = detail.continuity_score;
-  const age = detail.weighted_effective_age;
-  const concentration = detail.top2_bpr_concentration;
+  if (
+    detail.continuity_score === null &&
+    detail.weighted_effective_age === null &&
+    detail.top2_bpr_concentration === null
+  ) {
+    return null;
+  }
 
-  // Top-2 players by wins added for the concentration label
-  const sorted = [...slots].sort(
-    (a, b) => (b.projected_wins_added ?? -99) - (a.projected_wins_added ?? -99),
-  );
-  const top2Names = sorted.slice(0, 2).map((s) => s.player_name);
-
-  return (
-    <div className="grid grid-cols-3 gap-4">
-      {/* Continuity */}
-      {continuity !== null && (
-        <div className="bg-ui-card border border-ui-border rounded-lg p-5 flex flex-col gap-3">
-          <p className="table-header text-text-muted m-0">Roster Continuity</p>
-          <p className="font-mono text-[2rem] font-bold leading-none text-text-primary m-0">
-            {continuity.toFixed(0)}
-            <span className="text-[1rem] font-normal text-text-muted ml-1">%</span>
-          </p>
-          <StatBar
-            value={continuity}
-            colorClass={continuity >= 70 ? 'bg-positive' : continuity >= 40 ? 'bg-brand' : 'bg-amber-500'}
-          />
-          <p className="text-[11px] text-text-muted m-0">
-            {continuity >= 70 ? 'High continuity — chemistry advantage' :
-             continuity >= 40 ? 'Mixed returning core' :
-             'Low continuity — new-roster integration risk'}
-          </p>
-        </div>
-      )}
-
-      {/* Weighted Age */}
-      {age !== null && (
-        <div className="bg-ui-card border border-ui-border rounded-lg p-5 flex flex-col gap-3">
-          <p className="table-header text-text-muted m-0">Weighted Avg Age</p>
-          <p className="font-mono text-[2rem] font-bold leading-none text-text-primary m-0">
-            {age.toFixed(1)}
-          </p>
-          {/* Age spectrum: 20–36, peak window 27–29 highlighted */}
-          <div className="relative h-1.5 bg-ui-border rounded-full overflow-visible">
-            {/* Peak window band */}
-            <div
-              className="absolute top-0 h-full bg-positive/30 rounded"
-              style={{ left: `${((27 - 20) / 16) * 100}%`, width: `${((29 - 27) / 16) * 100}%` }}
-            />
-            {/* Marker */}
-            <div
-              className="absolute top-[-3px] w-[3px] h-[9px] bg-brand rounded-full"
-              style={{ left: `${Math.min(100, Math.max(0, ((age - 20) / 16) * 100))}%` }}
-            />
-          </div>
-          <p className="text-[11px] text-text-muted m-0">
-            {age < 25 ? 'Young — ascending' :
-             age <= 29 ? 'Peak window (27–29)' :
-             age <= 32 ? 'Aging window' :
-             'Veteran core'}
-          </p>
-        </div>
-      )}
-
-      {/* Star Concentration */}
-      {concentration !== null && (
-        <div className="bg-ui-card border border-ui-border rounded-lg p-5 flex flex-col gap-3">
-          <p className="table-header text-text-muted m-0">Star Concentration</p>
-          <p className={`font-mono text-[2rem] font-bold leading-none m-0 ${concentration >= 0.65 ? 'text-amber-400' : 'text-text-primary'}`}>
-            {(concentration * 100).toFixed(0)}
-            <span className="text-[1rem] font-normal text-text-muted ml-1">%</span>
-          </p>
-          <StatBar
-            value={concentration * 100}
-            colorClass={concentration >= 0.65 ? 'bg-amber-500' : 'bg-brand'}
-          />
-          {top2Names.length > 0 && (
-            <p className="text-[11px] text-text-muted m-0">
-              Top 2: {top2Names.join(' + ')}
-            </p>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Cap Snapshot ──────────────────────────────────────────────────────────────
-function CapSnapshotSection({ detail }: { detail: TeamSeasonOutlookDetail }) {
-  const total = detail.cap_total_salary;
-  const tier = detail.cap_status_tier;
-  if (total === null || tier === null) return null;
-
-  const pct = (v: number) =>
-    Math.min(100, Math.max(0, ((v - CAP_MIN) / (CAP_MAX - CAP_MIN)) * 100));
-  const teamPct = pct(total);
+  const continuity = getContinuityLabel(detail.continuity_score);
+  const age = getAgeLabel(detail.weighted_effective_age);
+  const concentration = getStarConcentrationLabel(detail.top2_bpr_concentration);
+  const topTwo = [...slots]
+    .sort((a, b) => (b.projected_wins_added ?? -99) - (a.projected_wins_added ?? -99))
+    .slice(0, 2)
+    .map((slot) => slot.player_name);
 
   return (
     <section>
-      <h2 className="font-display font-bold text-[18px] uppercase tracking-wide text-text-primary mb-4">
-        Cap Snapshot
-      </h2>
-      <div className="bg-ui-card border border-ui-border rounded-lg p-6 flex flex-col gap-5">
-        {/* Tier badge + total + consequence */}
-        <div className="flex items-center gap-3 flex-wrap">
-          <span className={`text-[11px] font-medium px-2.5 py-1 rounded ${CAP_TIER_CLASSES[tier]}`}>
-            {CAP_TIER_LABELS[tier]}
-          </span>
-          <span className="font-mono text-[18px] font-bold text-text-primary">
-            {fmtSalaryM(total)}
-          </span>
-          <span className="text-[13px] text-text-muted">{CAP_TIER_CONSEQUENCES[tier]}</span>
-        </div>
-
-        {/* Cap meter bar */}
-        <div className="relative h-3 bg-ui-border rounded-full overflow-visible">
-          {/* Color zones */}
-          <div className="absolute inset-0 flex rounded-full overflow-hidden">
-            <div className="bg-positive/20" style={{ width: `${pct(165_000_000)}%` }} />
-            <div className="bg-amber-500/20" style={{ width: `${pct(201_000_000) - pct(165_000_000)}%` }} />
-            <div className="bg-orange-500/20" style={{ width: `${pct(209_000_000) - pct(201_000_000)}%` }} />
-            <div className="bg-orange-700/20" style={{ width: `${pct(222_000_000) - pct(209_000_000)}%` }} />
-            <div className="bg-negative/20 flex-1" />
+      {sectionTitle('Roster shape', 'Roster Construction')}
+      <div className="grid gap-4 lg:grid-cols-3">
+        {detail.continuity_score !== null && (
+          <div className="rounded-lg border border-ui-border bg-ui-card p-5">
+            <p className="table-header m-0 mb-3">Roster Continuity</p>
+            <p className="font-mono text-[34px] font-bold leading-none text-text-primary m-0">{formatRating(detail.continuity_score, 0)}%</p>
+            <div className="mt-4"><StatBar value={detail.continuity_score} className={continuity.barClass} /></div>
+            <p className={`mt-4 text-[13px] font-semibold m-0 ${continuity.className}`}>{continuity.label}</p>
+            <p className="mt-2 text-[12px] leading-snug text-text-muted m-0">{continuity.text}</p>
           </div>
-          {/* Threshold ticks */}
-          {CAP_THRESHOLDS.map((t) => (
-            <div
-              key={t.label}
-              className="absolute top-0 bottom-0 w-[2px]"
-              style={{ left: `${pct(t.value)}%`, background: t.color }}
-            />
-          ))}
-          {/* Team marker */}
-          <div
-            className="absolute top-[-4px] w-[4px] h-[19px] bg-brand rounded-full shadow"
-            style={{ left: `${teamPct}%`, marginLeft: '-2px' }}
-          />
-        </div>
-
-        {/* Threshold labels */}
-        <div className="relative h-4">
-          {CAP_THRESHOLDS.map((t) => (
-            <div
-              key={t.label}
-              className="absolute text-[10px] text-text-muted"
-              style={{ left: `${pct(t.value)}%`, transform: 'translateX(-50%)' }}
-            >
-              {t.label}
-            </div>
-          ))}
-        </div>
+        )}
+        {detail.weighted_effective_age !== null && (
+          <div className="rounded-lg border border-ui-border bg-ui-card p-5">
+            <p className="table-header m-0 mb-3">Weighted Age</p>
+            <p className="font-mono text-[34px] font-bold leading-none text-text-primary m-0">{formatRating(detail.weighted_effective_age)}</p>
+            <div className="mt-4"><StatBar value={Math.max(0, detail.weighted_effective_age - 20)} max={14} className={age.barClass} /></div>
+            <p className={`mt-4 text-[13px] font-semibold m-0 ${age.className}`}>{age.label}</p>
+            <p className="mt-2 text-[12px] leading-snug text-text-muted m-0">{age.text}</p>
+          </div>
+        )}
+        {concentration.percent !== null && (
+          <div className="rounded-lg border border-ui-border bg-ui-card p-5">
+            <p className="table-header m-0 mb-3">Star Concentration</p>
+            <p className="font-mono text-[34px] font-bold leading-none text-text-primary m-0">{formatRating(concentration.percent, 0)}%</p>
+            <div className="mt-4"><StatBar value={concentration.percent} className={concentration.barClass} /></div>
+            <p className={`mt-4 text-[13px] font-semibold m-0 ${concentration.className}`}>{concentration.label}</p>
+            <p className="mt-2 text-[12px] leading-snug text-text-muted m-0">
+              {topTwo.length > 0 ? `Top two: ${topTwo.join(' + ')}.` : concentration.text}
+            </p>
+          </div>
+        )}
       </div>
     </section>
   );
 }
 
-// ── Page ─────────────────────────────────────────────────────────────────────
+type CorePlayer = {
+  id: string | number;
+  name: string;
+  position: string;
+  bpr: number | null;
+  archetype: string | null;
+  roleNote: string;
+  keyQuestion?: string;
+};
+
+function getCoreFive(detail: TeamSeasonOutlookDetail): { title: string; players: CorePlayer[] } {
+  if (detail.projected_starters.length > 0) {
+    return {
+      title: 'Projected Starting Five',
+      players: detail.projected_starters.map((starter: ProjectedStarter) => ({
+        id: starter.id,
+        name: starter.player_name,
+        position: starter.position,
+        bpr: starter.bpr_rating,
+        archetype: null,
+        roleNote: starter.role_note || getBprTier(starter.bpr_rating).label,
+        keyQuestion: starter.key_question,
+      })),
+    };
+  }
+
+  return {
+    title: 'Projected Core Five',
+    players: [...detail.projected_roster_slots]
+      .sort((a, b) => (b.projected_minutes_share ?? 0) - (a.projected_minutes_share ?? 0))
+      .slice(0, 5)
+      .map((slot) => ({
+        id: slot.id,
+        name: slot.player_name,
+        position: slot.position || formatArchetype(slot.archetype),
+        bpr: slot.projected_bpr,
+        archetype: slot.archetype,
+        roleNote: getPlayerRoleLabel(slot),
+      })),
+  };
+}
+
+function ProjectedCoreFiveSection({ detail }: { detail: TeamSeasonOutlookDetail }) {
+  const core = getCoreFive(detail);
+  if (core.players.length === 0) return null;
+
+  return (
+    <section>
+      {sectionTitle('Rotation core', core.title)}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        {core.players.map((player) => (
+          <div key={player.id} className="rounded-lg border border-ui-border bg-ui-card p-4">
+            <div className="mb-4 flex items-center justify-between gap-2">
+              <span className="kicker-sport text-brand text-[11px]">{player.position || 'Core'}</span>
+              <span className={`font-mono text-[12px] font-semibold ${getBprTier(player.bpr).className}`}>
+                {formatSignedNumber(player.bpr)} BPR
+              </span>
+            </div>
+            <p className="text-[15px] font-semibold leading-tight text-text-primary m-0">{player.name}</p>
+            <p className="mt-2 text-[12px] leading-snug text-text-muted m-0">{player.roleNote}</p>
+            {player.keyQuestion && (
+              <p className="mt-3 border-t border-ui-border pt-3 text-[12px] leading-snug text-brand m-0">
+                {player.keyQuestion}
+              </p>
+            )}
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function RotationRow({ slot }: { slot: NBAProjectedRosterSlot }) {
+  return (
+    <tr className="border-b border-ui-border last:border-0 hover:bg-ui-surface/50">
+      <td className="px-4 py-3">
+        <p className="text-[13px] font-semibold text-text-primary m-0">{slot.player_name}</p>
+        <p className="mt-1 text-[11px] text-text-muted m-0">{slot.position || 'Position TBD'}</p>
+      </td>
+      <td className="px-3 py-3 text-[12px] text-text-muted">{formatArchetype(slot.archetype)}</td>
+      <td className={`px-3 py-3 text-center font-mono text-[13px] font-semibold ${getBprTier(slot.projected_bpr).className}`}>
+        {formatSignedNumber(slot.projected_bpr)}
+      </td>
+      <td className={`px-3 py-3 text-center font-mono text-[13px] ${getBprTier(slot.projected_obpr).className}`}>
+        {formatSignedNumber(slot.projected_obpr)}
+      </td>
+      <td className={`px-3 py-3 text-center font-mono text-[13px] ${getBprTier(slot.projected_dbpr).className}`}>
+        {formatSignedNumber(slot.projected_dbpr)}
+      </td>
+      <td className="px-3 py-3 text-center font-mono text-[13px] text-text-muted">{formatMinutesShare(slot.projected_minutes_share)}</td>
+      <td className="px-4 py-3 text-right">
+        <span className={`rounded px-2 py-0.5 text-[10px] font-semibold ${ACQUISITION_CLASSES[slot.acquisition_type]}`}>
+          {ACQUISITION_LABELS[slot.acquisition_type]}
+        </span>
+      </td>
+    </tr>
+  );
+}
+
+function RotationTable({ slots }: { slots: NBAProjectedRosterSlot[] }) {
+  if (slots.length === 0) return null;
+  const sorted = [...slots].sort((a, b) => (b.projected_minutes_share ?? 0) - (a.projected_minutes_share ?? 0));
+  const top = sorted.slice(0, 12);
+  const rest = sorted.slice(12);
+
+  return (
+    <section>
+      {sectionTitle('Projected minutes', 'Projected Rotation', 'BPR scale: +5 All-Star, +2 starter, 0 replacement-level, negative rotation drag.')}
+      <div className="overflow-hidden rounded-lg border border-ui-border bg-ui-card">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[760px]">
+            <thead>
+              <tr className="border-b border-ui-border">
+                <th className="table-header px-4 py-3 text-left">Player</th>
+                <th className="table-header px-3 py-3 text-left">Role</th>
+                <th className="table-header px-3 py-3 text-center">BPR</th>
+                <th className="table-header px-3 py-3 text-center">OBPR</th>
+                <th className="table-header px-3 py-3 text-center">DBPR</th>
+                <th className="table-header px-3 py-3 text-center">Min%</th>
+                <th className="table-header px-4 py-3 text-right">Type</th>
+              </tr>
+            </thead>
+            <tbody>
+              {top.map((slot) => <RotationRow key={slot.id} slot={slot} />)}
+            </tbody>
+          </table>
+        </div>
+        {rest.length > 0 && (
+          <details className="group border-t border-ui-border">
+            <summary className="flex cursor-pointer list-none items-center justify-center gap-2 px-4 py-3 text-[13px] font-semibold text-brand">
+              Show full roster ({rest.length} more)
+              <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" strokeWidth={1.75} />
+            </summary>
+            <div className="overflow-x-auto border-t border-ui-border">
+              <table className="w-full min-w-[760px]">
+                <tbody>{rest.map((slot) => <RotationRow key={slot.id} slot={slot} />)}</tbody>
+              </table>
+            </div>
+          </details>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function DevelopmentWatchSection({ players }: { players: DevelopmentWatchPlayer[] }) {
+  if (players.length === 0) return null;
+  const drafted = players.filter((player) => player.acquisition_type === 'drafted');
+  const under25 = players.filter((player) => player.acquisition_type !== 'drafted');
+
+  return (
+    <section>
+      {sectionTitle('Next layer', 'Development Watch')}
+      <div className="grid gap-5 lg:grid-cols-2">
+        {drafted.length > 0 && (
+          <div className="rounded-lg border border-ui-border bg-ui-card p-5">
+            <p className="font-display text-[17px] font-bold uppercase tracking-wide text-brand m-0">Draft Class</p>
+            <div className="mt-4 grid gap-3">
+              {drafted.map((player) => {
+                const mps = getMpsTier(player.mps_score);
+                return (
+                  <div key={player.player_name} className="rounded-lg border border-ui-border bg-ui-surface p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-[14px] font-semibold text-text-primary m-0">{player.player_name}</p>
+                        <p className="mt-1 text-[12px] text-text-muted m-0">
+                          {getPickLabel(player.round_number, player.overall_pick)} · {formatArchetype(player.archetype)}
+                        </p>
+                      </div>
+                      <span className={`rounded px-2 py-0.5 text-[10px] font-semibold ${mps.className}`}>
+                        {mps.label}
+                      </span>
+                    </div>
+                    <p className="mt-3 text-[12px] leading-snug text-text-muted m-0">
+                      MPS {formatRating(player.mps_score)} · {getDevelopmentRead(player)}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {under25.length > 0 && (
+          <div className="rounded-lg border border-ui-border bg-ui-card p-5">
+            <p className="font-display text-[17px] font-bold uppercase tracking-wide text-brandBlue m-0">Under-25 Returners</p>
+            <div className="mt-4 grid gap-3">
+              {under25.map((player) => (
+                <div key={player.player_name} className="rounded-lg border border-ui-border bg-ui-surface p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-[14px] font-semibold text-text-primary m-0">{player.player_name}</p>
+                      <p className="mt-1 text-[12px] text-text-muted m-0">
+                        Age {player.age ?? '-'} · {formatArchetype(player.archetype)}
+                      </p>
+                    </div>
+                    <span className={`font-mono text-[13px] font-semibold ${getBprTier(player.projected_bpr).className}`}>
+                      {formatSignedNumber(player.projected_bpr)}
+                    </span>
+                  </div>
+                  <p className="mt-3 text-[12px] leading-snug text-text-muted m-0">
+                    {getDevelopmentRead(player)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function BottomLineOutlook({ detail }: { detail: TeamSeasonOutlookDetail }) {
+  if (detail.projected_wins === null && !detail.macfax_take) return null;
+  const adjNet = getDisplayAdjNet(detail);
+
+  return (
+    <section>
+      {sectionTitle('Final read', 'Bottom Line')}
+      <div className="rounded-lg border border-ui-border bg-ui-card p-6">
+        <div className="grid gap-5 lg:grid-cols-[1fr_1.4fr] lg:items-center">
+          <div>
+            <p className="table-header m-0 mb-2">Projected Record</p>
+            <p className="font-mono text-[34px] font-bold leading-none text-text-primary m-0">
+              {formatRecord(detail.projected_wins, detail.projected_losses)}
+            </p>
+            <div className="mt-4 flex flex-wrap gap-4 text-[13px] text-text-muted">
+              <span>AdjNet <span className={`font-mono font-semibold ${getMetricColor(adjNet, 'net')}`}>{formatSignedNumber(adjNet)}</span></span>
+              <span>AdjO <span className={`font-mono font-semibold ${getMetricColor(getDisplayAdjO(detail), 'offense')}`}>{formatRating(getDisplayAdjO(detail))}</span></span>
+              <span>AdjD <span className={`font-mono font-semibold ${getMetricColor(getDisplayAdjD(detail), 'defense')}`}>{formatRating(getDisplayAdjD(detail))}</span></span>
+            </div>
+          </div>
+          <WinRangeBar
+            floor={detail.projected_floor_wins}
+            baseline={detail.projected_wins}
+            ceiling={detail.projected_ceil_wins}
+          />
+        </div>
+        <p className="mt-6 border-t border-ui-border pt-5 text-[15px] leading-relaxed text-text-primary m-0">
+          {detail.macfax_take || generateMacFaxRead(detail)}
+        </p>
+        <blockquote className="mt-5 border-l-4 border-brand pl-4 text-[14px] leading-relaxed text-text-muted m-0">
+          {getSwingText(detail)}
+        </blockquote>
+      </div>
+    </section>
+  );
+}
+
+function CapSnapshot({ detail }: { detail: TeamSeasonOutlookDetail }) {
+  if (detail.cap_total_salary === null || detail.cap_status_tier === null) return null;
+  const tier = detail.cap_status_tier;
+
+  return (
+    <section>
+      {sectionTitle('Roster flexibility', 'Cap Snapshot')}
+      <div className="rounded-lg border border-ui-border bg-ui-card p-5">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="rounded bg-ui-surface px-2.5 py-1 text-[11px] font-semibold text-text-primary border border-ui-border">
+            {CAP_TIER_LABELS[tier]}
+          </span>
+          <span className="font-mono text-[24px] font-bold text-text-primary">{formatSalary(detail.cap_total_salary)}</span>
+        </div>
+        <p className="mt-3 text-[13px] leading-relaxed text-text-muted m-0">{CAP_TIER_TEXT[tier]}</p>
+      </div>
+    </section>
+  );
+}
 
 export default async function TeamOutlookPage({ params }: Props) {
   const { slug } = await params;
@@ -512,356 +873,36 @@ export default async function TeamOutlookPage({ params }: Props) {
     notFound();
   }
 
-  const additions = detail.offseason_moves.filter((m) =>
-    ADDITION_TYPES.includes(m.move_type),
-  );
-  const departures = detail.offseason_moves.filter(
-    (m) => !ADDITION_TYPES.includes(m.move_type),
-  );
+  const additions = detail.offseason_moves.filter((move) => ADDITION_TYPES.includes(move.move_type));
+  const departures = detail.offseason_moves.filter((move) => !ADDITION_TYPES.includes(move.move_type));
 
   return (
     <div>
-      {/* ── Section 1: Header ─────────────────────────────────────────── */}
-      <div
-        className="relative overflow-hidden"
-        style={{ background: `linear-gradient(135deg, ${detail.primary_color}22 0%, var(--ink) 60%)` }}
-      >
-        <div className="bg-ink/90 relative">
-          <div className="max-w-[1240px] mx-auto px-8 py-10">
-            <div className="flex items-start gap-6">
-              {detail.logo_url && (
-                <TeamLogo
-                  src={detail.logo_url}
-                  alt={detail.team_abbr}
-                  width={72}
-                  height={72}
-                  className="object-contain flex-shrink-0 mt-1"
-                  fallbackColor={detail.primary_color}
-                />
-              )}
-              <div className="flex-1 min-w-0">
-                <p className="kicker-sport text-brand mb-2">
-                  {detail.conference}ern Conference · 2025-26 Season Outlook
-                </p>
-                <h1 className="font-display font-bold text-[clamp(28px,4vw,52px)] leading-none uppercase tracking-[0.005em] text-ink-fg m-0">
-                  {detail.team_name}
-                </h1>
-                <div className="flex items-center gap-4 mt-3 flex-wrap">
-                  {detail.wins !== null && detail.losses !== null && (
-                    <span className="font-mono text-[15px] text-ink-fg2">
-                      {detail.wins}–{detail.losses}
-                    </span>
-                  )}
-                  <span
-                    className={`font-mono text-[22px] font-bold ${netColor(detail.adj_net_rating)}`}
-                  >
-                    {fmtNet(detail.adj_net_rating)}
-                    <span className="text-[13px] font-normal text-ink-fg2 ml-1">AdjNet</span>
-                  </span>
-                  <span className="font-mono text-[13px] text-ink-fg2">
-                    #{detail.league_rank} in league
-                  </span>
-                  {detail.outlook_tier && (
-                    <span
-                      className={`text-[11px] font-medium px-2.5 py-1 rounded ${TIER_CLASSES[detail.outlook_tier]}`}
-                    >
-                      {TIER_LABELS[detail.outlook_tier]}
-                    </span>
-                  )}
-                </div>
-                {detail.season_headline && (
-                  <p className="text-[16px] text-ink-fg/80 mt-4 m-0 leading-snug max-w-[640px]">
-                    {detail.season_headline}
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-        {/* 4px teal separator */}
-        <div className="h-1 w-full bg-brand" />
-      </div>
+      <TeamHero detail={detail} />
 
-      {/* ── Content ─────────────────────────────────────────────────────── */}
-      <div className="max-w-[1240px] mx-auto px-8 py-8 pb-16 flex flex-col gap-10">
+      <main className="max-w-[1240px] mx-auto px-5 sm:px-8 py-8 sm:py-10 pb-16 flex flex-col gap-10">
+        <ProjectionSnapshot detail={detail} />
+        <MacFaxReadCard detail={detail} />
+        <EfficiencyProfile detail={detail} />
+        <FourFactorsCard detail={detail} />
+        <RosterConstructionSection detail={detail} slots={detail.projected_roster_slots} />
+        <OffseasonMovesSection additions={additions} departures={departures} />
+        <ProjectedCoreFiveSection detail={detail} />
+        <RotationTable slots={detail.projected_roster_slots} />
+        <DevelopmentWatchSection players={detail.development_watch} />
+        <BottomLineOutlook detail={detail} />
+        <CapSnapshot detail={detail} />
 
-        {/* ── Section 2: Efficiency Profile ─────────────────────────────── */}
-        <section>
-          <h2 className="font-display font-bold text-[18px] uppercase tracking-wide text-text-primary mb-4">
-            Efficiency Profile
-          </h2>
-
-          {/* Three stat cards */}
-          <div className="grid grid-cols-3 gap-4 mb-6">
-            <StatCard
-              label="ADJ OFFENSIVE RTG"
-              value={fmtRating(detail.adj_offensive_rating)}
-            />
-            <StatCard
-              label="ADJ DEFENSIVE RTG"
-              value={fmtRating(detail.adj_defensive_rating)}
-            />
-            <StatCard
-              label="ADJ NET RTG"
-              value={fmtNet(detail.adj_net_rating)}
-              rank={detail.league_rank}
-              colorClass={netColor(detail.adj_net_rating)}
-            />
-          </div>
-
-          {/* Four Factors table */}
-          <div className="bg-ui-card border border-ui-border rounded-lg overflow-hidden">
-            <div className="px-5 py-3 border-b border-ui-border">
-              <p className="table-header text-text-muted m-0">Four Factors</p>
-            </div>
-            <div className="px-5">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-ui-border">
-                    <th className="table-header text-left py-2.5 w-1/3">Factor</th>
-                    <th className="table-header text-center py-2.5">Team</th>
-                    <th className="table-header text-center py-2.5">Opponent</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <FourFactorRow
-                    label="Eff. Field Goal %"
-                    teamVal={detail.efg_pct}
-                    oppVal={detail.opp_efg_pct}
-                  />
-                  <FourFactorRow
-                    label="Turnover %"
-                    teamVal={
-                      detail.tov_pct !== null ? -detail.tov_pct : null
-                    }
-                    oppVal={
-                      detail.opp_tov_pct !== null ? -detail.opp_tov_pct : null
-                    }
-                  />
-                  <FourFactorRow
-                    label="Off. Rebound %"
-                    teamVal={detail.oreb_pct}
-                    oppVal={detail.opp_oreb_pct}
-                  />
-                  <FourFactorRow
-                    label="FT Rate (FTA/FGA)"
-                    teamVal={detail.fta_rate}
-                    oppVal={detail.opp_fta_rate}
-                  />
-                </tbody>
-              </table>
-            </div>
-            {detail.pace !== null && (
-              <div className="px-5 py-3 border-t border-ui-border">
-                <span className="text-[12px] text-text-muted">
-                  Pace:{' '}
-                  <span className="font-mono text-text-primary">
-                    {detail.pace.toFixed(1)}
-                  </span>{' '}
-                  poss/48 min
-                </span>
-              </div>
-            )}
-          </div>
-        </section>
-
-        {/* ── Section 3: Offseason Moves (conditional) ──────────────────── */}
-        {detail.offseason_moves.length > 0 && (
-          <section>
-            <h2 className="font-display font-bold text-[18px] uppercase tracking-wide text-text-primary mb-4">
-              Offseason Moves
-            </h2>
-            <div className="grid grid-cols-2 gap-6">
-              {additions.length > 0 && (
-                <div className="bg-ui-card border border-ui-border rounded-lg overflow-hidden">
-                  <div className="px-5 py-3 border-b border-ui-border">
-                    <p className="table-header text-positive m-0">Additions</p>
-                  </div>
-                  <div className="px-5">
-                    {additions.map((m) => (
-                      <MoveCard key={m.id} move={m} />
-                    ))}
-                  </div>
-                </div>
-              )}
-              {departures.length > 0 && (
-                <div className="bg-ui-card border border-ui-border rounded-lg overflow-hidden">
-                  <div className="px-5 py-3 border-b border-ui-border">
-                    <p className="table-header text-negative m-0">Departures</p>
-                  </div>
-                  <div className="px-5">
-                    {departures.map((m) => (
-                      <MoveCard key={m.id} move={m} />
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </section>
-        )}
-
-        {/* ── Section 3b: Roster Construction ──────────────────────────────── */}
-        {(detail.continuity_score !== null ||
-          detail.weighted_effective_age !== null ||
-          detail.top2_bpr_concentration !== null) && (
-          <section>
-            <h2 className="font-display font-bold text-[18px] uppercase tracking-wide text-text-primary mb-4">
-              Roster Construction
-            </h2>
-            <RosterConstructionSection detail={detail} slots={detail.projected_roster_slots} />
-          </section>
-        )}
-
-        {/* ── Section 4: Projected Starting Five (conditional) ──────────── */}
-        {detail.projected_starters.length > 0 && (
-          <section>
-            <h2 className="font-display font-bold text-[18px] uppercase tracking-wide text-text-primary mb-4">
-              Projected Starting Five
-            </h2>
-            <div className="grid grid-cols-5 gap-3">
-              {detail.projected_starters.map((s) => (
-                <StarterCard key={s.id} starter={s} />
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* ── Section 4b: Projected Roster ─────────────────────────────────── */}
-        {detail.projected_roster_slots.length > 0 && (
-          <section>
-            <h2 className="font-display font-bold text-[18px] uppercase tracking-wide text-text-primary mb-4">
-              2026-27 Projected Roster
-            </h2>
-            <ProjectedRosterTable slots={detail.projected_roster_slots} />
-          </section>
-        )}
-
-        {/* ── Section 5: Development Spotlight (conditional) ────────────── */}
-        {detail.development_spotlight_player && (
-          <section>
-            <h2 className="font-display font-bold text-[18px] uppercase tracking-wide text-text-primary mb-4">
-              Development Spotlight
-            </h2>
-            <div className="bg-ui-card border border-ui-border rounded-lg p-6">
-              <p className="kicker-sport text-brand mb-2">
-                {detail.development_spotlight_player}
-              </p>
-              {detail.development_spotlight_text && (
-                <p className="text-[15px] text-text-primary leading-relaxed m-0">
-                  {detail.development_spotlight_text}
-                </p>
-              )}
-            </div>
-          </section>
-        )}
-
-        {/* ── Section 6: 2026-27 Outlook ────────────────────────────────────── */}
-        {(detail.projected_wins !== null || detail.macfax_take) && (
-          <section>
-            <h2 className="font-display font-bold text-[18px] uppercase tracking-wide text-text-primary mb-4">
-              2026-27 Outlook
-            </h2>
-            <div className="bg-ui-card border border-ui-border rounded-lg p-6 flex flex-col gap-5">
-              {detail.projected_wins !== null && (
-                <div className="flex flex-col gap-3">
-                  {/* Projected record + ratings row */}
-                  <div className="flex items-center gap-4 flex-wrap">
-                    <div>
-                      <p className="table-header text-text-muted m-0 mb-1">Projected Record</p>
-                      <span className="font-mono text-[22px] font-bold text-text-primary">
-                        {detail.projected_wins}–{detail.projected_losses ?? '?'}
-                      </span>
-                    </div>
-                    {detail.projected_adj_net !== null && (
-                      <div>
-                        <p className="table-header text-text-muted m-0 mb-1">AdjEM</p>
-                        <span className={`font-mono text-[18px] font-semibold ${netColor(detail.projected_adj_net)}`}>
-                          {fmtNet(detail.projected_adj_net)}
-                        </span>
-                      </div>
-                    )}
-                    {detail.projected_adj_o !== null && (
-                      <div>
-                        <p className="table-header text-text-muted m-0 mb-1">AdjO</p>
-                        <span className="font-mono text-[18px] font-semibold text-positive">
-                          {fmtRating(detail.projected_adj_o)}
-                        </span>
-                      </div>
-                    )}
-                    {detail.projected_adj_d !== null && (
-                      <div>
-                        <p className="table-header text-text-muted m-0 mb-1">AdjD</p>
-                        <span className="font-mono text-[18px] font-semibold text-negative">
-                          {fmtRating(detail.projected_adj_d)}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Floor / ceiling range bar */}
-                  {detail.projected_floor_wins !== null && detail.projected_ceil_wins !== null && (
-                    <div className="flex flex-col gap-1.5">
-                      <p className="table-header text-text-muted m-0">Win Range</p>
-                      <div className="flex items-center gap-3">
-                        <span className="font-mono text-[13px] text-text-muted w-8">
-                          {detail.projected_floor_wins}W
-                        </span>
-                        <div className="flex-1 relative h-2 bg-ui-border rounded-full overflow-hidden">
-                          {/* Fill from floor to ceil */}
-                          {(() => {
-                            const scale = (v: number) => ((v - 15) / 65) * 100;
-                            const floorPct = Math.max(0, scale(detail.projected_floor_wins!));
-                            const ceilPct  = Math.min(100, scale(detail.projected_ceil_wins!));
-                            const midPct   = scale(detail.projected_wins!);
-                            return (
-                              <>
-                                <div
-                                  className="absolute top-0 h-full bg-brand/30 rounded"
-                                  style={{ left: `${floorPct}%`, width: `${ceilPct - floorPct}%` }}
-                                />
-                                <div
-                                  className="absolute top-[-1px] w-[3px] h-[10px] bg-brand rounded-full"
-                                  style={{ left: `${midPct}%`, marginLeft: '-1.5px' }}
-                                />
-                              </>
-                            );
-                          })()}
-                        </div>
-                        <span className="font-mono text-[13px] text-text-muted w-8 text-right">
-                          {detail.projected_ceil_wins}W
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-              {detail.macfax_take && (
-                <p className="text-[15px] text-text-primary leading-relaxed m-0 border-t border-ui-border pt-4">
-                  {detail.macfax_take}
-                </p>
-              )}
-              {detail.season_defining_variable && (
-                <blockquote className="border-l-4 border-brand pl-4 m-0 italic text-[15px] text-text-primary/80">
-                  {detail.season_defining_variable}
-                </blockquote>
-              )}
-            </div>
-          </section>
-        )}
-
-        {/* ── Section 7: Cap Snapshot (conditional) ─────────────────────── */}
-        <CapSnapshotSection detail={detail} />
-
-        {/* ── Footer ────────────────────────────────────────────────────── */}
         <div className="border-t border-ui-border pt-6">
           <Link
             href="/nba/teams"
-            className="text-[13px] text-brand hover:text-brand/80 transition-colors"
+            className="inline-flex items-center gap-2 text-[13px] font-semibold text-brand no-underline transition-colors hover:text-brand-hover"
           >
-            ← All Team Outlooks
+            <ArrowLeft className="h-4 w-4" strokeWidth={1.75} />
+            All Team Outlooks
           </Link>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

@@ -60,6 +60,7 @@
 - Go over the Adjusted Ratings and go over it with claude code and backtesting to make sure its as accurate as it can be and adjust it or add things to it. We should compare it to KenPom and Evan Miya if we haven't already and compare it truly
 - Western Michigan and Eastern Michigan are both missing their logos
 - Update NCAA Rankings page to match Claude design; add red back to heatmap
+- Update the New Conferences in the NCAA Web App
 
 ## NCAA Matchup Tool
 - Claude Overview of it, give screenshots of the homepage and tell whats wrong with it in terms of the content of whats on there like words and placement and reference what its suppoesed to look like
@@ -278,4 +279,3 @@ This format is easy, fun, and repeatable.
 - Next season outlooks for the NCAA College Teams, since there are like 365 teams in College Basketball I say we go through each conference and then we have like the homepage be the title with the conference and then like the projected standings for next season for that conference, then each slide go through each team with like their projected record, seed in the tournament if they make it, lineup and starting five and just like all the different things and insights we would want to show an audience for each team in that conferece. Like Im thinking expected record, seed, and all that stuff i might help with ideas on what content to put on each slide
 
 - Next season outlooks for NBA teams, I really wanna do this one and maybe for all NBA teams, maybe starting after the NBA draft we can go through each team and have slides for offseason outlook, maybe a capspace thing idk if we can, projected starting five, and then projected record and help me with other ideas in what to also put on there
-

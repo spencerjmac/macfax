@@ -20,20 +20,30 @@ import type {
 } from '@/types/nba';
 import type { GameDetailResponse } from '@/types/games';
 
-const API_BASE_URL = (process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8000').replace(/\/$/, '');
-const NBA_API_ROOT = `${API_BASE_URL}/api/nba`;
+const SERVER_API_BASE_URL = (
+  process.env.API_INTERNAL_URL ||
+  process.env.NEXT_PUBLIC_API_BASE_URL ||
+  'http://127.0.0.1:8000'
+).replace(/\/$/, '');
 
 type QueryParams = Record<string, string | number | boolean | undefined | null>;
 
 function buildUrl(path: string, params?: QueryParams): string {
-  const url = new URL(`${NBA_API_ROOT}${path.startsWith('/') ? '' : '/'}${path}`);
+  const isBrowser = typeof window !== 'undefined';
+  const rawPath = path.startsWith('/') ? path : `/${path}`;
+  const normalizedPath = isBrowser && rawPath.length > 1
+    ? rawPath.replace(/\/+$/, '')
+    : rawPath;
+  const base = isBrowser ? window.location.origin : SERVER_API_BASE_URL;
+  const apiRoot = isBrowser ? '/nba-api' : '/api/nba';
+  const url = new URL(`${apiRoot}${normalizedPath}`, base);
   if (params) {
     Object.entries(params).forEach(([key, value]) => {
       if (value === undefined || value === null || value === '') return;
       url.searchParams.set(key, String(value));
     });
   }
-  return url.toString();
+  return isBrowser ? `${url.pathname}${url.search}` : url.toString();
 }
 
 async function fetchJson<T>(url: string): Promise<T> {

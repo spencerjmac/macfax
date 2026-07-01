@@ -1,0 +1,50 @@
+team_slug,player_name,move_type,salary,contract_years,notes,impact_rating
+# ── HOW TO USE ──────────────────────────────────────────────────────────────
+# Run: python manage.py import_offseason_moves --file tools/moves_2026.csv
+# Dry run first: python manage.py import_offseason_moves --file tools/moves_2026.csv --dry-run
+#
+# move_type values: signed | lost | traded_in | traded_out | waived | drafted | extended
+#   signed      = free agent you signed
+#   lost        = free agent who left (remove from projected roster)
+#   traded_in   = player acquired via trade
+#   traded_out  = player sent away in trade (remove from projected roster)
+#   waived      = player released
+#   drafted     = draft pick (bpr defaults to 0.0, mpg defaults to 12.0)
+#   extended    = extension signed (stays as returner, just upgrades badge to "Ext")
+#
+# impact_rating: high | medium | low
+#   high   = starter / major rotation piece
+#   medium = rotation player
+#   low    = bench depth
+#
+# salary: annual salary in dollars (e.g. 25000000 = $25M). Leave blank if unknown.
+# contract_years: total years on deal. Leave blank if unknown.
+# notes: free text (MPS score for rookies, trade context, etc.)
+#
+# Lines starting with # are ignored by the import command.
+# ────────────────────────────────────────────────────────────────────────────
+#
+# FILL IN 2026 OFFSEASON MOVES BELOW
+# Priority: OKC, HOU, BOS, SAS, DET (highest projection impact)
+# Then: major rebuilds — SAC, BKN, WAS, MEM (large roster churn expected)
+#
+# ── EXAMPLE ROW (delete when done) ─────────────────────────────────────────
+# oklahoma-city-thunder,Shai Gilgeous-Alexander,extended,60000000,5,Supermax,high
+# houston-rockets,Ime Udoka,lost,,,Head coach left — not a player move,low
+#
+# ── 2026 DRAFT PICKS (add team_slug once you know the order) ───────────────
+# Format: team_slug,Player Name,drafted,,,MPS=XX.X,medium
+# The prospects JSON at web/src/data/prospects_2026.json has MPS scores.
+# Alternatively add team_slug to each prospect object and run:
+#   python manage.py import_offseason_moves --prospects-json web/src/data/prospects_2026.json
+#
+# ── ENTER MOVES BELOW THIS LINE ─────────────────────────────────────────────
+#
+# ── 2026 DRAFT PICKS (Round 2 — not in prospects_2026.json) ─────────────────
+boston-celtics,Dillon Mitchell,drafted,,,Round 2 Pick 40,low
+dallas-mavericks,Tobi Lawal,drafted,,,Round 2 Pick 48,low
+golden-state-warriors,Lajae Jones,drafted,,,Round 2 Pick 54,low
+dallas-mavericks,Vsevolod Ishchenko,drafted,,,Round 2 Pick 56,low
+la-clippers,Narcisse Ngo,drafted,,,Round 2 Pick 57,low
+new-orleans-pelicans,Jaron Pierre Jr.,drafted,,,Round 2 Pick 58,low
+milwaukee-bucks,Malique Lewis,drafted,,,Round 2 Pick 60,low

@@ -565,6 +565,21 @@ export interface TeamOutseasonMove {
   player_name: string;
   detail: string;
   impact_rating: 'high' | 'medium' | 'low';
+  round_number: number | null;
+  overall_pick: number | null;
+  mps_score: number | null;
+}
+
+export interface DevelopmentWatchPlayer {
+  player_name: string;
+  age: number | null;
+  acquisition_type: 'returner' | 'signed' | 'traded_in' | 'drafted' | 'extended';
+  projected_bpr: number | null;
+  projected_minutes_share: number | null;
+  archetype: string | null;
+  mps_score: number | null;
+  round_number: number | null;
+  overall_pick: number | null;
 }
 
 export interface ProjectedStarter {
@@ -593,6 +608,15 @@ export interface TeamSeasonOutlookSummary {
   ffi: number | null;
   outlook_tier: OutlookTier | null;
   projected_wins: number | null;
+  projected_losses: number | null;
+  projected_adj_net: number | null;
+  projected_adj_o: number | null;
+  projected_adj_d: number | null;
+  projected_floor_wins: number | null;
+  projected_ceil_wins: number | null;
+  continuity_score: number | null;
+  weighted_effective_age: number | null;
+  top2_bpr_concentration: number | null;
   season_headline: string;
   league_rank: number;
 }
@@ -647,4 +671,5 @@ export interface TeamSeasonOutlookDetail extends TeamSeasonOutlookSummary {
   offseason_moves: TeamOutseasonMove[];
   projected_starters: ProjectedStarter[];
   projected_roster_slots: NBAProjectedRosterSlot[];
+  development_watch: DevelopmentWatchPlayer[];
 }

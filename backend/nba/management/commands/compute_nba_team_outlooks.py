@@ -41,10 +41,16 @@ logger = logging.getLogger(__name__)
 REPLACEMENT_LEVEL = 2.0        # BPR units added above zero to form demand signal
 SHRINKAGE_RETURNER = 0.10      # 10% regression to league mean for returning players
 SHRINKAGE_ACQUISITION = 0.20   # 20% for trades/signings (higher projection uncertainty)
-SLOPE = 0.84                   # adj_o/adj_d response per BPR-share unit advantage (OLS-calibrated, R²=0.84)
+SLOPE = 0.48                   # forward-predictive OLS from 2024→2025 pair (r=0.392, RMSE=4.83)
+                               # 2025→2026 excluded: stored BPR for 2025 season was computed under an
+                               # earlier pipeline version and is materially different from current output
+                               # (e.g. Amen Thompson stored ≈5.7 vs freshly-computed 9.43).
+                               # That pair measures stale inputs → 2026 outcomes, not the current model.
+                               # Provisional — re-derive from pooled data when 2026→2027 actuals available.
 WINS_PER_EM = 2.46             # wins per 1 pt of adj_em (OLS-calibrated from 2025-26 season)
 WINS_INTERCEPT = 44.3          # empirical intercept: league avg wins at adj_em=0 in our scale
-SIGMA_EM = 4.0                 # season-level adj_em uncertainty in projection (pts)
+SIGMA_EM = 5.5                 # forward RMSE from 2024→2025 backtest (4.83), rounded up from pooled (5.41)
+                               # ±1 SIGMA_EM = ±13.5 wins at WINS_PER_EM=2.46 — wide but honest
 WINS_ADDED_SCALAR = 0.38       # converts (minutes_share × bpr) → wins added
 MIN_MPG = 5.0                  # minimum MPG to include player in source roster
 MINUTES_FLOOR = 0.02           # minimum projected minutes share (~0.4 MPG equiv)
@@ -117,6 +123,13 @@ class Command(BaseCommand):
         league_obpr_avg = bpr_qs.filter(obpr__isnull=False).aggregate(v=Avg("obpr"))["v"] or 0.0
         league_dbpr_avg = bpr_qs.filter(dbpr__isnull=False).aggregate(v=Avg("dbpr"))["v"] or 0.0
         league_bpr_avg  = bpr_qs.filter(bpr__isnull=False).aggregate(v=Avg("bpr"))["v"] or 0.0
+
+        # RAPM-gap sigma — computed once, used in _project_bpr cap
+        self.rapm_gap_sigma = self._compute_rapm_gap_sigma(source_season)
+        cap_threshold = 1.6 * self.rapm_gap_sigma
+        self.stdout.write(
+            f"RAPM-gap σ={self.rapm_gap_sigma:.2f}  cap threshold={cap_threshold:.2f}"
+        )
 
         outlooks = list(TeamSeasonOutlook.objects.all().order_by("team_abbr"))
         if team_filter:
@@ -255,6 +268,16 @@ class Command(BaseCommand):
 
     # ── Roster assembly ────────────────────────────────────────────────────────
 
+    @staticmethod
+    def _calc_age(dob, as_of) -> "int | None":
+        """Player age in full years as of `as_of` date."""
+        if dob is None:
+            return None
+        from datetime import date as _date
+        if not isinstance(as_of, _date):
+            return None
+        return as_of.year - dob.year - ((as_of.month, as_of.day) < (dob.month, dob.day))
+
     def _assemble_roster(self, outlook, nba_team, source_season):
         """
         Build the list of player projection dicts.
@@ -262,6 +285,11 @@ class Command(BaseCommand):
         Base roster: players with qualifying stats for this team last season.
         Then apply TeamOutseasonMove entries if any exist.
         """
+        from datetime import date as _date
+        # Age reference = October 1 of the projected season (start of next season).
+        # source_season.year=2026 means 2025-26; projected season starts Oct 2026.
+        age_ref = _date(source_season.year, 10, 1)
+
         slots = []
         returner_names = set()
 
@@ -289,7 +317,7 @@ class Command(BaseCommand):
                     "archetype": stats.nba_archetype,
                     "acquisition_type": "returner",
                     "confidence": "high",
-                    "age": None,
+                    "age": self._calc_age(stats.player.date_of_birth, age_ref),
                     "position": "",
                 })
                 returner_names.add(stats.player.name.lower())
@@ -300,6 +328,7 @@ class Command(BaseCommand):
             return slots
 
         removal_names = set()
+        extension_names = set()
         additions = []
 
         for move in moves:
@@ -337,10 +366,16 @@ class Command(BaseCommand):
                     "age": None,
                     "position": "",
                 })
-            # "extended" players are already in returners — no action needed
+            elif move.move_type == "extended":
+                # Player stays in returner pool; just upgrade their acquisition_type badge.
+                extension_names.add(name_lower)
 
         if removal_names:
             slots = [s for s in slots if s["player_name"].lower() not in removal_names]
+
+        for slot in slots:
+            if slot["player_name"].lower() in extension_names:
+                slot["acquisition_type"] = "extended"
 
         existing_names = {s["player_name"].lower() for s in slots}
         for add in additions:
@@ -387,7 +422,7 @@ class Command(BaseCommand):
     # ── BPR projection ─────────────────────────────────────────────────────────
 
     def _project_bpr(self, slot, league_obpr_avg, league_dbpr_avg, league_bpr_avg):
-        """Light regression-to-mean shrinkage. Returners shrink less than acquisitions."""
+        """Shrinkage toward league mean, then RAPM-inflation cap."""
         lam = (
             SHRINKAGE_RETURNER
             if slot["acquisition_type"] in ("returner", "extended")
@@ -396,7 +431,78 @@ class Command(BaseCommand):
         proj_obpr = slot["obpr"] * (1 - lam) + league_obpr_avg * lam
         proj_dbpr = slot["dbpr"] * (1 - lam) + league_dbpr_avg * lam
         proj_bpr  = slot["bpr"]  * (1 - lam) + league_bpr_avg  * lam
+
+        # ── RAPM-inflation cap ────────────────────────────────────────────────
+        # When prior-informed RAPM >> Box BPR by more than 1.5σ, the gap is
+        # likely lineup-context absorption rather than genuine player impact.
+        # Cap applied to the local projection only — DB values unchanged.
+        stats_obj = slot.get("stats_obj")
+        if stats_obj is not None:
+            box_obpr = stats_obj.box_obpr
+            box_dbpr = stats_obj.box_dbpr
+            if box_obpr is None or box_dbpr is None:
+                logger.warning(
+                    "No box_bpr for %s — skipping inflation cap",
+                    slot.get("player_name", "?"),
+                )
+            else:
+                box_bpr_val = box_obpr + box_dbpr
+                rapm_gap_bpr  = proj_bpr  - box_bpr_val
+                rapm_gap_obpr = proj_obpr - box_obpr
+                rapm_gap_dbpr = proj_dbpr - box_dbpr
+                cap_threshold = 1.6 * self.rapm_gap_sigma
+
+                if rapm_gap_bpr > cap_threshold:
+                    excess = rapm_gap_bpr - cap_threshold
+                    orig_bpr = proj_bpr
+                    proj_bpr -= excess
+                    if abs(rapm_gap_bpr) > 0:
+                        proj_obpr -= excess * (rapm_gap_obpr / rapm_gap_bpr)
+                        proj_dbpr -= excess * (rapm_gap_dbpr / rapm_gap_bpr)
+                    self.stdout.write(
+                        f"  [RAPM cap] {slot.get('player_name', '?'):<28} "
+                        f"bpr {orig_bpr:+.2f}→{proj_bpr:+.2f}  "
+                        f"box={box_bpr_val:+.2f}  gap={rapm_gap_bpr:.2f}  "
+                        f"excess={excess:.2f}"
+                    )
+
         return proj_obpr, proj_dbpr, proj_bpr
+
+    def _compute_rapm_gap_sigma(self, source_season) -> float:
+        """
+        Standard deviation of (bpr - box_bpr) across qualifying players.
+
+        Measures how wide the spread is between lineup-adjusted RAPM (bpr) and
+        box-score BPR.  Used as the cap threshold scale: gaps > 1.5σ are treated
+        as lineup-context inflation rather than genuine player impact.
+        """
+        import statistics
+
+        qs = NBAPlayerSeasonStats.objects.filter(
+            season=source_season,
+            season_type="regular",
+            gp__gte=20,
+            mpg__gte=12,
+            bpr__isnull=False,
+            box_obpr__isnull=False,
+            box_dbpr__isnull=False,
+        ).only("bpr", "box_obpr", "box_dbpr")
+
+        gaps = [
+            float(row.bpr) - (float(row.box_obpr) + float(row.box_dbpr))
+            for row in qs
+        ]
+
+        if len(gaps) < 20:
+            logger.warning(
+                "_compute_rapm_gap_sigma: only %d qualifying players — using fallback σ=3.5",
+                len(gaps),
+            )
+            return 3.5
+
+        sigma = statistics.stdev(gaps)
+        logger.info("RAPM-gap σ=%.3f from %d players", sigma, len(gaps))
+        return sigma
 
     # ── Minutes allocation ─────────────────────────────────────────────────────
 

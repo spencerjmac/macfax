@@ -51,7 +51,8 @@
       "comp2": "Kentavious Caldwell-Pope",
       "comp2Year": 2013,
       "comp2Pick": 8,
-      "comp2Sim": 96
+      "comp2Sim": 96,
+      "team_slug": "utah-jazz"
     },
     {
       "rank": 2,
@@ -105,7 +106,8 @@
       "comp2": "Frank Kaminsky",
       "comp2Year": 2015,
       "comp2Pick": 9,
-      "comp2Sim": 94
+      "comp2Sim": 94,
+      "team_slug": "memphis-grizzlies"
     },
     {
       "rank": 3,
@@ -137,7 +139,7 @@
       "grade": "S",
       "tankRank": 3,
       "tier": "full",
-      "note": "Consensus #1; model ranks lower due to DBPM=2.2 (defensive gap at college level); upside/athleticism not captured in stats; Youth bonus +7.0; Scout tier adj +6.8 (Tank #3); Wing position: 50/50 weight blend (guard/big) \u2014 physical projection not fully captured in model",
+      "note": "Consensus #1; model ranks lower due to DBPM=2.2 (defensive gap at college level); upside/athleticism not captured in stats; Youth bonus +7.0; Scout tier adj +6.8 (Tank #3); Wing position: 50/50 weight blend (guard/big) — physical projection not fully captured in model",
       "heightFloor": 0.0,
       "combinePen": 0.0,
       "headshot": "https://a.espncdn.com/i/headshots/mens-college-basketball/players/full/5142718.png",
@@ -157,7 +159,8 @@
       "comp2": "T.J. Warren",
       "comp2Year": 2014,
       "comp2Pick": 14,
-      "comp2Sim": 95
+      "comp2Sim": 95,
+      "team_slug": "washington-wizards"
     },
     {
       "rank": 4,
@@ -210,7 +213,8 @@
       "comp2": "Grant Williams",
       "comp2Year": 2019,
       "comp2Pick": 22,
-      "comp2Sim": 96
+      "comp2Sim": 96,
+      "team_slug": "chicago-bulls"
     },
     {
       "rank": 5,
@@ -263,7 +267,8 @@
       "comp2": "D'Angelo Russell",
       "comp2Year": 2015,
       "comp2Pick": 2,
-      "comp2Sim": 97
+      "comp2Sim": 97,
+      "team_slug": "la-clippers"
     },
     {
       "rank": 6,
@@ -313,7 +318,8 @@
       "comp2": "Jaren Jackson Jr.",
       "comp2Year": 2018,
       "comp2Pick": 4,
-      "comp2Sim": 95
+      "comp2Sim": 95,
+      "team_slug": "oklahoma-city-thunder"
     },
     {
       "rank": 7,
@@ -367,7 +373,8 @@
       "comp2": "Ty Jerome",
       "comp2Year": 2019,
       "comp2Pick": 24,
-      "comp2Sim": 96
+      "comp2Sim": 96,
+      "team_slug": "atlanta-hawks"
     },
     {
       "rank": 8,
@@ -421,7 +428,8 @@
       "comp2": "Cameron Payne",
       "comp2Year": 2015,
       "comp2Pick": 14,
-      "comp2Sim": 95
+      "comp2Sim": 95,
+      "team_slug": "sacramento-kings"
     },
     {
       "rank": 9,
@@ -474,7 +482,8 @@
       "comp2": "Nick Johnson",
       "comp2Year": 2014,
       "comp2Pick": 42,
-      "comp2Sim": 96
+      "comp2Sim": 96,
+      "team_slug": "milwaukee-bucks"
     },
     {
       "rank": 10,
@@ -526,7 +535,8 @@
       "comp2": "Frank Kaminsky",
       "comp2Year": 2015,
       "comp2Pick": 9,
-      "comp2Sim": 94
+      "comp2Sim": 94,
+      "team_slug": "golden-state-warriors"
     },
     {
       "rank": 11,
@@ -578,7 +588,8 @@
       "comp2": "Tyshawn Taylor",
       "comp2Year": 2012,
       "comp2Pick": 41,
-      "comp2Sim": 97
+      "comp2Sim": 97,
+      "team_slug": "brooklyn-nets"
     },
     {
       "rank": 12,
@@ -610,7 +621,7 @@
       "grade": "D",
       "tankRank": 10,
       "tier": "full",
-      "note": "Youth bonus +5.0; Scout tier adj +5.2 (Tank #10); Wing position: 50/50 weight blend (guard/big) \u2014 physical projection not fully captured in model",
+      "note": "Youth bonus +5.0; Scout tier adj +5.2 (Tank #10); Wing position: 50/50 weight blend (guard/big) — physical projection not fully captured in model",
       "heightFloor": 0.0,
       "combinePen": 0.0,
       "headshot": "https://a.espncdn.com/i/headshots/mens-college-basketball/players/full/5164559.png",
@@ -630,7 +641,8 @@
       "comp2": "Jayson Tatum",
       "comp2Year": 2017,
       "comp2Pick": 3,
-      "comp2Sim": 97
+      "comp2Sim": 97,
+      "team_slug": "milwaukee-bucks"
     },
     {
       "rank": 13,
@@ -682,7 +694,8 @@
       "comp2": "Jalen Brunson",
       "comp2Year": 2018,
       "comp2Pick": 33,
-      "comp2Sim": 97
+      "comp2Sim": 97,
+      "team_slug": "philadelphia-76ers"
     },
     {
       "rank": 14,
@@ -732,10 +745,11 @@
       "comp1Year": 2017,
       "comp1Pick": 10,
       "comp1Sim": null,
-      "comp2": "Nikola Vu\u010devi\u0107",
+      "comp2": "Nikola Vučević",
       "comp2Year": 2011,
       "comp2Pick": 16,
-      "comp2Sim": 96
+      "comp2Sim": 96,
+      "team_slug": "charlotte-hornets"
     },
     {
       "rank": 15,
@@ -787,7 +801,8 @@
       "comp2": "Wendell Carter Jr.",
       "comp2Year": 2018,
       "comp2Pick": 7,
-      "comp2Sim": 96
+      "comp2Sim": 96,
+      "team_slug": "dallas-mavericks"
     },
     {
       "rank": 16,
@@ -819,7 +834,7 @@
       "grade": "D",
       "tankRank": 21,
       "tier": "full",
-      "note": "Stats from 2024-25 ASU (24 GP) \u2014 2025-26 Kentucky = 4 games only (ACL setback); Youth bonus +7.0; Scout tier adj +3.6 (Tank #21); Stats: partial manual override (BPM from BBRef)",
+      "note": "Stats from 2024-25 ASU (24 GP) — 2025-26 Kentucky = 4 games only (ACL setback); Youth bonus +7.0; Scout tier adj +3.6 (Tank #21); Stats: partial manual override (BPM from BBRef)",
       "heightFloor": 0.0,
       "combinePen": 0.0,
       "headshot": "https://a.espncdn.com/i/headshots/mens-college-basketball/players/full/5101845.png",
@@ -841,7 +856,8 @@
       "comp2": "Nic Claxton",
       "comp2Year": 2019,
       "comp2Pick": 31,
-      "comp2Sim": 96
+      "comp2Sim": 96,
+      "team_slug": "san-antonio-spurs"
     },
     {
       "rank": 17,
@@ -873,7 +889,7 @@
       "grade": "D",
       "tankRank": 23,
       "tier": "full",
-      "note": "Youth bonus +2.0; Scout tier adj +3.6 (Tank #23); Wing position: 50/50 weight blend (guard/big) \u2014 physical projection not fully captured in model",
+      "note": "Youth bonus +2.0; Scout tier adj +3.6 (Tank #23); Wing position: 50/50 weight blend (guard/big) — physical projection not fully captured in model",
       "heightFloor": 0.0,
       "combinePen": 0.0,
       "headshot": "https://a.espncdn.com/i/headshots/mens-college-basketball/players/full/4848625.png",
@@ -893,7 +909,8 @@
       "comp2": "Reggie Bullock",
       "comp2Year": 2013,
       "comp2Pick": 25,
-      "comp2Sim": 97
+      "comp2Sim": 97,
+      "team_slug": "chicago-bulls"
     },
     {
       "rank": 18,
@@ -945,7 +962,8 @@
       "comp2": "Erick Green",
       "comp2Year": 2013,
       "comp2Pick": 46,
-      "comp2Sim": 96
+      "comp2Sim": 96,
+      "team_slug": "detroit-pistons"
     },
     {
       "rank": 19,
@@ -996,7 +1014,8 @@
       "comp2": "Tari Eason",
       "comp2Year": 2022,
       "comp2Pick": 17,
-      "comp2Sim": 96
+      "comp2Sim": 96,
+      "team_slug": "toronto-raptors"
     },
     {
       "rank": 20,
@@ -1028,7 +1047,7 @@
       "grade": "D",
       "tankRank": 16,
       "tier": "full",
-      "note": "Age penalty -0.2 (21.6y); Scout tier adj +3.6 (Tank #16); BPM from Tankathon (CBB unavailable \u2014 same scale confirmed); Wing position: 50/50 weight blend (guard/big) \u2014 physical projection not fully captured in model; Model #30 vs Tankathon #16 (14 spots above consensus)",
+      "note": "Age penalty -0.2 (21.6y); Scout tier adj +3.6 (Tank #16); BPM from Tankathon (CBB unavailable — same scale confirmed); Wing position: 50/50 weight blend (guard/big) — physical projection not fully captured in model; Model #30 vs Tankathon #16 (14 spots above consensus)",
       "heightFloor": 0.0,
       "combinePen": 0.0,
       "headshot": "https://a.espncdn.com/i/headshots/mens-college-basketball/players/full/5113969.png",
@@ -1046,7 +1065,8 @@
       "comp2": "Joe Wieskamp",
       "comp2Year": 2021,
       "comp2Pick": 41,
-      "comp2Sim": 97
+      "comp2Sim": 97,
+      "team_slug": "los-angeles-lakers"
     },
     {
       "rank": 21,
@@ -1100,7 +1120,8 @@
       "comp2": "Jalen Brunson",
       "comp2Year": 2018,
       "comp2Pick": 33,
-      "comp2Sim": 97
+      "comp2Sim": 97,
+      "team_slug": "oklahoma-city-thunder"
     },
     {
       "rank": 22,
@@ -1132,7 +1153,7 @@
       "grade": "D",
       "tankRank": 13,
       "tier": "medium",
-      "note": "INTL PARTIAL \u2014 9 features (medium), no CBB data; treat as directional; International (Real Madrid, Spain) \u2014 BPM unavailable; MPS based on available box stats only. Likely underrated.; Model #24 vs Tankathon #13 (11 spots above consensus)",
+      "note": "INTL PARTIAL — 9 features (medium), no CBB data; treat as directional; International (Real Madrid, Spain) — BPM unavailable; MPS based on available box stats only. Likely underrated.; Model #24 vs Tankathon #13 (11 spots above consensus)",
       "heightFloor": 0.0,
       "combinePen": 0.0,
       "headshot": null,
@@ -1148,7 +1169,8 @@
       "comp2": "Keldon Johnson",
       "comp2Year": 2019,
       "comp2Pick": 29,
-      "comp2Sim": 97
+      "comp2Sim": 97,
+      "team_slug": "memphis-grizzlies"
     },
     {
       "rank": 23,
@@ -1200,7 +1222,8 @@
       "comp2": "Cassius Winston",
       "comp2Year": 2020,
       "comp2Pick": 53,
-      "comp2Sim": 96
+      "comp2Sim": 96,
+      "team_slug": "charlotte-hornets"
     },
     {
       "rank": 24,
@@ -1251,7 +1274,8 @@
       "comp2": "Justise Winslow",
       "comp2Year": 2015,
       "comp2Pick": 10,
-      "comp2Sim": 97
+      "comp2Sim": 97,
+      "team_slug": "phoenix-suns"
     },
     {
       "rank": 25,
@@ -1305,7 +1329,8 @@
       "comp2": "Draymond Green",
       "comp2Year": 2012,
       "comp2Pick": 35,
-      "comp2Sim": 96
+      "comp2Sim": 96,
+      "team_slug": "brooklyn-nets"
     },
     {
       "rank": 26,
@@ -1358,7 +1383,8 @@
       "comp2": "Mason Plumlee",
       "comp2Year": 2013,
       "comp2Pick": 22,
-      "comp2Sim": 97
+      "comp2Sim": 97,
+      "team_slug": "atlanta-hawks"
     },
     {
       "rank": 27,
@@ -1411,7 +1437,8 @@
       "comp2": "Evan Mobley",
       "comp2Year": 2021,
       "comp2Pick": 3,
-      "comp2Sim": 96
+      "comp2Sim": 96,
+      "team_slug": "atlanta-hawks"
     },
     {
       "rank": 28,
@@ -1463,7 +1490,8 @@
       "comp2": "Trey Lyles",
       "comp2Year": 2015,
       "comp2Pick": 12,
-      "comp2Sim": 97
+      "comp2Sim": 97,
+      "team_slug": "boston-celtics"
     },
     {
       "rank": 29,
@@ -1515,7 +1543,8 @@
       "comp2": "Xavier Tillman Sr.",
       "comp2Year": 2020,
       "comp2Pick": 35,
-      "comp2Sim": 97
+      "comp2Sim": 97,
+      "team_slug": "san-antonio-spurs"
     },
     {
       "rank": 30,
@@ -1565,7 +1594,8 @@
       "comp2": "Jordan Hawkins",
       "comp2Year": 2023,
       "comp2Pick": 14,
-      "comp2Sim": 97
+      "comp2Sim": 97,
+      "team_slug": "minnesota-timberwolves"
     },
     {
       "rank": 31,
@@ -1616,7 +1646,8 @@
       "comp2": "Gary Trent Jr.",
       "comp2Year": 2018,
       "comp2Pick": 37,
-      "comp2Sim": 97
+      "comp2Sim": 97,
+      "team_slug": "cleveland-cavaliers"
     },
     {
       "rank": 32,
@@ -1648,7 +1679,7 @@
       "grade": "D",
       "tankRank": 46,
       "tier": "full",
-      "note": "Age penalty -3.1 (22.4y); Scout tier adj +1.6 (Tank #46); Wing position: 50/50 weight blend (guard/big) \u2014 physical projection not fully captured in model; Model #31 vs Tankathon #46 (15 spots below consensus)",
+      "note": "Age penalty -3.1 (22.4y); Scout tier adj +1.6 (Tank #46); Wing position: 50/50 weight blend (guard/big) — physical projection not fully captured in model; Model #31 vs Tankathon #46 (15 spots below consensus)",
       "heightFloor": 0.0,
       "combinePen": 0.0,
       "headshot": "https://a.espncdn.com/i/headshots/mens-college-basketball/players/full/5075626.png",
@@ -1666,7 +1697,8 @@
       "comp2": "Herbert Jones",
       "comp2Year": 2021,
       "comp2Pick": 35,
-      "comp2Sim": 95
+      "comp2Sim": 95,
+      "team_slug": "la-clippers"
     },
     {
       "rank": 33,
@@ -1714,7 +1746,8 @@
       "comp2": "Immanuel Quickley",
       "comp2Year": 2020,
       "comp2Pick": 25,
-      "comp2Sim": 97
+      "comp2Sim": 97,
+      "team_slug": "miami-heat"
     },
     {
       "rank": 34,
@@ -1764,7 +1797,8 @@
       "comp2": "Solomon Hill",
       "comp2Year": 2013,
       "comp2Pick": 23,
-      "comp2Sim": 97
+      "comp2Sim": 97,
+      "team_slug": "sacramento-kings"
     },
     {
       "rank": 35,
@@ -1816,7 +1850,8 @@
       "comp2": "Chris Duarte",
       "comp2Year": 2021,
       "comp2Pick": 13,
-      "comp2Sim": 96
+      "comp2Sim": 96,
+      "team_slug": "memphis-grizzlies"
     },
     {
       "rank": 36,
@@ -1848,7 +1883,7 @@
       "grade": "D",
       "tankRank": 34,
       "tier": "medium",
-      "note": "INTL PARTIAL \u2014 8 features (medium), no CBB data; treat as directional; International (Joventut Badalona, Spain) \u2014 BPM unavailable; MPS based on available box stats only. Likely underrated.; Model #62 vs Tankathon #34 (28 spots above consensus)",
+      "note": "INTL PARTIAL — 8 features (medium), no CBB data; treat as directional; International (Joventut Badalona, Spain) — BPM unavailable; MPS based on available box stats only. Likely underrated.; Model #62 vs Tankathon #34 (28 spots above consensus)",
       "heightFloor": 0.0,
       "combinePen": 0.0,
       "headshot": null,
@@ -1865,7 +1900,8 @@
       "comp2": "Kai Jones",
       "comp2Year": 2021,
       "comp2Pick": 19,
-      "comp2Sim": 94
+      "comp2Sim": 94,
+      "team_slug": "dallas-mavericks"
     },
     {
       "rank": 37,
@@ -1916,7 +1952,8 @@
       "comp2": "Willie Cauley-Stein",
       "comp2Year": 2015,
       "comp2Pick": 6,
-      "comp2Sim": 96
+      "comp2Sim": 96,
+      "team_slug": "detroit-pistons"
     },
     {
       "rank": 38,
@@ -1968,7 +2005,8 @@
       "comp2": "Frank Mason III",
       "comp2Year": 2017,
       "comp2Pick": 34,
-      "comp2Sim": 96
+      "comp2Sim": 96,
+      "team_slug": "houston-rockets"
     },
     {
       "rank": 39,
@@ -2000,7 +2038,7 @@
       "grade": "D",
       "tankRank": 56,
       "tier": "full",
-      "note": "Age penalty -4.6 (22.8y); Scout tier adj +1.6 (Tank #56); Wing position: 50/50 weight blend (guard/big) \u2014 physical projection not fully captured in model; Model #27 vs Tankathon #56 (29 spots below consensus)",
+      "note": "Age penalty -4.6 (22.8y); Scout tier adj +1.6 (Tank #56); Wing position: 50/50 weight blend (guard/big) — physical projection not fully captured in model; Model #27 vs Tankathon #56 (29 spots below consensus)",
       "heightFloor": 0.0,
       "combinePen": 0.0,
       "headshot": "https://a.espncdn.com/i/headshots/mens-college-basketball/players/full/5105337.png",
@@ -2020,7 +2058,8 @@
       "comp2": "Franz Wagner",
       "comp2Year": 2021,
       "comp2Pick": 8,
-      "comp2Sim": 92
+      "comp2Sim": 92,
+      "team_slug": "san-antonio-spurs"
     },
     {
       "rank": 40,
@@ -2071,7 +2110,8 @@
       "comp2": "Moritz Wagner",
       "comp2Year": 2018,
       "comp2Pick": 25,
-      "comp2Sim": 96
+      "comp2Sim": 96,
+      "team_slug": "denver-nuggets"
     },
     {
       "rank": 41,
@@ -2103,7 +2143,7 @@
       "grade": "D",
       "tankRank": 111,
       "tier": "medium",
-      "note": "INTL PARTIAL \u2014 8 features (medium), no CBB data; treat as directional; International (Alba Berlin, Germany) \u2014 BPM unavailable; scored on available stats.; Model #64 vs Tankathon #111 (47 spots below consensus)",
+      "note": "INTL PARTIAL — 8 features (medium), no CBB data; treat as directional; International (Alba Berlin, Germany) — BPM unavailable; scored on available stats.; Model #64 vs Tankathon #111 (47 spots below consensus)",
       "heightFloor": 0.0,
       "combinePen": 0.0,
       "headshot": null,
@@ -2120,7 +2160,8 @@
       "comp2": "Marcus Paige",
       "comp2Year": 2016,
       "comp2Pick": 55,
-      "comp2Sim": 97
+      "comp2Sim": 97,
+      "team_slug": "new-york-knicks"
     },
     {
       "rank": 42,
@@ -2172,7 +2213,8 @@
       "comp2": "Devon Hall",
       "comp2Year": 2018,
       "comp2Pick": 53,
-      "comp2Sim": 96
+      "comp2Sim": 96,
+      "team_slug": "sacramento-kings"
     },
     {
       "rank": 43,
@@ -2204,7 +2246,7 @@
       "grade": "D",
       "tankRank": 50,
       "tier": "full",
-      "note": "Low-major (South Florida) \u2014 SRS adjustment partially corrects inflated BPM; Age penalty -4.3 (22.7y); Scout tier adj +1.6 (Tank #50); Model #34 vs Tankathon #50 (16 spots below consensus)",
+      "note": "Low-major (South Florida) — SRS adjustment partially corrects inflated BPM; Age penalty -4.3 (22.7y); Scout tier adj +1.6 (Tank #50); Model #34 vs Tankathon #50 (16 spots below consensus)",
       "heightFloor": 0.0,
       "combinePen": 0.0,
       "headshot": "https://a.espncdn.com/i/headshots/mens-college-basketball/players/full/5107251.png",
@@ -2223,7 +2265,8 @@
       "comp2": "Montrezl Harrell",
       "comp2Year": 2015,
       "comp2Pick": 32,
-      "comp2Sim": 97
+      "comp2Sim": 97,
+      "team_slug": "orlando-magic"
     },
     {
       "rank": 44,
@@ -2274,7 +2317,8 @@
       "comp2": "Tyler Ulis",
       "comp2Year": 2016,
       "comp2Pick": 34,
-      "comp2Sim": 95
+      "comp2Sim": 95,
+      "team_slug": "indiana-pacers"
     },
     {
       "rank": 45,
@@ -2327,7 +2371,8 @@
       "comp2": "Ty Jerome",
       "comp2Year": 2019,
       "comp2Pick": 24,
-      "comp2Sim": 96
+      "comp2Sim": 96,
+      "team_slug": "san-antonio-spurs"
     },
     {
       "rank": 46,
@@ -2377,7 +2422,8 @@
       "comp2": "Kennedy Chandler",
       "comp2Year": 2022,
       "comp2Pick": 38,
-      "comp2Sim": 96
+      "comp2Sim": 96,
+      "team_slug": "toronto-raptors"
     },
     {
       "rank": 47,
@@ -2409,7 +2455,7 @@
       "grade": "D",
       "tankRank": 52,
       "tier": "full",
-      "note": "Age penalty -3.7 (22.6y); Scout tier adj +1.6 (Tank #52); Wing position: 50/50 weight blend (guard/big) \u2014 physical projection not fully captured in model",
+      "note": "Age penalty -3.7 (22.6y); Scout tier adj +1.6 (Tank #52); Wing position: 50/50 weight blend (guard/big) — physical projection not fully captured in model",
       "heightFloor": 0.0,
       "combinePen": 0.0,
       "headshot": "https://a.espncdn.com/i/headshots/mens-college-basketball/players/full/5105832.png",
@@ -2428,7 +2474,8 @@
       "comp2": "Deshaun Thomas",
       "comp2Year": 2013,
       "comp2Pick": 58,
-      "comp2Sim": 97
+      "comp2Sim": 97,
+      "team_slug": "la-clippers"
     },
     {
       "rank": 48,
@@ -2480,7 +2527,8 @@
       "comp2": "Festus Ezeli",
       "comp2Year": 2012,
       "comp2Pick": 30,
-      "comp2Sim": 96
+      "comp2Sim": 96,
+      "team_slug": "washington-wizards"
     },
     {
       "rank": 49,
@@ -2531,7 +2579,8 @@
       "comp2": "Michael Gbinije",
       "comp2Year": 2016,
       "comp2Pick": 49,
-      "comp2Sim": 97
+      "comp2Sim": 97,
+      "team_slug": "oklahoma-city-thunder"
     },
     {
       "rank": 50,
@@ -2581,7 +2630,8 @@
       "comp2": "Tyler Dorsey",
       "comp2Year": 2017,
       "comp2Pick": 41,
-      "comp2Sim": 97
+      "comp2Sim": 97,
+      "team_slug": "new-york-knicks"
     },
     {
       "rank": 51,
@@ -2662,7 +2712,7 @@
       "grade": "D",
       "tankRank": 68,
       "tier": "full",
-      "note": "Age penalty -8.4 (23.9y); Wing position: 50/50 weight blend (guard/big) \u2014 physical projection not fully captured in model",
+      "note": "Age penalty -8.4 (23.9y); Wing position: 50/50 weight blend (guard/big) — physical projection not fully captured in model",
       "heightFloor": 0.0,
       "combinePen": 0.0,
       "headshot": "https://a.espncdn.com/i/headshots/mens-college-basketball/players/full/4565698.png",
@@ -2680,7 +2730,8 @@
       "comp2": "Wes Iwundu",
       "comp2Year": 2017,
       "comp2Pick": 33,
-      "comp2Sim": 97
+      "comp2Sim": 97,
+      "team_slug": "denver-nuggets"
     },
     {
       "rank": 53,
@@ -2782,7 +2833,8 @@
       "comp2": "Justin Harper",
       "comp2Year": 2011,
       "comp2Pick": 32,
-      "comp2Sim": 96
+      "comp2Sim": 96,
+      "team_slug": "brooklyn-nets"
     },
     {
       "rank": 55,
@@ -2814,7 +2866,7 @@
       "grade": "D",
       "tankRank": 60,
       "tier": "full",
-      "note": "G League combine only \u2014 not invited to NBA Draft Combine; Age penalty -3.7 (22.6y); Combine penalty -3.0 (G League invite only); Scout tier adj +1.6 (Tank #60); Model #38 vs Tankathon #60 (22 spots below consensus)",
+      "note": "G League combine only — not invited to NBA Draft Combine; Age penalty -3.7 (22.6y); Combine penalty -3.0 (G League invite only); Scout tier adj +1.6 (Tank #60); Model #38 vs Tankathon #60 (22 spots below consensus)",
       "heightFloor": 0.0,
       "combinePen": -3.0,
       "headshot": "https://a.espncdn.com/i/headshots/mens-college-basketball/players/full/5106254.png",
@@ -3038,7 +3090,8 @@
       "comp2": "Jeremiah Robinson-Earl",
       "comp2Year": 2021,
       "comp2Pick": 32,
-      "comp2Sim": 97
+      "comp2Sim": 97,
+      "team_slug": "minnesota-timberwolves"
     },
     {
       "rank": 60,
@@ -3070,7 +3123,7 @@
       "grade": "D",
       "tankRank": 63,
       "tier": "full",
-      "note": "Age penalty -6.0 (23.2y); Wing position: 50/50 weight blend (guard/big) \u2014 physical projection not fully captured in model",
+      "note": "Age penalty -6.0 (23.2y); Wing position: 50/50 weight blend (guard/big) — physical projection not fully captured in model",
       "heightFloor": 0.0,
       "combinePen": 0.0,
       "headshot": "https://a.espncdn.com/i/headshots/mens-college-basketball/players/full/5075625.png",
@@ -3173,7 +3226,7 @@
       "grade": "D",
       "tankRank": 72,
       "tier": "full",
-      "note": "Age penalty -4.9 (22.9y); BPM from Tankathon (CBB unavailable \u2014 same scale confirmed); Wing position: 50/50 weight blend (guard/big) \u2014 physical projection not fully captured in model; Model #60 vs Tankathon #72 (12 spots below consensus)",
+      "note": "Age penalty -4.9 (22.9y); BPM from Tankathon (CBB unavailable — same scale confirmed); Wing position: 50/50 weight blend (guard/big) — physical projection not fully captured in model; Model #60 vs Tankathon #72 (12 spots below consensus)",
       "heightFloor": 0.0,
       "combinePen": 0.0,
       "headshot": "https://a.espncdn.com/i/headshots/mens-college-basketball/players/full/4433285.png",
@@ -3275,7 +3328,7 @@
       "grade": "D",
       "tankRank": 71,
       "tier": "full",
-      "note": "Age penalty -6.3 (23.3y); Wing position: 50/50 weight blend (guard/big) \u2014 physical projection not fully captured in model",
+      "note": "Age penalty -6.3 (23.3y); Wing position: 50/50 weight blend (guard/big) — physical projection not fully captured in model",
       "heightFloor": 0.0,
       "combinePen": 0.0,
       "headshot": "https://a.espncdn.com/i/headshots/mens-college-basketball/players/full/4937074.png",

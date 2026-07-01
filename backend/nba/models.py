@@ -244,6 +244,8 @@ class NBAPlayer(models.Model):
         blank=True,
         related_name="current_players",
     )
+    date_of_birth = models.DateField(null=True, blank=True)
+
     # Career-level aggregates — written by nba_compute_career_bpr command
     # Computed across all qualifying seasons (≥500 min) from stored bpr values
     peak_bpr   = models.FloatField(null=True, blank=True, help_text="Best single-season BPR (≥500 min qualifier)")
@@ -971,6 +973,9 @@ class TeamOutseasonMove(models.Model):
     player_name = models.CharField(max_length=100)
     detail = models.CharField(max_length=200, blank=True)
     impact_rating = models.CharField(max_length=10, choices=IMPACT_CHOICES, default="medium")
+    round_number = models.IntegerField(null=True, blank=True)
+    overall_pick = models.IntegerField(null=True, blank=True)
+    mps_score = models.FloatField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

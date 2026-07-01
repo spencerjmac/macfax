@@ -204,7 +204,10 @@ class NBAModelCalibrationSerializer(serializers.ModelSerializer):
 class TeamOutseasonMoveSerializer(serializers.ModelSerializer):
     class Meta:
         model = TeamOutseasonMove
-        fields = ["id", "move_type", "player_name", "detail", "impact_rating"]
+        fields = [
+            "id", "move_type", "player_name", "detail", "impact_rating",
+            "round_number", "overall_pick", "mps_score",
+        ]
 
 
 class ProjectedStarterSerializer(serializers.ModelSerializer):
@@ -238,7 +241,12 @@ class TeamSeasonOutlookListSerializer(serializers.ModelSerializer):
             "primary_color", "secondary_color", "logo_url",
             "wins", "losses",
             "adj_offensive_rating", "adj_defensive_rating", "adj_net_rating",
-            "ffi", "outlook_tier", "projected_wins", "season_headline",
+            "ffi", "outlook_tier",
+            "projected_wins", "projected_losses", "projected_adj_net",
+            "projected_adj_o", "projected_adj_d",
+            "projected_floor_wins", "projected_ceil_wins",
+            "continuity_score", "weighted_effective_age", "top2_bpr_concentration",
+            "season_headline",
             "league_rank",
         ]
 
@@ -257,6 +265,7 @@ class TeamSeasonOutlookDetailSerializer(serializers.ModelSerializer):
     offseason_moves = TeamOutseasonMoveSerializer(many=True, read_only=True)
     projected_starters = ProjectedStarterSerializer(many=True, read_only=True)
     projected_roster_slots = NBAProjectedRosterSlotSerializer(many=True, read_only=True)
+    development_watch = serializers.SerializerMethodField()
     league_rank = serializers.SerializerMethodField()
     logo_url = serializers.SerializerMethodField()
 
@@ -286,8 +295,55 @@ class TeamSeasonOutlookDetailSerializer(serializers.ModelSerializer):
             "season_defining_variable",
             # Relations
             "offseason_moves", "projected_starters", "projected_roster_slots",
-            "league_rank",
+            "development_watch", "league_rank",
         ]
+
+    def get_development_watch(self, obj) -> list:
+        from django.db.models import Q
+
+        slots = list(
+            obj.projected_roster_slots.filter(
+                Q(age__lte=25) | Q(acquisition_type="drafted")
+            ).order_by("-projected_minutes_share")
+        )
+
+        draft_moves = {
+            m.player_name.lower(): m
+            for m in obj.offseason_moves.filter(move_type="drafted")
+        }
+
+        drafted_entries: list = []
+        under25_entries: list = []
+        seen: set = set()
+
+        for slot in slots:
+            name_lower = slot.player_name.lower()
+            if name_lower in seen:
+                continue
+            seen.add(name_lower)
+
+            move = draft_moves.get(name_lower)
+            entry = {
+                "player_name": slot.player_name,
+                "age": slot.age,
+                "acquisition_type": slot.acquisition_type,
+                "projected_bpr": slot.projected_bpr,
+                "projected_minutes_share": slot.projected_minutes_share,
+                "archetype": slot.archetype,
+                "mps_score": move.mps_score if move else None,
+                "round_number": move.round_number if move else None,
+                "overall_pick": move.overall_pick if move else None,
+            }
+
+            if slot.acquisition_type == "drafted":
+                drafted_entries.append(entry)
+            else:
+                under25_entries.append(entry)
+
+        drafted_entries.sort(key=lambda e: e["overall_pick"] or 999)
+        under25_entries.sort(key=lambda e: -(e["projected_bpr"] or -99))
+
+        return drafted_entries + under25_entries
 
     def get_league_rank(self, obj) -> int:
         return obj.league_rank
