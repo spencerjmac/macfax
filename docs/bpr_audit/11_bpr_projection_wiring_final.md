@@ -35,6 +35,8 @@ Workflow: `import_recruiting --dry-run` (per-row skip/ambiguity logging) → `im
 
 ## 5. PSP / projections classification bug — DEFERRED WITH GUARDRAILS (Priority 5)
 
+> **CORRECTION (2026-07-06, doc 13 §3):** downgraded from bug to semantics. `recruitment_type` is from-season-relative — `(from_season=2026, projected 2027, newcomer)` means "newcomer during 2026", which is how the BPR pipeline reads it. Boozer classifies correctly under that lens. The PSS-based coverage checker remains the robust path; no pipeline fix required.
+
 - **Summary**: `compute_player_projections` builds its player universe from the prior-season roster snapshot and never back-fills players added later — the 48 five-star 2026 freshmen have no (2026) projection rows and sit misclassified as `(2027, newcomer)` despite 2026 stats. Reruns report "0 created".
 - **Affected**: `ncaa/analytics/player_value/projection/pipeline.py` (universe construction), `PlayerSeasonProjection` consumers relying on `recruitment_type`.
 - **Why it matters**: preseason-model metadata and any PSP-based newcomer/transfer split under-count late-added players.
