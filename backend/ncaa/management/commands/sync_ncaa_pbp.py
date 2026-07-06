@@ -286,7 +286,23 @@ def reconstruct_stints(
     # Open initial stints for starters at game start (period 1, clock 1200, score 0-0)
     _open_stints_for_players(on_court, 1, HALF_SECS, 0, 0)
 
-    for play in sorted(plays, key=lambda p: p.get("sequenceNumber", "0")):
+    def _seq_key(p):
+        # sequenceNumber arrives as a string; lexicographic sort misorders
+        # plays ("1000" < "999") → clock jumps → overlapping stints (audit
+        # bug 1.3). Sort numerically, tolerating non-numeric values.
+        raw = p.get("sequenceNumber", "0")
+        try:
+            return (0, float(raw))
+        except (TypeError, ValueError):
+            return (1, 0.0)
+
+    # Deferred period reopen: END_PERIOD closes all stints, but the next
+    # period's stints must only open if another period actually happens.
+    # Reopening unconditionally created a phantom 300s OT block for every
+    # player at the end of regulation (audit bug 1.2).
+    pending_reopen_period: Optional[int] = None
+
+    for play in sorted(plays, key=_seq_key):
         play_type = play.get("type", {}).get("id", "")
         period = play.get("period", {}).get("number", current_period)
         clock_str = play.get("clock", {}).get("displayValue", "0:00")
@@ -300,6 +316,17 @@ def reconstruct_stints(
         if as_ is not None:
             current_away = int(as_)
         current_period = period
+
+        # Materialize the deferred reopen only when play in a real new period
+        # arrives (END_GAME right after END_PERIOD → no reopen, no phantoms).
+        if (pending_reopen_period is not None
+                and play_type != TYPE_END_GAME
+                and period >= pending_reopen_period):
+            _open_stints_for_players(
+                on_court, period, _period_start_secs(period),
+                current_home, current_away,
+            )
+            pending_reopen_period = None
 
         # ── Accumulate box events ─────────────────────────────────────────
         box_event = _classify_play(play)
@@ -343,7 +370,14 @@ def reconstruct_stints(
                 on_court.get(team_id, set()).discard(ath_id)
 
             elif "subbing in" in text:
-                # Player entering the court
+                # Player entering the court. If a stint is somehow still
+                # active (missed sub-out event), close it first so stored
+                # stints can never overlap for one player.
+                if ath_id in active_stints:
+                    stint = _close_stint(ath_id, clock_secs,
+                                         current_home, current_away)
+                    if stint:
+                        completed.append(stint)
                 on_court.setdefault(team_id, set()).add(ath_id)
                 home_snap = dict(box_state[home_espn_team_id])
                 away_snap = dict(box_state[away_espn_team_id])
@@ -365,11 +399,10 @@ def reconstruct_stints(
                 if stint:
                     completed.append(stint)
 
-            # Re-open same on-court players for the next period
-            next_period = period + 1
-            next_start = _period_start_secs(next_period)
-            _open_stints_for_players(on_court, next_period, next_start,
-                                      current_home, current_away)
+            # Defer the reopen until a play in the next period actually
+            # arrives — reopening here fabricated a full OT stint block at
+            # the end of regulation for every game (audit bug 1.2).
+            pending_reopen_period = period + 1
 
         elif play_type == TYPE_END_GAME:
             # Close all remaining active stints
@@ -418,6 +451,11 @@ class Command(BaseCommand):
             help="Delete existing PlayerGameStint rows for each game before reinserting",
         )
         parser.add_argument(
+            "--game-ids", nargs="+", type=int, default=None,
+            help="Restrict to these Game primary keys (targeted repair re-sync; "
+                 "combine with --force)",
+        )
+        parser.add_argument(
             "--dry-run", action="store_true",
             help="Fetch plays and print stats but do not write to database",
         )
@@ -456,6 +494,8 @@ class Command(BaseCommand):
             .select_related("home_team", "away_team")
             .order_by("game_date")
         )
+        if options.get("game_ids"):
+            games_qs = games_qs.filter(pk__in=options["game_ids"])
         all_games = list(games_qs)
 
         if not force:

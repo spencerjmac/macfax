@@ -106,13 +106,14 @@ def build_design_matrix(
         a_poss   = obs["away_poss"]
         obs_year = obs["season_year"]  # used to form player-season key
         neutral  = obs.get("is_neutral", False)
+        w_mult   = obs.get("weight_mult", 1.0)  # garbage-time downweight (N-C)
         hca_sign = 0.0 if neutral else 1.0  # real home court = ±1.0
 
         # ── Row 2·idx: home team on offense ──────────────────────────────────
         i = idx * 2
         if h_poss >= MIN_OBS_POSS:
             y[i] = h_pts / h_poss * 100.0
-            weights[i] = h_poss
+            weights[i] = h_poss * w_mult
 
             # intercept
             rows.append(i); cols.append(0); vals.append(1.0)
@@ -131,7 +132,7 @@ def build_design_matrix(
         i = idx * 2 + 1
         if a_poss >= MIN_OBS_POSS:
             y[i] = a_pts / a_poss * 100.0
-            weights[i] = a_poss
+            weights[i] = a_poss * w_mult
 
             rows.append(i); cols.append(0); vals.append(1.0)
             rows.append(i); cols.append(1); vals.append(-hca_sign)

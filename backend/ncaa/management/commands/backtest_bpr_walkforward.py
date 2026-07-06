@@ -1,6 +1,13 @@
 """
 backtest_bpr_walkforward — Within-season BPR single-split walk-forward backtest.
 
+DEPRECATED — DO NOT CITE AS FORWARD EVIDENCE.
+This command leaks: run_bpr_season(cutoff_date) date-bounds only the RAPM
+dataset while Phase 3 box features and team ratings load FULL-SEASON values
+(pipeline.py Phase 3; docs/bpr_audit/03_weakness_report.md items 3.1/3.2),
+and the rosters/adj_em arm below use end-of-season data.
+Use instead:  python manage.py backtest_bpr_suite --mode rolling
+
 Trains BPR on the first ~70% of a season's games (by date), freezes those ratings,
 and predicts the remaining ~30% of that SAME season's games. Same rosters, no
 cross-season turnover — this is the test that adjudicates whether the RAPM layer

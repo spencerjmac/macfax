@@ -132,7 +132,37 @@ DEVIATIONS FROM THE PUBLIC BPR ARTICLE
 """
 
 # ── Model version ─────────────────────────────────────────────────────────────
-BPR_MODEL_VERSION = "1.6"
+# v1.7 (BPR v2, 2026-07): truthful RAPM-target gating is the production default
+# (pre-2025 placeholder-stint seasons excluded from the RAPM pool, internal Box
+# BPR targets, prior-history blend, and preseason-model training); stint layer
+# repaired (phantom OT blocks, duplicate/zero-length rows, parser sequence-sort
+# and period-reopen fixes); OT and 2026 neutral-site flags backfilled.
+# Validated leak-free: 2025→26 cross-season bpr 13.09 RMSE beats adj_em 13.62;
+# rolling 2026 bpr beats/ties adj_em at every cutoff; player YoY r 0.69.
+# ESPN serves no substitution events before ~Feb 2025 (probed 2026-07) —
+# pre-2025 seasons are permanently placeholder unless a new PBP source appears.
+BPR_MODEL_VERSION = "1.7"
+
+# ── RAPM target validity by season (2026-07 data audit) ──────────────────────
+# Stored ESPN play-by-play before 2025 contains NO substitution events: every
+# game's stints are the 5 boxscore starters riding full halves (97.7% of 2024
+# team-games have exactly 5 stint-players). "RAPM" fit on those seasons is
+# fixed-unit game plus-minus, not lineup-isolated player impact.
+# See docs/bpr_audit/02_data_integrity_report.md (headline finding).
+#
+# FIRST_VALID_RAPM_SEASON gates which seasons may serve as RAPM *targets*
+# (Box BPR training labels, prior-history blending, preseason-model targets)
+# and which seasons may be pooled into the RAPM design matrix when the
+# pipeline runs in truthful_targets mode. 2025 is transitional (~27% of games
+# have real substitution data) and is accepted as the first valid year;
+# 2026+ is fully valid. Pre-2025 seasons remain usable for box features,
+# team context, and external (Evan Miya) training targets.
+FIRST_VALID_RAPM_SEASON = 2025
+
+
+def is_valid_rapm_target_season(year: int) -> bool:
+    """True when a season's stint data supports lineup-isolated RAPM."""
+    return year >= FIRST_VALID_RAPM_SEASON
 
 # ── Possession estimation (Kubatko formula) ───────────────────────────────────
 # Possessions ≈ FGA + 0.44×FTA + TOV − ORB

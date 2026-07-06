@@ -2,6 +2,7 @@
 
 import type { NBAPlayerSeasonStats } from "@/types/nba";
 import { getBPRTier, fmtSigned } from "@/lib/bprTiers";
+import { BPRConfidenceBadge } from "./BPRConfidenceBadge";
 import { clsx } from "clsx";
 import Image from "next/image";
 import Link from "next/link";
@@ -117,12 +118,26 @@ export function PlayerScoutingCard({ player, peakBpr, careerBpr, className }: Pr
       </div>
 
       {/* Raw stored BPR — footnote */}
-      <div className="px-5 py-3 text-xs text-slate-600 flex gap-4">
+      <div className="px-5 py-3 text-xs text-slate-600 flex items-center gap-4">
         <span>BPR (raw): {fmtSigned(player.bpr, 2)}</span>
         <span>OBPR: {fmtSigned(player.obpr, 2)}</span>
         <span>DBPR: {fmtSigned(player.dbpr, 2)}</span>
+        <BPRConfidenceBadge
+          league="nba"
+          source="rapm"
+          sample={(player.mpg ?? 0) * (player.gp ?? 0)}
+          compact
+        />
         {player.nba_archetype && (
           <span className="ml-auto capitalize text-slate-500">{player.nba_archetype.replace(/_/g, " ")}</span>
+        )}
+        {player.bpr_last_updated && (
+          <span
+            className="text-slate-600"
+            title="When this rating was last recomputed. Ratings change when new games are played or the model version is updated."
+          >
+            upd {new Date(player.bpr_last_updated).toLocaleDateString()}
+          </span>
         )}
       </div>
     </div>

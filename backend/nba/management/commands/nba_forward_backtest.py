@@ -60,7 +60,21 @@ DEFAULT_OUTPUT_DIR = os.path.normpath(
     )
 )
 
-AVAILABLE_SOURCE_YEARS = [2024, 2025]   # 2024→2025, 2025→2026
+def _detect_available_source_years() -> list[int]:
+    """
+    Auto-detect every source year with BPR data whose following season has
+    team ratings (replaces the old hard-coded [2024, 2025] pair list).
+    """
+    years_with_bpr = set(
+        NBAPlayerSeasonStats.objects.filter(
+            bpr__isnull=False, season_type="regular",
+        ).values_list("season__year", flat=True).distinct()
+    )
+    years_with_ratings = set(
+        NBATeamSeasonRatings.objects.values_list(
+            "season__year", flat=True).distinct()
+    )
+    return sorted(y for y in years_with_bpr if (y + 1) in years_with_ratings)
 
 
 # ── Data structures ───────────────────────────────────────────────────────────
@@ -192,7 +206,7 @@ class Command(BaseCommand):
 
         if run_all:
             source_years = [
-                yr for yr in AVAILABLE_SOURCE_YEARS
+                yr for yr in _detect_available_source_years()
                 if self._pair_available(yr)
             ]
             if not source_years:
@@ -203,6 +217,12 @@ class Command(BaseCommand):
         self.stdout.write(f"\n{'='*62}")
         self.stdout.write("NBA Forward Projection Backtest")
         self.stdout.write(f"Testing PRODUCTION_SLOPE={PRODUCTION_SLOPE}")
+        self.stdout.write(f"Season pairs: {[f'{y}->{y+1}' for y in source_years]}")
+        self.stdout.write(
+            "NOTE: source-season BPR embeds the source season's own LEBRON prior — "
+            "legitimate for this forward test (all inputs predate the target season). "
+            "Never reuse these ratings for within-season claims (weakness report 3.6)."
+        )
         self.stdout.write(f"{'='*62}")
 
         all_results = []
@@ -214,6 +234,7 @@ class Command(BaseCommand):
                 self.stderr.write(f"  No evaluable teams for {src_yr}→{tgt_yr} — skip")
                 continue
             self._print_pair(src_yr, tgt_yr, results)
+            self._print_player_stability(src_yr, tgt_yr)
             if not no_csv:
                 self._write_csv(results, src_yr, tgt_yr, output_dir)
             all_results.extend(results)
@@ -376,6 +397,48 @@ class Command(BaseCommand):
             f"lg_base off={league_base_off:.2f} def={league_base_def:.2f}"
         )
         return matched
+
+    # ── Player-level YoY stability ─────────────────────────────────────────────
+
+    MINUTE_BUCKETS = [(0, 1200), (1200, 2000), (2000, 10 ** 9)]
+
+    def _print_player_stability(self, src_yr: int, tgt_yr: int) -> None:
+        """
+        BPR(Y) vs BPR(Y+1) Pearson/Spearman for returning players, overall and
+        by total-minutes bucket. Player-level validation companion to the
+        team-level forward metrics.
+        """
+        rows = {}
+        for yr in (src_yr, tgt_yr):
+            for r in NBAPlayerSeasonStats.objects.filter(
+                season__year=yr, season_type="regular",
+                bpr__isnull=False, mpg__gte=12.0, gp__gte=20,
+            ).values("player_id", "bpr", "mpg", "gp"):
+                rows.setdefault(yr, {})[r["player_id"]] = {
+                    "bpr": float(r["bpr"]),
+                    "minutes": (r["mpg"] or 0.0) * (r["gp"] or 0),
+                }
+        cur, nxt = rows.get(src_yr, {}), rows.get(tgt_yr, {})
+        common = sorted(set(cur) & set(nxt))
+        if len(common) < 30:
+            self.stdout.write("  Player stability: insufficient overlap — skipped")
+            return
+
+        self.stdout.write(f"\n  Player YoY stability (BPR {src_yr} → {tgt_yr}):")
+        a = [cur[p]["bpr"] for p in common]
+        b = [nxt[p]["bpr"] for p in common]
+        r, _ = scipy.stats.pearsonr(a, b)
+        rho, _ = scipy.stats.spearmanr(a, b)
+        self.stdout.write(f"    all (n={len(common)}):  r={r:.3f}  rho={rho:.3f}")
+        for lo, hi in self.MINUTE_BUCKETS:
+            sel = [p for p in common if lo <= cur[p]["minutes"] < hi]
+            if len(sel) < 20:
+                continue
+            a = [cur[p]["bpr"] for p in sel]
+            b = [nxt[p]["bpr"] for p in sel]
+            r, _ = scipy.stats.pearsonr(a, b)
+            label = f"{lo}-{hi if hi < 10**9 else '+'} min"
+            self.stdout.write(f"    {label:14s} (n={len(sel)}):  r={r:.3f}")
 
     # ── Printing ───────────────────────────────────────────────────────────────
 

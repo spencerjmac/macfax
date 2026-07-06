@@ -25,6 +25,7 @@ import {
   type PlayerMetricMeta,
 } from '@/lib/playerMetricMetadata';
 import type { NCAAPlayerSeasonStats } from '@/types';
+import { BPRConfidenceBadge, type BprSource } from './BPRConfidenceBadge';
 
 type TabId = 'traditional' | 'impact' | 'fourfactors';
 type BprMode = 'strict_bpr' | 'full_two_sided' | 'all_players';
@@ -458,21 +459,22 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
 
       const sourceCol: ColumnDef<NCAAPlayerSeasonStats> = {
         id: 'bpr_source',
-        header: 'Source',
+        header: 'Confidence',
         accessorFn: (row) => row.bpr_source ?? '',
         cell: (info) => {
-          const src = info.row.original.bpr_source;
-          if (!src) return <span className="text-text-muted">—</span>;
-          const label = src === 'box_bpr' ? 'box' : src;
-          const cls = BPR_SOURCE_STYLES[src] ?? 'text-text-muted';
+          const row = info.row.original;
+          if (!row.bpr_source) return <span className="text-text-muted">—</span>;
           return (
-            <span className={clsx('text-[11px] font-mono px-1.5 py-0.5 rounded border', cls)}>
-              {label}
-            </span>
+            <BPRConfidenceBadge
+              source={row.bpr_source as BprSource}
+              sample={row.off_poss}
+              league="ncaa"
+              seasonYear={selectedSeason}
+            />
           );
         },
         enableSorting: false,
-        size: 60,
+        size: 90,
       };
 
       return [

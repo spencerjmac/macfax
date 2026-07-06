@@ -318,12 +318,17 @@ def _compute_residual_sds(
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
-def train_preseason_models(season_year: int) -> dict:
+def train_preseason_models(season_year: int, valid_rapm_years_only: bool = False) -> dict:
     """
     Train returner and transfer Ridge sub-models on historical data.
 
     Uses seasons (season_year-3) through (season_year-1) as training targets,
     with (season_year-4) through (season_year-2) as prior-season feature sources.
+
+    valid_rapm_years_only: restrict training target years to seasons whose
+    stint data supports lineup RAPM (FIRST_VALID_RAPM_SEASON). Pre-2025
+    baseline targets are placeholder-unit margins — training on them teaches
+    the preseason model to predict noise. May return {} for early seasons.
 
     Returns: dict with model objects, scalers, residual SDs, and training metadata.
     Returns empty dict if training data is insufficient.
@@ -332,6 +337,15 @@ def train_preseason_models(season_year: int) -> dict:
     # Each T uses (T-1 features + T box) → T baseline targets; no target-year leakage.
     # Data builders gate on baseline_obpr__isnull=False so years without clean data are skipped.
     training_target_years = list(range(season_year - 4, season_year))  # e.g. [2022, 2023, 2024, 2025]
+    if valid_rapm_years_only:
+        from ncaa.analytics.player_value.bpr.constants import is_valid_rapm_target_season
+        training_target_years = [
+            y for y in training_target_years if is_valid_rapm_target_season(y)
+        ]
+        logger.info(
+            "[Preseason] truthful_targets: training target years restricted to %s",
+            training_target_years,
+        )
 
     if len(training_target_years) < 1:
         logger.warning("[Preseason] Not enough prior seasons to train preseason model.")

@@ -273,7 +273,11 @@ export function PlayerOutlookTable({
         </tbody>
       </table>
       <div className="px-4 py-2 bg-ui-surface text-xs text-text-muted border-t border-ui-border">
-        * Projected values for next season
+        * Projected values for next season. Team forecasts are driven by
+        Projection Value — a separate forward-looking input that blends BPR
+        with box-metric signal because it predicts future results better out
+        of sample. BPR itself remains the player evaluation rating shown on
+        player pages.
       </div>
     </div>
   );

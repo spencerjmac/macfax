@@ -91,3 +91,8 @@ mps/data/*.bak
 mps/data/cbb_stats_cache/
 mps/data/historical_consensus.json
 mps/data/mps_dataset_with_consensus.csv
+
+# BPR audit/backtest machine outputs — reproducible via commands in
+# docs/bpr_audit/ (audit_bpr_data, backtest_bpr_suite, experiment harnesses).
+# The recruiting priority list regenerates via check_recruiting_data.
+backend/backtest_output/

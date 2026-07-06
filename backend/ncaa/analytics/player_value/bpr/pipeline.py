@@ -42,6 +42,7 @@ from django.db import transaction
 
 from ncaa.analytics.player_value.bpr.constants import (
     BPR_MODEL_VERSION,
+    is_valid_rapm_target_season,
     MIN_OFF_POSS_BPR,
     MIN_DEF_POSS_BPR,
     MIN_PRIOR_TRAINING_SAMPLES,
@@ -102,6 +103,11 @@ def run_bpr_season(
     persist: bool = True,
     sd_scale_off_override: "float | None" = None,
     sd_scale_def_override: "float | None" = None,
+    player_season_stats_override: "list[dict] | None" = None,
+    opp_quality_map_override: "dict[int, float] | None" = None,
+    team_adj_em_map_override: "dict[int, float] | None" = None,
+    truthful_targets: bool = False,
+    garbage_time_weight: float = 1.0,
 ) -> dict:
     """
     Run the full BPR pipeline for `season_year`.
@@ -119,6 +125,22 @@ def run_bpr_season(
         skip_prior_rapm:      Skip prior-informed RAPM (baseline RAPM = final).
         rapm_lambda_override: Override CV lambda selection with a fixed value.
         verbose:              Log progress information.
+        player_season_stats_override / opp_quality_map_override /
+        team_adj_em_map_override:
+                              Leak-free replacements for the Phase 3 DB loads.
+                              Required for date-sliced backtests: the default
+                              loads are FULL-SEASON even when cutoff_date is
+                              set (see docs/bpr_audit/03_weakness_report.md
+                              item 3.1). Build them with
+                              ncaa.analytics.player_value.bpr.through_date.
+                              Defaults (None) preserve production behavior.
+        truthful_targets:     When True, refuse to treat pre-2025 placeholder
+                              stints as lineup RAPM (FIRST_VALID_RAPM_SEASON):
+                              the RAPM pool is restricted to valid seasons, and
+                              internal-RAPM Box BPR training targets, the
+                              prior-history blend, and preseason-model training
+                              all exclude invalid seasons. External EM targets
+                              remain allowed. Default False = current behavior.
 
     Returns a summary dict with statistics from each phase.
     """
@@ -136,6 +158,25 @@ def run_bpr_season(
         _rapm_years = list(range(season_year - rapm_window_size + 1, season_year + 1))
         # e.g. season_year=2026, window=4 → [2023, 2024, 2025, 2026]
 
+    if truthful_targets:
+        _valid = [y for y in _rapm_years if is_valid_rapm_target_season(y)]
+        _dropped = sorted(set(_rapm_years) - set(_valid))
+        if _dropped:
+            logger.info(
+                "[BPR] truthful_targets: dropping placeholder-stint seasons %s "
+                "from RAPM pool (pre-2025 has no substitution data)", _dropped,
+            )
+        _rapm_years = _valid or [season_year]
+        if not is_valid_rapm_target_season(season_year):
+            logger.warning(
+                "[BPR] truthful_targets: target season %s itself predates valid "
+                "substitution data — RAPM output is fixed-unit plus-minus, "
+                "not lineup-isolated impact", season_year,
+            )
+        summary["truthful_targets"] = {
+            "rapm_years": _rapm_years, "dropped_years": _dropped,
+        }
+
     # ── Phase 1: Build RAPM dataset ───────────────────────────────────────────
     if cutoff_date is not None:
         logger.info(f"[BPR] Phase 1: Building date-bounded RAPM dataset (season {season_year} through {cutoff_date})")
@@ -143,6 +184,14 @@ def run_bpr_season(
     else:
         logger.info(f"[BPR] Phase 1: Building RAPM dataset for seasons {_rapm_years}")
         dataset = build_rapm_dataset(_rapm_years, verbose=verbose)
+
+    if garbage_time_weight != 1.0:
+        from ncaa.analytics.player_value.bpr.datasets import tag_garbage_time
+        n_tagged = tag_garbage_time(dataset["observations"], garbage_time_weight)
+        logger.info(
+            f"[BPR] Garbage-time downweight (N-C): {n_tagged} observations "
+            f"tagged at weight {garbage_time_weight}")
+        summary["garbage_time"] = {"weight": garbage_time_weight, "n_tagged": n_tagged}
     n_obs            = dataset["n_observations"]
     n_player_seasons = dataset["n_player_seasons"]
     n_target_players = len(dataset["target_season_player_ids"])
@@ -229,25 +278,36 @@ def run_bpr_season(
             summary["phases"]["baseline_rapm"]["n_baseline_written"] = n_baseline_written
 
     # ── Phase 3: Load PlayerSeasonStats for box feature extraction ────────────
-    logger.info(f"[BPR] Phase 3: Loading PlayerSeasonStats for season {season_year}")
-    pss_qs = PlayerSeasonStats.objects.filter(
-        season__year=season_year,
-    ).values(
-        "player_id", "team_id", "gp", "mpg",
-        "pts", "ast", "tov", "stl", "blk", "pf", "reb",
-        "oreb_pg", "dreb_pg",
-        "fga_pg", "fg3a_pg", "fta_pg", "ftm_pg",
-        "efg_pct", "ts_pct",
-        "on_court_secs_pg",
-        "on_court_adj_em",
-        "on_court_tov_edge",
-        "on_court_reb_edge",
-    )
-    player_season_stats = list(pss_qs)
+    if player_season_stats_override is not None:
+        logger.info(
+            f"[BPR] Phase 3: Using injected player-season stats "
+            f"({len(player_season_stats_override)} rows) — leak-free backtest mode"
+        )
+        player_season_stats = player_season_stats_override
+    else:
+        logger.info(f"[BPR] Phase 3: Loading PlayerSeasonStats for season {season_year}")
+        pss_qs = PlayerSeasonStats.objects.filter(
+            season__year=season_year,
+        ).values(
+            "player_id", "team_id", "gp", "mpg",
+            "pts", "ast", "tov", "stl", "blk", "pf", "reb",
+            "oreb_pg", "dreb_pg",
+            "fga_pg", "fg3a_pg", "fta_pg", "ftm_pg",
+            "efg_pct", "ts_pct",
+            "on_court_secs_pg",
+            "on_court_adj_em",
+            "on_court_tov_edge",
+            "on_court_reb_edge",
+        )
+        player_season_stats = list(pss_qs)
     summary["phases"]["player_season_stats"] = {"n_records": len(player_season_stats)}
 
-    opp_quality_map  = _build_opponent_quality_map(season_year)
-    team_adj_em_map  = _build_team_adj_em_map(season_year)
+    opp_quality_map = (opp_quality_map_override
+                       if opp_quality_map_override is not None
+                       else _build_opponent_quality_map(season_year))
+    team_adj_em_map = (team_adj_em_map_override
+                       if team_adj_em_map_override is not None
+                       else _build_team_adj_em_map(season_year))
     logger.info(f"[BPR] Phase 3: opponent quality map built for {len(opp_quality_map)} teams")
 
     # ── Phase 4: Box BPR — leak-free training ─────────────────────────────────
@@ -294,7 +354,8 @@ def run_bpr_season(
         if prior_train_data is None:
             # Fallback: load single-season baseline RAPM targets from DB
             prior_train_data = _load_prior_season_box_data(
-                season_year, player_season_stats, off_poss_map, def_poss_map
+                season_year, player_season_stats, off_poss_map, def_poss_map,
+                valid_rapm_years_only=truthful_targets,
             )
             if prior_train_data:
                 prior_train_data["training_source_type"] = "db_baseline"
@@ -427,9 +488,12 @@ def run_bpr_season(
         box_preds_for_prior = box_bpr_preds or {}
 
         # Load prior-season baseline RAPM for returning players (v1.3 history signals)
+        # truthful mode: pre-2025 baselines are placeholder-unit margins, not
+        # player history — skip the blend rather than anchor to noise.
         prior_history = _load_prior_season_history(
             season_year=season_year,
             player_ids=dataset["target_season_player_ids"],
+            valid_rapm_years_only=truthful_targets,
         )
         logger.info(
             f"[BPR] Phase 5: prior-history loaded for {len(prior_history)} returning players"
@@ -460,7 +524,8 @@ def run_bpr_season(
         _n_prior_seasons_map  = {r["player_id"]: r["n_prior_seasons"]   for r in psp_meta_qs}
 
         logger.info("[BPR] Phase 5: Training preseason regression models")
-        _preseason_models = train_preseason_models(season_year)
+        _preseason_models = train_preseason_models(
+            season_year, valid_rapm_years_only=truthful_targets)
         preseason_preds   = predict_preseason_priors(
             player_ids       = dataset["target_season_player_ids"],
             season_year      = season_year,
@@ -667,6 +732,11 @@ def run_bpr_season(
         _final_obpr = final_obpr or {}
         _final_dbpr = final_dbpr or {}
         _box = box_bpr_preds or {}
+        if baseline_rapm is not None:
+            _base_obpr = extract_target_season(baseline_rapm["obpr"], target_year)
+            _base_dbpr = extract_target_season(baseline_rapm["dbpr"], target_year)
+        else:
+            _base_obpr, _base_dbpr = {}, {}
         summary["player_bpr_map"] = {
             pid: {
                 "obpr":     _final_obpr.get(pid),
@@ -676,6 +746,10 @@ def run_bpr_season(
                     ((_box.get(pid) or {}).get("box_obpr") or 0.0)
                     + ((_box.get(pid) or {}).get("box_dbpr") or 0.0)
                 ) if _box.get(pid) else None,
+                "baseline_bpr": (
+                    _base_obpr[pid] + _base_dbpr[pid]
+                    if pid in _base_obpr and pid in _base_dbpr else None
+                ),
                 "off_poss": off_poss_map.get(pid, 0.0),
             }
             for pid in set(list(_final_obpr.keys()) + list(_final_dbpr.keys()))
@@ -971,6 +1045,7 @@ def _load_prior_season_box_data(
     current_off_poss_map: dict[int, float],
     current_def_poss_map: dict[int, float],
     n_prior_seasons: int | None = None,
+    valid_rapm_years_only: bool = False,
 ) -> dict | None:
     """
     Load box features + CLEAN BASELINE RAPM targets for qualifying players in prior seasons.
@@ -1016,6 +1091,12 @@ def _load_prior_season_box_data(
 
     reliable_years: list[int] = []
     for yr in years_to_check:
+        if valid_rapm_years_only and not is_valid_rapm_target_season(yr):
+            logger.debug(
+                f"[BPR] truthful_targets: excluding {yr} baseline RAPM from "
+                f"Box BPR training (placeholder stints)"
+            )
+            continue
         total = _PGS.objects.filter(game__season_year=yr).count()
         if total == 0:
             continue
@@ -1467,6 +1548,7 @@ def _load_prior_season_history(
     season_year: int,
     player_ids: list[int],
     n_prior_seasons: int = 2,
+    valid_rapm_years_only: bool = False,
 ) -> dict[int, dict]:
     """
     Load prior-season baseline RAPM values for players appearing in the current dataset.
@@ -1480,6 +1562,10 @@ def _load_prior_season_history(
     from ncaa.models import PlayerSeasonStats
 
     prior_years = list(range(season_year - n_prior_seasons, season_year))
+    if valid_rapm_years_only:
+        prior_years = [y for y in prior_years if is_valid_rapm_target_season(y)]
+        if not prior_years:
+            return {}
 
     qs = (
         PlayerSeasonStats.objects

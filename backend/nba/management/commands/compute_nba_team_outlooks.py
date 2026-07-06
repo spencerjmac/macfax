@@ -52,6 +52,21 @@ WINS_INTERCEPT = 44.3          # empirical intercept: league avg wins at adj_em=
 SIGMA_EM = 5.5                 # forward RMSE from 2024→2025 backtest (4.83), rounded up from pooled (5.41)
                                # ±1 SIGMA_EM = ±13.5 wins at WINS_PER_EM=2.46 — wide but honest
 WINS_ADDED_SCALAR = 0.38       # converts (minutes_share × bpr) → wins added
+
+# ── Projection Value wiring (docs/bpr_audit/09) ───────────────────────────────
+# Team forecasts consume projection_value (0.25·z(BPR)+0.75·z(BPM)), NOT raw
+# BPR — forward-validated: pooled r=0.601 vs 0.583 pure BPR (3 pairs).
+# PV_SLOPE / PV_SIGMA_EM calibrated on minutes-weighted team-mean PV(Y) →
+# adj_net(Y+1), pairs 2022→23/23→24/24→25 (n=90): slope=3.58, r=0.304,
+# pooled RMSE=4.32. Centered (two-pass league-baseline) form — no intercept.
+# The legacy BPR-based projection is still computed and logged for comparison;
+# projected_* DB fields carry the PV-based numbers.
+PV_SLOPE = 3.58
+PV_SIGMA_EM = 4.5              # pooled forward RMSE 4.32, rounded up
+PV_WINS_INTERCEPT = 41.0       # centered PV-EM: league-average team = .500.
+                               # (Legacy WINS_INTERCEPT=44.3 was fit to the
+                               # uncentered legacy scale whose league-mean EM
+                               # was negative — do not reuse it here.)
 MIN_MPG = 5.0                  # minimum MPG to include player in source roster
 MINUTES_FLOOR = 0.02           # minimum projected minutes share (~0.4 MPG equiv)
 MINUTES_CEIL = 1.20            # maximum projected minutes share (~24 MPG equiv)
@@ -123,6 +138,9 @@ class Command(BaseCommand):
         league_obpr_avg = bpr_qs.filter(obpr__isnull=False).aggregate(v=Avg("obpr"))["v"] or 0.0
         league_dbpr_avg = bpr_qs.filter(dbpr__isnull=False).aggregate(v=Avg("dbpr"))["v"] or 0.0
         league_bpr_avg  = bpr_qs.filter(bpr__isnull=False).aggregate(v=Avg("bpr"))["v"] or 0.0
+        from django.db.models import StdDev
+        league_bpr_sd = (bpr_qs.filter(bpr__isnull=False)
+                         .aggregate(v=StdDev("bpr"))["v"] or 1.0)
 
         # RAPM-gap sigma — computed once, used in _project_bpr cap
         self.rapm_gap_sigma = self._compute_rapm_gap_sigma(source_season)
@@ -151,6 +169,21 @@ class Command(BaseCommand):
                 slot["projected_obpr"], slot["projected_dbpr"], slot["projected_bpr"] = (
                     self._project_bpr(slot, league_obpr_avg, league_dbpr_avg, league_bpr_avg)
                 )
+                # Projection Value path (docs/bpr_audit/09): shrink toward the
+                # league mean (0 in z-space) exactly like the BPR path; players
+                # without a stored PV (draft picks, manual priors) fall back to
+                # z(projected_bpr) so the two paths stay on one scale.
+                lam = (SHRINKAGE_RETURNER
+                       if slot.get("acquisition_type") in ("returner", "extended")
+                       else SHRINKAGE_ACQUISITION)
+                pv = slot.get("projection_value")
+                if pv is None:
+                    pv = ((slot.get("projected_bpr") or 0.0) - league_bpr_avg) / league_bpr_sd
+                    slot["pv_source"] = "bpr_fallback"
+                else:
+                    pv = pv * (1.0 - lam)
+                    slot["pv_source"] = "stored"
+                slot["pv_effective"] = pv
             slots = self._allocate_minutes(slots)
             team_data[outlook.pk] = {"outlook": outlook, "slots": slots}
 
@@ -170,6 +203,19 @@ class Command(BaseCommand):
 
         league_base_off = sum(all_base_off) / len(all_base_off) if all_base_off else 0.0
         league_base_def = sum(all_base_def) / len(all_base_def) if all_base_def else 0.0
+
+        # League baseline for the Projection Value path: minutes-share-weighted
+        # team mean PV, averaged across teams (centers the PV_SLOPE application).
+        all_team_pv = []
+        for td in team_data.values():
+            slots = td["slots"]
+            tot = sum(s.get("minutes_share", 0) for s in slots)
+            if tot > 0:
+                all_team_pv.append(
+                    sum(s.get("minutes_share", 0) * s.get("pv_effective", 0.0)
+                        for s in slots) / tot)
+        league_pv_mean = sum(all_team_pv) / len(all_team_pv) if all_team_pv else 0.0
+        self.stdout.write(f"League mean team PV={league_pv_mean:+.3f}")
         self.stdout.write(
             f"League base off={league_base_off:.2f}, def={league_base_def:.2f}"
         )
@@ -190,6 +236,7 @@ class Command(BaseCommand):
                     nba_avg_adj_d=nba_avg_adj_d,
                     league_base_off=league_base_off,
                     league_base_def=league_base_def,
+                    league_pv_mean=league_pv_mean,
                 )
                 total_created += n
                 total_teams += 1
@@ -215,9 +262,12 @@ class Command(BaseCommand):
         nba_avg_adj_d,
         league_base_off,
         league_base_def,
+        league_pv_mean=0.0,
     ):
         # Project team ratings + roster metrics
-        metrics = self._project_team(slots, nba_avg_adj_o, nba_avg_adj_d, league_base_off, league_base_def)
+        metrics = self._project_team(slots, nba_avg_adj_o, nba_avg_adj_d,
+                                     league_base_off, league_base_def,
+                                     league_pv_mean=league_pv_mean)
 
         # Write projected roster slots
         NBAProjectedRosterSlot.objects.filter(team=outlook, season=target_season).delete()
@@ -261,7 +311,8 @@ class Command(BaseCommand):
         self.stdout.write(
             f"  {outlook.team_abbr}: {len(slots)} players → "
             f"{metrics['wins']}W [{metrics['floor_wins']}–{metrics['ceil_wins']}]  "
-            f"AdjEM {metrics['adj_em']:+.1f}  "
+            f"AdjEM {metrics['adj_em']:+.1f} (PV; legacy BPR path "
+            f"{metrics['legacy_adj_em']:+.1f}, team_pv={metrics['team_pv']:+.2f})  "
             f"cont={metrics['continuity_score']:.0f}%"
         )
         return len(slots)
@@ -314,6 +365,7 @@ class Command(BaseCommand):
                     "obpr": stats.obpr or 0.0,
                     "dbpr": stats.dbpr or 0.0,
                     "bpr": stats.bpr or 0.0,
+                    "projection_value": stats.projection_value,
                     "archetype": stats.nba_archetype,
                     "acquisition_type": "returner",
                     "confidence": "high",
@@ -345,6 +397,10 @@ class Command(BaseCommand):
                     "obpr": bpr_data.get("obpr", 0.0),
                     "dbpr": bpr_data.get("dbpr", 0.0),
                     "bpr": bpr_data.get("bpr", 0.0),
+                    "projection_value": (
+                        bpr_data["stats_obj"].projection_value
+                        if bpr_data.get("stats_obj") is not None else None
+                    ),
                     "archetype": bpr_data.get("archetype"),
                     "acquisition_type": move.move_type,
                     "confidence": "medium",
@@ -360,6 +416,7 @@ class Command(BaseCommand):
                     "obpr": 0.0,
                     "dbpr": 0.0,
                     "bpr": 0.0,
+                    "projection_value": None,
                     "archetype": None,
                     "acquisition_type": "drafted",
                     "confidence": "low",
@@ -547,7 +604,8 @@ class Command(BaseCommand):
 
     # ── Team rating projection ─────────────────────────────────────────────────
 
-    def _project_team(self, slots, nba_avg_adj_o, nba_avg_adj_d, league_base_off, league_base_def):
+    def _project_team(self, slots, nba_avg_adj_o, nba_avg_adj_d,
+                      league_base_off, league_base_def, league_pv_mean=0.0):
         """
         Project team efficiency ratings and win total.
 
@@ -566,13 +624,31 @@ class Command(BaseCommand):
             for s in slots
         )
 
+        # ── Legacy BPR-based projection (kept for comparison logging) ─────────
         adj_o = nba_avg_adj_o + SLOPE * (base_off - league_base_off)
         adj_d = nba_avg_adj_d - SLOPE * (base_def - league_base_def)
-        adj_em = adj_o - adj_d
+        legacy_adj_em = adj_o - adj_d
 
-        wins = max(5, min(77, round(WINS_INTERCEPT + adj_em * WINS_PER_EM)))
-        floor_wins = max(5, min(77, round(WINS_INTERCEPT + (adj_em - SIGMA_EM) * WINS_PER_EM)))
-        ceil_wins  = max(5, min(77, round(WINS_INTERCEPT + (adj_em + SIGMA_EM) * WINS_PER_EM)))
+        # ── PRIMARY: Projection Value path (docs/bpr_audit/09) ────────────────
+        # projected adj_em from the forward-validated blend, centered on the
+        # league PV baseline. The off/def split above still drives the
+        # per-side ratings, rescaled so they sum to the PV-based adj_em.
+        tot_share = sum(s.get("minutes_share", 0.0) for s in slots)
+        team_pv = (sum(s.get("minutes_share", 0.0) * s.get("pv_effective", 0.0)
+                       for s in slots) / tot_share) if tot_share > 0 else 0.0
+        adj_em = PV_SLOPE * (team_pv - league_pv_mean)
+        # Preserve the legacy off/def SHAPE around the PV total
+        legacy_split = (adj_o - nba_avg_adj_o) - (nba_avg_adj_d - adj_d)  # == legacy_adj_em
+        off_frac = 0.5
+        if abs(legacy_split) > 1e-9:
+            off_frac = (adj_o - nba_avg_adj_o) / legacy_split
+            off_frac = max(-1.0, min(2.0, off_frac))
+        adj_o = nba_avg_adj_o + adj_em * off_frac
+        adj_d = nba_avg_adj_d - adj_em * (1.0 - off_frac)
+
+        wins = max(5, min(77, round(PV_WINS_INTERCEPT + adj_em * WINS_PER_EM)))
+        floor_wins = max(5, min(77, round(PV_WINS_INTERCEPT + (adj_em - PV_SIGMA_EM) * WINS_PER_EM)))
+        ceil_wins  = max(5, min(77, round(PV_WINS_INTERCEPT + (adj_em + PV_SIGMA_EM) * WINS_PER_EM)))
 
         # Wins added per player
         for slot in slots:
@@ -610,6 +686,8 @@ class Command(BaseCommand):
             "adj_o": adj_o,
             "adj_d": adj_d,
             "adj_em": adj_em,
+            "legacy_adj_em": legacy_adj_em,
+            "team_pv": team_pv,
             "wins": wins,
             "floor_wins": floor_wins,
             "ceil_wins": ceil_wins,

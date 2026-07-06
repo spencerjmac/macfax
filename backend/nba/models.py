@@ -576,6 +576,20 @@ class NBAPlayerSeasonStats(models.Model):
     # Formula: (bpr + 2.0) × (mpg / 48) × (gp / 56)  — replacement level = BPR -2.0
     wins_added = models.FloatField(null=True, blank=True, help_text="Wins above replacement player")
 
+    # ── Projection Value (docs/bpr_audit/09) ──────────────────────────────────
+    # Forward-looking TEAM-FORECAST input: alpha*z(BPR) + (1-alpha)*z(BPM).
+    # This is NOT BPR and must never be displayed as BPR — player evaluation
+    # surfaces show bpr/obpr/dbpr; team outlooks consume projection_value.
+    projection_value = models.FloatField(
+        null=True, blank=True,
+        help_text="Team-forecast player input (z-scored blend; see docs/bpr_audit/09)")
+    projection_value_version = models.CharField(max_length=10, null=True, blank=True)
+    projection_value_source = models.CharField(
+        max_length=20, null=True, blank=True,
+        help_text="bpr+bpm | bpr_only (no BPM match)")
+    projection_alpha = models.FloatField(
+        null=True, blank=True, help_text="Blend weight on z(BPR)")
+
     class Meta:
         constraints = [
             models.UniqueConstraint(

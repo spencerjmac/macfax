@@ -153,6 +153,7 @@ def extract_lineup_segments(
                 "game_id":         game_id,
                 "season_year":     season_year,
                 "period":          period,
+                "clock_start":     t_start,
                 "secs":            seg_secs,
                 "home_player_ids": [s["player_id"] for s in home_covering],
                 "away_player_ids": [s["player_id"] for s in away_covering],
@@ -165,6 +166,46 @@ def extract_lineup_segments(
 
     return observations
 
+
+
+# ── Garbage-time tagging (experiment N-C) ────────────────────────────────────
+
+GARBAGE_MARGIN = 25       # final-score margin defining a blowout
+GARBAGE_PERIOD = 2        # 2nd half onward
+GARBAGE_CLOCK_MAX = 480   # last 8 minutes of the half
+
+
+def tag_garbage_time(observations: list[dict], garbage_weight: float) -> int:
+    """
+    Set obs["weight_mult"] = garbage_weight on segments in the last
+    GARBAGE_CLOCK_MAX seconds of the 2nd half (or OT) of games whose FINAL
+    margin was >= GARBAGE_MARGIN. Proxy definition — running score is not
+    stored on segments. Returns the number of tagged observations.
+
+    No-op (returns 0) when garbage_weight == 1.0.
+    """
+    from ncaa.models import Game
+
+    if garbage_weight == 1.0 or not observations:
+        return 0
+
+    game_ids = {o["game_id"] for o in observations}
+    blowouts = set()
+    for g in Game.objects.filter(
+        id__in=list(game_ids),
+        home_score__isnull=False, away_score__isnull=False,
+    ).values("id", "home_score", "away_score"):
+        if abs(g["home_score"] - g["away_score"]) >= GARBAGE_MARGIN:
+            blowouts.add(g["id"])
+
+    n = 0
+    for o in observations:
+        if (o["game_id"] in blowouts
+                and o.get("period", 1) >= GARBAGE_PERIOD
+                and o.get("clock_start", 9999) <= GARBAGE_CLOCK_MAX):
+            o["weight_mult"] = garbage_weight
+            n += 1
+    return n
 
 
 # ── Full-season design matrix builder ────────────────────────────────────────

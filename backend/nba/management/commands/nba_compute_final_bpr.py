@@ -84,10 +84,14 @@ DEFAULT_RAPM_WINDOW = 3
 WINS_ADDED_DENOMINATOR = 56.0  # pts/win coefficient for RAPM-scale BPR → wins conversion
                                 # wins_added = (bpr + 2.0) × (mpg/48) × (gp/56)
                                 # Tunable: 56 ≈ player-scale, 33 = team point-margin scale (too high)
-LEBRON_PRIOR_W       = 0.5   # weight given to O-LEBRON in offensive prior blend
-LEBRON_PRIOR_DEF_W   = 0.5   # weight given to D-LEBRON in defensive prior blend
-                              # Tested 0.2: hurt star stability (0.462→0.436) more than helped Giannis (+0.17).
-                              # Keeping symmetric at 0.5 — D-LEBRON is multi-year stabilized, good anchor.
+LEBRON_PRIOR_W       = 0.75  # weight given to O-LEBRON in offensive prior blend
+LEBRON_PRIOR_DEF_W   = 0.75  # weight given to D-LEBRON in defensive prior blend
+                              # v2 (2026-07): forward-ablation sweep (nba_experiment_final_bpr,
+                              # pairs 2022→23/23→24/24→25) — player-forward r vs next-season
+                              # baseline RAPM climbs monotonically 0.264→0.298 for w=0→0.9,
+                              # flattening past 0.75; team-forward RMSE unchanged. 0.75 takes
+                              # most of the gain while keeping independence from LEBRON.
+                              # History: 0.2 hurt star stability (0.462→0.436); 0.5 shipped v1.
 LEBRON_DATA_DIR      = SCRIPT_DIR / "data" / "nba"
 LEBRON_LAMBDA_SCALE  = 0.7   # scales λ UP for low-LEBRON role players: lam = base * (1 + scale * max(0, 7-LEBRON))
                               # Validated: 0.3→0.5→0.7→1.0 all monotonically improved stability (0.431→0.462→0.480→0.481)

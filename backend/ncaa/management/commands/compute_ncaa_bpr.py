@@ -105,6 +105,20 @@ class Command(BaseCommand):
                 "Pass 1 to revert to single-season mode."
             ),
         )
+        parser.add_argument(
+            "--no-truthful-targets",
+            dest="truthful_targets",
+            action="store_false",
+            default=True,
+            help=(
+                "DEPRECATED ESCAPE HATCH (v1.7 default is truthful): re-admit "
+                "pre-2025 placeholder-stint seasons to the RAPM pool, internal "
+                "Box BPR targets, prior-history blend, and preseason training. "
+                "Those seasons contain no substitution data (ESPN never served "
+                "it — probed 2026-07); their 'RAPM' is starter-unit plus-minus. "
+                "Use only for legacy comparisons."
+            ),
+        )
 
     def handle(self, *args, **options):
         season_year = options["season"]
@@ -130,6 +144,7 @@ class Command(BaseCommand):
                 rapm_years=options.get("rapm_years"),
                 rapm_window_size=options.get("rapm_window_size", 4),
                 em_calibrate=not options.get("no_em_calibrate", False),
+                truthful_targets=options.get("truthful_targets", True),
                 verbose=True,
             )
         except Exception as exc:

@@ -180,12 +180,12 @@ export const GLOSSARY_TERMS: GlossaryTerm[] = [
     category: 'player-ratings',
     shortDefinition: 'Overall player impact rating combining box-score contributions and on-court influence.',
     detailedDefinition:
-      'BPR is Macfax\'s primary player evaluation metric. It combines box-score contributions (scoring, rebounding, assists, steals, blocks, turnovers) with on-court impact signals to estimate a player\'s net effect on team performance per 100 possessions. The Bayesian component stabilizes estimates for players with limited minutes. BPR = OBPR + DBPR.',
+      'BPR is Macfax\'s primary player evaluation metric. It combines box-score contributions (scoring, rebounding, assists, steals, blocks, turnovers) with on-court lineup impact to estimate a player\'s net effect on team performance per 100 possessions, adjusted for teammates, opponents, and schedule. The Bayesian component stabilizes estimates for players with limited minutes. BPR = OBPR + DBPR. Each rating carries a source label — On-court (lineup data drives it), Box-based (box-score model fills in when lineup sample is thin), or Mixed — and a confidence level that reflects sample size, not player quality. College note: play-by-play before the 2024-25 season contains no substitution data, so pre-2025 college ratings are driven by box score and team context rather than true lineup impact; ratings from 2025 onward use full lineup data and are validated out-of-sample against the strongest public college metrics.',
     formula: {
       display: '\\text{BPR} = \\text{OBPR} + \\text{DBPR}',
     },
     howToInterpret:
-      'Positive BPR means the player helps the team. Above +5 is All-Conference caliber; above +10 is elite. Negative BPR suggests the player hurts performance when on the court. Context matters — a BPR of +3 on a top-10 team means something different than on a bottom-50 team.',
+      'Positive BPR means the player helps the team. Above +5 is All-Conference caliber; above +10 is elite. Negative BPR suggests the player hurts performance when on the court. Context matters — a BPR of +3 on a top-10 team means something different than on a bottom-50 team. BPR answers "how good is this player, in context, right now" — team forecasts may separately use a blended projection value where it predicts future results better out of sample.',
     methodologySlug: 'bayesian-performance-rating',
     relatedTerms: ['obpr', 'dbpr'],
     isHigherBetter: true,
