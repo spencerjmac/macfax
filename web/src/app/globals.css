@@ -41,15 +41,29 @@
   --heat-0:    rgba(100, 116, 139, 0.05);
   --heat-lo-1: rgba(100, 116, 139, 0.10);
   --heat-lo-2: rgba(100, 116, 139, 0.14);
-  /* Legacy aliases — old markup keeps working */
+
+  /* Negative heat (2026.2) — restrained red for genuinely negative/problem values.
+     Red means "the model sees a problem", never "this row lost a sort". */
+  --heat-neg-1: rgba(184, 53, 46, 0.09);
+  --heat-neg-2: rgba(184, 53, 46, 0.17);
+  --heat-neg-3: rgba(184, 53, 46, 0.27);
+  --negative-ink: #b8352e;
+
+  /* Champion gold (2026.2) — historical champions only; never a fill flood */
+  --gold:        #b8912f;
+  --gold-strong: #96751f;
+  --gold-bg:     rgba(184, 145, 47, 0.13);
+  --gold-line:   rgba(184, 145, 47, 0.55);
+
+  /* Legacy aliases — good/mid stay teal/slate; bad now uses restrained red */
   --heat-good-3: var(--heat-3);
   --heat-good-2: var(--heat-2);
   --heat-good-1: var(--heat-1);
   --heat-mid-2:  var(--heat-0);
   --heat-mid-1:  var(--heat-0);
-  --heat-bad-1:  var(--heat-lo-1);
-  --heat-bad-2:  var(--heat-lo-2);
-  --heat-bad-3:  var(--heat-lo-2);
+  --heat-bad-1:  var(--heat-lo-2);
+  --heat-bad-2:  var(--heat-neg-1);
+  --heat-bad-3:  var(--heat-neg-2);
 }
 
 body {

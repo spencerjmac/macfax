@@ -17,7 +17,7 @@ const NBA_CONFIG: Omit<HubConfig, 'facts'> = {
   eyebrow: 'NBA · Updated daily',
   title: 'NBA',
   teamCount: 30,
-  lede: 'The same adjusted-efficiency engine applied to all 30 NBA teams — offense, defense, and net rating that account for who you actually played.',
+  lede: 'Adjusted efficiency, roster value, and development curves applied to all 30 NBA franchises — built to show what teams actually project to, not just what they\'ve done so far.',
   rankingsHref: '/nba/rankings',
   secondaryCta: 'Visualizations',
   secondaryCtaHref: '/nba/viz',
@@ -60,11 +60,7 @@ export default async function NBAHubPage() {
 
   const config: HubConfig = {
     ...NBA_CONFIG,
-    facts: [
-      { k: 'Teams',         v: '30' },
-      { k: 'Conferences',   v: '2' },
-      { k: 'Games modeled', v: '1.2', sub: 'k' },
-    ],
+    facts: [],
   };
 
   return <SportHubPage config={config} teams={teams} />;

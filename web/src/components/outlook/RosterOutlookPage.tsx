@@ -546,6 +546,16 @@ export default function RosterOutlookPage({ data }: RosterOutlookPageProps) {
     [scenarioPlayers],
   );
 
+  // Display-only: how much of the 5.0 minutes pool (200 team-minutes) the
+  // current roster fills. Mirrors the shares sent to the scenario API.
+  const poolFilledPct = useMemo(() => {
+    const totalShares = scenarioPlayers.reduce(
+      (s, p) => s + (p.minutesOverride ?? p.minutes_share_p2 ?? 0.1),
+      0,
+    );
+    return (totalShares / 5.0) * 100;
+  }, [scenarioPlayers]);
+
   // ── Actions ────────────────────────────────────────────────────────────────
 
   // Add from the "suggested players" section (current team's roster).
@@ -595,16 +605,15 @@ export default function RosterOutlookPage({ data }: RosterOutlookPageProps) {
     setScenarioLoading(true);
     setScenarioError(null);
 
-    const totalShares = scenarioPlayers.reduce((s, p) => s + (p.minutes_share_p2 ?? 0.1), 0);
-    const scale = totalShares > 0 ? 5.0 / totalShares : 1;
-
+    // Send raw shares — the backend pads unfilled minutes at replacement level
+    // and scales down over-filled pools. No client-side renormalization.
     const playerPayloads = scenarioPlayers.map(p => ({
       player_id: p.player_id ?? null,
       player_name: p.player_name,
       projected_obpr: p.projected_obpr ?? 0,
       projected_dbpr: p.projected_dbpr ?? 0,
       projected_bpr: p.projected_bpr ?? 0,
-      minutes_share: (p.minutesOverride ?? p.minutes_share_p2 ?? 0.1) * scale,
+      minutes_share: p.minutesOverride ?? p.minutes_share_p2 ?? 0.1,
       // Issue 1 fix: baseline players become returners next season.
       // In this builder flow all players are 'added', but suggested-roster players
       // already have recruitment_type='returner' set at add time.
@@ -683,8 +692,8 @@ export default function RosterOutlookPage({ data }: RosterOutlookPageProps) {
         <RosterTable players={scenarioPlayers} onRemove={removePlayer} />
       </div>
 
-      {/* ── Run button ── */}
-      <div className="flex items-center gap-3">
+      {/* ── Run button + minutes pool indicator ── */}
+      <div className="flex flex-wrap items-center gap-3">
         <button
           onClick={runScenario}
           disabled={scenarioLoading || scenarioPlayers.length === 0}
@@ -702,6 +711,23 @@ export default function RosterOutlookPage({ data }: RosterOutlookPageProps) {
           >
             Reset
           </button>
+        )}
+        {scenarioPlayers.length > 0 && (
+          <div className="text-xs">
+            <span className="font-medium text-text-primary">
+              Minutes pool: {Math.round(poolFilledPct)}% filled
+            </span>
+            {poolFilledPct < 100 && (
+              <span className="ml-2 text-text-muted">
+                Unfilled minutes are projected at replacement level.
+              </span>
+            )}
+            {poolFilledPct > 100 && (
+              <span className="ml-2 text-amber-600">
+                Over 100% — minutes will be scaled down proportionally.
+              </span>
+            )}
+          </div>
         )}
       </div>
 

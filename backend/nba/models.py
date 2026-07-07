@@ -945,6 +945,10 @@ class TeamSeasonOutlook(models.Model):
     season_defining_variable = models.TextField(blank=True)
 
     updated_at = models.DateTimeField(auto_now=True)
+    pipeline_version = models.CharField(
+        max_length=20, default="", blank=True,
+        help_text="PIPELINE_VERSION of compute_nba_team_outlooks that last wrote projections",
+    )
 
     class Meta:
         ordering = ["-adj_net_rating"]
@@ -1067,6 +1071,11 @@ class NBAProjectedRosterSlot(models.Model):
     )
     projected_wins_added = models.FloatField(null=True, blank=True)
     confidence = models.CharField(max_length=10, choices=CONFIDENCE_CHOICES, default="medium")
+    pipeline_version = models.CharField(
+        max_length=20, default="", blank=True,
+        help_text="PIPELINE_VERSION of compute_nba_team_outlooks that wrote this row",
+    )
+    computed_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ["-projected_minutes_share"]

@@ -37,41 +37,72 @@ from nba.models import (
 
 logger = logging.getLogger(__name__)
 
+# Phase 2 — NBA minutes ceiling + self-centering wins intercept.
+# Stamped onto every NBAProjectedRosterSlot and TeamSeasonOutlook write so
+# mixed-version rows are detectable (Phase 2 P1 forensics).
+PIPELINE_VERSION = "2.0"
+
 # ── Calibration constants ──────────────────────────────────────────────────────
 REPLACEMENT_LEVEL = 2.0        # BPR units added above zero to form demand signal
 SHRINKAGE_RETURNER = 0.10      # 10% regression to league mean for returning players
 SHRINKAGE_ACQUISITION = 0.20   # 20% for trades/signings (higher projection uncertainty)
-SLOPE = 0.48                   # forward-predictive OLS from 2024→2025 pair (r=0.392, RMSE=4.83)
-                               # 2025→2026 excluded: stored BPR for 2025 season was computed under an
-                               # earlier pipeline version and is materially different from current output
-                               # (e.g. Amen Thompson stored ≈5.7 vs freshly-computed 9.43).
-                               # That pair measures stale inputs → 2026 outcomes, not the current model.
-                               # Provisional — re-derive from pooled data when 2026→2027 actuals available.
+# SLOPE — HUMAN-REVIEWED CONSTANT, do not auto-update.
+# Derivation: `manage.py derive_nba_slope --pairs 2022:2023,2023:2024,2024:2025`
+# (Phase 2 Stage 2, 2026-07-07, operator-approved decision tree).
+#   Pooled through-origin OLS, actual adj_net(Y+1) ~ (excess_off + excess_def),
+#   N=90 (3 pairs × 30), r=0.456, RMSE=4.63. Allocator: MINUTES_CEIL=1.80.
+#   Pairs included: 2022→23, 2023→24, 2024→25 — each passed the fresh-BPR
+#   lineage check (mean |stored − fresh| = 0.109/0.084/0.115, threshold 0.5).
+#   2025→2026 excluded: stored 2025 BPR predates the current BPR pipeline
+#   (e.g. Amen Thompson stored ≈5.7 vs freshly-computed 9.43).
+#   History: 0.48 (2024→25 single pair, old allocator CEIL=1.20; its target
+#   ratings were also corrupted by a missing season_type='regular' filter —
+#   playoff rows overwrote 16 teams' actual adj_net).
+SLOPE = 0.453
 WINS_PER_EM = 2.46             # wins per 1 pt of adj_em (OLS-calibrated from 2025-26 season)
-WINS_INTERCEPT = 44.3          # empirical intercept: league avg wins at adj_em=0 in our scale
-SIGMA_EM = 5.5                 # forward RMSE from 2024→2025 backtest (4.83), rounded up from pooled (5.41)
-                               # ±1 SIGMA_EM = ±13.5 wins at WINS_PER_EM=2.46 — wide but honest
+# WINS_INTERCEPT (legacy, removed Phase 2): 44.3 was OLS-fit on an uncentered
+# legacy scale whose league-mean EM was ~-1.34. A fixed intercept cannot
+# guarantee league closure (Σ wins = 1230). Wins now use a self-centering
+# effective intercept computed per run: 41.0 - WINS_PER_EM × league_mean_em.
+SIGMA_EM = 4.7                 # pooled forward RMSE 4.63 (legacy BPR path, N=90, same
+                               # derive_nba_slope run as SLOPE above), rounded up to
+                               # one decimal. History: 5.5 (single pair, old allocator).
 WINS_ADDED_SCALAR = 0.38       # converts (minutes_share × bpr) → wins added
 
 # ── Projection Value wiring (docs/bpr_audit/09) ───────────────────────────────
 # Team forecasts consume projection_value (0.25·z(BPR)+0.75·z(BPM)), NOT raw
 # BPR — forward-validated: pooled r=0.601 vs 0.583 pure BPR (3 pairs).
-# PV_SLOPE / PV_SIGMA_EM calibrated on minutes-weighted team-mean PV(Y) →
-# adj_net(Y+1), pairs 2022→23/23→24/24→25 (n=90): slope=3.58, r=0.304,
-# pooled RMSE=4.32. Centered (two-pass league-baseline) form — no intercept.
-# The legacy BPR-based projection is still computed and logged for comparison;
-# projected_* DB fields carry the PV-based numbers.
-PV_SLOPE = 3.58
-PV_SIGMA_EM = 4.5              # pooled forward RMSE 4.32, rounded up
-PV_WINS_INTERCEPT = 41.0       # centered PV-EM: league-average team = .500.
-                               # (Legacy WINS_INTERCEPT=44.3 was fit to the
-                               # uncentered legacy scale whose league-mean EM
-                               # was negative — do not reuse it here.)
+# Centered (two-pass league-baseline) form — no intercept. The legacy BPR
+# projection is still computed and logged for comparison; projected_* DB
+# fields carry the PV-based numbers.
+#
+# PV_SLOPE — HUMAN-REVIEWED CONSTANT, do not auto-update.
+# Derivation: `manage.py derive_nba_slope --pairs 2022:2023,2023:2024,2024:2025`
+# (Phase 2 Stage 2, 2026-07-07, operator-approved decision tree).
+#   Pooled through-origin OLS, actual adj_net(Y+1) ~ (team_pv − league_pv_mean),
+#   team_pv = minutes-share-weighted mean pv_effective under MINUTES_CEIL=1.80.
+#   N=90, r=0.478, RMSE=4.58. Same lineage gate + 2025→2026 exclusion as SLOPE.
+#   History: 3.58 (old allocator CEIL=1.20 weights; its 2024→25 targets also
+#   carried the playoff-row season_type corruption — see SLOPE note).
+PV_SLOPE = 5.591
+PV_SIGMA_EM = 4.6              # pooled forward RMSE 4.58 (PV path, N=90, same run),
+                               # rounded up. History: 4.5 (old allocator pooling).
+# PV_WINS_INTERCEPT (removed Phase 2): the fixed 41.0 assumed projected EM is
+# exactly mean-zero. handle() now computes effective_intercept =
+# 41.0 − WINS_PER_EM × league_mean_em each full-league run, guaranteeing closure.
 MIN_MPG = 5.0                  # minimum MPG to include player in source roster
 MINUTES_FLOOR = 0.02           # minimum projected minutes share (~0.4 MPG equiv)
-MINUTES_CEIL = 1.20            # maximum projected minutes share (~24 MPG equiv)
+MINUTES_CEIL = 1.80            # NBA star ceiling (~36 MPG equiv). Replaces the
+                               # NCAA-derived 1.20 (= 24 MPG) which clamped every
+                               # NBA star, flattened rotations, and compressed
+                               # league quality spread (Phase 2 P2 fix).
 POWER_EXPONENT = 2.0           # demand concentration exponent
 TOTAL_SHARES = 5.0             # 200 team-minutes / 40-min game
+
+
+def _clamp_wins(raw: float) -> int:
+    """Round and clamp a projected win total to the physical [0, 82] range."""
+    return max(0, min(82, round(raw)))
 
 
 class Command(BaseCommand):
@@ -90,11 +121,18 @@ class Command(BaseCommand):
             "--team", type=str, default=None,
             help="Limit to one team slug for debugging (e.g. oklahoma-city-thunder).",
         )
+        parser.add_argument(
+            "--dry-run", action="store_true",
+            help="Full compute + validations + reporting, zero DB writes.",
+        )
 
     def handle(self, *args, **options):
         source_year = options["source_season"]
         target_year = options["target_season"]
         team_filter = options["team"]
+        dry_run = options["dry_run"]
+        if dry_run:
+            self.stdout.write(self.style.WARNING("DRY RUN — no DB writes"))
 
         # Resolve source season
         if source_year is None:
@@ -112,12 +150,19 @@ class Command(BaseCommand):
             target_year = source_season.year + 1
 
         target_display = f"{target_year - 1}-{str(target_year)[2:]}"
-        target_season, created = NBASeason.objects.get_or_create(
-            year=target_year,
-            defaults={"display_name": target_display},
-        )
-        if created:
-            self.stdout.write(f"Created target season {target_season.display_name}")
+        if dry_run:
+            # zero DB writes on dry runs — unsaved instance is fine (never FK'd)
+            target_season = (
+                NBASeason.objects.filter(year=target_year).first()
+                or NBASeason(year=target_year, display_name=target_display)
+            )
+        else:
+            target_season, created = NBASeason.objects.get_or_create(
+                year=target_year,
+                defaults={"display_name": target_display},
+            )
+            if created:
+                self.stdout.write(f"Created target season {target_season.display_name}")
 
         self.stdout.write(
             f"Source: {source_season.display_name} → Target: {target_season.display_name}"
@@ -220,23 +265,71 @@ class Command(BaseCommand):
             f"League base off={league_base_off:.2f}, def={league_base_def:.2f}"
         )
 
-        # Pass 2: project team ratings + write DB
-        total_created = total_teams = 0
+        # Pass 2a: project team ratings (no wins yet — intercept needs league mean EM)
+        computed = []
         for td in team_data.values():
             outlook = td["outlook"]
             slots = td["slots"]
             if not slots:
                 continue
+            metrics = self._project_team(
+                slots, nba_avg_adj_o, nba_avg_adj_d,
+                league_base_off, league_base_def,
+                league_pv_mean=league_pv_mean,
+            )
+            computed.append({"outlook": outlook, "slots": slots, "metrics": metrics})
+
+        # Pass 2b: self-centering wins intercept (Phase 2 P3 fix).
+        # In a closed 30-team league mean wins = 41, so the intercept must be
+        # 41 minus WINS_PER_EM × league_mean_em — a fixed constant cannot
+        # guarantee Σ wins ≈ 1230 if projected EM is not exactly mean-zero.
+        n_league = TeamSeasonOutlook.objects.count()
+        full_league = len(computed) == n_league and n_league >= 30
+        league_mean_em = (
+            sum(c["metrics"]["adj_em"] for c in computed) / len(computed)
+            if computed else 0.0
+        )
+        if full_league:
+            effective_intercept = 41.0 - WINS_PER_EM * league_mean_em
+            self.stdout.write(
+                f"League mean projected EM={league_mean_em:+.3f} → "
+                f"effective wins intercept={effective_intercept:.2f}"
+            )
+        else:
+            effective_intercept = 41.0
+            self.stdout.write(self.style.WARNING(
+                f"DEBUG — non-closing intercept: only {len(computed)}/{n_league} teams "
+                "processed; league_mean_em over a partial league is meaningless. "
+                "Wins use intercept 41.0. Run all teams for a closing intercept."
+            ))
+
+        for c in computed:
+            m = c["metrics"]
+            m["wins"] = _clamp_wins(effective_intercept + m["adj_em"] * WINS_PER_EM)
+            m["floor_wins"] = _clamp_wins(
+                effective_intercept + (m["adj_em"] - PV_SIGMA_EM) * WINS_PER_EM
+            )
+            m["ceil_wins"] = _clamp_wins(
+                effective_intercept + (m["adj_em"] + PV_SIGMA_EM) * WINS_PER_EM
+            )
+
+        # Validations V1–V4 — run BEFORE any DB write so a failed run writes nothing.
+        self._run_validations(computed, full_league)
+
+        # Pass 2c: write DB (skipped entirely on --dry-run)
+        total_created = total_teams = 0
+        for c in computed:
+            outlook, slots, metrics = c["outlook"], c["slots"], c["metrics"]
+            if dry_run:
+                self._report_team(outlook, slots, metrics)
+                total_teams += 1
+                continue
             try:
                 n = self._write_team(
                     outlook=outlook,
                     slots=slots,
+                    metrics=metrics,
                     target_season=target_season,
-                    nba_avg_adj_o=nba_avg_adj_o,
-                    nba_avg_adj_d=nba_avg_adj_d,
-                    league_base_off=league_base_off,
-                    league_base_def=league_base_def,
-                    league_pv_mean=league_pv_mean,
                 )
                 total_created += n
                 total_teams += 1
@@ -244,31 +337,30 @@ class Command(BaseCommand):
                 logger.exception("Error writing %s", outlook.team_abbr)
                 self.stderr.write(f"  ERROR {outlook.team_abbr}: {exc}")
 
+        if full_league:
+            total_wins = sum(c["metrics"]["wins"] for c in computed)
+            self.stdout.write(f"Σ projected wins = {total_wins} (target 1230)")
+
         self.stdout.write(
             self.style.SUCCESS(
-                f"\nDone. {total_teams} teams processed, {total_created} roster slots written."
+                f"\nDone. {total_teams} teams processed, {total_created} roster slots "
+                f"{'(dry run — not written)' if dry_run else 'written'}."
             )
         )
 
     # ── Team pipeline ──────────────────────────────────────────────────────────
 
-    @transaction.atomic
-    def _write_team(
-        self,
-        outlook,
-        slots,
-        target_season,
-        nba_avg_adj_o,
-        nba_avg_adj_d,
-        league_base_off,
-        league_base_def,
-        league_pv_mean=0.0,
-    ):
-        # Project team ratings + roster metrics
-        metrics = self._project_team(slots, nba_avg_adj_o, nba_avg_adj_d,
-                                     league_base_off, league_base_def,
-                                     league_pv_mean=league_pv_mean)
+    def _report_team(self, outlook, slots, metrics):
+        self.stdout.write(
+            f"  {outlook.team_abbr}: {len(slots)} players → "
+            f"{metrics['wins']}W [{metrics['floor_wins']}–{metrics['ceil_wins']}]  "
+            f"AdjEM {metrics['adj_em']:+.1f} (PV; legacy BPR path "
+            f"{metrics['legacy_adj_em']:+.1f}, team_pv={metrics['team_pv']:+.2f})  "
+            f"cont={metrics['continuity_score']:.0f}%"
+        )
 
+    @transaction.atomic
+    def _write_team(self, outlook, slots, metrics, target_season):
         # Write projected roster slots
         NBAProjectedRosterSlot.objects.filter(team=outlook, season=target_season).delete()
         for slot in slots:
@@ -288,6 +380,7 @@ class Command(BaseCommand):
                 projected_minutes_share=slot.get("minutes_share"),
                 projected_wins_added=slot.get("wins_added"),
                 confidence=slot.get("confidence", "medium"),
+                pipeline_version=PIPELINE_VERSION,
             )
 
         # Step 7b: Update TeamSeasonOutlook projection fields
@@ -301,21 +394,93 @@ class Command(BaseCommand):
         outlook.continuity_score = metrics["continuity_score"]
         outlook.weighted_effective_age = metrics["weighted_age"]
         outlook.top2_bpr_concentration = metrics["top2_concentration"]
+        outlook.pipeline_version = PIPELINE_VERSION
         outlook.save(update_fields=[
             "projected_adj_o", "projected_adj_d", "projected_adj_net",
             "projected_wins", "projected_losses",
             "projected_floor_wins", "projected_ceil_wins",
             "continuity_score", "weighted_effective_age", "top2_bpr_concentration",
+            "pipeline_version",
         ])
 
-        self.stdout.write(
-            f"  {outlook.team_abbr}: {len(slots)} players → "
-            f"{metrics['wins']}W [{metrics['floor_wins']}–{metrics['ceil_wins']}]  "
-            f"AdjEM {metrics['adj_em']:+.1f} (PV; legacy BPR path "
-            f"{metrics['legacy_adj_em']:+.1f}, team_pv={metrics['team_pv']:+.2f})  "
-            f"cont={metrics['continuity_score']:.0f}%"
-        )
+        self._report_team(outlook, slots, metrics)
         return len(slots)
+
+    # ── Validations (Phase 2 Step 4) ───────────────────────────────────────────
+
+    def _run_validations(self, computed, full_league):
+        """
+        V1 league closure, V2 share closure, V3 allocator monotonicity,
+        V4 ceiling census. Runs on computed (pre-write) data; any failure
+        aborts the command before a single row is written.
+        """
+        failures = []
+
+        # V1 — League closure
+        if full_league:
+            total_wins = sum(c["metrics"]["wins"] for c in computed)
+            if abs(total_wins - 1230) > 16:
+                failures.append(
+                    f"V1 league closure: Σ projected wins = {total_wins}, "
+                    f"|{total_wins} - 1230| > 16"
+                )
+            self.stdout.write(f"V1 league closure: Σ wins = {total_wins} (target 1230)")
+        else:
+            self.stdout.write("V1 league closure: SKIPPED (partial league run)")
+
+        # V2 — Share closure per team
+        v2_bad = []
+        for c in computed:
+            tot = sum(s.get("minutes_share", 0.0) for s in c["slots"])
+            if abs(tot - TOTAL_SHARES) > 0.01:
+                v2_bad.append(f"{c['outlook'].team_abbr}={tot:.4f}")
+        if v2_bad:
+            failures.append(f"V2 share closure: {', '.join(v2_bad)}")
+        self.stdout.write(
+            f"V2 share closure: {'FAIL ' + ', '.join(v2_bad) if v2_bad else 'OK (all teams Σshare ≈ 5.0)'}"
+        )
+
+        # V3 — Allocator monotonicity: shares non-increasing in demand
+        v3_bad = []
+        for c in computed:
+            ordered = sorted(
+                c["slots"], key=lambda s: s.get("demand", 0.0), reverse=True
+            )
+            for prev, cur in zip(ordered, ordered[1:]):
+                if cur.get("minutes_share", 0.0) > prev.get("minutes_share", 0.0) + 1e-6:
+                    v3_bad.append(
+                        f"{c['outlook'].team_abbr}: {cur['player_name']} "
+                        f"({cur['minutes_share']:.3f}) > {prev['player_name']} "
+                        f"({prev['minutes_share']:.3f}) despite lower demand"
+                    )
+        if v3_bad:
+            failures.append("V3 monotonicity: " + "; ".join(v3_bad[:5]))
+        self.stdout.write(
+            f"V3 allocator monotonicity: {'FAIL (' + str(len(v3_bad)) + ' violations)' if v3_bad else 'OK'}"
+        )
+
+        # V4 — Ceiling census (informational)
+        league_at_ceil = 0
+        per_team = []
+        for c in computed:
+            n = sum(
+                1 for s in c["slots"]
+                if s.get("minutes_share", 0.0) >= MINUTES_CEIL - 1e-6
+            )
+            league_at_ceil += n
+            if n:
+                per_team.append(f"{c['outlook'].team_abbr}:{n}")
+        self.stdout.write(
+            f"V4 ceiling census: {league_at_ceil} players at MINUTES_CEIL={MINUTES_CEIL} "
+            f"league-wide{'  [' + ' '.join(per_team) + ']' if per_team else ''}"
+        )
+
+        if failures:
+            for f in failures:
+                self.stderr.write(self.style.ERROR(f"VALIDATION FAILURE — {f}"))
+            raise CommandError(
+                f"{len(failures)} validation failure(s) — nothing written to DB."
+            )
 
     # ── Roster assembly ────────────────────────────────────────────────────────
 
@@ -583,7 +748,8 @@ class Command(BaseCommand):
         clamped = [max(MINUTES_FLOOR, min(MINUTES_CEIL, s)) for s in raw]
         normalized = self._water_fill(clamped, TOTAL_SHARES)
 
-        for slot, share in zip(slots, normalized):
+        for slot, demand, share in zip(slots, demands, normalized):
+            slot["demand"] = demand
             slot["minutes_share"] = share
 
         return slots
@@ -607,13 +773,18 @@ class Command(BaseCommand):
     def _project_team(self, slots, nba_avg_adj_o, nba_avg_adj_d,
                       league_base_off, league_base_def, league_pv_mean=0.0):
         """
-        Project team efficiency ratings and win total.
+        Project team efficiency ratings and roster metrics — NOT wins.
 
         Formula (two-pass, relative to league baseline):
           base_off = Σ(minutes_share_i × projected_obpr_i)
           adj_o = nba_avg_adj_o + SLOPE × (base_off − league_base_off)
           adj_d = nba_avg_adj_d − SLOPE × (base_def − league_base_def)
-          wins  = round(41 + adj_em / WINS_PER_EM)
+          adj_em (primary) = PV_SLOPE × (team_pv − league_pv_mean)
+
+        Wins are computed by handle() after all teams' adj_em are known:
+          effective_intercept = 41.0 − WINS_PER_EM × league_mean_em
+          wins = clamp(round(effective_intercept + adj_em × WINS_PER_EM), 0, 82)
+        so the league closes (Σ wins ≈ 1230) regardless of EM centering.
         """
         base_off = sum(
             s.get("minutes_share", 0.0) * (s.get("projected_obpr") or 0.0)
@@ -646,9 +817,7 @@ class Command(BaseCommand):
         adj_o = nba_avg_adj_o + adj_em * off_frac
         adj_d = nba_avg_adj_d - adj_em * (1.0 - off_frac)
 
-        wins = max(5, min(77, round(PV_WINS_INTERCEPT + adj_em * WINS_PER_EM)))
-        floor_wins = max(5, min(77, round(PV_WINS_INTERCEPT + (adj_em - PV_SIGMA_EM) * WINS_PER_EM)))
-        ceil_wins  = max(5, min(77, round(PV_WINS_INTERCEPT + (adj_em + PV_SIGMA_EM) * WINS_PER_EM)))
+        # Wins computed by handle() with the self-centering effective intercept.
 
         # Wins added per player
         for slot in slots:
@@ -688,9 +857,6 @@ class Command(BaseCommand):
             "adj_em": adj_em,
             "legacy_adj_em": legacy_adj_em,
             "team_pv": team_pv,
-            "wins": wins,
-            "floor_wins": floor_wins,
-            "ceil_wins": ceil_wins,
             "continuity_score": continuity_score,
             "weighted_age": weighted_age,
             "top2_concentration": top2_concentration,

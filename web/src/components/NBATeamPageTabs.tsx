@@ -223,12 +223,12 @@ export default function NBATeamPageTabs({ slug, seasonYear, ratings, games }: NB
                   <MetricCard
                     label="Adjusted Offensive Rating"
                     value={ratings.adj_off?.toFixed(1) ?? null}
-                    color="text-emerald-700"
+                    color="text-brand"
                   />
                   <MetricCard
                     label="Adjusted Defensive Rating"
                     value={ratings.adj_def?.toFixed(1) ?? null}
-                    color="text-rose-700"
+                    color="text-brandBlue"
                     note="lower = better"
                   />
                   <MetricCard
@@ -315,7 +315,7 @@ export default function NBATeamPageTabs({ slug, seasonYear, ratings, games }: NB
                         <span
                           className={clsx(
                             'font-mono font-medium',
-                            brand ? 'text-brand' : green ? 'text-emerald-700' : red ? 'text-rose-700' : ''
+                            brand ? 'text-brand' : green ? 'text-brand' : red ? 'text-brandBlue' : ''
                           )}
                         >
                           {value}

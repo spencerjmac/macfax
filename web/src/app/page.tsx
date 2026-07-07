@@ -167,7 +167,7 @@ export default async function HomePage() {
             {/* NCAA */}
             <LeagueCard
               title="College Basketball"
-              sub="365 Division I teams · all conferences"
+              sub="Adjusted efficiency ratings for every Division I team"
               feats={['Rankings', 'Matchup', 'Roster Outlook', 'Visualizations']}
               href="/ncaa/rankings"
               btnLabel="Enter NCAA"
@@ -183,8 +183,8 @@ export default async function HomePage() {
             {/* NBA */}
             <LeagueCard
               title="NBA"
-              sub="30 teams · East &amp; West"
-              feats={['Rankings', 'Player Stats', 'Visualizations']}
+              sub="Model projections for all 30 NBA franchises"
+              feats={['Rankings', 'Team Outlooks', 'Visualizations']}
               href="/nba"
               btnLabel="Enter NBA"
               icon={<BasketballIcon className="w-16 h-16 shrink-0" />}

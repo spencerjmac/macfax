@@ -193,6 +193,21 @@ TRANSFER_FIT_RISK_WEIGHT: float = 0.12  # max uncertainty add (risk × weight)
 # via the existing channel, not through this path.
 TRANSFER_FIT_RISK_NO_STYLE_DEFAULT: float = 0.0  # treat missing as neutral risk
 
+# ── Replacement-level fill (scenario roster padding) ──────────────────────────
+# When a scenario roster's total minutes_share_p2 is below the full 5.0 pool,
+# ScenarioProjectionView pads the remainder with one synthetic replacement-level
+# player so partial rosters are not projected as if the submitted players play
+# every minute (the pre-Phase-1 renormalization bug).
+#
+# Derivation (empirical — do not guess):
+#   python manage.py derive_replacement_fill --season 2026
+#   Pool: PlayerSeasonProjection, from_season=2026, rotation_rank > 8,
+#         minutes_share_p2 / projected_obpr / projected_dbpr not null.
+#   Minutes-weighted mean projected_obpr / projected_dbpr over that pool.
+#   N = 3233 players, total minutes share = 854.64. Derived 2026-07-06.
+REPLACEMENT_FILL_OBPR: float = 0.2550
+REPLACEMENT_FILL_DBPR: float = 0.3155
+
 # ── Uncertainty ───────────────────────────────────────────────────────────────
 # Base uncertainty applied to every team regardless of roster composition
 UNCERTAINTY_BASE: float = 0.20

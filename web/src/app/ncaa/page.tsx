@@ -17,7 +17,7 @@ const NCAA_CONFIG: Omit<HubConfig, 'facts'> = {
   eyebrow: 'College Basketball · Updated daily',
   title: 'College Basketball',
   teamCount: 365,
-  lede: 'Ratings, forecasts, roster outlooks, and visual tools for Division I college basketball, built from opponent-adjusted efficiency, four factors, team strength, and matchup-level projections.',
+  lede: 'Adjusted efficiency, four factors, player impact, and matchup projections for every Division I team — built to show how teams actually play, not just who they\'ve beaten.',
   rankingsHref: '/ncaa/rankings',
   secondaryCta: 'Matchup tool',
   secondaryCtaHref: '/ncaa/matchup',

@@ -40,6 +40,8 @@ from ncaa.analytics.player_value.team_projection.engine import (
 from ncaa.analytics.player_value.team_projection.constants import (
     FALLBACK_D1_ADJ_D,
     FALLBACK_D1_ADJ_O,
+    REPLACEMENT_FILL_DBPR,
+    REPLACEMENT_FILL_OBPR,
 )
 
 log = logging.getLogger(__name__)
@@ -418,6 +420,33 @@ class ScenarioProjectionView(APIView):
                 )
             engine_inputs.append(pi)
 
+        # --- Normalize the minutes pool to 5.0 (200 team-minutes) ---
+        # Over-filled rosters are scaled down proportionally (legitimate).
+        # Under-filled rosters are padded with one synthetic replacement-level
+        # newcomer so partial rosters are not projected as if the submitted
+        # players play every minute. The fill player exists only inside the
+        # engine call — it is never returned to the frontend.
+        total_share = sum(p.minutes_share_p2 for p in engine_inputs)
+        POOL_EPSILON = 0.05
+        replacement_fill_share = 0.0
+        if total_share > 5.0 + POOL_EPSILON:
+            scale = 5.0 / total_share
+            for p in engine_inputs:
+                p.minutes_share_p2 *= scale
+        elif total_share < 5.0 - POOL_EPSILON:
+            replacement_fill_share = 5.0 - total_share
+            engine_inputs.append(
+                PlayerProjectionInput(
+                    player_id=-1,  # reserved sentinel: replacement-level fill
+                    projected_obpr=REPLACEMENT_FILL_OBPR,
+                    projected_dbpr=REPLACEMENT_FILL_DBPR,
+                    projected_bpr=REPLACEMENT_FILL_OBPR + REPLACEMENT_FILL_DBPR,
+                    minutes_share_p2=replacement_fill_share,
+                    recruitment_type="newcomer",
+                    projection_uncertainty=0.80,
+                )
+            )
+
         # --- Build D1 context (from stored distributions) ---
         d1_context = _get_d1_context(season)
 
@@ -471,6 +500,8 @@ class ScenarioProjectionView(APIView):
             "continuity_value_score": round(result.continuity_value_score, 2),
             "transfer_dependence_score": round(result.transfer_dependence_score, 2),
             "transfer_fit_risk_score": round(result.transfer_fit_risk_score, 4),
+            "pool_fill_fraction": round(total_share / 5.0, 4),
+            "replacement_fill_share": round(max(0.0, replacement_fill_share), 4),
         })
 
 

@@ -1,10 +1,11 @@
 """
 Management command: update_wc_all
-Runs the complete World Cup Elo pipeline (fetch latest results + recompute ratings).
+Runs the complete World Cup Elo pipeline (fetch latest FIFA rankings + latest results + recompute ratings).
 
 Pipeline sequence
 ─────────────────
-  1. build_elo --refresh  — fetch results.csv + shootouts.csv from martj42 dataset,
+  1. fetch_fifa_rankings — fetch FIFA world rankings and update teams.json
+  2. build_elo --refresh — fetch results.csv + shootouts.csv from martj42 dataset,
                             recompute Elo ratings for all 48 teams, write to DB
 
 Usage
@@ -23,7 +24,7 @@ from django.core.management import call_command
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-TOTAL_STEPS = 1
+TOTAL_STEPS = 2
 
 
 class Command(BaseCommand):
@@ -49,12 +50,21 @@ class Command(BaseCommand):
         steps = []
 
         self._run_step(
+            "FIFA world rankings (fetch + update teams.json)",
+            "fetch_fifa_rankings",
+            {},
+            steps,
+            fatal=True,
+            label=f"[1/{TOTAL_STEPS}]",
+        )
+
+        self._run_step(
             "World Cup Elo ratings (fetch + compute + write DB)",
             "build_elo",
             {} if skip_refresh else {"refresh": True},
             steps,
             fatal=True,
-            label=f"[1/{TOTAL_STEPS}]",
+            label=f"[2/{TOTAL_STEPS}]",
         )
 
         end_time = timezone.now()

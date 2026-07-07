@@ -58,6 +58,15 @@ module.exports = {
           fg: 'var(--ink-fg)',
           fg2: 'var(--ink-fg2)',
         },
+        // Champion gold (2026.2)
+        gold: {
+          DEFAULT: 'var(--gold)',
+          strong: 'var(--gold-strong)',
+          bg: 'var(--gold-bg)',
+          line: 'var(--gold-line)',
+        },
+        // Negative ink (2026.2) — problem values only
+        'negative-ink': 'var(--negative-ink)',
         // Chart palette (categorical) - updated to remove orange
         chart: {
           1: 'var(--brandBlue)',

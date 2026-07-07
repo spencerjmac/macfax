@@ -105,11 +105,12 @@ function sectionTitle(kicker: string, title: string, text?: string) {
   );
 }
 
+// minutes_share is a fraction of the 5.0-share pool (200 team-minutes);
+// one convention for every row — mixed branches here inverted the MIN%
+// column (SGA 24% vs Hartenstein 57%, Phase 2 P1).
 function formatMinutesShare(value: number | null): string {
   if (value === null) return '-';
-  if (value <= 1) return `${formatRating(value * 100, 0)}%`;
-  if (value <= 5) return `${formatRating((value / 5) * 100, 0)}%`;
-  return `${formatRating(value, 0)}%`;
+  return `${formatRating((value / 5) * 100, 0)}%`;
 }
 
 function formatSalary(value: number): string {

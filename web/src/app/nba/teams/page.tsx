@@ -155,7 +155,7 @@ function TeamOutlookCard({
         </div>
         <div className="text-right">
           <p className="table-header m-0 mb-1">AdjNet</p>
-          <p className={`font-mono text-[24px] font-bold leading-none m-0 ${adjNet !== null && adjNet > 0 ? 'text-positive' : adjNet !== null && adjNet < 0 ? 'text-negative' : 'text-text-muted'}`}>
+          <p className={`font-mono text-[24px] font-bold leading-none m-0 ${adjNet !== null && adjNet > 0 ? 'text-brand' : adjNet !== null && adjNet < 0 ? 'text-negative-ink' : 'text-text-muted'}`}>
             {formatSignedNumber(adjNet)}
           </p>
           <p className="mt-1 text-[12px] text-text-muted m-0">
