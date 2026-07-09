@@ -229,8 +229,53 @@ UNCERTAINTY_NO_STYLE_DATA: float = 0.05      # if has_team_style_data == False
 UNCERTAINTY_MIN: float = 0.10
 UNCERTAINTY_MAX: float = 0.90
 
-# Baseline sigma (pts/100 poss) at uncertainty=0; expands linearly to SIGMA_MAX
-# projected_adj_o_low/high = projected_adj_o ± uncertainty_pts
-# projected_adj_em_low/high = projected_adj_em ± 2 × uncertainty_pts
+# Legacy flat sigma model (SUPERSEDED for engine band construction by the
+# SIGMA_O/D/EM fits below — Phase 3 Stage 2, 2026-07-08). Retained because
+# still referenced: bt6_coverage_calibration.py / run_bt6.py (an older,
+# independent backtest-calibration tool that overwrites these two constants
+# directly via regex) and the Sprint-3 scenario endpoint
+# (ncaa/analytics/player_value/scenario/service.py, /api/scenarios/compute/)
+# which still computes its own rank ranges with this flat model. That second
+# endpoint was out of scope for Phase 3 — see project memory.
 UNCERTAINTY_SIGMA_SCALE: float = 3.5   # pts/100 poss at uncertainty=0
 UNCERTAINTY_SIGMA_MAX: float = 6.0     # pts/100 poss at uncertainty=1 (capped)
+
+# ── Phase 3 Stage 2: empirical band sigma model (HUMAN-REVIEWED CONSTANTS) ────
+# Derivation: `manage.py derive_ncaa_sigma --pairs 2022:2023,2023:2024,2024:2025,2025:2026`
+# (2026-07-08, operator-approved decision tree D1/D2/D3). N=1437 team-pairs
+# (4 source→actual pairs, ~359 D1 teams each), stored TeamSeasonProjection
+# joined against TeamSeasonRatings final snapshots (is_pre_tournament=False,
+# team__is_d1=True, EXPLICIT filter — the default manager silently hides this
+# dimension), one-row-per-team asserted before every join.
+#
+# D1 — O/D bands answer "team strength relative to the field," not "where
+# will the league's absolute numbers land." League-wide scoring-environment
+# drift shifts a whole season's O and D residuals by a common offset (all 4
+# pairs' biases negative; pooled O/D residual correlation ρ=−0.352) — that
+# drift inflates raw O/D RMSE (6.27 / 6.23) without describing rank-relative
+# accuracy. So SIGMA_O / SIGMA_D are fit on DEMEANED residuals: each pair's
+# own mean O bias and mean D bias are subtracted before pooling. Demeaned
+# pooled RMSE_O=5.85, RMSE_D=5.12 (still wider than the old flat 3.5–6.0
+# band — bands widen honestly, just not by the full raw amount).
+#
+# D2 — EM sigma uses the RAW (non-demeaned) fit. Environment drift cancels in
+# the O−D margin by construction — exactly what the negative O/D correlation
+# says — so demeaning EM would be correcting a bias that already nets out.
+# Pooled EM: bias=+1.54, RMSE=9.26. The old ±2σ_rating convention (7.00 +
+# 5.00·u) happened to land almost exactly on this empirical line — right
+# answer, wrong reasoning; this replaces the reasoning while keeping the
+# answer, so displayed EM bands barely move.
+#
+# D3 — NO mean-bias correction applied (considered and explicitly declined).
+# Pooled EM bias +1.54 shrinks monotonically by pair: 2022→23 +2.70,
+# 2023→24 +1.94, 2024→25 +1.17, 2025→26 +0.36. Correcting the current (best,
+# newest) pipeline with the average of its less-accurate ancestors would
+# over-correct. Revisit when 2026→27 actuals land.
+SIGMA_O_INTERCEPT: float = 3.70   # demeaned OLS fit, 5 uncertainty-quintile bins
+SIGMA_O_SLOPE: float = 4.64
+SIGMA_D_INTERCEPT: float = 4.56   # demeaned OLS fit, 5 uncertainty-quintile bins
+SIGMA_D_SLOPE: float = 1.19
+SIGMA_EM_INTERCEPT: float = 6.69  # RAW OLS fit, 5 uncertainty-quintile bins
+SIGMA_EM_SLOPE: float = 5.56
+SIGMA_EM_MAX: float = 11.7        # value at u=UNCERTAINTY_MAX(0.90): 6.69+5.56×0.90=11.694,
+                                   # same defensive-clamp role UNCERTAINTY_SIGMA_MAX played

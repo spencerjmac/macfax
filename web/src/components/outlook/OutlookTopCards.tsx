@@ -146,6 +146,9 @@ export function OutlookTopCards({
           scenarioAdjHigh={sp?.projected_adj_d_high ?? null}
         />
       </div>
+      <div className="text-xs text-text-muted opacity-60">
+        Ranges are likely ranges (~68%) from backtested projection error.
+      </div>
 
       {/* Fit grades row */}
       {fit && (
@@ -160,7 +163,7 @@ export function OutlookTopCards({
           </div>
           <div className="flex-1" />
           <div className="text-xs opacity-60">
-            Uncertainty: {projection.team_projection_uncertainty != null
+            Projection uncertainty: {projection.team_projection_uncertainty != null
               ? (projection.team_projection_uncertainty * 100).toFixed(0) + '%'
               : '—'}
           </div>

@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import logging
 
-from django.db.models import Avg, Max, Q
+from django.db.models import Max
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.response import Response
@@ -26,7 +26,6 @@ from ncaa.models import (
     Team,
     TeamRosterFit,
     TeamSeasonProjection,
-    TeamSeasonRatings,
 )
 from ncaa.analytics.staleness import check_staleness
 from ncaa.analytics.player_value.team_projection.engine import (
@@ -35,14 +34,13 @@ from ncaa.analytics.player_value.team_projection.engine import (
     RosterFitInput,
     compute_team_base_aggregates,
     project_team,
-    _uncertainty_to_sigma,
+    sigma_em,
 )
 from ncaa.analytics.player_value.team_projection.constants import (
-    FALLBACK_D1_ADJ_D,
-    FALLBACK_D1_ADJ_O,
     REPLACEMENT_FILL_DBPR,
     REPLACEMENT_FILL_OBPR,
 )
+from ncaa.analytics.player_value.team_projection.service import get_stored_d1_context
 
 log = logging.getLogger(__name__)
 
@@ -70,79 +68,70 @@ def _fit_grade(score: float | None) -> dict:
 
 
 def _resolve_season(season_param: str | None) -> Season | None:
-    """Return the Season object from an optional ?season=YYYY query param."""
+    """
+    Return the Season for an optional ?season=YYYY query param.
+
+    Explicit param: that season or None if it doesn't exist.
+    No param: the most recent season that actually HAS team projections —
+    never a silent fallback to a projection-less season (Phase 3 P3 fix;
+    the old `A and B or C` chain could return a season with no projections,
+    producing downstream 404s).
+    """
     if season_param:
         try:
             return Season.objects.get(year=int(season_param))
         except (Season.DoesNotExist, ValueError):
             return None
-    # Default to the most recent season that has team projections
     return (
-        TeamSeasonProjection.objects.order_by("-from_season__year")
-        .values_list("from_season", flat=True)
-        .values("from_season__year")
+        Season.objects.filter(team_projections__isnull=False)
+        .order_by("-year")
         .first()
-    ) and Season.objects.order_by("-year").filter(
-        team_projections__isnull=False
-    ).first() or Season.objects.order_by("-year").first()
+    )
 
 
 def _get_d1_context(season: Season) -> D1Context:
     """
-    Build a D1Context suitable for scenario re-projection.
+    Build a D1Context for scenario re-projection.
 
-    Uses stored aggregate values from existing TeamSeasonProjection rows so
-    this is O(1) rather than re-loading all player projections.
+    Phase 3 P4: delegates to the pipeline's shared builder so the scenario
+    path and the baseline pipeline can never disagree on context construction.
     """
-    # avg_adj_o / avg_adj_d from TeamSeasonRatings (same source as baseline pipeline)
-    agg_ratings = TeamSeasonRatings.objects.filter(season=season).aggregate(
-        mean_o=Avg("adj_o"),
-        mean_d=Avg("adj_d"),
-    )
-    avg_adj_o = float(agg_ratings["mean_o"] or FALLBACK_D1_ADJ_O)
-    avg_adj_d = float(agg_ratings["mean_d"] or FALLBACK_D1_ADJ_D)
-
-    # league_mean_base_off / def from stored TeamSeasonProjection (already centered)
-    agg_proj = TeamSeasonProjection.objects.filter(from_season=season).aggregate(
-        mean_off=Avg("base_team_offense"),
-        mean_def=Avg("base_team_defense"),
-    )
-    league_mean_base_off = float(agg_proj["mean_off"] or avg_adj_o)
-    league_mean_base_def = float(agg_proj["mean_def"] or avg_adj_d)
-    n_teams = TeamSeasonProjection.objects.filter(from_season=season).count()
-
-    return D1Context(
-        avg_adj_o=avg_adj_o,
-        avg_adj_d=avg_adj_d,
-        league_mean_base_off=league_mean_base_off,
-        league_mean_base_def=league_mean_base_def,
-        n_projected_teams=max(n_teams, 1),
-    )
+    return get_stored_d1_context(season)
 
 
 def _approx_rank_in_distribution(
     season: Season,
     scenario_em: float,
     uncertainty: float = 0.0,
+    team: Team | None = None,
 ) -> dict:
     """
     Approximate national rank for a scenario projection by counting existing
     TeamSeasonProjection rows better than the scenario value.
 
-    Returns rank, plus uncertainty-based rank_low (best-case) and rank_high (worst-case).
-    rank_low  = rank if scenario team performed at scenario_em + 2*sigma
-    rank_high = rank if scenario team performed at scenario_em - 2*sigma
+    D1-only pool (Phase 3 D4) — matches the stored pipeline's rank universe
+    (service.py._assign_ranks), not the full 562-team projected-teams set.
+
+    The scenario team's own baseline row is excluded from the pool (Phase 3
+    P2 — a team must not be ranked against its own ghost), so the worst
+    possible rank is naturally len(pool) + 1.
+
+    Returns rank, plus a ±1σ ("likely range", ~68%) rank range using the
+    empirically-fit EM sigma (Phase 3 Stage 2, engine.sigma_em — the same
+    sigma that drives the displayed AdjEM band, so the rank range and the
+    EM band always agree):
+    rank_low  = rank if the scenario team performed at scenario_em + 1σ_em
+    rank_high = rank if the scenario team performed at scenario_em − 1σ_em
     """
-    existing_ems = list(
-        TeamSeasonProjection.objects.filter(from_season=season, team__is_d1=True)
-        .values_list("projected_adj_em", flat=True)
-    )
+    pool = TeamSeasonProjection.objects.filter(from_season=season, team__is_d1=True)
+    if team is not None:
+        pool = pool.exclude(team=team)
+    existing_ems = list(pool.values_list("projected_adj_em", flat=True))
     n = len(existing_ems)
     rank = sum(1 for em in existing_ems if em > scenario_em) + 1
-    sigma_pts = _uncertainty_to_sigma(uncertainty)
-    # Use ±1σ for rank range (68% CI) — ±2σ produced ranges spanning half the league
+    sigma_pts = sigma_em(uncertainty)
     rank_low  = max(1, sum(1 for em in existing_ems if em > scenario_em + sigma_pts) + 1)
-    rank_high = min(n + 1, sum(1 for em in existing_ems if em > scenario_em - sigma_pts) + 1)
+    rank_high = sum(1 for em in existing_ems if em > scenario_em - sigma_pts) + 1
     return {
         "approx_national_rank": rank,
         "n_teams_in_pool": n,
@@ -466,9 +455,10 @@ class ScenarioProjectionView(APIView):
         # --- Run engine ---
         result = project_team(engine_inputs, roster_fit, d1_context)
 
-        # --- Approximate rank (uncertainty-aware range) ---
+        # --- Approximate rank (uncertainty-aware range; own baseline excluded) ---
         rank_info = _approx_rank_in_distribution(
-            season, result.projected_adj_em, result.team_projection_uncertainty
+            season, result.projected_adj_em, result.team_projection_uncertainty,
+            team=team,
         )
         approx_rank = rank_info["approx_national_rank"]
         rank_low    = rank_info["national_rank_range_low"]

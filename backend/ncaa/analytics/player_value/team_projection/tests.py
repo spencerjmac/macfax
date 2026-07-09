@@ -338,13 +338,14 @@ class TestComputeFitAdjustments(TestCase):
         self.assertAlmostEqual(adj_off, FIT_TO_RATING_OFF * 0.5)
         self.assertAlmostEqual(adj_def, FIT_TO_RATING_DEF * 0.5)
 
-    def test_higher_fit_score_gives_higher_adjustment(self):
-        fit_low = _fit(adj_off=60.0, adj_def=60.0)
-        fit_high = _fit(adj_off=80.0, adj_def=80.0)
-        adj_low_off, adj_low_def = _compute_fit_adjustments(fit_low)
-        adj_high_off, adj_high_def = _compute_fit_adjustments(fit_high)
-        self.assertGreater(adj_high_off, adj_low_off)
-        self.assertGreater(adj_high_def, adj_low_def)
+    def test_fit_score_never_shifts_adjustment(self):
+        # Phase 9e: FIT_TO_RATING_* zeroed (no detectable predictive signal in
+        # the calibration sweep). Fit scores must produce ZERO mean adjustment
+        # at every level — this test guards the Phase 9e decision.
+        for score in (0.0, 20.0, 50.0, 80.0, 100.0):
+            adj_off, adj_def = _compute_fit_adjustments(_fit(adj_off=score, adj_def=score))
+            self.assertEqual(adj_off, 0.0, f"score={score}")
+            self.assertEqual(adj_def, 0.0, f"score={score}")
 
 
 # ── 5. Uncertainty computation ───────────────────────────────────────────────
@@ -653,19 +654,36 @@ class TestMissingFitData(TestCase):
             places=6,
         )
 
-    def test_good_fit_gives_higher_adj_o_than_no_fit(self):
+    def test_good_fit_gives_same_adj_o_as_no_fit(self):
+        # Phase 9e: fit no longer shifts the mean projection in either direction.
         players = _typical_roster()
         ctx = _ctx()
         result_no_fit = project_team(players, None, ctx)
         result_good_fit = project_team(players, _fit(adj_off=80.0, adj_def=70.0), ctx)
-        self.assertGreater(result_good_fit.projected_adj_o, result_no_fit.projected_adj_o)
+        self.assertAlmostEqual(
+            result_good_fit.projected_adj_o, result_no_fit.projected_adj_o, places=9
+        )
 
-    def test_bad_fit_gives_lower_adj_o_than_no_fit(self):
-        players = _typical_roster()
+    def test_bad_fit_gives_same_adj_o_but_more_uncertainty_risk(self):
+        # Phase 9e: bad fit must NOT lower the mean — but TeamRosterFit data
+        # still flows into uncertainty via transfer_fit_risk (Phase 6b).
+        players = [
+            _player(player_id=i, min_share=1.0, recruitment_type="transfer")
+            for i in range(5)
+        ]
         ctx = _ctx()
         result_no_fit = project_team(players, None, ctx)
         result_bad_fit = project_team(players, _fit(adj_off=20.0, adj_def=20.0), ctx)
-        self.assertLess(result_bad_fit.projected_adj_o, result_no_fit.projected_adj_o)
+        self.assertAlmostEqual(
+            result_bad_fit.projected_adj_o, result_no_fit.projected_adj_o, places=9
+        )
+        # Transfer-heavy roster in a poor-fit system → nonzero transfer_fit_risk
+        self.assertGreater(result_bad_fit.transfer_fit_risk_score, 0.0)
+        result_good_fit = project_team(players, _fit(adj_off=80.0, adj_def=80.0), ctx)
+        self.assertGreater(
+            result_bad_fit.team_projection_uncertainty,
+            result_good_fit.team_projection_uncertainty,
+        )
 
 
 # ── 13. Coaching continuity always 0 ─────────────────────────────────────────
@@ -701,14 +719,22 @@ class TestConfidenceBands(TestCase):
         self.assertLess(result.projected_adj_em_low, result.projected_adj_em)
         self.assertLess(result.projected_adj_em, result.projected_adj_em_high)
 
-    def test_em_band_wider_than_o_and_d_bands(self):
-        # EM band = 2× sigma; O and D bands = 1× sigma
+    def test_em_band_matches_sigma_em(self):
+        # Phase 3 Stage 2: each metric has its own empirically-fit ±1σ band
+        # (sigma_o/d/em) — the old flat "EM = 2× O/D sigma" relationship no
+        # longer holds by construction. Assert each band matches its own
+        # sigma function instead.
+        from ncaa.analytics.player_value.team_projection.engine import (
+            sigma_d, sigma_em, sigma_o,
+        )
         result = project_team(_typical_roster(), _fit(), _ctx())
+        u = result.team_projection_uncertainty
         em_width = result.projected_adj_em_high - result.projected_adj_em_low
         o_width = result.projected_adj_o_high - result.projected_adj_o_low
         d_width = result.projected_adj_d_high - result.projected_adj_d_low
-        self.assertAlmostEqual(em_width, 2 * o_width)
-        self.assertAlmostEqual(em_width, 2 * d_width)
+        self.assertAlmostEqual(o_width, 2 * sigma_o(u))
+        self.assertAlmostEqual(d_width, 2 * sigma_d(u))
+        self.assertAlmostEqual(em_width, 2 * sigma_em(u))
 
     def test_higher_uncertainty_gives_wider_bands(self):
         ctx = _ctx()
@@ -922,10 +948,13 @@ class TestConstants(TestCase):
     def test_sigma_scale_less_than_sigma_max(self):
         self.assertLess(UNCERTAINTY_SIGMA_SCALE, UNCERTAINTY_SIGMA_MAX)
 
-    def test_fit_to_rating_equals_fit_max(self):
-        # By default, FIT_TO_RATING should equal FIT_MAX (cap at natural max)
-        self.assertAlmostEqual(FIT_TO_RATING_OFF, FIT_MAX_ADJ_OFF)
-        self.assertAlmostEqual(FIT_TO_RATING_DEF, FIT_MAX_ADJ_DEF)
+    def test_fit_to_rating_zeroed_caps_retained(self):
+        # Phase 9e: FIT_TO_RATING_* zeroed (no predictive signal); the hard
+        # caps are retained for forward compatibility and must stay positive.
+        self.assertEqual(FIT_TO_RATING_OFF, 0.0)
+        self.assertEqual(FIT_TO_RATING_DEF, 0.0)
+        self.assertGreater(FIT_MAX_ADJ_OFF, 0.0)
+        self.assertGreater(FIT_MAX_ADJ_DEF, 0.0)
 
     def test_continuity_neutral_is_half(self):
         self.assertAlmostEqual(CONTINUITY_NEUTRAL_FRACTION, 0.5)
@@ -974,27 +1003,30 @@ class TestFitScoreMonotonicity(TestCase):
             _ctx(),
         )
 
-    def test_higher_fit_score_gives_higher_adj_o(self):
+    def test_fit_score_never_changes_adj_o(self):
+        # Phase 9e: mean projections are fit-invariant at every score level.
         r0 = self._run_with_fit(0.0)
         r50 = self._run_with_fit(50.0)
         r100 = self._run_with_fit(100.0)
-        self.assertGreater(r50.projected_adj_o, r0.projected_adj_o)
-        self.assertGreater(r100.projected_adj_o, r50.projected_adj_o)
+        self.assertAlmostEqual(r50.projected_adj_o, r0.projected_adj_o, places=9)
+        self.assertAlmostEqual(r100.projected_adj_o, r50.projected_adj_o, places=9)
 
-    def test_higher_fit_score_gives_lower_adj_d(self):
+    def test_fit_score_never_changes_adj_d(self):
         r0 = self._run_with_fit(0.0)
         r50 = self._run_with_fit(50.0)
         r100 = self._run_with_fit(100.0)
-        self.assertGreater(r0.projected_adj_d, r50.projected_adj_d)
-        self.assertGreater(r50.projected_adj_d, r100.projected_adj_d)
+        self.assertAlmostEqual(r0.projected_adj_d, r50.projected_adj_d, places=9)
+        self.assertAlmostEqual(r50.projected_adj_d, r100.projected_adj_d, places=9)
 
-    def test_fit_score_100_gives_max_fit_adj_off(self):
+    def test_fit_score_100_gives_zero_fit_adj_off(self):
+        # Phase 9e: even a perfect fit score produces no mean bonus.
         r = self._run_with_fit(100.0)
-        self.assertAlmostEqual(r.fit_adjustment_off, FIT_MAX_ADJ_OFF)
+        self.assertEqual(r.fit_adjustment_off, 0.0)
 
-    def test_fit_score_0_gives_max_negative_fit_adj_off(self):
+    def test_fit_score_0_gives_zero_fit_adj_off(self):
+        # Phase 9e: even the worst fit score produces no mean penalty.
         r = self._run_with_fit(0.0)
-        self.assertAlmostEqual(r.fit_adjustment_off, -FIT_MAX_ADJ_OFF)
+        self.assertEqual(r.fit_adjustment_off, 0.0)
 
 
 # ── 21. Phase 6: BPR-weighted stability profile ───────────────────────────────

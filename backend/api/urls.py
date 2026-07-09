@@ -27,7 +27,6 @@ from .bracket_views import BracketView
 from .viz_builder_views import VizStatsView, VizScatterView
 from .auth_views import csrf, login_view, logout_view, me
 from .outlook_views import RosterOutlookView, ScenarioProjectionView, PlayerSearchView, PlaceholderListView
-from .scenario_views import ScenarioComputeView, ScenarioSaveView, ScenarioDetailView, ScenarioListView
 from .validation_views import ValidationSummaryView, ValidationWeeklyView, ValidationRecentGamesView
 from .game_detail_views import ncaa_game_detail
 from .analyze_view import AnalyzeCriteriaView
@@ -64,11 +63,17 @@ urlpatterns = [
     path("outlook/player-search/", PlayerSearchView.as_view(), name="roster-outlook-player-search"),
     path("outlook/placeholders/", PlaceholderListView.as_view(), name="roster-outlook-placeholders"),
     path("outlook/<slug:slug>/", RosterOutlookView.as_view(), name="roster-outlook"),
-    # Sprint 3: Scenario layer (richer than /outlook/scenario/)
-    path("scenarios/compute/",    ScenarioComputeView.as_view(),  name="scenario-compute"),
-    path("scenarios/save/",       ScenarioSaveView.as_view(),     name="scenario-save"),
-    path("scenarios/<int:pk>/",   ScenarioDetailView.as_view(),   name="scenario-detail"),
-    path("scenarios/",            ScenarioListView.as_view(),     name="scenario-list"),
+    # TOMBSTONE (Phase 3.5, 2026-07-09): the Sprint-3 scenario layer
+    # (/api/scenarios/compute|save|<pk>|list/, api/scenario_views.py,
+    # api/scenario_serializers.py, ncaa/analytics/player_value/scenario/
+    # service.py) was retired as DEAD code — zero frontend callers (full
+    # web/src grep), zero ScenarioSnapshot rows ever saved, no test coverage
+    # of the routes. It still used the pre-Phase-3 flat-sigma band
+    # convention, making it the last endpoint inconsistent with the
+    # sigma_o/d/em model. /api/outlook/scenario/ (ScenarioProjectionView)
+    # is the surviving scenario endpoint. ScenarioSnapshot model + migration
+    # 0053 retained (no destructive migration); scenario/manual_player.py
+    # retained (pure recruiting-tier→BPR resolver, likely Phase 5 input).
     # Validation
     path("validation/summary/",       ValidationSummaryView.as_view(),      name="validation-summary"),
     path("validation/weekly/",        ValidationWeeklyView.as_view(),       name="validation-weekly"),

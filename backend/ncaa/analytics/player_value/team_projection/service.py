@@ -14,6 +14,7 @@ Two-pass architecture:
 
 Entry points:
     run_team_projection_pipeline(season_year) → list[TeamSeasonProjection]
+    get_stored_d1_context(season) → D1Context (for scenario re-projection)
     get_projection_distribution_stats(season_year) → dict
 """
 
@@ -179,8 +180,13 @@ def run_team_projection_pipeline(
 
     log.info("Engine ran for %d teams", len(team_results))
 
-    # ── Assign ranks from the full distribution ───────────────────────────────
-    _assign_ranks(team_results)
+    # ── Assign ranks from the D1-only distribution (Phase 3 D4) ───────────────
+    from ncaa.models import Team
+    d1_team_ids = set(
+        Team.objects.filter(id__in=players_by_team.keys(), is_d1=True)
+        .values_list("id", flat=True)
+    )
+    _assign_ranks(team_results, d1_team_ids)
 
     # ── Rebuild summaries now that ranks are assigned ─────────────────────────
     for _, result in team_results:
@@ -215,6 +221,7 @@ def run_team_projection_pipeline(
 
 def _assign_ranks(
     team_results: list[tuple[int, TeamProjectionResult]],
+    d1_team_ids: set[int] | None = None,
 ) -> None:
     """
     Assign projected_national_rank / offense_rank / defense_rank and
@@ -225,17 +232,41 @@ def _assign_ranks(
     Offense rank:  higher adj_o  → better (rank 1 = highest offense).
     Defense rank:  lower  adj_d  → better (rank 1 = stingiest defense).
 
-    Rank ranges are computed from the uncertainty bands:
+    Rank ranges are computed from the per-metric uncertainty bands
+    (sigma_o / sigma_d / sigma_em, Phase 3 Stage 2):
         rank_range_low  = best possible rank (lowest number, least teams ahead)
         rank_range_high = worst possible rank (highest number, most teams ahead)
+
+    Phase 3 D4: ranks are D1-ONLY. Before this fix, the rank pool was every
+    projected team (562, incl. non-D1 opponents like Delaware St.) — a
+    national rank spanning non-D1 teams is a correctness issue, not a
+    labeling one. Non-D1 teams keep their projection row but get NULL ranks
+    (d1_team_ids=None ranks everyone, for callers — e.g. tests — that don't
+    have a D1 universe to pass).
     """
-    n = len(team_results)
+    if d1_team_ids is not None:
+        d1_results = [(tid, r) for tid, r in team_results if tid in d1_team_ids]
+        non_d1_results = [(tid, r) for tid, r in team_results if tid not in d1_team_ids]
+        for _, result in non_d1_results:
+            result.projected_national_rank = None
+            result.projected_offense_rank = None
+            result.projected_defense_rank = None
+            result.national_rank_range_low = None
+            result.national_rank_range_high = None
+            result.offense_rank_range_low = None
+            result.offense_rank_range_high = None
+            result.defense_rank_range_low = None
+            result.defense_rank_range_high = None
+    else:
+        d1_results = team_results
+
+    n = len(d1_results)
     if n == 0:
         return
 
-    adj_em_vals = [r.projected_adj_em for _, r in team_results]
-    adj_o_vals = [r.projected_adj_o for _, r in team_results]
-    adj_d_vals = [r.projected_adj_d for _, r in team_results]
+    adj_em_vals = [r.projected_adj_em for _, r in d1_results]
+    adj_o_vals = [r.projected_adj_o for _, r in d1_results]
+    adj_d_vals = [r.projected_adj_d for _, r in d1_results]
 
     # Sort indices for each metric
     em_order = sorted(range(n), key=lambda i: adj_em_vals[i], reverse=True)
@@ -246,7 +277,7 @@ def _assign_ranks(
     o_rank_by_idx = {o_order[i]: i + 1 for i in range(n)}
     d_rank_by_idx = {d_order[i]: i + 1 for i in range(n)}
 
-    for idx, (_, result) in enumerate(team_results):
+    for idx, (_, result) in enumerate(d1_results):
         result.projected_national_rank = em_rank_by_idx[idx]
         result.projected_offense_rank = o_rank_by_idx[idx]
         result.projected_defense_rank = d_rank_by_idx[idx]
@@ -315,6 +346,38 @@ def _get_d1_averages(season: Season) -> tuple[float, float]:
 
     log.debug("D1 context: avg_adj_o=%.3f  avg_adj_d=%.3f", avg_adj_o, avg_adj_d)
     return avg_adj_o, avg_adj_d
+
+
+def get_stored_d1_context(season: Season) -> D1Context:
+    """
+    Rebuild the pipeline's D1Context from STORED TeamSeasonProjection rows.
+
+    Single source of truth for scenario re-projection (Phase 3 P4): avg_adj_o /
+    avg_adj_d come from the same _get_d1_averages fallback chain the pipeline
+    uses, and the league mean base_off / base_def come from the stored
+    base_team_offense / base_team_defense fields — which pass 1 wrote from its
+    in-memory aggregates, so at pipeline-write time these means are identical
+    to the pipeline's own centering values. They only drift if
+    PlayerSeasonProjection rows change after the pipeline ran (staleness —
+    surfaced separately by check_staleness).
+    """
+    from django.db.models import Avg  # noqa: PLC0415
+
+    avg_adj_o, avg_adj_d = _get_d1_averages(season)
+
+    agg = TeamSeasonProjection.objects.filter(from_season=season).aggregate(
+        mean_off=Avg("base_team_offense"),
+        mean_def=Avg("base_team_defense"),
+    )
+    n_teams = TeamSeasonProjection.objects.filter(from_season=season).count()
+
+    return D1Context(
+        avg_adj_o=avg_adj_o,
+        avg_adj_d=avg_adj_d,
+        league_mean_base_off=float(agg["mean_off"] if agg["mean_off"] is not None else avg_adj_o),
+        league_mean_base_def=float(agg["mean_def"] if agg["mean_def"] is not None else avg_adj_d),
+        n_projected_teams=max(n_teams, 1),
+    )
 
 
 def _build_projection_fields(projected_year: int, result: TeamProjectionResult) -> dict:

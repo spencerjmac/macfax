@@ -37,6 +37,13 @@ from .constants import (
     UNCERTAINTY_PLAYER_SIGNAL_WEIGHT,
     UNCERTAINTY_SIGMA_MAX,
     UNCERTAINTY_SIGMA_SCALE,
+    SIGMA_D_INTERCEPT,
+    SIGMA_D_SLOPE,
+    SIGMA_EM_INTERCEPT,
+    SIGMA_EM_MAX,
+    SIGMA_EM_SLOPE,
+    SIGMA_O_INTERCEPT,
+    SIGMA_O_SLOPE,
 )
 
 # ── Input dataclasses ─────────────────────────────────────────────────────────
@@ -245,7 +252,9 @@ def project_team(
         transfer_fit_risk=transfer_fit_risk,
         coaching_uncertainty_add=coaching_uncertainty_add,
     )
-    sigma_pts = _uncertainty_to_sigma(uncertainty)
+    sigma_o_pts = sigma_o(uncertainty)
+    sigma_d_pts = sigma_d(uncertainty)
+    sigma_em_pts = sigma_em(uncertainty)
 
     result = TeamProjectionResult(
         base_team_offense=base_off,
@@ -270,12 +279,12 @@ def project_team(
         projected_adj_d=projected_adj_d,
         projected_adj_em=projected_adj_em,
         team_projection_uncertainty=uncertainty,
-        projected_adj_o_low=projected_adj_o - sigma_pts,
-        projected_adj_o_high=projected_adj_o + sigma_pts,
-        projected_adj_d_low=projected_adj_d - sigma_pts,
-        projected_adj_d_high=projected_adj_d + sigma_pts,
-        projected_adj_em_low=projected_adj_em - 2 * sigma_pts,
-        projected_adj_em_high=projected_adj_em + 2 * sigma_pts,
+        projected_adj_o_low=projected_adj_o - sigma_o_pts,
+        projected_adj_o_high=projected_adj_o + sigma_o_pts,
+        projected_adj_d_low=projected_adj_d - sigma_d_pts,
+        projected_adj_d_high=projected_adj_d + sigma_d_pts,
+        projected_adj_em_low=projected_adj_em - sigma_em_pts,
+        projected_adj_em_high=projected_adj_em + sigma_em_pts,
     )
 
     result.driver_breakdown = _build_driver_breakdown(result, d1_context)
@@ -538,14 +547,61 @@ def _compute_uncertainty(
 
 def _uncertainty_to_sigma(uncertainty: float) -> float:
     """
-    Convert 0-1 uncertainty to pts/100 poss confidence band half-width.
+    LEGACY flat sigma model — no longer used for engine band construction
+    (superseded by sigma_o / sigma_d / sigma_em below, Phase 3 Stage 2).
 
+    Retained because still referenced by bt6_coverage_calibration.py /
+    run_bt6.py (an independent backtest tool) and the Sprint-3 scenario
+    endpoint (scenario/service.py, /api/scenarios/compute/), which was out
+    of scope for the Phase 3 band-convention unification.
+
+    Convert 0-1 uncertainty to pts/100 poss confidence band half-width.
     sigma grows linearly from SIGMA_SCALE at uncertainty=0 to SIGMA_MAX at 1.
-    projected_adj_o ± sigma_pts defines the 1-sigma band.
-    projected_adj_em ± 2×sigma_pts used for EM (combines off + def uncertainty).
     """
     sigma = UNCERTAINTY_SIGMA_SCALE + (UNCERTAINTY_SIGMA_MAX - UNCERTAINTY_SIGMA_SCALE) * uncertainty
     return min(UNCERTAINTY_SIGMA_MAX, sigma)
+
+
+def sigma_o(uncertainty: float) -> float:
+    """
+    AdjO band half-width (pts/100 poss), empirically fit on DEMEANED O
+    residuals (Phase 3 Stage 2, operator decision D1 — the band answers
+    "team strength relative to the field," so league-wide scoring-
+    environment drift is removed before fitting). See constants.py for the
+    full derivation.
+
+    projected_adj_o ± sigma_o(u) is the ±1σ ("likely range", ~68%) band.
+    """
+    u = max(UNCERTAINTY_MIN, min(UNCERTAINTY_MAX, uncertainty))
+    return SIGMA_O_INTERCEPT + SIGMA_O_SLOPE * u
+
+
+def sigma_d(uncertainty: float) -> float:
+    """
+    AdjD band half-width (pts/100 poss), empirically fit on DEMEANED D
+    residuals (Phase 3 Stage 2, operator decision D1). See sigma_o() and
+    constants.py for the derivation rationale.
+
+    projected_adj_d ± sigma_d(u) is the ±1σ ("likely range", ~68%) band.
+    """
+    u = max(UNCERTAINTY_MIN, min(UNCERTAINTY_MAX, uncertainty))
+    return SIGMA_D_INTERCEPT + SIGMA_D_SLOPE * u
+
+
+def sigma_em(uncertainty: float) -> float:
+    """
+    AdjEM band half-width (pts/100 poss), empirically fit on RAW EM
+    residuals (Phase 3 Stage 2, operator decision D2 — league-wide
+    scoring-environment drift cancels in the O−D margin by construction,
+    so EM is not demeaned). Also drives national/offense/defense rank
+    ranges (api/outlook_views.py, team_projection/service.py).
+
+    projected_adj_em ± sigma_em(u) is the ±1σ ("likely range", ~68%) band —
+    the old ±2σ_rating convention is retired; this fit already absorbs what
+    that 2x multiplier was informally approximating.
+    """
+    u = max(UNCERTAINTY_MIN, min(UNCERTAINTY_MAX, uncertainty))
+    return min(SIGMA_EM_MAX, SIGMA_EM_INTERCEPT + SIGMA_EM_SLOPE * u)
 
 
 def _build_driver_breakdown(
@@ -650,6 +706,9 @@ def compute_team_base_aggregates(
 
 def _empty_result(d1_context: D1Context) -> TeamProjectionResult:
     """Return a neutral/average projection for teams with zero projected players."""
+    max_sigma_o = sigma_o(UNCERTAINTY_MAX)
+    max_sigma_d = sigma_d(UNCERTAINTY_MAX)
+    max_sigma_em = sigma_em(UNCERTAINTY_MAX)
     return TeamProjectionResult(
         base_team_offense=0.0,
         base_team_defense=0.0,
@@ -671,10 +730,10 @@ def _empty_result(d1_context: D1Context) -> TeamProjectionResult:
         projected_adj_d=d1_context.avg_adj_d,
         projected_adj_em=d1_context.avg_adj_o - d1_context.avg_adj_d,
         team_projection_uncertainty=UNCERTAINTY_MAX,
-        projected_adj_o_low=d1_context.avg_adj_o - UNCERTAINTY_SIGMA_MAX,
-        projected_adj_o_high=d1_context.avg_adj_o + UNCERTAINTY_SIGMA_MAX,
-        projected_adj_d_low=d1_context.avg_adj_d - UNCERTAINTY_SIGMA_MAX,
-        projected_adj_d_high=d1_context.avg_adj_d + UNCERTAINTY_SIGMA_MAX,
-        projected_adj_em_low=(d1_context.avg_adj_o - d1_context.avg_adj_d) - 2 * UNCERTAINTY_SIGMA_MAX,
-        projected_adj_em_high=(d1_context.avg_adj_o - d1_context.avg_adj_d) + 2 * UNCERTAINTY_SIGMA_MAX,
+        projected_adj_o_low=d1_context.avg_adj_o - max_sigma_o,
+        projected_adj_o_high=d1_context.avg_adj_o + max_sigma_o,
+        projected_adj_d_low=d1_context.avg_adj_d - max_sigma_d,
+        projected_adj_d_high=d1_context.avg_adj_d + max_sigma_d,
+        projected_adj_em_low=(d1_context.avg_adj_o - d1_context.avg_adj_d) - max_sigma_em,
+        projected_adj_em_high=(d1_context.avg_adj_o - d1_context.avg_adj_d) + max_sigma_em,
     )
