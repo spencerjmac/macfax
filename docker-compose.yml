@@ -69,7 +69,7 @@ services:
     depends_on:
       - backend
     ports:
-      - "7000:7000"
+      - "127.0.0.1:7000:7000"
     networks:
       web:
         aliases:
