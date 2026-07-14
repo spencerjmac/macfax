@@ -30,6 +30,7 @@ from django.core.management.base import BaseCommand, CommandError
 from nba.models import (
     NBASeason,
     NBATeam,
+    NBAPlayer,
     NBAPlayerSeasonStats,
     TeamOutseasonMove,
     TeamSeasonOutlook,
@@ -232,6 +233,31 @@ class Command(BaseCommand):
                 return outlooks_by_abbr.get(nba_team.abbreviation)
             return None
 
+        # Phase 4 D4: "outside NBA" was emitted whenever prior_team was None —
+        # but None only means the sync didn't capture a prior team (e.g. the
+        # player missed the source-season minutes threshold), NOT that they
+        # have no NBA history. Recover the true most-recent team for any name
+        # that resolves to an NBAPlayer with stats. Trade-vs-signing is NOT
+        # touched (undecidable from origin alone); move_type stays as-is.
+        _norm_player_index: dict[str, list] = {}
+        for _p in NBAPlayer.objects.all().only("id", "name"):
+            _norm_player_index.setdefault(normalize_name(_p.name), []).append(_p)
+
+        def recent_team_slug(name: str) -> str | None:
+            exact = list(NBAPlayer.objects.filter(name__iexact=name).only("id")[:2])
+            cands = exact if len(exact) == 1 else _norm_player_index.get(normalize_name(name), [])
+            if len(cands) != 1:
+                return None  # unresolvable or ambiguous → leave as-is
+            st = (
+                NBAPlayerSeasonStats.objects.filter(
+                    player_id=cands[0].id, season_type="regular", team__isnull=False
+                )
+                .select_related("team")
+                .order_by("-season__year")
+                .first()
+            )
+            return st.team.slug if st else None
+
         # ── Step 5 & 6: Create rows + build CSV audit data ────────────────────
         csv_rows: list[dict] = []
 
@@ -312,7 +338,10 @@ class Command(BaseCommand):
                                          False, "already_exists"))
                 continue
 
-            detail = f"Acquired from {acq['prior_team'] or 'outside NBA'}"
+            # Phase 4 D4: recover a real source team before falling back to
+            # "outside NBA" (a player with NBA stats is never "outside NBA").
+            source_team = acq["prior_team"] or recent_team_slug(acq["name"])
+            detail = f"Acquired from {source_team or 'outside NBA'}"
             csv_row_skip = None
 
             if not dry_run:
@@ -378,6 +407,24 @@ class Command(BaseCommand):
             f"  Already existed:    {acq_existed}\n"
             f"  Outlook not found:  {acq_no_outlook}\n"
         )
+
+        # Phase 4 D4: how many EXISTING rows a re-import would correct — a
+        # move whose stored detail says "outside NBA" but whose player now
+        # resolves to a real recent NBA team. Report only; no rows touched here.
+        correctable = []
+        for m in TeamOutseasonMove.objects.filter(detail__icontains="outside NBA"):
+            recovered = recent_team_slug(m.player_name)
+            if recovered:
+                correctable.append((m.player_name, recovered))
+        self.stdout.write(
+            f"\n[Phase 4 D4] Existing 'outside NBA' rows a re-import would correct: "
+            f"{len(correctable)} (report only — no rows modified). "
+            f"Trigger a full re-import to apply."
+        )
+        for name, slug in correctable[:15]:
+            self.stdout.write(f"    {name:28} → Acquired from {slug}")
+        if len(correctable) > 15:
+            self.stdout.write(f"    … and {len(correctable) - 15} more")
 
         if off_all_rosters:
             self.stdout.write(

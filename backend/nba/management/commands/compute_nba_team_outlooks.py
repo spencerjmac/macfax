@@ -34,6 +34,7 @@ from nba.models import (
     TeamOutseasonMove,
     NBAProjectedRosterSlot,
 )
+from nba.utils.name_utils import normalize_name
 
 logger = logging.getLogger(__name__)
 
@@ -98,6 +99,47 @@ MINUTES_CEIL = 1.80            # NBA star ceiling (~36 MPG equiv). Replaces the
                                # league quality spread (Phase 2 P2 fix).
 POWER_EXPONENT = 2.0           # demand concentration exponent
 TOTAL_SHARES = 5.0             # 200 team-minutes / 40-min game
+
+# ── Rookie priors (HUMAN-REVIEWED CONSTANTS, Phase 4 Stage 2, 2026-07-13) ─────
+# Drafted players have no NBA stat to project from; before Phase 4 they were
+# hardcoded obpr/dbpr 0.0 and mpg 12.0. Derivation:
+#   `manage.py derive_rookie_priors --draft-years 2021,2022,2023,2024`
+#   187 rookie outcomes / 4 draft classes, joined NBA.com DraftHistory PERSON_ID
+#   → rookie-season stats (draft year D → season D+1), multi-team splits
+#   collapsed minutes-weighted, one row per player asserted.
+#
+# BPR prior is FLAT (pick-independent) — operator decision D1. LOYO
+# (leave-one-class-out) pooled BPR MAE: pick-binned map 1.69 beats the old
+# hardcoded 0.0 (1.90) but LOSES to a flat global-rookie-mean (1.66). Pick
+# carries no rookie-BPR signal, so we use the pooled minutes-weighted mean and
+# reject pick-binned BPR. (The old 0.0 was, ironically, only ~1.1 pts off.)
+ROOKIE_PRIOR_OBPR = -0.8662    # pooled minutes-weighted rookie obpr, N=187
+ROOKIE_PRIOR_DBPR = -0.2714    # pooled minutes-weighted rookie dbpr, N=187
+# (total rookie BPR prior = -1.1376; rookies are net-negative players — honest.)
+
+# MPG prior IS pick-binned (D2) — pick predicts rookie minutes strongly and
+# monotonically. LOYO MPG MAE: map 5.35 vs hardcoded-12.0 7.4 vs global-mean 6.6.
+# Bins are overall_pick ranges → mean rookie MPG. Missing/unknown pick → 13.0
+# (the 31-60 second-round bin, the conservative default).
+ROOKIE_MPG_BY_PICK_BIN = {(1, 5): 27.9, (6, 14): 20.9, (15, 30): 16.4, (31, 60): 13.0}
+ROOKIE_MPG_DEFAULT = 13.0
+# Drafted players SKIP shrinkage (D3): the prior IS already a population mean;
+# regressing one population mean toward another (SHRINKAGE_ACQUISITION toward
+# league BPR) is statistical nonsense. See _project_bpr's is_rookie_prior gate.
+#
+# STANDING NOTE: the 2026 draft class carries 53 MPS scores and zero outcomes.
+# After the 2026-27 season completes it becomes the first testable MPS→rookie-
+# BPR pair — revisit a MPS-conditional prior then (filed for summer 2027).
+
+
+def rookie_mpg_for_pick(overall_pick) -> float:
+    """Rookie MPG prior for a draft slot (D2). Unknown pick → second-round default."""
+    if overall_pick is None:
+        return ROOKIE_MPG_DEFAULT
+    for (lo, hi), mpg in ROOKIE_MPG_BY_PICK_BIN.items():
+        if lo <= overall_pick <= hi:
+            return mpg
+    return ROOKIE_MPG_DEFAULT
 
 
 def _clamp_wins(raw: float) -> int:
@@ -440,12 +482,13 @@ class Command(BaseCommand):
             f"V2 share closure: {'FAIL ' + ', '.join(v2_bad) if v2_bad else 'OK (all teams Σshare ≈ 5.0)'}"
         )
 
-        # V3 — Allocator monotonicity: shares non-increasing in demand
+        # V3 — Allocator monotonicity: shares non-increasing in demand.
+        # Phase 4.5: pinned rookies (demand=None) are exempt by design —
+        # their share comes from the empirical prior, not demand competition.
         v3_bad = []
         for c in computed:
-            ordered = sorted(
-                c["slots"], key=lambda s: s.get("demand", 0.0), reverse=True
-            )
+            comp = [s for s in c["slots"] if not s.get("is_rookie_prior")]
+            ordered = sorted(comp, key=lambda s: s.get("demand", 0.0), reverse=True)
             for prev, cur in zip(ordered, ordered[1:]):
                 if cur.get("minutes_share", 0.0) > prev.get("minutes_share", 0.0) + 1e-6:
                     v3_bad.append(
@@ -456,7 +499,8 @@ class Command(BaseCommand):
         if v3_bad:
             failures.append("V3 monotonicity: " + "; ".join(v3_bad[:5]))
         self.stdout.write(
-            f"V3 allocator monotonicity: {'FAIL (' + str(len(v3_bad)) + ' violations)' if v3_bad else 'OK'}"
+            f"V3 allocator monotonicity (competitive slots): "
+            f"{'FAIL (' + str(len(v3_bad)) + ' violations)' if v3_bad else 'OK'}"
         )
 
         # V4 — Ceiling census (informational)
@@ -473,6 +517,34 @@ class Command(BaseCommand):
         self.stdout.write(
             f"V4 ceiling census: {league_at_ceil} players at MINUTES_CEIL={MINUTES_CEIL} "
             f"league-wide{'  [' + ' '.join(per_team) + ']' if per_team else ''}"
+        )
+
+        # V5 — Pinned-rookie share integrity (Phase 4.5). Each pinned rookie's
+        # final share must equal its prior-derived pinned_share (within the
+        # rookie-stack scale/clamp tolerance). Also print the league census.
+        v5_bad = []
+        n_pinned = 0
+        total_pinned_share = 0.0
+        max_pinned = 0.0
+        for c in computed:
+            for s in c["slots"]:
+                if not s.get("is_rookie_prior"):
+                    continue
+                n_pinned += 1
+                sh = s.get("minutes_share", 0.0)
+                total_pinned_share += sh
+                max_pinned = max(max_pinned, sh)
+                if abs(sh - s.get("pinned_share", -1)) > 1e-6:
+                    v5_bad.append(
+                        f"{c['outlook'].team_abbr}: {s['player_name']} "
+                        f"share {sh:.3f} != pinned {s.get('pinned_share'):.3f}"
+                    )
+        if v5_bad:
+            failures.append("V5 pinned-share integrity: " + "; ".join(v5_bad[:5]))
+        self.stdout.write(
+            f"V5 pinned-rookie shares: {'FAIL (' + str(len(v5_bad)) + ')' if v5_bad else 'OK'}"
+            f"  — {n_pinned} pinned rookies, total share {total_pinned_share:.2f}, "
+            f"max {max_pinned:.3f} ({max_pinned*20:.0f} MPG-equiv)"
         )
 
         if failures:
@@ -573,19 +645,28 @@ class Command(BaseCommand):
                     "position": "",
                 })
             elif move.move_type == "drafted":
+                # Phase 4 Stage 2: empirical rookie priors replace the hardcoded
+                # 0.0 BPR / 12.0 MPG. Flat BPR prior (D1), pick-binned MPG (D2),
+                # and is_rookie_prior=True so _project_bpr skips shrinkage (D3).
+                # Resolve DOB opportunistically if the rookie is already in the DB.
+                rookie_player = self._resolve_player_by_name(move.player_name)
                 additions.append({
                     "player_name": move.player_name,
-                    "player_obj": None,
+                    "player_obj": rookie_player,
                     "stats_obj": None,
-                    "mpg": 12.0,
-                    "obpr": 0.0,
-                    "dbpr": 0.0,
-                    "bpr": 0.0,
+                    "mpg": rookie_mpg_for_pick(move.overall_pick),
+                    "obpr": ROOKIE_PRIOR_OBPR,
+                    "dbpr": ROOKIE_PRIOR_DBPR,
+                    "bpr": ROOKIE_PRIOR_OBPR + ROOKIE_PRIOR_DBPR,
                     "projection_value": None,
                     "archetype": None,
                     "acquisition_type": "drafted",
                     "confidence": "low",
-                    "age": None,
+                    "is_rookie_prior": True,
+                    "age": self._calc_age(
+                        getattr(rookie_player, "date_of_birth", None),
+                        _date(source_season.year, 10, 1),
+                    ),
                     "position": "",
                 })
             elif move.move_type == "extended":
@@ -607,15 +688,59 @@ class Command(BaseCommand):
 
         return slots
 
+    def _resolve_player_by_name(self, player_name: str):
+        """
+        Resolve a free-text move name to exactly one NBAPlayer, or None.
+
+        Phase 4 P2: the old code fell back to name__icontains, which could
+        silently assign the wrong player's entire BPR history to a signing
+        (a substring of one name matching another). Resolution is now:
+          1. exact case-insensitive match on the raw name,
+          2. else exact match on the shared normalized form (diacritics /
+             punctuation / Jr-Sr-II-III-IV suffix stripped — nba.utils.name_utils),
+          3. else FAIL LOUDLY: log a warning with the attempted name, return None.
+        Ambiguity (>1 candidate) at either tier also fails loudly — never guess.
+        """
+        # tier 1: exact raw (case-insensitive)
+        exact = list(NBAPlayer.objects.filter(name__iexact=player_name)[:2])
+        if len(exact) == 1:
+            return exact[0]
+        if len(exact) > 1:
+            logger.warning(
+                "_resolve_player_by_name: '%s' matches %d players by exact name — "
+                "ambiguous, not assigning BPR", player_name, len(exact),
+            )
+            return None
+
+        # tier 2: normalized form (built once per command run)
+        if not hasattr(self, "_norm_index"):
+            self._norm_index = {}
+            for p in NBAPlayer.objects.all().only("id", "name"):
+                self._norm_index.setdefault(normalize_name(p.name), []).append(p)
+        candidates = self._norm_index.get(normalize_name(player_name), [])
+        if len(candidates) == 1:
+            return candidates[0]
+        if len(candidates) > 1:
+            logger.warning(
+                "_resolve_player_by_name: '%s' normalizes to %d players (%s) — "
+                "ambiguous, not assigning BPR", player_name, len(candidates),
+                ", ".join(c.name for c in candidates),
+            )
+            return None
+
+        # tier 3: loud fail
+        logger.warning(
+            "_resolve_player_by_name: no NBAPlayer matched '%s' (exact or "
+            "normalized) — signing/trade will get no prior BPR", player_name,
+        )
+        return None
+
     def _lookup_player_bpr(self, player_name: str, source_season):
         """
         Find a player's most recent BPR stats (from any team) for use as
         a prior when they sign or are traded to a new team.
         """
-        player = (
-            NBAPlayer.objects.filter(name__iexact=player_name).first()
-            or NBAPlayer.objects.filter(name__icontains=player_name).first()
-        )
+        player = self._resolve_player_by_name(player_name)
         if player is None:
             return {}
 
@@ -645,6 +770,13 @@ class Command(BaseCommand):
 
     def _project_bpr(self, slot, league_obpr_avg, league_dbpr_avg, league_bpr_avg):
         """Shrinkage toward league mean, then RAPM-inflation cap."""
+        # Phase 4 D3: drafted rookies carry a population-mean prior, not an
+        # observed stat. Shrinking one population mean toward another (the
+        # league BPR mean) is statistical nonsense — pass the prior through
+        # untouched. The RAPM cap below is already a no-op (stats_obj is None).
+        if slot.get("is_rookie_prior"):
+            return slot["obpr"], slot["dbpr"], slot["bpr"]
+
         lam = (
             SHRINKAGE_RETURNER
             if slot["acquisition_type"] in ("returner", "extended")
@@ -735,22 +867,72 @@ class Command(BaseCommand):
         demand = BPR_component (above replacement) + MPG_component
         Power transform concentrates minutes in the top rotation.
         Water-fill normalize to TOTAL_SHARES = 5.0.
+
+        Phase 4.5: drafted rookies (is_rookie_prior) have their share PINNED
+        directly from the empirical pick→MPG prior, then veterans compete for
+        the remainder. Rationale: NBA rookie minutes are a development
+        investment, not a talent meritocracy — our own N=187 derivation shows
+        picks 1-5 average 27.9 MPG at −1.1 BPR, which the demand function
+        (dominated by the BPR term under POWER_EXPONENT=2) structurally cannot
+        express. Convention: share × 20 = MPG-equiv (MINUTES_CEIL 1.80 = 36 MPG).
         """
+        pinned = [s for s in slots if s.get("is_rookie_prior")]
+        competitive = [s for s in slots if not s.get("is_rookie_prior")]
+
+        # Pinned rookie shares straight from the prior MPG (share = mpg / 20).
+        for s in pinned:
+            prior_mpg = s.get("mpg") or ROOKIE_MPG_DEFAULT
+            s["pinned_share"] = max(MINUTES_FLOOR, min(MINUTES_CEIL, prior_mpg / 20.0))
+
+        pinned_total = sum(s["pinned_share"] for s in pinned)
+        remaining_pool = TOTAL_SHARES - pinned_total
+
+        # Guard: a rookie-stacked roster could starve the veteran pool. Keep at
+        # least 2.5 shares (half the team) competitive by scaling pinned down.
+        MIN_COMPETITIVE_POOL = 2.5
+        if competitive and remaining_pool < MIN_COMPETITIVE_POOL and pinned_total > 0:
+            scale = (TOTAL_SHARES - MIN_COMPETITIVE_POOL) / pinned_total
+            logger.warning(
+                "Rookie-stacked roster: pinned share %.2f leaves only %.2f for "
+                "%d veterans — scaling pinned by %.3f to preserve a %.1f competitive pool",
+                pinned_total, remaining_pool, len(competitive), scale, MIN_COMPETITIVE_POOL,
+            )
+            for s in pinned:
+                s["pinned_share"] *= scale
+            pinned_total = sum(s["pinned_share"] for s in pinned)
+            remaining_pool = TOTAL_SHARES - pinned_total
+
+        # No veterans at all (degenerate; NBA rosters always have returners):
+        # pinned absorb the whole pool.
+        if not competitive:
+            scale = (TOTAL_SHARES / pinned_total) if pinned_total > 0 else 1.0
+            for s in pinned:
+                s["demand"] = None
+                s["pinned_share"] *= scale
+                s["minutes_share"] = s["pinned_share"]
+            return slots
+
+        # Competitive slots compete for the remaining pool via the existing
+        # demand → power → clamp → water-fill path (target = remaining_pool).
         demands = []
-        for slot in slots:
+        for slot in competitive:
             bpr_above_repl = max(0.0, (slot.get("projected_bpr") or 0.0) + REPLACEMENT_LEVEL)
             mpg_component = (slot.get("mpg") or 15.0) / 36.0
             demands.append(bpr_above_repl + mpg_component)
 
         powered = [d ** POWER_EXPONENT for d in demands]
         total = sum(powered) or 1.0
-        raw = [p / total * TOTAL_SHARES for p in powered]
+        raw = [p / total * remaining_pool for p in powered]
         clamped = [max(MINUTES_FLOOR, min(MINUTES_CEIL, s)) for s in raw]
-        normalized = self._water_fill(clamped, TOTAL_SHARES)
+        normalized = self._water_fill(clamped, remaining_pool)
 
-        for slot, demand, share in zip(slots, demands, normalized):
+        for slot, demand, share in zip(competitive, demands, normalized):
             slot["demand"] = demand
             slot["minutes_share"] = share
+
+        for s in pinned:
+            s["demand"] = None  # exempt from V3 monotonicity (pinned, not demand-ranked)
+            s["minutes_share"] = s["pinned_share"]
 
         return slots
 

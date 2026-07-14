@@ -1067,7 +1067,11 @@ class NBAProjectedRosterSlot(models.Model):
     projected_dbpr = models.FloatField(null=True, blank=True)
     projected_bpr = models.FloatField(null=True, blank=True)
     projected_minutes_share = models.FloatField(
-        null=True, blank=True, help_text="Fraction of 200 team-minutes (0–1)"
+        null=True, blank=True,
+        help_text=(
+            "Share of the 5.0-slot minutes pool (0–1.8); 1.0 = 20% of team "
+            "minutes = ~9.6 MPG-equivalent at 48min"
+        ),
     )
     projected_wins_added = models.FloatField(null=True, blank=True)
     confidence = models.CharField(max_length=10, choices=CONFIDENCE_CHOICES, default="medium")
