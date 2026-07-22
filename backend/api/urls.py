@@ -26,7 +26,8 @@ from .cinderella_views import CinderellaView
 from .bracket_views import BracketView
 from .viz_builder_views import VizStatsView, VizScatterView
 from .auth_views import csrf, login_view, logout_view, me
-from .outlook_views import RosterOutlookView, ScenarioProjectionView, PlayerSearchView, PlaceholderListView
+from .outlook_views import RosterOutlookView, ScenarioProjectionView, PlayerSearchView, PlaceholderListView, ProjectedTopTeamsView
+from .market_value_views import MarketValuePlayerListView, MarketValueTeamView
 from .validation_views import ValidationSummaryView, ValidationWeeklyView, ValidationRecentGamesView
 from .game_detail_views import ncaa_game_detail
 from .analyze_view import AnalyzeCriteriaView
@@ -59,6 +60,7 @@ urlpatterns = [
     path("team/<slug:slug>/players/", TeamRosterView.as_view(), name="team-roster"),
     path("players/", LeaguePlayersView.as_view(), name="league-players"),
     # Phase 7: Roster Outlook (specific paths must precede the slug catch-all)
+    path("outlook/top/", ProjectedTopTeamsView.as_view(), name="roster-outlook-top"),
     path("outlook/scenario/", ScenarioProjectionView.as_view(), name="roster-outlook-scenario"),
     path("outlook/player-search/", PlayerSearchView.as_view(), name="roster-outlook-player-search"),
     path("outlook/placeholders/", PlaceholderListView.as_view(), name="roster-outlook-placeholders"),
@@ -74,6 +76,9 @@ urlpatterns = [
     # is the surviving scenario endpoint. ScenarioSnapshot model + migration
     # 0053 retained (no destructive migration); scenario/manual_player.py
     # retained (pure recruiting-tier→BPR resolver, likely Phase 5 input).
+    # Phase 6: Market Value (serve-only; frontend wiring is Phase 7, operator-gated)
+    path("market-value/players/",       MarketValuePlayerListView.as_view(), name="market-value-players"),
+    path("market-value/teams/<slug:slug>/", MarketValueTeamView.as_view(),   name="market-value-team"),
     # Validation
     path("validation/summary/",       ValidationSummaryView.as_view(),      name="validation-summary"),
     path("validation/weekly/",        ValidationWeeklyView.as_view(),       name="validation-weekly"),

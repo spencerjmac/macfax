@@ -174,6 +174,12 @@ export interface ScenarioProjectionResult {
   continuity_value_score: number;
   transfer_dependence_score: number;
   transfer_fit_risk_score: number;
+  /** Fraction of the 5.0 minutes pool the submitted roster filled (Phase 1). */
+  pool_fill_fraction?: number;
+  /** Shares padded at replacement level by the backend when pool < 100%. */
+  replacement_fill_share?: number;
+  /** The replacement fill player's BPR (obpr+dbpr constants), for display. */
+  replacement_fill_bpr?: number;
 }
 
 // ── Placeholder archetypes ────────────────────────────────────────────────────

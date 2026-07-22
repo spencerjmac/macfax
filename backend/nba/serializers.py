@@ -251,9 +251,19 @@ class TeamSeasonOutlookListSerializer(serializers.ModelSerializer):
         ]
 
     def get_league_rank(self, obj) -> int:
+        # Phase 7 item 9: rank map precomputed by the view (one pass) — the
+        # model property issues a COUNT query per row (N+1 across 30 teams).
+        ranks = self.context.get("rank_by_slug")
+        if ranks is not None:
+            return ranks.get(obj.team_slug, 0)
         return obj.league_rank
 
     def get_logo_url(self, obj) -> str | None:
+        # Phase 7 item 9: logo map from the view (single query) — the old
+        # per-row NBATeam lookup was the logo N+1.
+        logos = self.context.get("logo_by_abbr")
+        if logos is not None:
+            return logos.get(obj.team_abbr)
         return (
             NBATeam.objects.filter(abbreviation=obj.team_abbr)
             .values_list("logo_url", flat=True)

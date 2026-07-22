@@ -57,8 +57,30 @@ class PlayerRecruitingProfile(models.Model):
         ("manual",    "Manual entry"),
     ]
 
+    # Phase 5: nullable — a future-class recruit (e.g. a 2027 commit) is not in
+    # the Player table until they appear in real game data. Unresolved profiles
+    # carry identity in recruit_name/normalized_name and are linked to a Player
+    # later (the resolver keys on espn_id when they enroll).
     player = models.ForeignKey(
         Player, on_delete=models.CASCADE, related_name="recruiting_profiles",
+        null=True, blank=True,
+    )
+    recruit_name = models.CharField(
+        max_length=150, blank=True, default="",
+        help_text="Recruit's name as listed by the source (for unresolved profiles).",
+    )
+    normalized_name = models.CharField(
+        max_length=150, blank=True, default="", db_index=True,
+        help_text="Diacritic/suffix-normalized recruit_name for matching.",
+    )
+    committed_team = models.ForeignKey(
+        Team, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="recruit_commits",
+        help_text="Team the recruit has committed to (null = uncommitted/unknown).",
+    )
+    source_url = models.URLField(
+        max_length=300, blank=True, default="",
+        help_text="URL of the source page/export this profile came from.",
     )
     class_year = models.IntegerField(
         help_text="Season year of the player's first college season (matches Season.year).",
@@ -98,8 +120,18 @@ class PlayerRecruitingProfile(models.Model):
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=["player", "class_year"], name="unique_player_class_year"
-            )
+                fields=["player", "class_year"],
+                condition=models.Q(player__isnull=False),
+                name="unique_player_class_year",
+            ),
+            # Unresolved (playerless) profiles: NULL != NULL in SQL, so the
+            # player-based constraint cannot deduplicate them — key on the
+            # normalized name + class + source instead.
+            models.UniqueConstraint(
+                fields=["normalized_name", "class_year", "source"],
+                condition=models.Q(player__isnull=True),
+                name="unique_unresolved_recruit",
+            ),
         ]
         indexes = [
             models.Index(fields=["class_year"]),
@@ -109,7 +141,8 @@ class PlayerRecruitingProfile(models.Model):
 
     def __str__(self) -> str:
         stars_str = f"{self.stars}★" if self.stars else "unrated"
-        return f"{self.player.display_name} ({stars_str}, class of {self.class_year})"
+        who = self.player.display_name if self.player else (self.recruit_name or "?")
+        return f"{who} ({stars_str}, class of {self.class_year})"
 
 
 class PlayerGameStats(models.Model):
@@ -769,3 +802,49 @@ class PlayerAvailability(models.Model):
     @property
     def weight(self) -> float:
         return self.STATUS_WEIGHTS.get(self.status, 0.0)
+
+
+class PlayerMarketValue(models.Model):
+    """
+    Macfax Player Market Value — one row per (player, season).
+
+    Computed by compute_market_values from current-season ACTUALS via the
+    committed chain (ncaa/analytics/market_value/constants.py):
+      marginal_em  = SLOPE_OFF·share·(obpr − repl) + SLOPE_DEF·share·(dbpr − repl)
+      marginal_wins = marginal_em × WINS_PER_EM_NCAA
+      value_low/high = marginal_wins × DOLLARS_PER_WIN_LOW/HIGH
+    Dollar outputs are ranges end-to-end (the MBB pool share is the widest
+    honest error bar in the chain). constants_hash records exactly which
+    constant set produced each row.
+    """
+
+    player = models.ForeignKey(
+        Player, on_delete=models.CASCADE, related_name="market_values",
+    )
+    season = models.ForeignKey(
+        Season, on_delete=models.CASCADE, related_name="player_market_values",
+    )
+    bpr = models.FloatField(help_text="Actual season BPR (obpr + dbpr)")
+    minutes_share = models.FloatField(help_text="mpg / 40 (5.0-pool convention)")
+    marginal_em = models.FloatField(help_text="EM above replacement contributed")
+    marginal_wins = models.FloatField(help_text="marginal_em × WINS_PER_EM_NCAA")
+    value_low = models.FloatField(help_text="Dollars, low anchor (17% MBB share)")
+    value_high = models.FloatField(help_text="Dollars, high anchor (23% MBB share)")
+    pipeline_version = models.CharField(max_length=20, default="", blank=True)
+    constants_hash = models.CharField(
+        max_length=16, default="", blank=True,
+        help_text="Hash of the constant set that produced this row (provenance)",
+    )
+    computed_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["player", "season"], name="unique_player_market_value"
+            )
+        ]
+        indexes = [models.Index(fields=["season", "-marginal_wins"])]
+        ordering = ["-marginal_wins"]
+
+    def __str__(self):
+        return f"{self.player.display_name} {self.season.year}: {self.marginal_wins:+.2f} mWins"

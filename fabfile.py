@@ -31,12 +31,17 @@ PORT = 42222
 APP_DIR = "/opt/macfax"
 COMPOSE = "docker compose"
 
-# Postgres (same in local and prod docker-compose)
+# Prod postgres (docker-compose db service)
 DB_SERVICE = "db"
 DB_USER = "cbb_user"
 DB_NAME = "cbb_analytics"
 BACKUP_DIR = f"{APP_DIR}/backups"
 BACKUP_KEEP = 5
+
+# Local dev postgres — NATIVE (not docker); see backend/.env.local
+#   DATABASE_URL=postgres://spencer@/macfax?host=/var/run/postgresql
+LOCAL_DB_USER = "spencer"
+LOCAL_DB_NAME = "macfax"
 
 
 def _conn():
@@ -162,32 +167,35 @@ def manage(c, cmd):
 # ---------------------------------------------------------------------------
 
 @task
-def db_push(c, yes=False):
+def db_push(c, yes=False, docker=False):
     """
     DESTRUCTIVE: replace the production database with a full dump of the local
-    docker postgres.
+    postgres.
 
-      fab db-push            # prompts for typed confirmation
+      fab db-push            # dump native local db (macfax), prompt to confirm
       fab db-push --yes      # skip the typed-confirm prompt (still backs up first)
+      fab db-push --docker   # dump from a LOCAL docker db instead of native pg
+
+    By default dumps the NATIVE local postgres (db `macfax`, user `spencer`) that
+    `npm run dev` uses. Pass --docker to dump from a local docker-compose db.
 
     Steps:
-      1. pg_dump the LOCAL docker db  (custom format -Fc)
+      1. pg_dump the LOCAL db  (custom format -Fc)
       2. upload the dump to the server
       3. pg_dump the PROD db to /opt/macfax/backups/ (safety backup, keep last 5)
       4. stop backend + web (release db connections)
       5. DROP + CREATE the prod database and pg_restore the local dump
       6. bring all containers back up
-
-    Local docker stack must be running (`docker compose up -d db`).
     """
     ts = time.strftime("%Y%m%d-%H%M%S")
     local_dump = f"/tmp/macfax-local-{ts}.dump"
     remote_dump = f"/tmp/macfax-local-{ts}.dump"
     prod_backup = f"{BACKUP_DIR}/prod-{ts}.dump"
+    src = "local docker db" if docker else f"native pg ({LOCAL_DB_NAME})"
 
     # --- confirmation -----------------------------------------------------
     if not yes:
-        print("⚠  This OVERWRITES the production database with your LOCAL data.")
+        print(f"⚠  This OVERWRITES the PROD database with your LOCAL data [{src}].")
         print(f"   A prod backup will be saved to {prod_backup} first.")
         reply = input('   Type "PROD" to continue: ').strip()
         if reply != "PROD":
@@ -195,14 +203,17 @@ def db_push(c, yes=False):
             return
 
     # --- 1. dump local db -------------------------------------------------
-    print("── pg_dump local db ──────────────────────")
-    c.run(
-        f"{COMPOSE} exec -T {DB_SERVICE} "
-        f"pg_dump -U {DB_USER} -Fc {DB_NAME} > {local_dump}"
-    )
+    print(f"── pg_dump {src} ──────────────────────")
+    if docker:
+        c.run(
+            f"{COMPOSE} exec -T {DB_SERVICE} "
+            f"pg_dump -U {DB_USER} -Fc {DB_NAME} > {local_dump}"
+        )
+    else:
+        c.run(f"pg_dump -U {LOCAL_DB_USER} -Fc {LOCAL_DB_NAME} > {local_dump}")
     size = os.path.getsize(local_dump)
     if size == 0:
-        print("✗ Local dump is empty — is the local docker db running? Aborting.")
+        print("✗ Local dump is empty — is the local db running? Aborting.")
         os.remove(local_dump)
         return
     print(f"   local dump: {local_dump} ({size:,} bytes)")

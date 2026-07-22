@@ -181,6 +181,7 @@ function WinRangeBar({
           style={{ left: `${baselinePct}%`, marginLeft: '-3px' }}
         />
       </div>
+      <p className="text-[11px] text-text-muted m-0">Range covers ~2/3 of modeled outcomes.</p>
     </div>
   );
 }
@@ -188,7 +189,10 @@ function WinRangeBar({
 function TeamHero({ detail }: { detail: TeamSeasonOutlookDetail }) {
   const adjNet = getDisplayAdjNet(detail);
   const tier = getOutlookTierLabel(detail.outlook_tier, adjNet, detail.projected_wins ?? detail.wins);
-  const summary = detail.season_headline || generateMacFaxRead(detail);
+  // Phase 7 item 5 (dedup): the hero shows the first sentence only — the full
+  // take lives in the Macfax Read section, and Bottom Line carries the swing.
+  const fullSummary = detail.season_headline || generateMacFaxRead(detail);
+  const summary = (fullSummary.match(/^[^.!?]+[.!?]/)?.[0] ?? fullSummary).trim();
 
   return (
     <header className="relative overflow-hidden border-b-4 border-brand bg-ink text-white">
@@ -674,19 +678,26 @@ function RotationRow({ slot }: { slot: NBAProjectedRosterSlot }) {
         <p className="mt-1 text-[11px] text-text-muted m-0">{slot.position || 'Position TBD'}</p>
       </td>
       <td className="px-3 py-3 text-[12px] text-text-muted">{formatArchetype(slot.archetype)}</td>
-      <td className={`px-3 py-3 text-center font-mono text-[13px] font-semibold ${getBprTier(slot.projected_bpr).className}`}>
+      {/* Phase 7 item 7: rookie-prior BPR values are an empirical population
+          mean, not an observed stat — render muted, never red. */}
+      <td className={`px-3 py-3 text-center font-mono text-[13px] font-semibold ${slot.acquisition_type === 'drafted' ? 'text-text-muted' : getBprTier(slot.projected_bpr).className}`}>
         {formatSignedNumber(slot.projected_bpr)}
       </td>
-      <td className={`px-3 py-3 text-center font-mono text-[13px] ${getBprTier(slot.projected_obpr).className}`}>
+      <td className={`px-3 py-3 text-center font-mono text-[13px] ${slot.acquisition_type === 'drafted' ? 'text-text-muted' : getBprTier(slot.projected_obpr).className}`}>
         {formatSignedNumber(slot.projected_obpr)}
       </td>
-      <td className={`px-3 py-3 text-center font-mono text-[13px] ${getBprTier(slot.projected_dbpr).className}`}>
+      <td className={`px-3 py-3 text-center font-mono text-[13px] ${slot.acquisition_type === 'drafted' ? 'text-text-muted' : getBprTier(slot.projected_dbpr).className}`}>
         {formatSignedNumber(slot.projected_dbpr)}
       </td>
       <td className="px-3 py-3 text-center font-mono text-[13px] text-text-muted">{formatMinutesShare(slot.projected_minutes_share)}</td>
       <td className="px-4 py-3 text-right">
-        <span className={`rounded px-2 py-0.5 text-[10px] font-semibold ${ACQUISITION_CLASSES[slot.acquisition_type]}`}>
-          {ACQUISITION_LABELS[slot.acquisition_type]}
+        <span
+          className={`rounded px-2 py-0.5 text-[10px] font-semibold ${ACQUISITION_CLASSES[slot.acquisition_type]}`}
+          title={slot.acquisition_type === 'drafted'
+            ? 'Empirical rookie prior (−1.14 league mean); rookies typically produce below replacement.'
+            : undefined}
+        >
+          {slot.acquisition_type === 'drafted' ? 'Rookie prior' : ACQUISITION_LABELS[slot.acquisition_type]}
         </span>
       </td>
     </tr>
@@ -779,7 +790,7 @@ function DevelopmentWatchSection({ players }: { players: DevelopmentWatchPlayer[
 
         {under25.length > 0 && (
           <div className="rounded-lg border border-ui-border bg-ui-card p-5">
-            <p className="font-display text-[17px] font-bold uppercase tracking-wide text-brandBlue m-0">Under-25 Returners</p>
+            <p className="font-display text-[17px] font-bold uppercase tracking-wide text-brandBlue m-0">25 &amp; Under Returners</p>
             <div className="mt-4 grid gap-3">
               {under25.map((player) => (
                 <div key={player.player_name} className="rounded-lg border border-ui-border bg-ui-surface p-4">
@@ -833,10 +844,9 @@ function BottomLineOutlook({ detail }: { detail: TeamSeasonOutlookDetail }) {
             ceiling={detail.projected_ceil_wins}
           />
         </div>
-        <p className="mt-6 border-t border-ui-border pt-5 text-[15px] leading-relaxed text-text-primary m-0">
-          {detail.macfax_take || generateMacFaxRead(detail)}
-        </p>
-        <blockquote className="mt-5 border-l-4 border-brand pl-4 text-[14px] leading-relaxed text-text-muted m-0">
+        {/* Phase 7 item 5 (dedup): the full take lives in Macfax Read only —
+            Bottom Line is the record + the season-defining swing. */}
+        <blockquote className="mt-6 border-t border-ui-border pt-5 border-l-4 border-l-brand pl-4 text-[14px] leading-relaxed text-text-muted m-0">
           {getSwingText(detail)}
         </blockquote>
       </div>

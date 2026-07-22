@@ -101,13 +101,6 @@ export function OutlookTopCards({
   const sp = scenarioProjection as any;
   return (
     <div className="space-y-3">
-      {isScenarioMode && (
-        <div className="flex items-center gap-2 text-xs font-medium text-brand bg-brand/8 rounded-lg px-3 py-2 border border-brand/20">
-          <span className="w-2 h-2 rounded-full bg-brand inline-block" />
-          Scenario mode — strikethrough values show baseline when rank changes
-        </div>
-      )}
-
       <div className="flex gap-4 flex-wrap">
         <RankCard
           label="Projected Rank"

@@ -39,11 +39,13 @@ from .players import (
     BPRModelArtifact,
     PlaceholderArchetype,
     PlayerAvailability,
+    PlayerMarketValue,
 )
 
 from .scenarios import ScenarioSnapshot
 
 __all__ = [
+    "PlayerMarketValue",
     # base
     "Season",
     "Conference",

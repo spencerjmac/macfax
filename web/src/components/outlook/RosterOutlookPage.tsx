@@ -535,8 +535,12 @@ export default function RosterOutlookPage({ data }: RosterOutlookPageProps) {
   const { team, season, projection, players, fit } = data;
 
   // ── Scenario state ─────────────────────────────────────────────────────────
-  // Roster starts empty; user builds it from scratch using the three add sections.
-  const [scenarioPlayers, setScenarioPlayers] = useState<ScenarioPlayer[]>([]);
+  // Phase 7 item 2: the builder preloads the full baseline roster (everyone on
+  // the baseline is a returner next season). "Clear all" resets to empty —
+  // empty-start is now the exception, not the default.
+  const [scenarioPlayers, setScenarioPlayers] = useState<ScenarioPlayer[]>(() =>
+    players.map(p => ({ ...p, recruitment_type: 'returner', scenarioState: 'added' as const })),
+  );
   const [scenarioResult, setScenarioResult] = useState<ScenarioProjectionResult | null>(null);
   const [scenarioLoading, setScenarioLoading] = useState(false);
   const [scenarioError, setScenarioError] = useState<string | null>(null);
@@ -741,10 +745,12 @@ export default function RosterOutlookPage({ data }: RosterOutlookPageProps) {
       {/* ── Results (only after run) ── */}
       {scenarioResult && scenarioProjection && (
         <div className="space-y-6 pt-2 border-t border-ui-border">
-          <div>
-            <h2 className="text-base font-semibold text-text-primary mb-1">Scenario Results</h2>
-            <p className="text-xs text-text-muted">Projected {season.projected_season_year} season</p>
-          </div>
+          <h2 className="text-base font-semibold text-text-primary">
+            Scenario Results
+            <span className="ml-2 text-xs font-normal text-text-muted">
+              Projected {season.projected_season_year - 1}-{String(season.projected_season_year).slice(2)} season
+            </span>
+          </h2>
 
           <OutlookTopCards
             projection={projection}
@@ -762,6 +768,16 @@ export default function RosterOutlookPage({ data }: RosterOutlookPageProps) {
               isScenarioMode={true}
               canEdit={false}
             />
+            {(scenarioResult.replacement_fill_share ?? 0) > 0.001 && (
+              <div className="mt-1 flex items-center justify-between rounded-lg border border-dashed border-ui-border bg-ui-surface px-4 py-2.5 text-xs text-text-muted">
+                <span className="font-medium">Replacement fill</span>
+                <span>
+                  {((scenarioResult.replacement_fill_share ?? 0) / 5 * 100).toFixed(0)}% of team minutes
+                  {' · '}BPR {scenarioResult.replacement_fill_bpr != null ? `${scenarioResult.replacement_fill_bpr > 0 ? '+' : ''}${scenarioResult.replacement_fill_bpr.toFixed(2)}` : '—'}
+                  {' — unfilled minutes the model projected at replacement level'}
+                </span>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

@@ -38,10 +38,14 @@ from nba.utils.name_utils import normalize_name
 
 logger = logging.getLogger(__name__)
 
-# Phase 2 — NBA minutes ceiling + self-centering wins intercept.
 # Stamped onto every NBAProjectedRosterSlot and TeamSeasonOutlook write so
 # mixed-version rows are detectable (Phase 2 P1 forensics).
-PIPELINE_VERSION = "2.0"
+# History: "2.0" Phase 2 (ceiling + self-centering intercept, incl. Phase 4
+# rookie priors); "2.2-nopin" Phase 4.6 Stage A — 4.5 pin reverted (its bins
+# were unconditional, survivor-biased, and pinned per-game rates as season
+# shares); "2.3" Phase 4.6 Stage B — pin re-enabled on the operator-approved
+# additive effective-MPG model (bin effect + wins slope, clamped).
+PIPELINE_VERSION = "2.3"
 
 # ── Calibration constants ──────────────────────────────────────────────────────
 REPLACEMENT_LEVEL = 2.0        # BPR units added above zero to form demand signal
@@ -117,13 +121,37 @@ ROOKIE_PRIOR_OBPR = -0.8662    # pooled minutes-weighted rookie obpr, N=187
 ROOKIE_PRIOR_DBPR = -0.2714    # pooled minutes-weighted rookie dbpr, N=187
 # (total rookie BPR prior = -1.1376; rookies are net-negative players — honest.)
 
-# MPG prior IS pick-binned (D2) — pick predicts rookie minutes strongly and
-# monotonically. LOYO MPG MAE: map 5.35 vs hardcoded-12.0 7.4 vs global-mean 6.6.
-# Bins are overall_pick ranges → mean rookie MPG. Missing/unknown pick → 13.0
-# (the 31-60 second-round bin, the conservative default).
-ROOKIE_MPG_BY_PICK_BIN = {(1, 5): 27.9, (6, 14): 20.9, (15, 30): 16.4, (31, 60): 13.0}
-ROOKIE_MPG_DEFAULT = 13.0
-# Drafted players SKIP shrinkage (D3): the prior IS already a population mean;
+# RETIRED (Phase 4.6 conviction — do not restore): the Phase 4.5 per-game
+# pick bins {(1,5): 27.9, (6,14): 20.9, (15,30): 16.4, (31,60): 13.0}.
+# Three counts against them, all proven by derive_rookie_priors --v2:
+#   1. Per-game means pinned as season shares ignore games played —
+#      availability overstates rookie minutes ~2.4x (league rookie share
+#      31% pinned vs ~8% real).
+#   2. Unconditional on team context: bins learned mostly from lottery-team
+#      rookies were applied to contenders (OKC 58→47, DEN promoted to #1).
+#   3. Scored against the truth they actually pinned (effective MPG),
+#      LOYO MAE 7.74 — beating the 12.0 hardcode (7.89) by a rounding error.
+#
+# ── Rookie minutes model v2 (HUMAN-REVIEWED, Phase 4.6 Stage B, 2026-07-16) ──
+# Additive effective-MPG model, operator-approved at the Stage A gate:
+#   eff_mpg = BIN_EFFECT[pick_bin] + WINS_SLOPE × (clamped_prior_wins − 41)
+#   pinned share = predicted_eff_mpg / 20
+# Derivation: `manage.py derive_rookie_priors --v2` —
+#   N=234 picks (rounds 1-2, classes 2021-2024, 27 zero-minute picks
+#   INCLUDED — survivor correction), outcome = EFFECTIVE MPG = total rookie
+#   minutes / 82 team games (per-game MPG fails league closure by 3-4x),
+#   conditioning = drafting team's prior-season actual wins (ex-ante).
+#   LOYO MAE 5.79 vs cells 5.90 / 12.0-hardcode 7.89 / 4.5-bins 7.74 /
+#   global-mean 7.79. Closure: implied current-class Σeff 616, inside the
+#   historical actual band 582-690 (4.5 bins: 980, FAIL). R²=0.397 —
+#   residual σ≈6 eff-MPG per rookie; the pin claims the MEAN, not the player.
+#   Re-derive when 2026-27 actuals land (also the first MPS-scored class).
+ROOKIE_EFF_MPG_BIN_EFFECTS = {(1, 5): 20.79, (6, 14): 15.29, (15, 30): 12.66, (31, 60): 5.66}
+ROOKIE_WINS_SLOPE = -0.152     # eff-MPG per prior-season win above/below center
+ROOKIE_WINS_CENTER = 41
+ROOKIE_WINS_CLAMP = (15, 64)   # observed fit range; 65+ contenders treated as 64 (D3)
+ROOKIE_EFF_MPG_FLOOR = 0.5     # a drafted player on a roster is not literally zero (D4)
+# Drafted players SKIP shrinkage: the prior IS already a population mean;
 # regressing one population mean toward another (SHRINKAGE_ACQUISITION toward
 # league BPR) is statistical nonsense. See _project_bpr's is_rookie_prior gate.
 #
@@ -132,14 +160,24 @@ ROOKIE_MPG_DEFAULT = 13.0
 # BPR pair — revisit a MPS-conditional prior then (filed for summer 2027).
 
 
-def rookie_mpg_for_pick(overall_pick) -> float:
-    """Rookie MPG prior for a draft slot (D2). Unknown pick → second-round default."""
-    if overall_pick is None:
-        return ROOKIE_MPG_DEFAULT
-    for (lo, hi), mpg in ROOKIE_MPG_BY_PICK_BIN.items():
-        if lo <= overall_pick <= hi:
-            return mpg
-    return ROOKIE_MPG_DEFAULT
+def rookie_eff_mpg(overall_pick, prior_team_wins) -> float:
+    """
+    Predicted rookie EFFECTIVE MPG (total minutes / 82 team games) from the
+    Phase 4.6 additive model. Unknown pick → the 31-60 second-round effect;
+    unknown prior wins → league-average context (center, zero slope term).
+    """
+    effect = ROOKIE_EFF_MPG_BIN_EFFECTS[(31, 60)]
+    if overall_pick is not None:
+        for (lo, hi), e in ROOKIE_EFF_MPG_BIN_EFFECTS.items():
+            if lo <= overall_pick <= hi:
+                effect = e
+                break
+    if prior_team_wins is None:
+        wins = ROOKIE_WINS_CENTER
+    else:
+        wins = max(ROOKIE_WINS_CLAMP[0], min(ROOKIE_WINS_CLAMP[1], prior_team_wins))
+    pred = effect + ROOKIE_WINS_SLOPE * (wins - ROOKIE_WINS_CENTER)
+    return max(ROOKIE_EFF_MPG_FLOOR, pred)
 
 
 def _clamp_wins(raw: float) -> int:
@@ -167,14 +205,33 @@ class Command(BaseCommand):
             "--dry-run", action="store_true",
             help="Full compute + validations + reporting, zero DB writes.",
         )
+        import argparse
+        parser.add_argument(
+            "--rookie-pin", action=argparse.BooleanOptionalAction, default=True,
+            help=(
+                "Pin drafted rookies' minutes shares from the additive "
+                "effective-MPG model (Phase 4.6 Stage B, operator-approved). "
+                "DEFAULT ON. --no-rookie-pin falls back to pure demand "
+                "competition (Stage 2 behavior) for debugging."
+            ),
+        )
 
     def handle(self, *args, **options):
         source_year = options["source_season"]
         target_year = options["target_season"]
         team_filter = options["team"]
         dry_run = options["dry_run"]
+        self.rookie_pin = options.get("rookie_pin", False)
         if dry_run:
             self.stdout.write(self.style.WARNING("DRY RUN — no DB writes"))
+        if self.rookie_pin:
+            self.stdout.write(
+                "Rookie pin ON (default) — additive effective-MPG model (Phase 4.6 Stage B)"
+            )
+        else:
+            self.stdout.write(self.style.WARNING(
+                "ROOKIE PIN OFF (--no-rookie-pin) — debug fallback, rookies compete via demand"
+            ))
 
         # Resolve source season
         if source_year is None:
@@ -485,9 +542,14 @@ class Command(BaseCommand):
         # V3 — Allocator monotonicity: shares non-increasing in demand.
         # Phase 4.5: pinned rookies (demand=None) are exempt by design —
         # their share comes from the empirical prior, not demand competition.
+        # With the pin off (Phase 4.6 default), rookies compete and are checked.
+        pin_enabled = getattr(self, "rookie_pin", False)
         v3_bad = []
         for c in computed:
-            comp = [s for s in c["slots"] if not s.get("is_rookie_prior")]
+            comp = [
+                s for s in c["slots"]
+                if not (pin_enabled and s.get("is_rookie_prior"))
+            ]
             ordered = sorted(comp, key=lambda s: s.get("demand", 0.0), reverse=True)
             for prev, cur in zip(ordered, ordered[1:]):
                 if cur.get("minutes_share", 0.0) > prev.get("minutes_share", 0.0) + 1e-6:
@@ -519,33 +581,49 @@ class Command(BaseCommand):
             f"league-wide{'  [' + ' '.join(per_team) + ']' if per_team else ''}"
         )
 
-        # V5 — Pinned-rookie share integrity (Phase 4.5). Each pinned rookie's
-        # final share must equal its prior-derived pinned_share (within the
-        # rookie-stack scale/clamp tolerance). Also print the league census.
-        v5_bad = []
-        n_pinned = 0
-        total_pinned_share = 0.0
-        max_pinned = 0.0
-        for c in computed:
-            for s in c["slots"]:
-                if not s.get("is_rookie_prior"):
-                    continue
-                n_pinned += 1
-                sh = s.get("minutes_share", 0.0)
-                total_pinned_share += sh
-                max_pinned = max(max_pinned, sh)
-                if abs(sh - s.get("pinned_share", -1)) > 1e-6:
-                    v5_bad.append(
-                        f"{c['outlook'].team_abbr}: {s['player_name']} "
-                        f"share {sh:.3f} != pinned {s.get('pinned_share'):.3f}"
-                    )
-        if v5_bad:
-            failures.append("V5 pinned-share integrity: " + "; ".join(v5_bad[:5]))
-        self.stdout.write(
-            f"V5 pinned-rookie shares: {'FAIL (' + str(len(v5_bad)) + ')' if v5_bad else 'OK'}"
-            f"  — {n_pinned} pinned rookies, total share {total_pinned_share:.2f}, "
-            f"max {max_pinned:.3f} ({max_pinned*20:.0f} MPG-equiv)"
-        )
+        # V5 — Pinned-rookie share integrity (Phase 4.5, only when --rookie-pin).
+        # Each pinned rookie's final share must equal its prior-derived
+        # pinned_share (within the rookie-stack scale/clamp tolerance).
+        # With the pin off, report the rookies' competed share census instead.
+        if pin_enabled:
+            v5_bad = []
+            n_pinned = 0
+            total_pinned_share = 0.0
+            max_pinned = 0.0
+            for c in computed:
+                for s in c["slots"]:
+                    if not s.get("is_rookie_prior"):
+                        continue
+                    n_pinned += 1
+                    sh = s.get("minutes_share", 0.0)
+                    total_pinned_share += sh
+                    max_pinned = max(max_pinned, sh)
+                    if abs(sh - s.get("pinned_share", -1)) > 1e-6:
+                        v5_bad.append(
+                            f"{c['outlook'].team_abbr}: {s['player_name']} "
+                            f"share {sh:.3f} != pinned {s.get('pinned_share'):.3f}"
+                        )
+            if v5_bad:
+                failures.append("V5 pinned-share integrity: " + "; ".join(v5_bad[:5]))
+            self.stdout.write(
+                f"V5 pinned-rookie shares: {'FAIL (' + str(len(v5_bad)) + ')' if v5_bad else 'OK'}"
+                f"  — {n_pinned} pinned rookies, total share {total_pinned_share:.2f}, "
+                f"max {max_pinned:.3f} ({max_pinned*20:.0f} MPG-equiv)"
+            )
+        else:
+            rk_share = sum(
+                s.get("minutes_share", 0.0)
+                for c in computed for s in c["slots"] if s.get("is_rookie_prior")
+            )
+            n_rk = sum(
+                1 for c in computed for s in c["slots"] if s.get("is_rookie_prior")
+            )
+            total_all = TOTAL_SHARES * len(computed)
+            self.stdout.write(
+                f"V5 (pin OFF): {n_rk} drafted rookies competed for "
+                f"{rk_share:.2f} shares = {rk_share/total_all*100 if total_all else 0:.1f}% "
+                f"of league minutes"
+            )
 
         if failures:
             for f in failures:
@@ -555,6 +633,30 @@ class Command(BaseCommand):
             )
 
     # ── Roster assembly ────────────────────────────────────────────────────────
+
+    def _prior_team_wins(self, source_season) -> dict:
+        """
+        Actual regular-season wins per team abbreviation for the source season
+        (the rookie model's ex-ante team-context input). Computed once per run
+        from NBAGame results — NBATeamSeasonRatings carries no wins field.
+        """
+        if not hasattr(self, "_team_wins_cache"):
+            from nba.models import NBAGame
+            wins: dict[str, int] = {}
+            qs = NBAGame.objects.filter(
+                season=source_season, season_type="regular",
+            ).select_related("home_team", "away_team").only(
+                "home_score", "away_score",
+                "home_team__abbreviation", "away_team__abbreviation",
+            )
+            for g in qs:
+                if g.home_score is None or g.away_score is None:
+                    continue
+                w = (g.home_team.abbreviation if g.home_score > g.away_score
+                     else g.away_team.abbreviation)
+                wins[w] = wins.get(w, 0) + 1
+            self._team_wins_cache = wins
+        return self._team_wins_cache
 
     @staticmethod
     def _calc_age(dob, as_of) -> "int | None":
@@ -645,16 +747,20 @@ class Command(BaseCommand):
                     "position": "",
                 })
             elif move.move_type == "drafted":
-                # Phase 4 Stage 2: empirical rookie priors replace the hardcoded
-                # 0.0 BPR / 12.0 MPG. Flat BPR prior (D1), pick-binned MPG (D2),
-                # and is_rookie_prior=True so _project_bpr skips shrinkage (D3).
+                # Phase 4.6 Stage B: additive effective-MPG model — bin effect
+                # + wins slope on the drafting team's prior-season actual wins
+                # (clamped to the observed fit range). Flat BPR prior; and
+                # is_rookie_prior=True so _project_bpr skips shrinkage.
                 # Resolve DOB opportunistically if the rookie is already in the DB.
                 rookie_player = self._resolve_player_by_name(move.player_name)
                 additions.append({
                     "player_name": move.player_name,
                     "player_obj": rookie_player,
                     "stats_obj": None,
-                    "mpg": rookie_mpg_for_pick(move.overall_pick),
+                    "mpg": rookie_eff_mpg(
+                        move.overall_pick,
+                        self._prior_team_wins(source_season).get(outlook.team_abbr),
+                    ),
                     "obpr": ROOKIE_PRIOR_OBPR,
                     "dbpr": ROOKIE_PRIOR_DBPR,
                     "bpr": ROOKIE_PRIOR_OBPR + ROOKIE_PRIOR_DBPR,
@@ -876,13 +982,19 @@ class Command(BaseCommand):
         (dominated by the BPR term under POWER_EXPONENT=2) structurally cannot
         express. Convention: share × 20 = MPG-equiv (MINUTES_CEIL 1.80 = 36 MPG).
         """
-        pinned = [s for s in slots if s.get("is_rookie_prior")]
-        competitive = [s for s in slots if not s.get("is_rookie_prior")]
+        # Phase 4.6 rollback gate: pin only when --rookie-pin is passed.
+        # Default OFF → every slot (rookies included) competes via demand,
+        # which is exactly the Phase 4 Stage 2 allocator.
+        pin_enabled = getattr(self, "rookie_pin", False)
+        pinned = [s for s in slots if pin_enabled and s.get("is_rookie_prior")]
+        competitive = [s for s in slots if not (pin_enabled and s.get("is_rookie_prior"))]
 
         # Pinned rookie shares straight from the prior MPG (share = mpg / 20).
         for s in pinned:
-            prior_mpg = s.get("mpg") or ROOKIE_MPG_DEFAULT
-            s["pinned_share"] = max(MINUTES_FLOOR, min(MINUTES_CEIL, prior_mpg / 20.0))
+            # slot "mpg" for drafted rookies IS the additive model's predicted
+            # effective MPG (see _assemble_roster); floor already applied there.
+            prior_eff_mpg = s.get("mpg") or ROOKIE_EFF_MPG_FLOOR
+            s["pinned_share"] = max(MINUTES_FLOOR, min(MINUTES_CEIL, prior_eff_mpg / 20.0))
 
         pinned_total = sum(s["pinned_share"] for s in pinned)
         remaining_pool = TOTAL_SHARES - pinned_total

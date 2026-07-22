@@ -318,6 +318,50 @@ class RosterOutlookView(APIView):
         })
 
 
+class ProjectedTopTeamsView(APIView):
+    """
+    GET /api/outlook/top/?season=<year>&limit=<n>
+
+    Phase 7 item 1 — the landing page's "Projected Top 10". NOTE: the Phase 7
+    brief said "consume what exists / no new endpoints", but no projections-
+    list endpoint existed; this is the minimal read-only addition that makes
+    item 1 possible (flagged in the phase report). D1-only, rank-ordered.
+    """
+
+    def get(self, request):
+        season = _resolve_season(request.query_params.get("season"))
+        if season is None:
+            return Response({"error": "No season data available"}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            limit = min(int(request.query_params.get("limit", 10)), 50)
+        except ValueError:
+            limit = 10
+        rows = (
+            TeamSeasonProjection.objects.filter(
+                from_season=season, team__is_d1=True,
+                projected_national_rank__isnull=False,
+            )
+            .select_related("team")
+            .order_by("projected_national_rank")[:limit]
+        )
+        return Response({
+            "season": season.year,
+            "projected_season_year": rows[0].projected_season_year if rows else season.year + 1,
+            "teams": [
+                {
+                    "rank": r.projected_national_rank,
+                    "team_name": r.team.name,
+                    "team_slug": r.team.slug,
+                    "logo_url": getattr(r.team, "logo_url", None),
+                    "projected_adj_em": round(r.projected_adj_em, 2),
+                    "adj_em_low": round(r.projected_adj_em_low, 2),
+                    "adj_em_high": round(r.projected_adj_em_high, 2),
+                }
+                for r in rows
+            ],
+        })
+
+
 class ScenarioProjectionView(APIView):
     """
     POST /api/outlook/scenario/
@@ -492,6 +536,7 @@ class ScenarioProjectionView(APIView):
             "transfer_fit_risk_score": round(result.transfer_fit_risk_score, 4),
             "pool_fill_fraction": round(total_share / 5.0, 4),
             "replacement_fill_share": round(max(0.0, replacement_fill_share), 4),
+            "replacement_fill_bpr": round(REPLACEMENT_FILL_OBPR + REPLACEMENT_FILL_DBPR, 4),
         })
 
 

@@ -26,6 +26,7 @@ from .models import (
     NBAPlayerSeasonStats,
     NBATeamSeasonRatings,
     NBAModelCalibration,
+    NBAProjectedRosterSlot,
     TeamSeasonOutlook,
 )
 from .serializers import (
@@ -905,20 +906,58 @@ class NBATeamRosterValueView(APIView):
 
 
 class TeamOutlookListView(APIView):
-    """GET /api/nba/outlook/ — all 30 teams ordered by adj_net_rating desc."""
+    """
+    GET /api/nba/outlook/ — all 30 teams ordered by adj_net_rating desc.
+
+    Season note (Phase 7 item 9): TeamSeasonOutlook is one-row-per-team by
+    design (no season FK) — the table IS the current cycle, so there is
+    nothing to season-filter here. The season-scoped data (roster slots)
+    is scoped in the detail view below.
+    """
 
     def get(self, request):
-        qs = TeamSeasonOutlook.objects.all().order_by("-adj_net_rating")
-        return Response(TeamSeasonOutlookListSerializer(qs, many=True).data)
+        teams = list(TeamSeasonOutlook.objects.all().order_by("-adj_net_rating"))
+        # Precompute rank + logos in one pass / one query (kills two N+1s:
+        # the league_rank COUNT-per-row and the logo lookup-per-row).
+        rank_by_slug = {}
+        rank = 0
+        prev_net = None
+        for i, t in enumerate(teams, 1):
+            if t.adj_net_rating != prev_net:
+                rank = i
+                prev_net = t.adj_net_rating
+            rank_by_slug[t.team_slug] = rank
+        logo_by_abbr = dict(NBATeam.objects.values_list("abbreviation", "logo_url"))
+        data = TeamSeasonOutlookListSerializer(
+            teams, many=True,
+            context={"rank_by_slug": rank_by_slug, "logo_by_abbr": logo_by_abbr},
+        ).data
+        return Response(data)
 
 
 class TeamOutlookDetailView(APIView):
-    """GET /api/nba/outlook/<slug>/ — single team full outlook."""
+    """
+    GET /api/nba/outlook/<slug>/ — single team full outlook.
+
+    Roster slots are scoped to the LATEST target season (Phase 7 item 9):
+    an unscoped prefetch would return every season's slots the moment a
+    second projection cycle is computed.
+    """
 
     def get(self, request, slug):
+        from django.db.models import Prefetch
+        latest_slot_season = (
+            NBAProjectedRosterSlot.objects.order_by("-season__year")
+            .values_list("season_id", flat=True)
+            .first()
+        )
+        slot_qs = NBAProjectedRosterSlot.objects.all()
+        if latest_slot_season is not None:
+            slot_qs = slot_qs.filter(season_id=latest_slot_season)
         obj = get_object_or_404(
             TeamSeasonOutlook.objects.prefetch_related(
-                "offseason_moves", "projected_starters", "projected_roster_slots"
+                "offseason_moves", "projected_starters",
+                Prefetch("projected_roster_slots", queryset=slot_qs),
             ),
             team_slug=slug,
         )

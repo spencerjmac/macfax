@@ -97,6 +97,18 @@ class Command(BaseCommand):
             default=False,
             help="Print a blank CSV template to stdout and exit.",
         )
+        parser.add_argument(
+            "--allow-unresolved",
+            action="store_true",
+            default=False,
+            help=(
+                "Phase 5: rows whose player cannot be resolved (e.g. future-class "
+                "recruits not yet in the Player table) are stored as unresolved "
+                "profiles (player=NULL) keyed on normalized name + class + source, "
+                "with optional committed_team_slug / source_url CSV columns. "
+                "Default off: unresolved rows are skipped as before."
+            ),
+        )
 
     # ── Main entry point ──────────────────────────────────────────────────────
 
@@ -135,6 +147,7 @@ class Command(BaseCommand):
                     class_year_override=class_year_override,
                     source_override=source_override,
                     dry_run=dry_run,
+                    allow_unresolved=options.get("allow_unresolved", False),
                 )
                 if result:
                     stats[result] += 1
@@ -177,6 +190,7 @@ class Command(BaseCommand):
         class_year_override: int | None,
         source_override: str | None,
         dry_run: bool,
+        allow_unresolved: bool = False,
     ) -> str | None:
         """
         Process one CSV row.  Returns 'created', 'updated', 'matched' (no change),
@@ -204,6 +218,11 @@ class Command(BaseCommand):
         # ── Resolve Player ─────────────────────────────────────────────────
         player = self._resolve_player(row, row_num)
         if player is None:
+            if allow_unresolved:
+                return self._process_unresolved_row(
+                    row, row_num, class_year,
+                    source_override=source_override, dry_run=dry_run,
+                )
             return None
 
         # ── Parse numeric fields ───────────────────────────────────────────
@@ -270,6 +289,68 @@ class Command(BaseCommand):
             f"({stars_str}, {class_year})"
         )
         return "updated"
+
+    # ── Unresolved (future-class) profiles ────────────────────────────────────
+
+    def _process_unresolved_row(
+        self, row, row_num, class_year, source_override, dry_run
+    ) -> str | None:
+        """
+        Store a recruit not yet in the Player table (player=NULL), keyed on
+        (normalized_name, class_year, source). Linked to a real Player later
+        when they appear in game data.
+        """
+        from ncaa.models import PlayerRecruitingProfile, Team
+        # Sport-agnostic string normalizer; lives in nba.utils historically —
+        # candidate for promotion to a shared package (see Phase 5 report).
+        from nba.utils.name_utils import normalize_name
+
+        name = row.get("player_name", "").strip()
+        if not name:
+            self.stderr.write(f"  Row {row_num}: unresolved with no player_name — skipping.")
+            return None
+
+        committed_team = None
+        team_slug = row.get("committed_team_slug", "").strip()
+        if team_slug:
+            committed_team = Team.objects.filter(slug=team_slug).first()
+            if committed_team is None:
+                self.stderr.write(
+                    f"  Row {row_num} [{name}]: committed_team_slug "
+                    f"'{team_slug}' not found — storing uncommitted."
+                )
+
+        stars = _parse_int(row.get("stars"))
+        if stars is not None and stars not in range(1, 6):
+            self.stderr.write(f"  Row {row_num} [{name}]: stars={stars} out of range — skipping.")
+            return None
+
+        defaults = {
+            "recruit_name":    name,
+            "stars":           stars,
+            "national_rank":   _parse_int(row.get("national_rank")),
+            "composite_score": _parse_float(row.get("composite_score")),
+            "position_rank":   _parse_int(row.get("position_rank")),
+            "committed_team":  committed_team,
+            "source_url":      row.get("source_url", "") or "",
+            "notes":           row.get("notes", "") or "",
+        }
+        source = source_override or row.get("source") or "manual"
+
+        if dry_run:
+            self.stdout.write(f"  [DRY-UNRES] {name} ({class_year}, {source})")
+            return "created"
+        _, was_created = PlayerRecruitingProfile.objects.update_or_create(
+            player=None,
+            normalized_name=normalize_name(name),
+            class_year=class_year,
+            source=source,
+            defaults=defaults,
+        )
+        self.stdout.write(
+            f"  [{'NEW-UNRES' if was_created else 'UPD-UNRES'}] {name} ({class_year}, {source})"
+        )
+        return "created" if was_created else "updated"
 
     # ── Player resolution ─────────────────────────────────────────────────────
 

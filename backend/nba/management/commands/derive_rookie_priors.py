@@ -73,8 +73,20 @@ class Command(BaseCommand):
             "--min-mpg", type=float, default=5.0,
             help="Minimum rookie MPG to count as a real rookie outcome (default 5.0).",
         )
+        parser.add_argument(
+            "--v2", action="store_true",
+            help=(
+                "Phase 4.6 re-derivation: FULL pick universe (zero-minute picks "
+                "included — survivor correction) + team-context conditioning "
+                "(drafting team's prior-season actual wins), LOYO vs 3 baselines, "
+                "league-share closure check. Report only."
+            ),
+        )
 
     def handle(self, *args, **options):
+        if options["v2"]:
+            self._handle_v2(options)
+            return
         draft_years = [int(y) for y in options["draft_years"].split(",")]
         min_mpg = options["min_mpg"]
 
@@ -276,3 +288,284 @@ class Command(BaseCommand):
             f"\n  VERDICT (BPR): map beats (a) hardcoded: {beats_a}  |  "
             f"map beats (b) global-mean: {beats_b}"
         )
+
+    # ══ Phase 4.6 Stage A: v2 re-derivation ══════════════════════════════════
+    #
+    # Fixes the two proven biases of the 4.5 pin:
+    #   SURVIVOR: universe = ALL rounds-1-2 picks per class; a pick with no
+    #     rookie-season row contributes mpg 0.0 (the pin is an EXPECTATION).
+    #   TEAM CONTEXT: conditioned on the drafting team's prior-season actual
+    #     wins (season D — ex-ante, no circularity with our projection).
+    #     Caveat: draft-night trades mean the drafting team occasionally isn't
+    #     the playing team; conditioning uses the drafting team uniformly
+    #     because that is the team a production pin would be applied to.
+
+    def _team_wins(self, season_year: int) -> dict[str, int]:
+        """Actual regular-season wins per team abbreviation for a season."""
+        from nba.models import NBAGame
+        wins: dict[str, int] = {}
+        qs = NBAGame.objects.filter(
+            season__year=season_year, season_type="regular",
+        ).select_related("home_team", "away_team").only(
+            "home_score", "away_score", "home_team__abbreviation",
+            "away_team__abbreviation",
+        )
+        for g in qs:
+            if g.home_score is None or g.away_score is None:
+                continue
+            w = (g.home_team.abbreviation if g.home_score > g.away_score
+                 else g.away_team.abbreviation)
+            wins[w] = wins.get(w, 0) + 1
+        return wins
+
+    def _collect_class_v2(self, draft_yr: int, dbid_by_nbaid: dict) -> list[dict]:
+        """Full-universe rows: every rounds-1-2 pick, zero-minute picks included."""
+        from nba_api.stats.endpoints import drafthistory
+
+        season_yr = draft_yr + 1
+        df = drafthistory.DraftHistory(
+            league_id="00", season_year_nullable=str(draft_yr), timeout=25
+        ).draft_history.get_data_frame()
+
+        prior_wins = self._team_wins(draft_yr)  # season D = year the draft follows
+        rows = []
+        for _, r in df.iterrows():
+            pick = int(r["OVERALL_PICK"])
+            if pick > 60 or int(r["ROUND_NUMBER"]) > 2:
+                continue
+            abbr = str(r["TEAM_ABBREVIATION"])
+            dbid = dbid_by_nbaid.get(int(r["PERSON_ID"]))
+            total_min = total_gp = 0.0
+            if dbid is not None:
+                splits = NBAPlayerSeasonStats.objects.filter(
+                    player_id=dbid, season__year=season_yr, season_type="regular",
+                    mpg__isnull=False, gp__isnull=False,
+                ).values_list("mpg", "gp")
+                for mpg, gp in splits:
+                    total_min += (mpg or 0.0) * (gp or 0)
+                    total_gp += gp or 0
+            rows.append({
+                "pick": pick,
+                "name": str(r["PLAYER_NAME"]),
+                "mpg": (total_min / total_gp) if total_gp > 0 else 0.0,
+                "total_min": total_min,
+                "prior_wins": prior_wins.get(abbr),
+                "in_db": dbid is not None,
+            })
+        return rows
+
+    @staticmethod
+    def _tier(prior_wins, median_wins) -> str:
+        return "good" if (prior_wins is not None and prior_wins > median_wins) else "bad"
+
+    def _fit_cells(self, rows):
+        """(bin_label, tier) → mean mpg. Returns (cell_means, bin_means, global)."""
+        cells: dict[tuple, list] = {}
+        bins: dict[str, list] = {}
+        for r in rows:
+            lbl = _bin_label(r["pick"])
+            if lbl is None:
+                continue
+            cells.setdefault((lbl, r["tier"]), []).append(r["mpg"])
+            bins.setdefault(lbl, []).append(r["mpg"])
+        cell_means = {k: statistics.mean(v) for k, v in cells.items()}
+        bin_means = {k: statistics.mean(v) for k, v in bins.items()}
+        g = statistics.mean([r["mpg"] for r in rows])
+        return cell_means, bin_means, g, cells
+
+    def _fit_additive(self, rows):
+        """mpg = bin_effect[label] + b·(prior_wins − 41). Returns (effects, b, r2)."""
+        labels = [f"{lo}-{hi}" for lo, hi in PICK_BINS]
+        data = [r for r in rows if _bin_label(r["pick"]) and r["prior_wins"] is not None]
+        n = len(data)
+        # normal equations for 4 bin dummies + centered wins slope
+        import itertools
+        k = len(labels) + 1
+        X = []
+        y = []
+        for r in data:
+            xi = [1.0 if _bin_label(r["pick"]) == l else 0.0 for l in labels]
+            xi.append(r["prior_wins"] - 41.0)
+            X.append(xi)
+            y.append(r["mpg"])
+        # solve (X'X) beta = X'y  via Gaussian elimination (k=5, trivial)
+        XtX = [[sum(X[i][a] * X[i][b] for i in range(n)) for b in range(k)] for a in range(k)]
+        Xty = [sum(X[i][a] * y[i] for i in range(n)) for a in range(k)]
+        M = [row[:] + [Xty[a]] for a, row in enumerate(XtX)]
+        for col in range(k):
+            piv = max(range(col, k), key=lambda r_: abs(M[r_][col]))
+            M[col], M[piv] = M[piv], M[col]
+            if abs(M[col][col]) < 1e-12:
+                continue
+            for r_ in range(k):
+                if r_ != col and abs(M[r_][col]) > 1e-15:
+                    f = M[r_][col] / M[col][col]
+                    for c_ in range(col, k + 1):
+                        M[r_][c_] -= f * M[col][c_]
+        beta = [M[i][k] / M[i][i] if abs(M[i][i]) > 1e-12 else 0.0 for i in range(k)]
+        effects = dict(zip(labels, beta[:-1]))
+        b = beta[-1]
+        yhat = [sum(X[i][j] * beta[j] for j in range(k)) for i in range(n)]
+        ybar = statistics.mean(y)
+        ss_res = sum((y[i] - yhat[i]) ** 2 for i in range(n))
+        ss_tot = sum((yi - ybar) ** 2 for yi in y) or 1.0
+        return effects, b, 1.0 - ss_res / ss_tot
+
+    def _handle_v2(self, options):
+        from django.db.models import Sum, F, FloatField
+        from django.db.models.functions import Cast
+        from nba.models import NBATeam, TeamOutseasonMove
+
+        draft_years = [int(y) for y in options["draft_years"].split(",")]
+        dbid_by_nbaid = {p.player_id: p.id for p in NBAPlayer.objects.all()}
+
+        classes: dict[int, list[dict]] = {}
+        league_minutes: dict[int, float] = {}
+        for dy in draft_years:
+            rows = self._collect_class_v2(dy, dbid_by_nbaid)
+            # tier within class (median of that prior season's win table)
+            wins_vals = sorted(set(r["prior_wins"] for r in rows if r["prior_wins"] is not None))
+            med = statistics.median(wins_vals) if wins_vals else 41
+            for r in rows:
+                r["tier"] = self._tier(r["prior_wins"], med)
+                # THE FITTED / PIN-ABLE QUANTITY IS EFFECTIVE MPG = total_min/82
+                # (minutes per TEAM game). Per-game MPG ignores games played —
+                # a 14-mpg-over-45-games rookie is not a 14-mpg-over-82-games
+                # player. Fitting per-game MPG fails league closure by 3-4x
+                # (the third bias, caught by this command's own closure check);
+                # effective MPG closes within the historical band.
+                r["mpg_pergame"] = r["mpg"]
+                r["mpg"] = r["total_min"] / 82.0
+            classes[dy] = rows
+            # league total minutes for rookie season D+1 (closure denominator)
+            agg = NBAPlayerSeasonStats.objects.filter(
+                season__year=dy + 1, season_type="regular",
+                mpg__isnull=False, gp__isnull=False,
+            ).aggregate(t=Sum(Cast(F("mpg"), FloatField()) * Cast(F("gp"), FloatField())))
+            league_minutes[dy] = float(agg["t"] or 0.0)
+            time.sleep(0.6)
+
+        # ── Census ──────────────────────────────────────────────────────────
+        self.stdout.write(f"\n{'='*70}\nV2 CENSUS — full rounds-1-2 universe (survivor-corrected)")
+        self.stdout.write(
+            f"  {'class':>7} {'picks':>6} {'in DB':>6} {'zero-min':>9} "
+            f"{'mean eff-mpg':>13} {'mean pergame':>13}"
+        )
+        for dy, rows in classes.items():
+            zero = sum(1 for r in rows if r["mpg"] == 0.0)
+            self.stdout.write(
+                f"  {dy}→{dy+1:<4} {len(rows):>6} {sum(1 for r in rows if r['in_db']):>6} "
+                f"{zero:>9} {statistics.mean([r['mpg'] for r in rows]):>13.1f} "
+                f"{statistics.mean([r['mpg_pergame'] for r in rows]):>13.1f}"
+            )
+
+        all_rows = [r for rows in classes.values() for r in rows]
+
+        # ── Model (a): 4 pick bins × 2 tiers ───────────────────────────────
+        cell_means, bin_means, global_mean, cells = self._fit_cells(all_rows)
+        self.stdout.write(f"\nMODEL (a) — pick bin × prior-wins tier cells (pooled):")
+        self.stdout.write(f"  {'bin':>7} {'tier':>5} {'N':>5} {'mean':>7} {'σ':>6}")
+        for (lbl, tier), vals in sorted(cells.items()):
+            warn = "  ← N < 12" if len(vals) < 12 else ""
+            self.stdout.write(
+                f"  {lbl:>7} {tier:>5} {len(vals):>5} {statistics.mean(vals):>7.1f} "
+                f"{(statistics.pstdev(vals) if len(vals)>1 else 0):>6.1f}{warn}"
+            )
+
+        # ── Model (b): additive ─────────────────────────────────────────────
+        effects, b_wins, r2 = self._fit_additive(all_rows)
+        self.stdout.write(f"\nMODEL (b) — additive: mpg = bin_effect + b·(prior_wins − 41)")
+        for lbl, e in effects.items():
+            self.stdout.write(f"  bin {lbl}: {e:+.2f}")
+        self.stdout.write(f"  b (per prior win): {b_wins:+.3f}   R²={r2:.3f}")
+
+        # ── LOYO ────────────────────────────────────────────────────────────
+        self.stdout.write(f"\nLOYO (held-out class MAE on MPG, FULL universe incl. zeros):")
+        self.stdout.write(
+            f"  {'held-out':>9} {'N':>4} {'cells(a)':>9} {'additive(b)':>12} "
+            f"{'12.0-hard':>10} {'4.5-bins':>9} {'global-mean':>12}"
+        )
+        agg = {k: [] for k in ("a", "b", "hard", "v45", "gmean")}
+        for held in classes:
+            test = classes[held]
+            train = [r for dy, rows in classes.items() if dy != held for r in rows]
+            c_m, b_m, g_m, _ = self._fit_cells(train)
+            eff, bw, _ = self._fit_additive(train)
+            # 4.5-bins baseline = the SHIPPED 4.5 model's claim: its qualifier-
+            # conditional per-game bin means pinned as if they were effective
+            # (that conflation was exactly its bias — score it as shipped).
+            q_means = {"1-5": 27.9, "6-14": 20.9, "15-30": 16.4, "31-60": 13.0}
+            errs = {k: [] for k in agg}
+            for r in test:
+                lbl = _bin_label(r["pick"])
+                if lbl is None:
+                    continue
+                actual = r["mpg"]
+                errs["a"].append(abs(c_m.get((lbl, r["tier"]), b_m.get(lbl, g_m)) - actual))
+                pw = (r["prior_wins"] - 41.0) if r["prior_wins"] is not None else 0.0
+                errs["b"].append(abs(eff.get(lbl, g_m) + bw * pw - actual))
+                errs["hard"].append(abs(12.0 - actual))
+                errs["v45"].append(abs(q_means.get(lbl, g_m) - actual))
+                errs["gmean"].append(abs(g_m - actual))
+            self.stdout.write(
+                f"  {held}→{held+1:<3} {len(errs['a']):>4} "
+                f"{statistics.mean(errs['a']):>9.2f} {statistics.mean(errs['b']):>12.2f} "
+                f"{statistics.mean(errs['hard']):>10.2f} {statistics.mean(errs['v45']):>9.2f} "
+                f"{statistics.mean(errs['gmean']):>12.2f}"
+            )
+            for k in agg:
+                agg[k] += errs[k]
+        self.stdout.write(
+            f"  {'POOLED':>9} {len(agg['a']):>4} "
+            f"{statistics.mean(agg['a']):>9.2f} {statistics.mean(agg['b']):>12.2f} "
+            f"{statistics.mean(agg['hard']):>10.2f} {statistics.mean(agg['v45']):>9.2f} "
+            f"{statistics.mean(agg['gmean']):>12.2f}"
+        )
+
+        # ── Closure check (all quantities in Σ effective-MPG units) ──────────
+        # Actual class Σeff = class total minutes / 82; a candidate passes if
+        # its implied Σeff for the CURRENT 60-pick class sits inside the
+        # historical actual band. (Real-minutes share ≈ Σeff·82/league_min is
+        # printed for context — this is the ~8% number; the pool-share number
+        # is Σeff/3000 because the 5.0-share pool ≈ 100 'MPG' by convention.)
+        self.stdout.write(f"\nCLOSURE — class Σ effective-MPG (total_min/82):")
+        eff_totals = []
+        for dy, rows in classes.items():
+            cls_min = sum(r["total_min"] for r in rows)
+            eff_tot = cls_min / 82.0
+            eff_totals.append(eff_tot)
+            lg = league_minutes[dy]
+            self.stdout.write(
+                f"  actual {dy+1}: Σeff = {eff_tot:,.0f}   "
+                f"(real-minutes share {cls_min/lg*100 if lg else float('nan'):.1f}%)"
+            )
+        lo_band, hi_band = min(eff_totals), max(eff_totals)
+        self.stdout.write(f"  historical Σeff band: {lo_band:.0f}–{hi_band:.0f}")
+
+        # candidate implied Σeff for the CURRENT 60-pick class
+        cur_wins = self._team_wins(2026)
+        wins_vals = sorted(cur_wins.values())
+        med_cur = statistics.median(wins_vals) if wins_vals else 41
+        moves = list(
+            TeamOutseasonMove.objects.filter(move_type="drafted")
+            .select_related("team")
+        )
+        tot = {"a": 0.0, "b": 0.0, "v45": 0.0}
+        for m in moves:
+            lbl = _bin_label(m.overall_pick or 45) or "31-60"
+            w = cur_wins.get(m.team.team_abbr)
+            tier = self._tier(w, med_cur)
+            tot["a"] += cell_means.get((lbl, tier), bin_means.get(lbl, global_mean))
+            pw = (w - 41.0) if w is not None else 0.0
+            tot["b"] += effects.get(lbl, global_mean) + b_wins * pw
+            tot["v45"] += {"1-5": 27.9, "6-14": 20.9, "15-30": 16.4, "31-60": 13.0}[lbl]
+        for k, label in (("a", "cells (a)"), ("b", "additive (b)"), ("v45", "4.5 bins")):
+            verdict = "PASS" if lo_band <= tot[k] <= hi_band else "FAIL"
+            self.stdout.write(
+                f"  implied current-class Σeff, {label:12}: {tot[k]:.0f}  → {verdict}"
+            )
+
+        self.stdout.write(self.style.WARNING(
+            "\nHUMAN REVIEW GATE — v2 report only, nothing committed. "
+            "Production remains pin-OFF (2.2-nopin)."
+        ))
