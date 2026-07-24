@@ -215,6 +215,12 @@ class Command(BaseCommand):
                 "competition (Stage 2 behavior) for debugging."
             ),
         )
+        parser.add_argument(
+            "--force", action="store_true",
+            help="Overwrite outlooks whose snapshot_frozen_at is set. Without it, "
+                 "frozen rows are skipped (they back a published carousel run and "
+                 "must not drift mid-series).",
+        )
 
     def handle(self, *args, **options):
         source_year = options["source_season"]
@@ -222,6 +228,7 @@ class Command(BaseCommand):
         team_filter = options["team"]
         dry_run = options["dry_run"]
         self.rookie_pin = options.get("rookie_pin", False)
+        self.force = options.get("force", False)
         if dry_run:
             self.stdout.write(self.style.WARNING("DRY RUN — no DB writes"))
         if self.rookie_pin:
@@ -293,9 +300,20 @@ class Command(BaseCommand):
             f"RAPM-gap σ={self.rapm_gap_sigma:.2f}  cap threshold={cap_threshold:.2f}"
         )
 
-        outlooks = list(TeamSeasonOutlook.objects.all().order_by("team_abbr"))
+        # Season-scoped: a team carries one outlook row per projected season now
+        # (season FK + (team_slug, season) unique, migration 0025-0027). Without
+        # this filter a second season's rows would double the loop and silently
+        # break full_league below.
+        outlooks = list(
+            TeamSeasonOutlook.objects.filter(season=target_season).order_by("team_abbr")
+        )
         if team_filter:
             outlooks = [o for o in outlooks if o.team_slug == team_filter]
+        if not outlooks:
+            raise CommandError(
+                f"No TeamSeasonOutlook rows for season {target_season.display_name}. "
+                f"Run: python manage.py seed_team_outlooks --target-season {target_season.year}"
+            )
 
         # Pass 1: assemble rosters + project BPR for all teams, compute league baseline
         team_data = {}
@@ -382,7 +400,10 @@ class Command(BaseCommand):
         # In a closed 30-team league mean wins = 41, so the intercept must be
         # 41 minus WINS_PER_EM × league_mean_em — a fixed constant cannot
         # guarantee Σ wins ≈ 1230 if projected EM is not exactly mean-zero.
-        n_league = TeamSeasonOutlook.objects.count()
+        # Scoped to this projected season so full_league stays correct once other
+        # seasons' outlook rows exist (the --team path still yields computed=1 <
+        # n_league=30 → full_league False → intercept 41.0 + the DEBUG warning).
+        n_league = TeamSeasonOutlook.objects.filter(season=target_season).count()
         full_league = len(computed) == n_league and n_league >= 30
         league_mean_em = (
             sum(c["metrics"]["adj_em"] for c in computed) / len(computed)
@@ -460,6 +481,16 @@ class Command(BaseCommand):
 
     @transaction.atomic
     def _write_team(self, outlook, slots, metrics, target_season):
+        # Frozen-snapshot guard: an outlook backing a published carousel run must
+        # not drift mid-series. Skip unless --force. (computed/closure math above
+        # still ran over all teams; this only blocks the DB overwrite.)
+        if outlook.snapshot_frozen_at is not None and not self.force:
+            self.stdout.write(self.style.WARNING(
+                f"  SKIP {outlook.team_abbr}: snapshot frozen at "
+                f"{outlook.snapshot_frozen_at:%Y-%m-%d} — pass --force to overwrite."
+            ))
+            return 0
+
         # Write projected roster slots
         NBAProjectedRosterSlot.objects.filter(team=outlook, season=target_season).delete()
         for slot in slots:
@@ -483,6 +514,10 @@ class Command(BaseCommand):
             )
 
         # Step 7b: Update TeamSeasonOutlook projection fields
+        # Stamp season explicitly (row is fetched season-scoped, so this is
+        # normally a no-op — but it keeps the write correct if an unscoped
+        # outlook is ever passed in).
+        outlook.season = target_season
         outlook.projected_adj_o = metrics["adj_o"]
         outlook.projected_adj_d = metrics["adj_d"]
         outlook.projected_adj_net = metrics["adj_em"]
@@ -495,6 +530,7 @@ class Command(BaseCommand):
         outlook.top2_bpr_concentration = metrics["top2_concentration"]
         outlook.pipeline_version = PIPELINE_VERSION
         outlook.save(update_fields=[
+            "season",
             "projected_adj_o", "projected_adj_d", "projected_adj_net",
             "projected_wins", "projected_losses",
             "projected_floor_wins", "projected_ceil_wins",
