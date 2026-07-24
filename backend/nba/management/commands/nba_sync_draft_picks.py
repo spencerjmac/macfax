@@ -82,7 +82,10 @@ class Command(BaseCommand):
         teams_by_abbr: dict[str, NBATeam] = {
             t.abbreviation: t for t in NBATeam.objects.all()
         }
-        _all_outlooks = list(TeamSeasonOutlook.objects.all())
+        # Draft year D feeds the projected season D+1 — scope outlooks to it so a
+        # future season's rows can't collapse this dict to an arbitrary slug row.
+        target_year = year + 1
+        _all_outlooks = list(TeamSeasonOutlook.objects.filter(season__year=target_year))
         outlooks_by_slug: dict[str, TeamSeasonOutlook] = {
             o.team_slug: o for o in _all_outlooks
         }
@@ -180,6 +183,7 @@ class Command(BaseCommand):
 
             _, was_created = TeamOutseasonMove.objects.get_or_create(
                 team=outlook,
+                season=outlook.season,
                 player_name=player_name,
                 move_type="drafted",
                 defaults={

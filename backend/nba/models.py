@@ -931,6 +931,11 @@ class TeamSeasonOutlook(models.Model):
     seed_distribution = models.JSONField(null=True, blank=True)
     # Set when this outlook is frozen for a published carousel run; null while live.
     snapshot_frozen_at = models.DateTimeField(null=True, blank=True)
+    # Which season the PUBLIC page serves. compute writes rows unpublished; the
+    # operator flips this deliberately, so computing 2028 for internal review
+    # never silently flips the live page. Orthogonal to snapshot_frozen_at:
+    # is_published picks the season, snapshot_frozen_at freezes content within it.
+    is_published = models.BooleanField(default=False, db_index=True)
 
     # ── Computed roster construction metrics ──────────────────────────────────
     continuity_score = models.FloatField(

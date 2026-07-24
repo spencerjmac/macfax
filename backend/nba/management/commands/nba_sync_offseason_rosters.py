@@ -218,7 +218,10 @@ class Command(BaseCommand):
                 }
 
         # ── Step 4: Build outlook lookup helper ───────────────────────────────
-        all_outlooks = list(TeamSeasonOutlook.objects.all())
+        # Scope to the target season's outlook rows — team_slug is no longer
+        # globally unique, so an unscoped .all() would collapse to an arbitrary
+        # season's row per slug once multiple seasons exist.
+        all_outlooks = list(TeamSeasonOutlook.objects.filter(season__year=target_season))
         outlooks_by_slug: dict[str, TeamSeasonOutlook] = {o.team_slug: o for o in all_outlooks}
         outlooks_by_abbr: dict[str, TeamSeasonOutlook] = {o.team_abbr: o for o in all_outlooks}
         teams_by_slug: dict[str, NBATeam] = {t.slug: t for t in NBATeam.objects.all()}
@@ -286,6 +289,7 @@ class Command(BaseCommand):
             if not dry_run:
                 _, was_created = TeamOutseasonMove.objects.get_or_create(
                     team=outlook,
+                    season=outlook.season,
                     player_name=dep["name"],
                     move_type="lost",
                     defaults={"detail": detail, "impact_rating": "medium"},
@@ -347,6 +351,7 @@ class Command(BaseCommand):
             if not dry_run:
                 _, was_created = TeamOutseasonMove.objects.get_or_create(
                     team=outlook,
+                    season=outlook.season,
                     player_name=acq["name"],
                     move_type="signed",
                     defaults={"detail": detail, "impact_rating": "medium"},

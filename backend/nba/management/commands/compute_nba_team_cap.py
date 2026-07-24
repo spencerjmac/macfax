@@ -90,9 +90,11 @@ class Command(BaseCommand):
             # Match TeamSeasonOutlook by team slug (with abbr fallback)
             team_slug = row["team__slug"]
             team_abbr = row["team__abbreviation"]
+            # Scope to the --season outlook row (team_slug no longer globally
+            # unique); .first() would otherwise pick an arbitrary season.
             outlook = (
-                TeamSeasonOutlook.objects.filter(team_slug=team_slug).first()
-                or TeamSeasonOutlook.objects.filter(team_abbr=team_abbr).first()
+                TeamSeasonOutlook.objects.filter(team_slug=team_slug, season=season).first()
+                or TeamSeasonOutlook.objects.filter(team_abbr=team_abbr, season=season).first()
             )
             if outlook is None:
                 self.stderr.write(f"  No outlook for {team_abbr} — skipping")

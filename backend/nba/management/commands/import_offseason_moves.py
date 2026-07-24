@@ -23,7 +23,7 @@ from pathlib import Path
 
 from django.core.management.base import BaseCommand, CommandError
 
-from nba.models import TeamOutseasonMove, TeamSeasonOutlook
+from nba.models import NBASeason, TeamOutseasonMove, TeamSeasonOutlook
 
 
 VALID_MOVE_TYPES = {c[0] for c in TeamOutseasonMove.MOVE_TYPE_CHOICES}
@@ -59,9 +59,16 @@ class Command(BaseCommand):
         if dry_run:
             self.stdout.write(self.style.WARNING("DRY RUN — no rows will be written.\n"))
 
-        # Build team_slug → TeamSeasonOutlook lookup
+        # Build team_slug → TeamSeasonOutlook lookup, scoped to the target
+        # projected season (is_current + 1). Moves attach to that season's rows;
+        # an unscoped .all() would collapse to an arbitrary season per slug.
+        current = NBASeason.objects.filter(is_current=True).first()
+        if current is None:
+            raise CommandError("No current season flagged — cannot resolve target season.")
+        target_year = current.year + 1
         outlook_by_slug: dict[str, TeamSeasonOutlook] = {
-            o.team_slug: o for o in TeamSeasonOutlook.objects.all()
+            o.team_slug: o
+            for o in TeamSeasonOutlook.objects.filter(season__year=target_year)
         }
 
         created = skipped = warnings = 0
@@ -212,6 +219,7 @@ class Command(BaseCommand):
 
         obj, was_created = TeamOutseasonMove.objects.get_or_create(
             team=outlook,
+            season=outlook.season,
             player_name=player_name,
             move_type=move_type,
             defaults=defaults,

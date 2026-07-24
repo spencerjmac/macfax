@@ -907,16 +907,18 @@ class NBATeamRosterValueView(APIView):
 
 class TeamOutlookListView(APIView):
     """
-    GET /api/nba/outlook/ — all 30 teams ordered by adj_net_rating desc.
+    GET /api/nba/outlook/ — the published season's 30 teams, adj_net desc.
 
-    Season note (Phase 7 item 9): TeamSeasonOutlook is one-row-per-team by
-    design (no season FK) — the table IS the current cycle, so there is
-    nothing to season-filter here. The season-scoped data (roster slots)
-    is scoped in the detail view below.
+    Season note: TeamSeasonOutlook is now season-versioned (season FK +
+    (team_slug, season) unique). The public page serves the season flagged
+    is_published, so computing a future season for internal review never flips
+    the live page. Exactly one season should be published at a time.
     """
 
     def get(self, request):
-        teams = list(TeamSeasonOutlook.objects.all().order_by("-adj_net_rating"))
+        teams = list(
+            TeamSeasonOutlook.objects.filter(is_published=True).order_by("-adj_net_rating")
+        )
         # Precompute rank + logos in one pass / one query (kills two N+1s:
         # the league_rank COUNT-per-row and the logo lookup-per-row).
         rank_by_slug = {}
@@ -954,12 +956,16 @@ class TeamOutlookDetailView(APIView):
         slot_qs = NBAProjectedRosterSlot.objects.all()
         if latest_slot_season is not None:
             slot_qs = slot_qs.filter(season_id=latest_slot_season)
+        # Scope to the published season — team_slug is no longer globally unique,
+        # so an unscoped fetch would raise MultipleObjectsReturned once a second
+        # season exists.
         obj = get_object_or_404(
             TeamSeasonOutlook.objects.prefetch_related(
                 "offseason_moves", "projected_starters",
                 Prefetch("projected_roster_slots", queryset=slot_qs),
             ),
             team_slug=slug,
+            is_published=True,
         )
         return Response(TeamSeasonOutlookDetailSerializer(obj).data)
 
