@@ -875,7 +875,19 @@ class TeamSeasonOutlook(models.Model):
     # ── Identity ──────────────────────────────────────────────────────────────
     team_name = models.CharField(max_length=100)
     team_abbr = models.CharField(max_length=5)
-    team_slug = models.SlugField(unique=True, db_index=True)
+    # team_slug was globally unique (one row per team, forever). Uniqueness now
+    # lives on the (team_slug, season) constraint below so a team can carry one
+    # frozen outlook per projected season (versioning / predicted-vs-actual).
+    team_slug = models.SlugField(db_index=True)
+    # Projected season this outlook is FOR (e.g. the 2026-27 target = year 2027).
+    # NOT NULL (enforced by migration 0027 after backfill): the (team_slug, season)
+    # uniqueness only binds when season is always set — a nullable FK lets a
+    # NULL-season shadow league slip past the constraint. Set by
+    # compute_nba_team_outlooks / seed_team_outlooks on every write.
+    season = models.ForeignKey(
+        "NBASeason", on_delete=models.CASCADE, related_name="team_outlooks",
+        help_text="Projected (target) season this outlook row versions.",
+    )
     conference = models.CharField(max_length=10, choices=CONFERENCE_CHOICES)
     primary_color = models.CharField(max_length=7, default="#000000")
     secondary_color = models.CharField(max_length=7, default="#FFFFFF")
@@ -910,6 +922,15 @@ class TeamSeasonOutlook(models.Model):
     outlook_tier = models.CharField(
         max_length=20, choices=OUTLOOK_TIER_CHOICES, null=True, blank=True
     )
+    # Projected regular-season conference seed (1-15). The ACTUAL prior-season
+    # seed + playoff finish are NOT duplicated here — read them by joining
+    # NBATeamSeasonRatings.conference_seed / playoff_finish.
+    projected_seed = models.IntegerField(null=True, blank=True)
+    # Monte-Carlo seed distribution, e.g. {"1": 0.12, "2": 0.19, ...} plus
+    # summary odds (playoff_odds, title_odds). Written by the simulation step.
+    seed_distribution = models.JSONField(null=True, blank=True)
+    # Set when this outlook is frozen for a published carousel run; null while live.
+    snapshot_frozen_at = models.DateTimeField(null=True, blank=True)
 
     # ── Computed roster construction metrics ──────────────────────────────────
     continuity_score = models.FloatField(
@@ -952,6 +973,12 @@ class TeamSeasonOutlook(models.Model):
 
     class Meta:
         ordering = ["-adj_net_rating"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["team_slug", "season"],
+                name="uniq_team_outlook_slug_season",
+            )
+        ]
 
     def __str__(self):
         return self.team_name
@@ -984,8 +1011,28 @@ class TeamOutseasonMove(models.Model):
         ("low", "Low"),
     ]
 
+    SOURCE_CHOICES = [
+        ("manual", "Manual entry"),
+        ("sync", "Roster sync"),
+        ("trade_pair", "Trade-pair inference"),
+        ("draft", "Draft import"),
+    ]
+
     team = models.ForeignKey(
         TeamSeasonOutlook, on_delete=models.CASCADE, related_name="offseason_moves"
+    )
+    # Season this move AFFECTS — the projected target season (e.g. 2027 for the
+    # 2026-27 outlook), NOT the calendar offseason window it happened in. Makes
+    # moves season-scoped so last year's rows are no longer immortal and
+    # in-season trades are filterable (order/filter those by transaction_date).
+    # NOT NULL after migration 0027 (see the outlook.season note).
+    season = models.ForeignKey(
+        "NBASeason", on_delete=models.CASCADE, related_name="outseason_moves",
+        help_text=(
+            "Target season this move affects (the projected season, e.g. 2027 "
+            "for the 2026-27 outlook) — not the calendar offseason window; "
+            "order in-season transactions by transaction_date."
+        ),
     )
     move_type = models.CharField(max_length=20, choices=MOVE_TYPE_CHOICES)
     player_name = models.CharField(max_length=100)
@@ -994,6 +1041,13 @@ class TeamOutseasonMove(models.Model):
     round_number = models.IntegerField(null=True, blank=True)
     overall_pick = models.IntegerField(null=True, blank=True)
     mps_score = models.FloatField(null=True, blank=True)
+    # When the transaction actually happened (distinct from created_at, the row's
+    # write time) — lets in-season trades be ordered and filtered by date.
+    transaction_date = models.DateField(null=True, blank=True)
+    # How the row was produced (audit provenance for the sync-vs-manual question).
+    source = models.CharField(
+        max_length=20, choices=SOURCE_CHOICES, default="manual", blank=True,
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
