@@ -35,7 +35,7 @@ from nba.models import (
     TeamOutseasonMove,
     TeamSeasonOutlook,
 )
-from nba.providers.nba_api_provider import NBAApiProvider
+from nba.providers.nba_api_provider import NBAApiProvider, _season_str
 from nba.utils.name_utils import normalize_name
 
 MIN_MPG = 5.0
@@ -61,7 +61,9 @@ class Command(BaseCommand):
         )
         parser.add_argument(
             "--nba-season", dest="nba_season", default=None, metavar="SEASON_STR",
-            help='NBA.com season string, e.g. "2025-26". Defaults to auto-derived from --source-season.',
+            help='NBA.com season key that drives the "current roster" fetch, e.g. '
+                 '"2026-27". Defaults to the target season (e.g. 2026-27 for '
+                 '--target-season 2027).',
         )
         parser.add_argument(
             "--team", dest="team_filter", default=None, metavar="SLUG",
@@ -87,7 +89,11 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         source_season: int = options["source_season"]
         target_season: int = options["target_season"]
-        nba_season_str: str = options["nba_season"] or f"{source_season - 1}-{str(source_season)[2:]}"
+        # "Current" rosters = the projection (target) season's rosters, so the
+        # default season key derives from target_season, not source_season. This
+        # resolved string is authoritative: it drives BOTH the fetch (Step 2) and
+        # the header, so the log can never claim a season the fetch didn't use.
+        nba_season_str: str = options["nba_season"] or _season_str(target_season)
         team_filter: str | None = options.get("team_filter")
         dry_run: bool = options["dry_run"]
         skip_existing: bool = options["skip_existing"]
@@ -149,7 +155,7 @@ class Command(BaseCommand):
         teams_with_empty_roster: list[str] = []
 
         for team in all_teams:
-            roster = provider.get_team_roster(team.nba_team_id, source_season)
+            roster = provider.get_team_roster(team.nba_team_id, season=nba_season_str)
             if not roster:
                 teams_with_empty_roster.append(team.slug)
                 self.stderr.write(
