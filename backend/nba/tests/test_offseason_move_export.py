@@ -12,6 +12,7 @@ Invariants pinned here:
 
 import csv
 import tempfile
+from datetime import date
 from pathlib import Path
 
 from django.core.management import call_command
@@ -44,6 +45,7 @@ class ExportOffseasonMovesTests(TestCase):
             team=cls.out, season=cls.s2027, move_type="traded_in",
             player_name="Giannis Antetokounmpo", detail="From Milwaukee",
             impact_rating="high", source="manual",
+            transaction_date=date(2026, 7, 10),
         )
         TeamOutseasonMove.objects.create(
             team=cls.out, season=cls.s2027, move_type="signed",
@@ -107,5 +109,8 @@ class ExportOffseasonMovesTests(TestCase):
         restored = TeamOutseasonMove.objects.filter(season=self.s2027)
         self.assertEqual(restored.count(), 2)
         by_name = {m.player_name: m for m in restored}
-        self.assertEqual(by_name["Giannis Antetokounmpo"].move_type, "traded_in")
-        self.assertEqual(by_name["Giannis Antetokounmpo"].team_id, self.out.id)
+        giannis = by_name["Giannis Antetokounmpo"]
+        self.assertEqual(giannis.move_type, "traded_in")
+        self.assertEqual(giannis.team_id, self.out.id)
+        # transaction_date survives export -> import (import now reads the column).
+        self.assertEqual(giannis.transaction_date, date(2026, 7, 10))
