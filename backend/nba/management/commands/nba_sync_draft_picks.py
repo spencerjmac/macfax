@@ -192,6 +192,9 @@ class Command(BaseCommand):
                     "round_number": round_num,
                     "overall_pick": overall_pick,
                     "mps_score": mps,
+                    # Draft-import provenance. transaction_date left NULL: the
+                    # DraftHistory pull carries no per-pick date.
+                    "source": "draft",
                 },
             )
 

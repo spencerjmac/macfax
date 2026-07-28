@@ -75,6 +75,14 @@ class Command(BaseCommand):
             "--skip-existing", dest="skip_existing", action="store_true",
             help="Skip players who already have any TeamOutseasonMove for the target outlook.",
         )
+        parser.add_argument(
+            "--replace", action="store_true",
+            help=(
+                "Delete existing source='sync' moves for the target season before "
+                "recreating them, so departed / re-signed players self-heal instead "
+                "of lingering. Draft- and manual-sourced rows are left untouched."
+            ),
+        )
 
     def handle(self, *args, **options):
         source_season: int = options["source_season"]
@@ -83,6 +91,7 @@ class Command(BaseCommand):
         team_filter: str | None = options.get("team_filter")
         dry_run: bool = options["dry_run"]
         skip_existing: bool = options["skip_existing"]
+        replace: bool = options["replace"]
 
         if dry_run:
             self.stdout.write(self.style.WARNING("DRY RUN — no rows will be written.\n"))
@@ -267,6 +276,26 @@ class Command(BaseCommand):
         dep_created = dep_existed = dep_no_outlook = 0
         acq_created = acq_existed = acq_no_outlook = acq_drafted_skip = 0
 
+        # ── Step 5a: --replace purge (source="sync" only) ─────────────────────
+        # get_or_create never removes rows, so a player who left (or re-signed
+        # elsewhere) leaves a stale sync move behind on every re-run. --replace
+        # clears this command's own rows for the target season first; draft- and
+        # manual-sourced moves are untouched so a routine re-sync can't nuke them.
+        if replace:
+            stale = TeamOutseasonMove.objects.filter(
+                team__in=all_outlooks, source="sync"
+            )
+            n = stale.count()
+            if dry_run:
+                self.stdout.write(self.style.WARNING(
+                    f"  --replace: WOULD delete {n} existing source='sync' moves.\n"
+                ))
+            else:
+                stale.delete()
+                self.stdout.write(self.style.WARNING(
+                    f"  --replace: deleted {n} existing source='sync' moves.\n"
+                ))
+
         # Departures
         for pid, dep in departures.items():
             outlook = get_outlook(dep["prior_team"])
@@ -292,7 +321,10 @@ class Command(BaseCommand):
                     season=outlook.season,
                     player_name=dep["name"],
                     move_type="lost",
-                    defaults={"detail": detail, "impact_rating": "medium"},
+                    # source="sync": roster-diff origin (vs manual CSV). transaction_date
+                    # left NULL — a snapshot diff has no per-transaction date to stamp.
+                    defaults={"detail": detail, "impact_rating": "medium",
+                              "source": "sync"},
                 )
                 if was_created:
                     dep_created += 1
@@ -354,7 +386,10 @@ class Command(BaseCommand):
                     season=outlook.season,
                     player_name=acq["name"],
                     move_type="signed",
-                    defaults={"detail": detail, "impact_rating": "medium"},
+                    # source="sync": roster-diff origin (vs manual CSV). transaction_date
+                    # left NULL — a snapshot diff has no per-transaction date to stamp.
+                    defaults={"detail": detail, "impact_rating": "medium",
+                              "source": "sync"},
                 )
                 if was_created:
                     acq_created += 1
