@@ -31,15 +31,13 @@ from nba.models import (
     NBASeason,
     NBATeam,
     NBAPlayer,
+    NBAPlayerGameStats,
     NBAPlayerSeasonStats,
     TeamOutseasonMove,
     TeamSeasonOutlook,
 )
 from nba.providers.nba_api_provider import NBAApiProvider, _season_str
 from nba.utils.name_utils import normalize_name
-
-MIN_MPG = 5.0
-MIN_GP = 10
 
 
 class Command(BaseCommand):
@@ -109,31 +107,46 @@ class Command(BaseCommand):
             raise CommandError(f"NBASeason with year={source_season} not found.")
 
         self.stdout.write(
-            f"Loading prior-season player-team associations "
-            f"(season {source_season_obj.display_name}, gp≥{MIN_GP}, mpg≥{MIN_MPG})…"
+            f"Loading end-of-season prior teams "
+            f"(season {source_season_obj.display_name}, team of each player's last game)…"
         )
 
-        qs = NBAPlayerSeasonStats.objects.select_related("player", "team").filter(
-            season=source_season_obj,
-            season_type="regular",
-            gp__gte=MIN_GP,
-            mpg__gte=MIN_MPG,
+        # The offseason diff baseline is where each player ACTUALLY was going into
+        # the offseason = their team in their LAST game of the source season (by
+        # date). Built gate-free (any player who logged a game) and single-valued
+        # per player. This replaces the old gp≥10/mpg≥5 season-stats gate, which:
+        #  (a) silently dropped low-minute players so their departures vanished, and
+        #  (b) attributed multi-team players to an ARBITRARY stint, so a MID-SEASON
+        #      trade read as an offseason move. With end-of-season attribution a
+        #      player who ended the season on the team he's still on has
+        #      current == prior in Step 3 and correctly produces no move.
+        last_game_rows = list(
+            NBAPlayerGameStats.objects
+            .filter(game__season=source_season_obj, team__isnull=False)
+            .order_by("player_id", "-game__date", "-game__game_id")
+            .distinct("player_id")
+            .select_related("player", "team")
         )
 
         prior_team_by_player_id: dict[int, str] = {}
         prior_team_by_name: dict[str, str] = {}
         player_name_by_id: dict[int, str] = {}
 
-        for row in qs:
-            if row.team is None:
-                continue
+        for row in last_game_rows:
             pid = row.player.player_id
             prior_team_by_player_id[pid] = row.team.slug
             player_name_by_id[pid] = row.player.name
             prior_team_by_name[normalize_name(row.player.name)] = row.team.slug
 
+        # Correctness invariant: distinct('player_id') yields exactly one row per
+        # player, so the prior map is single-valued — the guard against attaching a
+        # departure to the wrong (self-attribution-class) ledger for a traded player.
+        assert len(prior_team_by_player_id) == len(last_game_rows), (
+            "end-of-season prior map is not single-valued per player"
+        )
+
         self.stdout.write(
-            f"  {len(prior_team_by_player_id)} qualifying players from prior season.\n"
+            f"  {len(prior_team_by_player_id)} players with an end-of-season team.\n"
         )
 
         # ── Step 2: Load current rosters from NBA.com ─────────────────────────
