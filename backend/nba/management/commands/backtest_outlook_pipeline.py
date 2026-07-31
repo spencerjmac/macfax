@@ -52,6 +52,8 @@ class Command(BaseCommand):
                             help="Source season ending year (e.g. 2025 for 2024-25).")
         parser.add_argument("--target-season", type=int, required=True,
                             help="Target season ending year to project+score (e.g. 2026).")
+        parser.add_argument("--allocator", choices=["demand", "persistence"], default="demand",
+                            help="Minutes allocator passed through to compute (A/B the K1 rewrite).")
 
     def handle(self, *args, **opts):
         source_year, target_year = opts["source_season"], opts["target_season"]
@@ -75,7 +77,7 @@ class Command(BaseCommand):
                 f"({source_season.display_name} → {target_season.display_name})."
             )
             call_command("compute_nba_team_outlooks", source_season=source_year,
-                         target_season=target_year, verbosity=0)
+                         target_season=target_year, allocator=opts["allocator"], verbosity=0)
             rows = self._collect(target_season, actual_wins, actual_net)
             slots = self._collect_slots(target_season)
             transaction.set_rollback(True)   # nothing persists

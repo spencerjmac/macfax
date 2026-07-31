@@ -224,6 +224,11 @@ class Command(BaseCommand):
                  "frozen rows are skipped (they back a published carousel run and "
                  "must not drift mid-series).",
         )
+        parser.add_argument(
+            "--allocator", choices=["demand", "persistence"], default="demand",
+            help="Minutes allocator: 'demand' (default, BPR-derived) or "
+                 "'persistence' (K1 — carry prior minutes forward).",
+        )
 
     def handle(self, *args, **options):
         source_year = options["source_season"]
@@ -232,6 +237,7 @@ class Command(BaseCommand):
         dry_run = options["dry_run"]
         self.rookie_pin = options.get("rookie_pin", False)
         self.force = options.get("force", False)
+        self.allocator = options.get("allocator", "demand")
         if dry_run:
             self.stdout.write(self.style.WARNING("DRY RUN — no DB writes"))
         if self.rookie_pin:
@@ -349,7 +355,10 @@ class Command(BaseCommand):
                     pv = pv * (1.0 - lam)
                     slot["pv_source"] = "stored"
                 slot["pv_effective"] = pv
-            slots = self._allocate_minutes(slots)
+            if self.allocator == "persistence":
+                slots = self._allocate_minutes_persistence(slots)
+            else:
+                slots = self._allocate_minutes(slots)
             team_data[outlook.pk] = {"outlook": outlook, "slots": slots}
 
         # Compute empirical league baseline (average Σ minutes_share×bpr across all teams)
@@ -1083,6 +1092,72 @@ class Command(BaseCommand):
 
         for s in pinned:
             s["demand"] = None  # exempt from V3 monotonicity (pinned, not demand-ranked)
+            s["minutes_share"] = s["pinned_share"]
+
+        return slots
+
+    def _allocate_minutes_persistence(self, slots):
+        """
+        K1 persistence allocator — A/B alternative to _allocate_minutes, selected
+        by --allocator persistence.
+
+        Minutes are CARRIED FORWARD from each player's prior season instead of
+        derived from a BPR demand function: base = prior_mpg / 20. The vacated
+        pool (departed players are already absent from `slots`) is redistributed
+        PROPORTIONAL TO PRIOR MINUTES — persistence-weighted, deliberately NOT
+        BPR-weighted — so a high-usage / modest-BPR star keeps his minutes rather
+        than being benched by the squared demand term. Rookie pin is UNCHANGED
+        from the demand path. Convention: share × 20 = MPG-equiv.
+        """
+        pin_enabled = getattr(self, "rookie_pin", False)
+        pinned = [s for s in slots if pin_enabled and s.get("is_rookie_prior")]
+        competitive = [s for s in slots if not (pin_enabled and s.get("is_rookie_prior"))]
+
+        # Rookie pin: identical to the demand allocator (do NOT touch).
+        for s in pinned:
+            prior_eff_mpg = s.get("mpg") or ROOKIE_EFF_MPG_FLOOR
+            s["pinned_share"] = max(MINUTES_FLOOR, min(MINUTES_CEIL, prior_eff_mpg / 20.0))
+
+        pinned_total = sum(s["pinned_share"] for s in pinned)
+        remaining_pool = TOTAL_SHARES - pinned_total
+
+        MIN_COMPETITIVE_POOL = 2.5
+        if competitive and remaining_pool < MIN_COMPETITIVE_POOL and pinned_total > 0:
+            scale = (TOTAL_SHARES - MIN_COMPETITIVE_POOL) / pinned_total
+            logger.warning(
+                "Rookie-stacked roster (persistence): pinned %.2f leaves only %.2f "
+                "for %d veterans — scaling pinned by %.3f",
+                pinned_total, remaining_pool, len(competitive), scale,
+            )
+            for s in pinned:
+                s["pinned_share"] *= scale
+            pinned_total = sum(s["pinned_share"] for s in pinned)
+            remaining_pool = TOTAL_SHARES - pinned_total
+
+        if not competitive:
+            scale = (TOTAL_SHARES / pinned_total) if pinned_total > 0 else 1.0
+            for s in pinned:
+                s["demand"] = None
+                s["pinned_share"] *= scale
+                s["minutes_share"] = s["pinned_share"]
+            return slots
+
+        # Persistence base = prior minutes carried forward. Redistribute the
+        # vacated pool PROPORTIONAL TO PRIOR MINUTES (not BPR) — this proportional
+        # split is the whole point of K1; a BPR-weighted split would reintroduce
+        # the demand-function star-benching at the margin.
+        base = [max(0.0, (slot.get("mpg") or 15.0) / 20.0) for slot in competitive]
+        base_total = sum(base) or 1.0
+        raw = [b / base_total * remaining_pool for b in base]
+        clamped = [max(MINUTES_FLOOR, min(MINUTES_CEIL, s)) for s in raw]
+        normalized = self._water_fill(clamped, remaining_pool)
+
+        for slot, b, share in zip(competitive, base, normalized):
+            slot["demand"] = b  # persistence base (monotone in prior mpg) for V3/logging
+            slot["minutes_share"] = share
+
+        for s in pinned:
+            s["demand"] = None
             s["minutes_share"] = s["pinned_share"]
 
         return slots
