@@ -82,16 +82,25 @@ WINS_ADDED_SCALAR = 0.38       # converts (minutes_share × bpr) → wins added
 # fields carry the PV-based numbers.
 #
 # PV_SLOPE — HUMAN-REVIEWED CONSTANT, do not auto-update.
-# Derivation: `manage.py derive_nba_slope --pairs 2022:2023,2023:2024,2024:2025`
-# (Phase 2 Stage 2, 2026-07-07, operator-approved decision tree).
-#   Pooled through-origin OLS, actual adj_net(Y+1) ~ (team_pv − league_pv_mean),
+# Derivation: LOYO out-of-sample re-fit under the CURRENT pipeline (2026-07-30,
+# operator-approved). The old 5.591 was fit for the PRE-K1, PRE-trim allocator;
+# roster trim sharpened the team_pv distribution, leaving 5.591 ~2x too small
+# (compression diagnostic: projected AdjEM SD 2.55 vs actual 5.39, ratio 0.47).
+#   Through-origin OLS, actual adj_net(Y+1) ~ (team_pv − league_pv_mean),
 #   team_pv = minutes-share-weighted mean pv_effective under MINUTES_CEIL=1.80.
-#   N=90, r=0.478, RMSE=4.58. Same lineage gate + 2025→2026 exclusion as SLOPE.
-#   History: 3.58 (old allocator CEIL=1.20 weights; its 2024→25 targets also
-#   carried the playoff-row season_type corruption — see SLOPE note).
-PV_SLOPE = 5.591
-PV_SIGMA_EM = 4.6              # pooled forward RMSE 4.58 (PV path, N=90, same run),
-                               # rounded up. History: 4.5 (old allocator pooling).
+#   Pairs 2022:2023,2023:2024,2024:2025 (2025→2026 lineage-excluded, as before).
+#   LOYO folds: demand 11.72/9.84/9.00 → pooled 10.10 (r 0.683); persistence
+#   12.10/10.23/9.37 → pooled 10.52 (r 0.712). Nearly identical across allocators
+#   → one value serves both (not overfit). OOS wins MAE 7.76→6.96; r INVARIANT
+#   (pure scale re-fit — the ordering ceiling 0.68-0.71 is the values problem,
+#   injury/tanking-deflation, untouched here by design).
+#   History: 3.58 (old allocator CEIL=1.20) → 5.591 (Phase 2, 2026-07-07,
+#   pre-trim) → 10.1 (LOYO under K1+trim+pool-12, 2026-07-30).
+PV_SLOPE = 10.1
+PV_SIGMA_EM = 4.0             # LOYO pooled forward RMSE 3.94 (demand) / 3.82
+                              # (persistence), rounded up. Band coverage: 73-77%
+                              # of actuals inside ±1σ (≥68% target, mildly
+                              # conservative). History: 4.5 → 4.6 → 4.0.
 # PV_WINS_INTERCEPT (removed Phase 2): the fixed 41.0 assumed projected EM is
 # exactly mean-zero. handle() now computes effective_intercept =
 # 41.0 − WINS_PER_EM × league_mean_em each full-league run, guaranteeing closure.
