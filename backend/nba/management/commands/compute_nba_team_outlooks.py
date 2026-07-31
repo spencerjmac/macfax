@@ -102,7 +102,10 @@ MINUTES_CEIL = 1.80            # NBA star ceiling (~36 MPG equiv). Replaces the
                                # NBA star, flattened rotations, and compressed
                                # league quality spread (Phase 2 P2 fix).
 POWER_EXPONENT = 2.0           # demand concentration exponent
-TOTAL_SHARES = 5.0             # 200 team-minutes / 40-min game
+TOTAL_SHARES = 12.0            # 240 NBA player-minutes / 48-min game ÷ 20-MPG/share
+                               # (was 5.0 = NCAA 200/40 — the lone wrong-convention
+                               # constant; every other uses 20-MPG/share, e.g.
+                               # MINUTES_CEIL 1.80 = 36 MPG, rookie pin /20)
 
 # ── Rookie priors (HUMAN-REVIEWED CONSTANTS, Phase 4 Stage 2, 2026-07-13) ─────
 # Drafted players have no NBA stat to project from; before Phase 4 they were
@@ -572,7 +575,7 @@ class Command(BaseCommand):
         if v2_bad:
             failures.append(f"V2 share closure: {', '.join(v2_bad)}")
         self.stdout.write(
-            f"V2 share closure: {'FAIL ' + ', '.join(v2_bad) if v2_bad else 'OK (all teams Σshare ≈ 5.0)'}"
+            f"V2 share closure: {'FAIL ' + ', '.join(v2_bad) if v2_bad else 'OK (all teams Σshare ≈ 12.0)'}"
         )
 
         # V3 — Allocator monotonicity: shares non-increasing in demand.
@@ -1008,7 +1011,7 @@ class Command(BaseCommand):
 
         demand = BPR_component (above replacement) + MPG_component
         Power transform concentrates minutes in the top rotation.
-        Water-fill normalize to TOTAL_SHARES = 5.0.
+        Water-fill normalize to TOTAL_SHARES = 12.0.
 
         Phase 4.5: drafted rookies (is_rookie_prior) have their share PINNED
         directly from the empirical pick→MPG prior, then veterans compete for
