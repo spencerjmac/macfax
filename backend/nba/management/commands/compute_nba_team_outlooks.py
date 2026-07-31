@@ -106,6 +106,11 @@ TOTAL_SHARES = 12.0            # 240 NBA player-minutes / 48-min game ÷ 20-MPG/
                                # (was 5.0 = NCAA 200/40 — the lone wrong-convention
                                # constant; every other uses 20-MPG/share, e.g.
                                # MINUTES_CEIL 1.80 = 36 MPG, rookie pin /20)
+KEEP_ROTATION = 10             # non-rookie slots kept before minutes allocation
+                               # (+ ALL rookies). Trims ~22-man projected rosters
+                               # to a real rotation so Σ(prior_mpg/20) doesn't
+                               # overflow the pool and water-fill dilute everyone.
+                               # Ranked by prior MPG, NOT BPR (see _trim_roster).
 
 # ── Rookie priors (HUMAN-REVIEWED CONSTANTS, Phase 4 Stage 2, 2026-07-13) ─────
 # Drafted players have no NBA stat to project from; before Phase 4 they were
@@ -336,6 +341,7 @@ class Command(BaseCommand):
                 logger.warning("No qualifying players for %s — skipping", outlook.team_abbr)
                 team_data[outlook.pk] = {"outlook": outlook, "slots": []}
                 continue
+            slots = self._trim_roster(slots, outlook.team_abbr)
             for slot in slots:
                 slot["projected_obpr"], slot["projected_dbpr"], slot["projected_bpr"] = (
                     self._project_bpr(slot, league_obpr_avg, league_dbpr_avg, league_bpr_avg)
@@ -1013,6 +1019,39 @@ class Command(BaseCommand):
         return sigma
 
     # ── Minutes allocation ─────────────────────────────────────────────────────
+
+    def _trim_roster(self, slots, team_abbr=""):
+        """
+        Trim an assembled roster to a realistic rotation BEFORE minutes
+        allocation. Production rosters carry ~22 players (returners + every
+        offseason add + two-way / deep bench). Feeding all of them to the
+        allocator makes Σ(prior_mpg / 20) far exceed TOTAL_SHARES, so water-fill
+        scales everyone down (~45%) and the DISPLAYED minutes collapse — a
+        healthy star drops to ~20 MPG-equiv (team_pv is a share-weighted mean so
+        the projection survives, but the roster page is unshippable).
+
+        Keep the KEEP_ROTATION highest-prior-MINUTES non-rookie slots plus ALL
+        drafted rookies. Ranked by prior MPG, NOT BPR: a BPR rank would
+        reintroduce the exact demand-function bias K1 exists to kill — it would
+        cut a high-minutes, modest-BPR role player (a George / a Bailey) before
+        allocation even runs. Prior MPG is the same signal the persistence
+        allocator uses, so trim and allocation stay consistent. Rookies are kept
+        unconditionally (a top-5 pick has low prior MPG but is a development
+        investment with pinned minutes — dropping him would be wrong).
+        """
+        rookies = [s for s in slots if s.get("is_rookie_prior")]
+        non_rookies = [s for s in slots if not s.get("is_rookie_prior")]
+        non_rookies.sort(key=lambda s: (s.get("mpg") or 0.0), reverse=True)
+        kept = rookies + non_rookies[:KEEP_ROTATION]
+        assert kept, f"trim produced an empty roster for {team_abbr}"
+        kept_pool = sum((s.get("mpg") or 0.0) for s in kept) / 20.0
+        logger.info(
+            "Roster trim %s: %d → %d (%d rookies + top %d by prior MPG); "
+            "Σ(kept mpg/20)=%.1f vs pool %.1f",
+            team_abbr, len(slots), len(kept), len(rookies),
+            min(KEEP_ROTATION, len(non_rookies)), kept_pool, TOTAL_SHARES,
+        )
+        return kept
 
     def _allocate_minutes(self, slots):
         """
