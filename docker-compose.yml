@@ -38,6 +38,7 @@ services:
       - .env.docker
     environment:
       REDIS_URL: "redis://redis:6379/1"
+      RUNNING_IN_DOCKER: "1"
     depends_on:
       db:
         condition: service_healthy

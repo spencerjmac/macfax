@@ -12,8 +12,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Load .env then .env.local (local overrides for dev); both relative to backend dir
 load_dotenv(BASE_DIR / ".env")
-load_dotenv(BASE_DIR / ".env.local", override=True)
-
+if not os.getenv("RUNNING_IN_DOCKER"):
+    load_dotenv(BASE_DIR / ".env.local", override=True)
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-dev-key-change-this")
 

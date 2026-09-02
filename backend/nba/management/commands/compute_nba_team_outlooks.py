@@ -51,6 +51,34 @@ PIPELINE_VERSION = "2.3"
 REPLACEMENT_LEVEL = 2.0        # BPR units added above zero to form demand signal
 SHRINKAGE_RETURNER = 0.10      # 10% regression to league mean for returning players
 SHRINKAGE_ACQUISITION = 0.20   # 20% for trades/signings (higher projection uncertainty)
+
+# AGE_CURVE — HUMAN-REVIEWED CONSTANT, do not auto-update.
+# Empirical BPR aging curve: mean bpr(Y+1)−bpr(Y) by age at Y, derived 2026-08-03
+# on pairs 2022:2023/2023:2024/2024:2025 (2025→2026 lineage-excluded), FULL
+# population N=1321. Buckets: ≤20 +0.61, 21-30 ≈0 (flat prime), 31-33 −0.50, 34+
+# −0.17 (survivorship-masked → regularized toward the 31-33 decline). Piecewise-
+# linear knots (age, delta); clamp beyond the ends.
+#   CAVEAT: per-player LOYO barely beats zero (age Δ is small vs BPR noise SD ~2.4).
+#   This term is here for correct veteran-decline / young-development DIRECTION and
+#   to drive the development-watch — NOT a large r lift. The dominant young
+#   high-pick development (+2.69 for young bad-team players) is NOT captured here;
+#   that is the separate team-agnostic PICK-CONDITIONAL curve (next task).
+AGE_CURVE_KNOTS = [(20.0, 0.60), (21.0, 0.00), (28.0, 0.00), (32.0, -0.50)]
+
+
+def age_bpr_delta(age):
+    """Piecewise-linear aging delta added to a returner's projected BPR."""
+    if age is None:
+        return 0.0
+    ks = AGE_CURVE_KNOTS
+    if age <= ks[0][0]:
+        return ks[0][1]
+    if age >= ks[-1][0]:
+        return ks[-1][1]
+    for (a0, v0), (a1, v1) in zip(ks, ks[1:]):
+        if a0 <= age <= a1:
+            return v0 + (v1 - v0) * (age - a0) / (a1 - a0)
+    return 0.0
 # SLOPE — HUMAN-REVIEWED CONSTANT, do not auto-update.
 # Derivation: `manage.py derive_nba_slope --pairs 2022:2023,2023:2024,2024:2025`
 # (Phase 2 Stage 2, 2026-07-07, operator-approved decision tree).
@@ -368,6 +396,11 @@ class Command(BaseCommand):
                     slot["pv_source"] = "bpr_fallback"
                 else:
                     pv = pv * (1.0 - lam)
+                    # Age curve also shifts the stored-PV path (the fallback path
+                    # already sees it via the aged projected_bpr). Convert the
+                    # BPR-unit aging delta to PV (z) units so both paths age
+                    # consistently and team_pv reflects development/decline.
+                    pv += age_bpr_delta(slot.get("age")) / league_bpr_sd
                     slot["pv_source"] = "stored"
                 slot["pv_effective"] = pv
             if self.allocator == "persistence":
@@ -954,6 +987,21 @@ class Command(BaseCommand):
         proj_obpr = slot["obpr"] * (1 - lam) + league_obpr_avg * lam
         proj_dbpr = slot["dbpr"] * (1 - lam) + league_dbpr_avg * lam
         proj_bpr  = slot["bpr"]  * (1 - lam) + league_bpr_avg  * lam
+
+        # Age curve: shift projected BPR by the empirical aging delta (young up,
+        # veterans down). Split across O/D proportional to their magnitude so the
+        # pair stays consistent with the aged total. Rookies exempt (returned
+        # above); missing age → no shift (age_bpr_delta(None)=0).
+        age_delta = age_bpr_delta(slot.get("age"))
+        if age_delta:
+            mag = abs(proj_obpr) + abs(proj_dbpr)
+            if mag > 1e-9:
+                proj_obpr += age_delta * abs(proj_obpr) / mag
+                proj_dbpr += age_delta * abs(proj_dbpr) / mag
+            else:
+                proj_obpr += age_delta / 2.0
+                proj_dbpr += age_delta / 2.0
+            proj_bpr += age_delta
 
         # ── RAPM-inflation cap ────────────────────────────────────────────────
         # When prior-informed RAPM >> Box BPR by more than 1.5σ, the gap is
