@@ -79,6 +79,34 @@ def age_bpr_delta(age):
         if a0 <= age <= a1:
             return v0 + (v1 - v0) * (age - a0) / (a1 - a0)
     return 0.0
+
+
+# PICK_DEV_CURVE — HUMAN-REVIEWED CONSTANT, do not auto-update.
+# Early-career development bonus by DRAFT PICK, ON TOP OF the age curve. Derived
+# 2026-09-10 on pairs 2022:2023/2023:2024/2024:2025 (2025→2026 lineage-excluded),
+# all teams (team-agnostic), RESIDUAL after the age curve so it does not
+# double-count general aging. Fires only in years_of_experience ≤ 3 (the signal is
+# concentrated there; later-career pick effect ≈ 0). Early-career residuals by
+# pick: 1-3 +0.52, 4-9 +0.34, 10-20 +0.16, 21-30 −0.06, 31-60 −0.25 (strongly
+# monotone). This is the decomposed +2.08 young-bad-team development — high picks
+# develop, late picks fade — keyed on PICK, not team (so it does not re-absorb the
+# P3 tanking-context effect).
+PICK_DEV_KNOTS = [(2.0, 0.52), (6.5, 0.34), (15.0, 0.16), (25.0, -0.06), (45.0, -0.25)]
+
+
+def pick_dev_bonus(pick, yrs_exp):
+    """Early-career (yrs_exp ≤ 3) development bonus by draft pick; 0 otherwise."""
+    if pick is None or yrs_exp is None or yrs_exp > 3:
+        return 0.0
+    ks = PICK_DEV_KNOTS
+    if pick <= ks[0][0]:
+        return ks[0][1]
+    if pick >= ks[-1][0]:
+        return ks[-1][1]
+    for (p0, v0), (p1, v1) in zip(ks, ks[1:]):
+        if p0 <= pick <= p1:
+            return v0 + (v1 - v0) * (pick - p0) / (p1 - p0)
+    return 0.0
 # SLOPE — HUMAN-REVIEWED CONSTANT, do not auto-update.
 # Derivation: `manage.py derive_nba_slope --pairs 2022:2023,2023:2024,2024:2025`
 # (Phase 2 Stage 2, 2026-07-07, operator-approved decision tree).
@@ -305,6 +333,7 @@ class Command(BaseCommand):
 
         if target_year is None:
             target_year = source_season.year + 1
+        self.source_year = source_season.year   # for pick-dev years-of-experience
 
         target_display = f"{target_year - 1}-{str(target_year)[2:]}"
         if dry_run:
@@ -396,11 +425,11 @@ class Command(BaseCommand):
                     slot["pv_source"] = "bpr_fallback"
                 else:
                     pv = pv * (1.0 - lam)
-                    # Age curve also shifts the stored-PV path (the fallback path
-                    # already sees it via the aged projected_bpr). Convert the
-                    # BPR-unit aging delta to PV (z) units so both paths age
+                    # Development delta (age + pick) also shifts the stored-PV path
+                    # (the fallback path already sees it via the aged projected_bpr).
+                    # Convert the BPR-unit delta to PV (z) units so both paths shift
                     # consistently and team_pv reflects development/decline.
-                    pv += age_bpr_delta(slot.get("age")) / league_bpr_sd
+                    pv += slot.get("dev_delta", 0.0) / league_bpr_sd
                     slot["pv_source"] = "stored"
                 slot["pv_effective"] = pv
             if self.allocator == "persistence":
@@ -988,20 +1017,26 @@ class Command(BaseCommand):
         proj_dbpr = slot["dbpr"] * (1 - lam) + league_dbpr_avg * lam
         proj_bpr  = slot["bpr"]  * (1 - lam) + league_bpr_avg  * lam
 
-        # Age curve: shift projected BPR by the empirical aging delta (young up,
-        # veterans down). Split across O/D proportional to their magnitude so the
-        # pair stays consistent with the aged total. Rookies exempt (returned
-        # above); missing age → no shift (age_bpr_delta(None)=0).
-        age_delta = age_bpr_delta(slot.get("age"))
-        if age_delta:
+        # Development delta = general aging (age curve) + early-career pick bonus.
+        # Young/high-pick up, veterans/late-picks down. Split across O/D
+        # proportional to magnitude; stored on the slot so the stored-PV path
+        # (handle) applies the same shift to team_pv. Rookies exempt (returned
+        # above); missing age/pick → 0.
+        player_obj = slot.get("player_obj")
+        pick = getattr(player_obj, "draft_overall_pick", None)
+        dyear = getattr(player_obj, "draft_year", None)
+        yrs_exp = (self.source_year - dyear - 1) if dyear is not None else None
+        dev_delta = age_bpr_delta(slot.get("age")) + pick_dev_bonus(pick, yrs_exp)
+        slot["dev_delta"] = dev_delta
+        if dev_delta:
             mag = abs(proj_obpr) + abs(proj_dbpr)
             if mag > 1e-9:
-                proj_obpr += age_delta * abs(proj_obpr) / mag
-                proj_dbpr += age_delta * abs(proj_dbpr) / mag
+                proj_obpr += dev_delta * abs(proj_obpr) / mag
+                proj_dbpr += dev_delta * abs(proj_dbpr) / mag
             else:
-                proj_obpr += age_delta / 2.0
-                proj_dbpr += age_delta / 2.0
-            proj_bpr += age_delta
+                proj_obpr += dev_delta / 2.0
+                proj_dbpr += dev_delta / 2.0
+            proj_bpr += dev_delta
 
         # ── RAPM-inflation cap ────────────────────────────────────────────────
         # When prior-informed RAPM >> Box BPR by more than 1.5σ, the gap is

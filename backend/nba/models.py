@@ -250,6 +250,8 @@ class NBAPlayer(models.Model):
     # Computed across all qualifying seasons (≥500 min) from stored bpr values
     peak_bpr   = models.FloatField(null=True, blank=True, help_text="Best single-season BPR (≥500 min qualifier)")
     career_bpr = models.FloatField(null=True, blank=True, help_text="Minutes-weighted career average BPR")
+    draft_overall_pick = models.IntegerField(null=True, blank=True, help_text="NBA.com DraftHistory overall pick (null = undrafted/unknown)")
+    draft_year = models.IntegerField(null=True, blank=True, help_text="Draft SEASON year from NBA.com DraftHistory (entered NBA year+1)")
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
