@@ -1,0 +1,197 @@
+team_slug,player_name,move_type,salary,contract_years,notes,impact_rating,source,transaction_date,season,round_number,overall_pick,mps_score
+atlanta-hawks,Henri Veesaar,drafted,,,MPS=61.8,medium,manual,,2027,2,52,61.8
+atlanta-hawks,Kingston Flemings,drafted,,,MPS=82.8,medium,manual,,2027,1,8,82.8
+atlanta-hawks,Zuby Ejiofor,drafted,,,MPS=61.5,medium,manual,,2027,1,23,61.5
+atlanta-hawks,Luke Kennard,lost,,,Left via offseason — now on los-angeles-lakers,medium,manual,,2027,,,
+atlanta-hawks,Trae Young,lost,,,Left via offseason — now on washington-wizards,medium,manual,,2027,,,
+atlanta-hawks,Jonathan Kuminga,signed,,,Acquired from golden-state-warriors,medium,manual,,2027,,,
+atlanta-hawks,Keshon Gilbert,signed,,,Acquired from outside NBA,medium,manual,,2027,,,
+atlanta-hawks,RayJ Dennis,signed,,,Acquired from indiana-pacers,medium,manual,,2027,,,
+atlanta-hawks,Tony Bradley,signed,,,Acquired from indiana-pacers,medium,manual,,2027,,,
+boston-celtics,Chris Cenac Jr.,drafted,,,MPS=61.0,medium,manual,,2027,1,27,61.0
+boston-celtics,Dillon Mitchell,drafted,,,Round 2 Pick 40,low,manual,,2027,2,40,
+boston-celtics,Chris Boucher,lost,,,Left via offseason — now on no NBA roster,medium,manual,,2027,,,
+boston-celtics,Josh Minott,lost,,,Left via offseason — now on brooklyn-nets,medium,manual,,2027,,,
+boston-celtics,Xavier Tillman,lost,,,Left via offseason — now on charlotte-hornets,medium,manual,,2027,,,
+boston-celtics,Dalano Banton,signed,,,Acquired from outside NBA,medium,manual,,2027,,,
+boston-celtics,Max Shulga,signed,,,Acquired from outside NBA,medium,manual,,2027,,,
+brooklyn-nets,Joshua Jefferson,drafted,,,MPS=62.9,medium,manual,,2027,1,28,62.9
+brooklyn-nets,Mikel Brown Jr.,drafted,,,MPS=75.5,medium,manual,,2027,1,6,75.5
+brooklyn-nets,Tyler Bilodeau,drafted,,,MPS=45.6,medium,manual,,2027,2,43,45.6
+brooklyn-nets,Josh Minott,signed,,,Acquired from boston-celtics,medium,manual,,2027,,,
+brooklyn-nets,Ochai Agbaji,signed,,,Acquired from toronto-raptors,medium,manual,,2027,,,
+charlotte-hornets,Christian Anderson,drafted,,,MPS=63.1,medium,manual,,2027,1,18,63.1
+charlotte-hornets,Hannes Steinbach,drafted,,,MPS=67.2,medium,manual,,2027,1,14,67.2
+charlotte-hornets,Collin Sexton,lost,,,Left via offseason — now on chicago-bulls,medium,manual,,2027,,,
+charlotte-hornets,Tosan Evbuomwan,signed,,,Acquired from outside NBA,medium,manual,,2027,,,
+charlotte-hornets,Xavier Tillman,signed,,,Acquired from boston-celtics,medium,manual,,2027,,,
+chicago-bulls,Caleb Wilson,drafted,,,MPS=90.0,medium,manual,,2027,1,4,90.0
+chicago-bulls,Dailyn Swain,drafted,,,MPS=63.7,medium,manual,,2027,1,15,63.7
+chicago-bulls,Dalen Terry,lost,,,Left via offseason — now on philadelphia-76ers,medium,manual,,2027,,,
+chicago-bulls,Jevon Carter,lost,,,Left via offseason — now on orlando-magic,medium,manual,,2027,,,
+chicago-bulls,Collin Sexton,signed,,,Acquired from charlotte-hornets,medium,manual,,2027,,,
+chicago-bulls,Guerschon Yabusele,signed,,,Acquired from new-york-knicks,medium,manual,,2027,,,
+chicago-bulls,Mouhamadou Gueye,signed,,,Acquired from outside NBA,medium,manual,,2027,,,
+chicago-bulls,Nick Richards,signed,,,Acquired from phoenix-suns,medium,manual,,2027,,,
+chicago-bulls,Noa Essengue,signed,,,Acquired from outside NBA,medium,manual,,2027,,,
+chicago-bulls,Rob Dillingham,signed,,,Acquired from minnesota-timberwolves,medium,manual,,2027,,,
+cleveland-cavaliers,Meleek Thomas,drafted,,,MPS=56.6,medium,manual,,2027,2,34,56.6
+cleveland-cavaliers,Darius Garland,lost,,,Left via offseason — now on los-angeles-clippers,medium,manual,,2027,,,
+cleveland-cavaliers,De'Andre Hunter,lost,,,Left via offseason — now on sacramento-kings,medium,manual,,2027,,,
+cleveland-cavaliers,Lonzo Ball,lost,,,Left via offseason — now on no NBA roster,medium,manual,,2027,,,
+cleveland-cavaliers,Luke Travers,lost,,,Left via offseason — now on no NBA roster,medium,manual,,2027,,,
+cleveland-cavaliers,Keon Ellis,signed,,,Acquired from sacramento-kings,medium,manual,,2027,,,
+cleveland-cavaliers,Olivier Sarr,signed,,,Acquired from outside NBA,medium,manual,,2027,,,
+dallas-mavericks,Morez Johnson Jr.,drafted,,,MPS=63.8,medium,manual,,2027,1,9,63.8
+dallas-mavericks,Sergio De Larrea,drafted,,,MPS=54.9,medium,manual,,2027,1,25,54.9
+dallas-mavericks,Tobi Lawal,drafted,,,Round 2 Pick 48,low,manual,,2027,2,48,
+dallas-mavericks,Vsevolod Ishchenko,drafted,,,Round 2 Pick 56,low,manual,,2027,2,56,
+dallas-mavericks,Anthony Davis,lost,,,Left via offseason — now on washington-wizards,medium,manual,,2027,,,
+dallas-mavericks,D'Angelo Russell,lost,,,Left via offseason — now on washington-wizards,medium,manual,,2027,,,
+dallas-mavericks,Jaden Hardy,lost,,,Left via offseason — now on washington-wizards,medium,manual,,2027,,,
+dallas-mavericks,Miles Kelly,lost,,,Left via offseason — now on no NBA roster,medium,manual,,2027,,,
+dallas-mavericks,AJ Johnson,signed,,,Acquired from washington-wizards,medium,manual,,2027,,,
+dallas-mavericks,Dereck Lively II,signed,,,Acquired from outside NBA,medium,manual,,2027,,,
+dallas-mavericks,Khris Middleton,signed,,,Acquired from washington-wizards,medium,manual,,2027,,,
+dallas-mavericks,Kyrie Irving,signed,,,Acquired from outside NBA,medium,manual,,2027,,,
+dallas-mavericks,Marvin Bagley III,signed,,,Acquired from washington-wizards,medium,manual,,2027,,,
+denver-nuggets,Bryce Hopkins,drafted,,,MPS=46.4,medium,manual,,2027,2,49,46.4
+denver-nuggets,Trevon Brazile,drafted,,,MPS=51.4,medium,manual,,2027,2,35,51.4
+denver-nuggets,Hunter Tyson,lost,,,Left via offseason — now on no NBA roster,medium,manual,,2027,,,
+detroit-pistons,Ebuka Okorie,drafted,,,MPS=63.6,medium,manual,,2027,1,17,63.6
+detroit-pistons,Ugonna Onyenso,drafted,,,MPS=52.7,medium,manual,,2027,2,53,52.7
+detroit-pistons,Bobi Klintman,lost,,,Left via offseason — now on no NBA roster,medium,manual,,2027,,,
+detroit-pistons,Jaden Ivey,lost,,,Left via offseason — now on no NBA roster,medium,manual,,2027,,,
+detroit-pistons,Isaac Jones,signed,,,Acquired from outside NBA,medium,manual,,2027,,,
+golden-state-warriors,Lajae Jones,drafted,,,Round 2 Pick 54,low,manual,,2027,2,54,
+golden-state-warriors,Yaxel Lendeborg,drafted,,,MPS=78.2,medium,manual,,2027,1,11,78.2
+golden-state-warriors,Jonathan Kuminga,lost,,,Left via offseason — now on atlanta-hawks,medium,manual,,2027,,,
+golden-state-warriors,Omer Yurtseven,lost,,,Left via offseason — now on no NBA roster,medium,manual,,2027,,,
+golden-state-warriors,Charles Bassey,signed,,,Acquired from outside NBA,medium,manual,,2027,,,
+houston-rockets,Bruce Thornton,drafted,,,MPS=52.4,medium,manual,,2027,2,31,52.4
+houston-rockets,Fred VanVleet,signed,,,Acquired from outside NBA,medium,manual,,2027,,,
+houston-rockets,Tristen Newton,signed,,,Acquired from outside NBA,medium,manual,,2027,,,
+indiana-pacers,Braden Smith,drafted,,,MPS=50.3,medium,manual,,2027,2,38,50.3
+indiana-pacers,Bennedict Mathurin,lost,,,Left via offseason — now on los-angeles-clippers,medium,manual,,2027,,,
+indiana-pacers,Garrison Mathews,lost,,,Left via offseason — now on no NBA roster,medium,manual,,2027,,,
+indiana-pacers,Jeremiah Robinson-Earl,lost,,,Left via offseason — now on no NBA roster,medium,manual,,2027,,,
+indiana-pacers,RayJ Dennis,lost,,,Left via offseason — now on atlanta-hawks,medium,manual,,2027,,,
+indiana-pacers,Tony Bradley,lost,,,Left via offseason — now on atlanta-hawks,medium,manual,,2027,,,
+indiana-pacers,Ivica Zubac,signed,,,Acquired from los-angeles-clippers,medium,manual,,2027,,,
+indiana-pacers,Kobe Brown,signed,,,Acquired from los-angeles-clippers,medium,manual,,2027,,,
+indiana-pacers,Tyrese Haliburton,signed,,,Acquired from outside NBA,medium,manual,,2027,,,
+la-clippers,Baba Miller,drafted,,,MPS=56.3,medium,manual,,2027,2,36,56.3
+la-clippers,Keaton Wagler,drafted,,,MPS=85.2,medium,manual,,2027,1,5,85.2
+la-clippers,Narcisse Ngo,drafted,,,Round 2 Pick 57,low,manual,,2027,2,57,
+la-clippers,Nick Martinelli,drafted,,,MPS=49.5,medium,manual,,2027,2,55,49.5
+la-clippers,Chris Paul,lost,,,Left via offseason — now on no NBA roster,medium,manual,,2027,,,
+la-clippers,Ivica Zubac,lost,,,Left via offseason — now on indiana-pacers,medium,manual,,2027,,,
+la-clippers,Kobe Brown,lost,,,Left via offseason — now on indiana-pacers,medium,manual,,2027,,,
+la-clippers,Bennedict Mathurin,signed,,,Acquired from indiana-pacers,medium,manual,,2027,,,
+la-clippers,Bradley Beal,signed,,,Acquired from outside NBA,medium,manual,,2027,,,
+la-clippers,Darius Garland,signed,,,Acquired from cleveland-cavaliers,medium,manual,,2027,,,
+la-clippers,Norchad Omier,signed,,,Acquired from outside NBA,medium,manual,,2027,,,
+la-clippers,Sean Pedulla,signed,,,Acquired from outside NBA,medium,manual,,2027,,,
+los-angeles-lakers,Cameron Carr,drafted,,,MPS=63.3,medium,manual,,2027,1,24,63.3
+los-angeles-lakers,Kobe Bufkin,lost,,,Left via offseason — now on no NBA roster,medium,manual,,2027,,,
+los-angeles-lakers,Luke Kennard,signed,,,Acquired from atlanta-hawks,medium,manual,,2027,,,
+memphis-grizzlies,Cameron Boozer,drafted,,,MPS=93.9,medium,manual,,2027,1,3,93.9
+memphis-grizzlies,Karim Lopez,drafted,,,MPS=63.1,medium,manual,,2027,1,21,63.1
+memphis-grizzlies,Richie Saunders,drafted,,,MPS=55.8,medium,manual,,2027,2,32,55.8
+memphis-grizzlies,DeJon Jarreau,lost,,,Left via offseason — now on no NBA roster,medium,manual,,2027,,,
+memphis-grizzlies,Jaren Jackson Jr.,lost,,,Left via offseason — now on utah-jazz,medium,manual,,2027,,,
+memphis-grizzlies,John Konchar,lost,,,Left via offseason — now on utah-jazz,medium,manual,,2027,,,
+memphis-grizzlies,Tyler Burton,lost,,,Left via offseason — now on no NBA roster,medium,manual,,2027,,,
+memphis-grizzlies,Vince Williams Jr.,lost,,,Left via offseason — now on no NBA roster,medium,manual,,2027,,,
+memphis-grizzlies,Rayan Rupert,signed,,,Acquired from portland-trail-blazers,medium,manual,,2027,,,
+memphis-grizzlies,Taylor Hendricks,signed,,,Acquired from utah-jazz,medium,manual,,2027,,,
+memphis-grizzlies,Walter Clayton Jr.,signed,,,Acquired from utah-jazz,medium,manual,,2027,,,
+miami-heat,Ryan Conwell,drafted,,,MPS=56.0,medium,manual,,2027,2,37,56.0
+miami-heat,Jahmir Young,signed,,,Acquired from outside NBA,medium,manual,,2027,,,
+miami-heat,Trevor Keels,signed,,,Acquired from outside NBA,medium,manual,,2027,,,
+miami-heat,Vladislav Goldin,signed,,,Acquired from outside NBA,medium,manual,,2027,,,
+milwaukee-bucks,Brayden Burries,drafted,,,MPS=79.7,medium,manual,,2027,1,10,79.7
+milwaukee-bucks,Malique Lewis,drafted,,,Round 2 Pick 60,low,manual,,2027,2,60,
+milwaukee-bucks,Nate Ament,drafted,,,MPS=75.0,medium,manual,,2027,1,13,75.0
+milwaukee-bucks,Amir Coffey,lost,,,Left via offseason — now on phoenix-suns,medium,manual,,2027,,,
+milwaukee-bucks,Cam Thomas,lost,,,Left via offseason — now on no NBA roster,medium,manual,,2027,,,
+milwaukee-bucks,Cole Anthony,lost,,,Left via offseason — now on no NBA roster,medium,manual,,2027,,,
+milwaukee-bucks,Alex Antetokounmpo,signed,,,Acquired from outside NBA,medium,manual,,2027,,,
+milwaukee-bucks,Ousmane Dieng,signed,,,Acquired from oklahoma-city-thunder,medium,manual,,2027,,,
+milwaukee-bucks,Thanasis Antetokounmpo,signed,,,Acquired from outside NBA,medium,manual,,2027,,,
+minnesota-timberwolves,Isaiah Evans,drafted,,,MPS=56.7,medium,manual,,2027,2,33,56.7
+minnesota-timberwolves,Trey Kaufman-Renn,drafted,,,MPS=41.3,medium,manual,,2027,2,59,41.3
+minnesota-timberwolves,Rob Dillingham,lost,,,Left via offseason — now on chicago-bulls,medium,manual,,2027,,,
+minnesota-timberwolves,Kyle Anderson,signed,,,Acquired from utah-jazz,medium,manual,,2027,,,
+minnesota-timberwolves,Rocco Zikarsky,signed,,,Acquired from outside NBA,medium,manual,,2027,,,
+minnesota-timberwolves,Zyon Pullin,signed,,,Acquired from outside NBA,medium,manual,,2027,,,
+new-orleans-pelicans,Jaron Pierre Jr.,drafted,,,Round 2 Pick 58,low,manual,,2027,2,58,
+new-orleans-pelicans,Hunter Dickinson,signed,,,Acquired from outside NBA,medium,manual,,2027,,,
+new-orleans-pelicans,Josh Oduro,signed,,,Acquired from outside NBA,medium,manual,,2027,,,
+new-york-knicks,Jack Kayil,drafted,,,MPS=51.1,medium,manual,,2027,2,39,51.1
+new-york-knicks,Tyler Nickel,drafted,,,MPS=48.2,medium,manual,,2027,2,47,48.2
+new-york-knicks,Guerschon Yabusele,lost,,,Left via offseason — now on chicago-bulls,medium,manual,,2027,,,
+new-york-knicks,Pacôme Dadiet,signed,,,Acquired from outside NBA,medium,manual,,2027,,,
+oklahoma-city-thunder,Aday Mara,drafted,,,MPS=83.6,medium,manual,,2027,1,12,83.6
+oklahoma-city-thunder,Bennett Stirtz,drafted,,,MPS=63.2,medium,manual,,2027,1,16,63.2
+oklahoma-city-thunder,Otega Oweh,drafted,,,MPS=48.4,medium,manual,,2027,2,41,48.4
+oklahoma-city-thunder,Chris Youngblood,lost,,,Left via offseason — now on portland-trail-blazers,medium,manual,,2027,,,
+oklahoma-city-thunder,Ousmane Dieng,lost,,,Left via offseason — now on milwaukee-bucks,medium,manual,,2027,,,
+oklahoma-city-thunder,Jared McCain,signed,,,Acquired from philadelphia-76ers,medium,manual,,2027,,,
+oklahoma-city-thunder,Thomas Sorber,signed,,,Acquired from outside NBA,medium,manual,,2027,,,
+orlando-magic,Izaiyah Nelson,drafted,,,MPS=50.8,medium,manual,,2027,2,51,50.8
+orlando-magic,Orlando Robinson,lost,,,Left via offseason — now on no NBA roster,medium,manual,,2027,,,
+orlando-magic,Colin Castleton,signed,,,Acquired from outside NBA,medium,manual,,2027,,,
+orlando-magic,Jevon Carter,signed,,,Acquired from chicago-bulls,medium,manual,,2027,,,
+philadelphia-76ers,Labaron Philon,drafted,,,MPS=74.2,medium,manual,,2027,1,22,74.2
+philadelphia-76ers,Cameron Payne,lost,,,Left via offseason — now on no NBA roster,medium,manual,,2027,,,
+philadelphia-76ers,Eric Gordon,lost,,,Left via offseason — now on no NBA roster,medium,manual,,2027,,,
+philadelphia-76ers,Jared McCain,lost,,,Left via offseason — now on oklahoma-city-thunder,medium,manual,,2027,,,
+philadelphia-76ers,Dalen Terry,signed,,,Acquired from chicago-bulls,medium,manual,,2027,,,
+philadelphia-76ers,Johni Broome,signed,,,Acquired from outside NBA,medium,manual,,2027,,,
+phoenix-suns,Koa Peat,drafted,,,MPS=62.9,medium,manual,,2027,1,30,62.9
+phoenix-suns,Nick Richards,lost,,,Left via offseason — now on chicago-bulls,medium,manual,,2027,,,
+phoenix-suns,Nigel Hayes-Davis,lost,,,Left via offseason — now on no NBA roster,medium,manual,,2027,,,
+phoenix-suns,Amir Coffey,signed,,,Acquired from milwaukee-bucks,medium,manual,,2027,,,
+portland-trail-blazers,Duop Reath,lost,,,Left via offseason — now on no NBA roster,medium,manual,,2027,,,
+portland-trail-blazers,Rayan Rupert,lost,,,Left via offseason — now on memphis-grizzlies,medium,manual,,2027,,,
+portland-trail-blazers,Chris Youngblood,signed,,,Acquired from oklahoma-city-thunder,medium,manual,,2027,,,
+portland-trail-blazers,Damian Lillard,signed,,,Acquired from outside NBA,medium,manual,,2027,,,
+portland-trail-blazers,Jayson Kent,signed,,,Acquired from outside NBA,medium,manual,,2027,,,
+sacramento-kings,Alex Karaban,drafted,,,MPS=55.9,medium,manual,,2027,1,29,55.9
+sacramento-kings,Darius Acuff Jr.,drafted,,,MPS=82.1,medium,manual,,2027,1,7,82.1
+sacramento-kings,Emanuel Sharp,drafted,,,MPS=51.0,medium,manual,,2027,2,45,51.0
+sacramento-kings,Dario Saric,lost,,,Left via offseason — now on no NBA roster,medium,manual,,2027,,,
+sacramento-kings,Keon Ellis,lost,,,Left via offseason — now on cleveland-cavaliers,medium,manual,,2027,,,
+sacramento-kings,De'Andre Hunter,signed,,,Acquired from cleveland-cavaliers,medium,manual,,2027,,,
+sacramento-kings,Isaiah Stevens,signed,,,Acquired from outside NBA,medium,manual,,2027,,,
+san-antonio-spurs,Ja'Kobi Gillespie,drafted,,,MPS=49.9,medium,manual,,2027,2,42,49.9
+san-antonio-spurs,Jayden Quaintance,drafted,,,MPS=63.7,medium,manual,,2027,1,20,63.7
+san-antonio-spurs,Maliq Brown,drafted,,,MPS=51.7,medium,manual,,2027,2,44,51.7
+san-antonio-spurs,Tarris Reed Jr.,drafted,,,MPS=56.8,medium,manual,,2027,1,26,56.8
+san-antonio-spurs,Emanuel Miller,signed,,,Acquired from outside NBA,medium,manual,,2027,,,
+san-antonio-spurs,Harrison Ingram,signed,,,Acquired from outside NBA,medium,manual,,2027,,,
+toronto-raptors,Allen Graves,drafted,,,MPS=63.3,medium,manual,,2027,1,19,63.3
+toronto-raptors,Jaden Bradley,drafted,,,MPS=49.6,medium,manual,,2027,2,50,49.6
+toronto-raptors,Ochai Agbaji,lost,,,Left via offseason — now on brooklyn-nets,medium,manual,,2027,,,
+toronto-raptors,Chucky Hepburn,signed,,,Acquired from outside NBA,medium,manual,,2027,,,
+toronto-raptors,Garrett Temple,signed,,,Acquired from outside NBA,medium,manual,,2027,,,
+utah-jazz,Darryn Peterson,drafted,,,MPS=95.0,medium,manual,,2027,1,2,95.0
+utah-jazz,Kennedy Chandler,lost,,,Left via offseason — now on no NBA roster,medium,manual,,2027,,,
+utah-jazz,Kyle Anderson,lost,,,Left via offseason — now on minnesota-timberwolves,medium,manual,,2027,,,
+utah-jazz,Taylor Hendricks,lost,,,Left via offseason — now on memphis-grizzlies,medium,manual,,2027,,,
+utah-jazz,Walter Clayton Jr.,lost,,,Left via offseason — now on memphis-grizzlies,medium,manual,,2027,,,
+utah-jazz,Hayden Gray,signed,,,Acquired from outside NBA,medium,manual,,2027,,,
+utah-jazz,Jaren Jackson Jr.,signed,,,Acquired from memphis-grizzlies,medium,manual,,2027,,,
+utah-jazz,John Konchar,signed,,,Acquired from memphis-grizzlies,medium,manual,,2027,,,
+utah-jazz,Walker Kessler,signed,,,Acquired from outside NBA,medium,manual,,2027,,,
+washington-wizards,AJ Dybantsa,drafted,,,MPS=91.9,medium,manual,,2027,1,1,91.9
+washington-wizards,Felix Okpara,drafted,,,MPS=48.9,medium,manual,,2027,2,46,48.9
+washington-wizards,AJ Johnson,lost,,,Left via offseason — now on dallas-mavericks,medium,manual,,2027,,,
+washington-wizards,Khris Middleton,lost,,,Left via offseason — now on dallas-mavericks,medium,manual,,2027,,,
+washington-wizards,Malaki Branham,lost,,,Left via offseason — now on no NBA roster,medium,manual,,2027,,,
+washington-wizards,Marvin Bagley III,lost,,,Left via offseason — now on dallas-mavericks,medium,manual,,2027,,,
+washington-wizards,Anthony Davis,signed,,,Acquired from dallas-mavericks,medium,manual,,2027,,,
+washington-wizards,D'Angelo Russell,signed,,,Acquired from dallas-mavericks,medium,manual,,2027,,,
+washington-wizards,Jaden Hardy,signed,,,Acquired from dallas-mavericks,medium,manual,,2027,,,
+washington-wizards,Trae Young,signed,,,Acquired from atlanta-hawks,medium,manual,,2027,,,

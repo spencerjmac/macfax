@@ -51,6 +51,62 @@ PIPELINE_VERSION = "2.3"
 REPLACEMENT_LEVEL = 2.0        # BPR units added above zero to form demand signal
 SHRINKAGE_RETURNER = 0.10      # 10% regression to league mean for returning players
 SHRINKAGE_ACQUISITION = 0.20   # 20% for trades/signings (higher projection uncertainty)
+
+# AGE_CURVE — HUMAN-REVIEWED CONSTANT, do not auto-update.
+# Empirical BPR aging curve: mean bpr(Y+1)−bpr(Y) by age at Y, derived 2026-08-03
+# on pairs 2022:2023/2023:2024/2024:2025 (2025→2026 lineage-excluded), FULL
+# population N=1321. Buckets: ≤20 +0.61, 21-30 ≈0 (flat prime), 31-33 −0.50, 34+
+# −0.17 (survivorship-masked → regularized toward the 31-33 decline). Piecewise-
+# linear knots (age, delta); clamp beyond the ends.
+#   CAVEAT: per-player LOYO barely beats zero (age Δ is small vs BPR noise SD ~2.4).
+#   This term is here for correct veteran-decline / young-development DIRECTION and
+#   to drive the development-watch — NOT a large r lift. The dominant young
+#   high-pick development (+2.69 for young bad-team players) is NOT captured here;
+#   that is the separate team-agnostic PICK-CONDITIONAL curve (next task).
+AGE_CURVE_KNOTS = [(20.0, 0.60), (21.0, 0.00), (28.0, 0.00), (32.0, -0.50)]
+
+
+def age_bpr_delta(age):
+    """Piecewise-linear aging delta added to a returner's projected BPR."""
+    if age is None:
+        return 0.0
+    ks = AGE_CURVE_KNOTS
+    if age <= ks[0][0]:
+        return ks[0][1]
+    if age >= ks[-1][0]:
+        return ks[-1][1]
+    for (a0, v0), (a1, v1) in zip(ks, ks[1:]):
+        if a0 <= age <= a1:
+            return v0 + (v1 - v0) * (age - a0) / (a1 - a0)
+    return 0.0
+
+
+# PICK_DEV_CURVE — HUMAN-REVIEWED CONSTANT, do not auto-update.
+# Early-career development bonus by DRAFT PICK, ON TOP OF the age curve. Derived
+# 2026-09-10 on pairs 2022:2023/2023:2024/2024:2025 (2025→2026 lineage-excluded),
+# all teams (team-agnostic), RESIDUAL after the age curve so it does not
+# double-count general aging. Fires only in years_of_experience ≤ 3 (the signal is
+# concentrated there; later-career pick effect ≈ 0). Early-career residuals by
+# pick: 1-3 +0.52, 4-9 +0.34, 10-20 +0.16, 21-30 −0.06, 31-60 −0.25 (strongly
+# monotone). This is the decomposed +2.08 young-bad-team development — high picks
+# develop, late picks fade — keyed on PICK, not team (so it does not re-absorb the
+# P3 tanking-context effect).
+PICK_DEV_KNOTS = [(2.0, 0.52), (6.5, 0.34), (15.0, 0.16), (25.0, -0.06), (45.0, -0.25)]
+
+
+def pick_dev_bonus(pick, yrs_exp):
+    """Early-career (yrs_exp ≤ 3) development bonus by draft pick; 0 otherwise."""
+    if pick is None or yrs_exp is None or yrs_exp > 3:
+        return 0.0
+    ks = PICK_DEV_KNOTS
+    if pick <= ks[0][0]:
+        return ks[0][1]
+    if pick >= ks[-1][0]:
+        return ks[-1][1]
+    for (p0, v0), (p1, v1) in zip(ks, ks[1:]):
+        if p0 <= pick <= p1:
+            return v0 + (v1 - v0) * (pick - p0) / (p1 - p0)
+    return 0.0
 # SLOPE — HUMAN-REVIEWED CONSTANT, do not auto-update.
 # Derivation: `manage.py derive_nba_slope --pairs 2022:2023,2023:2024,2024:2025`
 # (Phase 2 Stage 2, 2026-07-07, operator-approved decision tree).
@@ -82,16 +138,25 @@ WINS_ADDED_SCALAR = 0.38       # converts (minutes_share × bpr) → wins added
 # fields carry the PV-based numbers.
 #
 # PV_SLOPE — HUMAN-REVIEWED CONSTANT, do not auto-update.
-# Derivation: `manage.py derive_nba_slope --pairs 2022:2023,2023:2024,2024:2025`
-# (Phase 2 Stage 2, 2026-07-07, operator-approved decision tree).
-#   Pooled through-origin OLS, actual adj_net(Y+1) ~ (team_pv − league_pv_mean),
+# Derivation: LOYO out-of-sample re-fit under the CURRENT pipeline (2026-07-30,
+# operator-approved). The old 5.591 was fit for the PRE-K1, PRE-trim allocator;
+# roster trim sharpened the team_pv distribution, leaving 5.591 ~2x too small
+# (compression diagnostic: projected AdjEM SD 2.55 vs actual 5.39, ratio 0.47).
+#   Through-origin OLS, actual adj_net(Y+1) ~ (team_pv − league_pv_mean),
 #   team_pv = minutes-share-weighted mean pv_effective under MINUTES_CEIL=1.80.
-#   N=90, r=0.478, RMSE=4.58. Same lineage gate + 2025→2026 exclusion as SLOPE.
-#   History: 3.58 (old allocator CEIL=1.20 weights; its 2024→25 targets also
-#   carried the playoff-row season_type corruption — see SLOPE note).
-PV_SLOPE = 5.591
-PV_SIGMA_EM = 4.6              # pooled forward RMSE 4.58 (PV path, N=90, same run),
-                               # rounded up. History: 4.5 (old allocator pooling).
+#   Pairs 2022:2023,2023:2024,2024:2025 (2025→2026 lineage-excluded, as before).
+#   LOYO folds: demand 11.72/9.84/9.00 → pooled 10.10 (r 0.683); persistence
+#   12.10/10.23/9.37 → pooled 10.52 (r 0.712). Nearly identical across allocators
+#   → one value serves both (not overfit). OOS wins MAE 7.76→6.96; r INVARIANT
+#   (pure scale re-fit — the ordering ceiling 0.68-0.71 is the values problem,
+#   injury/tanking-deflation, untouched here by design).
+#   History: 3.58 (old allocator CEIL=1.20) → 5.591 (Phase 2, 2026-07-07,
+#   pre-trim) → 10.1 (LOYO under K1+trim+pool-12, 2026-07-30).
+PV_SLOPE = 10.1
+PV_SIGMA_EM = 4.0             # LOYO pooled forward RMSE 3.94 (demand) / 3.82
+                              # (persistence), rounded up. Band coverage: 73-77%
+                              # of actuals inside ±1σ (≥68% target, mildly
+                              # conservative). History: 4.5 → 4.6 → 4.0.
 # PV_WINS_INTERCEPT (removed Phase 2): the fixed 41.0 assumed projected EM is
 # exactly mean-zero. handle() now computes effective_intercept =
 # 41.0 − WINS_PER_EM × league_mean_em each full-league run, guaranteeing closure.
@@ -102,7 +167,15 @@ MINUTES_CEIL = 1.80            # NBA star ceiling (~36 MPG equiv). Replaces the
                                # NBA star, flattened rotations, and compressed
                                # league quality spread (Phase 2 P2 fix).
 POWER_EXPONENT = 2.0           # demand concentration exponent
-TOTAL_SHARES = 5.0             # 200 team-minutes / 40-min game
+TOTAL_SHARES = 12.0            # 240 NBA player-minutes / 48-min game ÷ 20-MPG/share
+                               # (was 5.0 = NCAA 200/40 — the lone wrong-convention
+                               # constant; every other uses 20-MPG/share, e.g.
+                               # MINUTES_CEIL 1.80 = 36 MPG, rookie pin /20)
+KEEP_ROTATION = 10             # non-rookie slots kept before minutes allocation
+                               # (+ ALL rookies). Trims ~22-man projected rosters
+                               # to a real rotation so Σ(prior_mpg/20) doesn't
+                               # overflow the pool and water-fill dilute everyone.
+                               # Ranked by prior MPG, NOT BPR (see _trim_roster).
 
 # ── Rookie priors (HUMAN-REVIEWED CONSTANTS, Phase 4 Stage 2, 2026-07-13) ─────
 # Drafted players have no NBA stat to project from; before Phase 4 they were
@@ -215,6 +288,17 @@ class Command(BaseCommand):
                 "competition (Stage 2 behavior) for debugging."
             ),
         )
+        parser.add_argument(
+            "--force", action="store_true",
+            help="Overwrite outlooks whose snapshot_frozen_at is set. Without it, "
+                 "frozen rows are skipped (they back a published carousel run and "
+                 "must not drift mid-series).",
+        )
+        parser.add_argument(
+            "--allocator", choices=["demand", "persistence"], default="demand",
+            help="Minutes allocator: 'demand' (default, BPR-derived) or "
+                 "'persistence' (K1 — carry prior minutes forward).",
+        )
 
     def handle(self, *args, **options):
         source_year = options["source_season"]
@@ -222,6 +306,8 @@ class Command(BaseCommand):
         team_filter = options["team"]
         dry_run = options["dry_run"]
         self.rookie_pin = options.get("rookie_pin", False)
+        self.force = options.get("force", False)
+        self.allocator = options.get("allocator", "demand")
         if dry_run:
             self.stdout.write(self.style.WARNING("DRY RUN — no DB writes"))
         if self.rookie_pin:
@@ -247,6 +333,7 @@ class Command(BaseCommand):
 
         if target_year is None:
             target_year = source_season.year + 1
+        self.source_year = source_season.year   # for pick-dev years-of-experience
 
         target_display = f"{target_year - 1}-{str(target_year)[2:]}"
         if dry_run:
@@ -293,9 +380,20 @@ class Command(BaseCommand):
             f"RAPM-gap σ={self.rapm_gap_sigma:.2f}  cap threshold={cap_threshold:.2f}"
         )
 
-        outlooks = list(TeamSeasonOutlook.objects.all().order_by("team_abbr"))
+        # Season-scoped: a team carries one outlook row per projected season now
+        # (season FK + (team_slug, season) unique, migration 0025-0027). Without
+        # this filter a second season's rows would double the loop and silently
+        # break full_league below.
+        outlooks = list(
+            TeamSeasonOutlook.objects.filter(season=target_season).order_by("team_abbr")
+        )
         if team_filter:
             outlooks = [o for o in outlooks if o.team_slug == team_filter]
+        if not outlooks:
+            raise CommandError(
+                f"No TeamSeasonOutlook rows for season {target_season.display_name}. "
+                f"Run: python manage.py seed_team_outlooks --target-season {target_season.year}"
+            )
 
         # Pass 1: assemble rosters + project BPR for all teams, compute league baseline
         team_data = {}
@@ -309,6 +407,7 @@ class Command(BaseCommand):
                 logger.warning("No qualifying players for %s — skipping", outlook.team_abbr)
                 team_data[outlook.pk] = {"outlook": outlook, "slots": []}
                 continue
+            slots = self._trim_roster(slots, outlook.team_abbr)
             for slot in slots:
                 slot["projected_obpr"], slot["projected_dbpr"], slot["projected_bpr"] = (
                     self._project_bpr(slot, league_obpr_avg, league_dbpr_avg, league_bpr_avg)
@@ -326,9 +425,17 @@ class Command(BaseCommand):
                     slot["pv_source"] = "bpr_fallback"
                 else:
                     pv = pv * (1.0 - lam)
+                    # Development delta (age + pick) also shifts the stored-PV path
+                    # (the fallback path already sees it via the aged projected_bpr).
+                    # Convert the BPR-unit delta to PV (z) units so both paths shift
+                    # consistently and team_pv reflects development/decline.
+                    pv += slot.get("dev_delta", 0.0) / league_bpr_sd
                     slot["pv_source"] = "stored"
                 slot["pv_effective"] = pv
-            slots = self._allocate_minutes(slots)
+            if self.allocator == "persistence":
+                slots = self._allocate_minutes_persistence(slots)
+            else:
+                slots = self._allocate_minutes(slots)
             team_data[outlook.pk] = {"outlook": outlook, "slots": slots}
 
         # Compute empirical league baseline (average Σ minutes_share×bpr across all teams)
@@ -382,7 +489,10 @@ class Command(BaseCommand):
         # In a closed 30-team league mean wins = 41, so the intercept must be
         # 41 minus WINS_PER_EM × league_mean_em — a fixed constant cannot
         # guarantee Σ wins ≈ 1230 if projected EM is not exactly mean-zero.
-        n_league = TeamSeasonOutlook.objects.count()
+        # Scoped to this projected season so full_league stays correct once other
+        # seasons' outlook rows exist (the --team path still yields computed=1 <
+        # n_league=30 → full_league False → intercept 41.0 + the DEBUG warning).
+        n_league = TeamSeasonOutlook.objects.filter(season=target_season).count()
         full_league = len(computed) == n_league and n_league >= 30
         league_mean_em = (
             sum(c["metrics"]["adj_em"] for c in computed) / len(computed)
@@ -460,6 +570,16 @@ class Command(BaseCommand):
 
     @transaction.atomic
     def _write_team(self, outlook, slots, metrics, target_season):
+        # Frozen-snapshot guard: an outlook backing a published carousel run must
+        # not drift mid-series. Skip unless --force. (computed/closure math above
+        # still ran over all teams; this only blocks the DB overwrite.)
+        if outlook.snapshot_frozen_at is not None and not self.force:
+            self.stdout.write(self.style.WARNING(
+                f"  SKIP {outlook.team_abbr}: snapshot frozen at "
+                f"{outlook.snapshot_frozen_at:%Y-%m-%d} — pass --force to overwrite."
+            ))
+            return 0
+
         # Write projected roster slots
         NBAProjectedRosterSlot.objects.filter(team=outlook, season=target_season).delete()
         for slot in slots:
@@ -483,6 +603,10 @@ class Command(BaseCommand):
             )
 
         # Step 7b: Update TeamSeasonOutlook projection fields
+        # Stamp season explicitly (row is fetched season-scoped, so this is
+        # normally a no-op — but it keeps the write correct if an unscoped
+        # outlook is ever passed in).
+        outlook.season = target_season
         outlook.projected_adj_o = metrics["adj_o"]
         outlook.projected_adj_d = metrics["adj_d"]
         outlook.projected_adj_net = metrics["adj_em"]
@@ -495,6 +619,7 @@ class Command(BaseCommand):
         outlook.top2_bpr_concentration = metrics["top2_concentration"]
         outlook.pipeline_version = PIPELINE_VERSION
         outlook.save(update_fields=[
+            "season",
             "projected_adj_o", "projected_adj_d", "projected_adj_net",
             "projected_wins", "projected_losses",
             "projected_floor_wins", "projected_ceil_wins",
@@ -536,7 +661,7 @@ class Command(BaseCommand):
         if v2_bad:
             failures.append(f"V2 share closure: {', '.join(v2_bad)}")
         self.stdout.write(
-            f"V2 share closure: {'FAIL ' + ', '.join(v2_bad) if v2_bad else 'OK (all teams Σshare ≈ 5.0)'}"
+            f"V2 share closure: {'FAIL ' + ', '.join(v2_bad) if v2_bad else 'OK (all teams Σshare ≈ 12.0)'}"
         )
 
         # V3 — Allocator monotonicity: shares non-increasing in demand.
@@ -892,6 +1017,27 @@ class Command(BaseCommand):
         proj_dbpr = slot["dbpr"] * (1 - lam) + league_dbpr_avg * lam
         proj_bpr  = slot["bpr"]  * (1 - lam) + league_bpr_avg  * lam
 
+        # Development delta = general aging (age curve) + early-career pick bonus.
+        # Young/high-pick up, veterans/late-picks down. Split across O/D
+        # proportional to magnitude; stored on the slot so the stored-PV path
+        # (handle) applies the same shift to team_pv. Rookies exempt (returned
+        # above); missing age/pick → 0.
+        player_obj = slot.get("player_obj")
+        pick = getattr(player_obj, "draft_overall_pick", None)
+        dyear = getattr(player_obj, "draft_year", None)
+        yrs_exp = (self.source_year - dyear - 1) if dyear is not None else None
+        dev_delta = age_bpr_delta(slot.get("age")) + pick_dev_bonus(pick, yrs_exp)
+        slot["dev_delta"] = dev_delta
+        if dev_delta:
+            mag = abs(proj_obpr) + abs(proj_dbpr)
+            if mag > 1e-9:
+                proj_obpr += dev_delta * abs(proj_obpr) / mag
+                proj_dbpr += dev_delta * abs(proj_dbpr) / mag
+            else:
+                proj_obpr += dev_delta / 2.0
+                proj_dbpr += dev_delta / 2.0
+            proj_bpr += dev_delta
+
         # ── RAPM-inflation cap ────────────────────────────────────────────────
         # When prior-informed RAPM >> Box BPR by more than 1.5σ, the gap is
         # likely lineup-context absorption rather than genuine player impact.
@@ -966,13 +1112,46 @@ class Command(BaseCommand):
 
     # ── Minutes allocation ─────────────────────────────────────────────────────
 
+    def _trim_roster(self, slots, team_abbr=""):
+        """
+        Trim an assembled roster to a realistic rotation BEFORE minutes
+        allocation. Production rosters carry ~22 players (returners + every
+        offseason add + two-way / deep bench). Feeding all of them to the
+        allocator makes Σ(prior_mpg / 20) far exceed TOTAL_SHARES, so water-fill
+        scales everyone down (~45%) and the DISPLAYED minutes collapse — a
+        healthy star drops to ~20 MPG-equiv (team_pv is a share-weighted mean so
+        the projection survives, but the roster page is unshippable).
+
+        Keep the KEEP_ROTATION highest-prior-MINUTES non-rookie slots plus ALL
+        drafted rookies. Ranked by prior MPG, NOT BPR: a BPR rank would
+        reintroduce the exact demand-function bias K1 exists to kill — it would
+        cut a high-minutes, modest-BPR role player (a George / a Bailey) before
+        allocation even runs. Prior MPG is the same signal the persistence
+        allocator uses, so trim and allocation stay consistent. Rookies are kept
+        unconditionally (a top-5 pick has low prior MPG but is a development
+        investment with pinned minutes — dropping him would be wrong).
+        """
+        rookies = [s for s in slots if s.get("is_rookie_prior")]
+        non_rookies = [s for s in slots if not s.get("is_rookie_prior")]
+        non_rookies.sort(key=lambda s: (s.get("mpg") or 0.0), reverse=True)
+        kept = rookies + non_rookies[:KEEP_ROTATION]
+        assert kept, f"trim produced an empty roster for {team_abbr}"
+        kept_pool = sum((s.get("mpg") or 0.0) for s in kept) / 20.0
+        logger.info(
+            "Roster trim %s: %d → %d (%d rookies + top %d by prior MPG); "
+            "Σ(kept mpg/20)=%.1f vs pool %.1f",
+            team_abbr, len(slots), len(kept), len(rookies),
+            min(KEEP_ROTATION, len(non_rookies)), kept_pool, TOTAL_SHARES,
+        )
+        return kept
+
     def _allocate_minutes(self, slots):
         """
         Adapted from NCAA Phase 2 minutes/engine.py.
 
         demand = BPR_component (above replacement) + MPG_component
         Power transform concentrates minutes in the top rotation.
-        Water-fill normalize to TOTAL_SHARES = 5.0.
+        Water-fill normalize to TOTAL_SHARES = 12.0.
 
         Phase 4.5: drafted rookies (is_rookie_prior) have their share PINNED
         directly from the empirical pick→MPG prior, then veterans compete for
@@ -1044,6 +1223,72 @@ class Command(BaseCommand):
 
         for s in pinned:
             s["demand"] = None  # exempt from V3 monotonicity (pinned, not demand-ranked)
+            s["minutes_share"] = s["pinned_share"]
+
+        return slots
+
+    def _allocate_minutes_persistence(self, slots):
+        """
+        K1 persistence allocator — A/B alternative to _allocate_minutes, selected
+        by --allocator persistence.
+
+        Minutes are CARRIED FORWARD from each player's prior season instead of
+        derived from a BPR demand function: base = prior_mpg / 20. The vacated
+        pool (departed players are already absent from `slots`) is redistributed
+        PROPORTIONAL TO PRIOR MINUTES — persistence-weighted, deliberately NOT
+        BPR-weighted — so a high-usage / modest-BPR star keeps his minutes rather
+        than being benched by the squared demand term. Rookie pin is UNCHANGED
+        from the demand path. Convention: share × 20 = MPG-equiv.
+        """
+        pin_enabled = getattr(self, "rookie_pin", False)
+        pinned = [s for s in slots if pin_enabled and s.get("is_rookie_prior")]
+        competitive = [s for s in slots if not (pin_enabled and s.get("is_rookie_prior"))]
+
+        # Rookie pin: identical to the demand allocator (do NOT touch).
+        for s in pinned:
+            prior_eff_mpg = s.get("mpg") or ROOKIE_EFF_MPG_FLOOR
+            s["pinned_share"] = max(MINUTES_FLOOR, min(MINUTES_CEIL, prior_eff_mpg / 20.0))
+
+        pinned_total = sum(s["pinned_share"] for s in pinned)
+        remaining_pool = TOTAL_SHARES - pinned_total
+
+        MIN_COMPETITIVE_POOL = 2.5
+        if competitive and remaining_pool < MIN_COMPETITIVE_POOL and pinned_total > 0:
+            scale = (TOTAL_SHARES - MIN_COMPETITIVE_POOL) / pinned_total
+            logger.warning(
+                "Rookie-stacked roster (persistence): pinned %.2f leaves only %.2f "
+                "for %d veterans — scaling pinned by %.3f",
+                pinned_total, remaining_pool, len(competitive), scale,
+            )
+            for s in pinned:
+                s["pinned_share"] *= scale
+            pinned_total = sum(s["pinned_share"] for s in pinned)
+            remaining_pool = TOTAL_SHARES - pinned_total
+
+        if not competitive:
+            scale = (TOTAL_SHARES / pinned_total) if pinned_total > 0 else 1.0
+            for s in pinned:
+                s["demand"] = None
+                s["pinned_share"] *= scale
+                s["minutes_share"] = s["pinned_share"]
+            return slots
+
+        # Persistence base = prior minutes carried forward. Redistribute the
+        # vacated pool PROPORTIONAL TO PRIOR MINUTES (not BPR) — this proportional
+        # split is the whole point of K1; a BPR-weighted split would reintroduce
+        # the demand-function star-benching at the margin.
+        base = [max(0.0, (slot.get("mpg") or 15.0) / 20.0) for slot in competitive]
+        base_total = sum(base) or 1.0
+        raw = [b / base_total * remaining_pool for b in base]
+        clamped = [max(MINUTES_FLOOR, min(MINUTES_CEIL, s)) for s in raw]
+        normalized = self._water_fill(clamped, remaining_pool)
+
+        for slot, b, share in zip(competitive, base, normalized):
+            slot["demand"] = b  # persistence base (monotone in prior mpg) for V3/logging
+            slot["minutes_share"] = share
+
+        for s in pinned:
+            s["demand"] = None
             s["minutes_share"] = s["pinned_share"]
 
         return slots

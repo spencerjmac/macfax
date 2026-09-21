@@ -1,14 +1,21 @@
 """
 Seed one TeamSeasonOutlook row per NBA team with 2025-26 final season data.
 
+Rows are keyed by (team_slug, season) — season is the PROJECTED target season
+this outlook versions (default is_current + 1). The 2025-26 results below are the
+prior-season denormalization; when seeding a later target season they become the
+wrong prior (a future cleanup should source prior results from the
+NBATeamSeasonRatings join rather than this hardcoded block).
+
 Usage:
-    python manage.py seed_team_outlooks            # upsert all 30
-    python manage.py seed_team_outlooks --skip-existing  # skip rows already present
+    python manage.py seed_team_outlooks                       # target = is_current + 1
+    python manage.py seed_team_outlooks --target-season 2027  # explicit
+    python manage.py seed_team_outlooks --skip-existing        # skip rows already present
 """
 
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 
-from nba.models import TeamSeasonOutlook
+from nba.models import NBASeason, TeamSeasonOutlook
 
 TEAM_DATA = [
     {
@@ -259,6 +266,10 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
+            "--target-season", type=int, default=None,
+            help="Projected season year to seed outlooks for (default: is_current + 1).",
+        )
+        parser.add_argument(
             "--skip-existing",
             action="store_true",
             default=False,
@@ -269,9 +280,25 @@ class Command(BaseCommand):
         skip_existing = options["skip_existing"]
         created = updated = skipped = 0
 
+        target_year = options["target_season"]
+        if target_year is None:
+            current = NBASeason.objects.filter(is_current=True).first()
+            if current is None:
+                raise CommandError("No current season flagged. Use --target-season YYYY.")
+            target_year = current.year + 1
+        display = f"{target_year - 1}-{str(target_year)[2:]}"
+        target_season, _ = NBASeason.objects.get_or_create(
+            year=target_year, defaults={"display_name": display}
+        )
+        self.stdout.write(f"Seeding outlooks for {target_season.display_name}")
+
         for data in TEAM_DATA:
             slug = data["team_slug"]
-            exists = TeamSeasonOutlook.objects.filter(team_slug=slug).exists()
+            # season is a lookup key, NOT a default — otherwise a new target
+            # season would match an existing row for another season and no-op.
+            exists = TeamSeasonOutlook.objects.filter(
+                team_slug=slug, season=target_season
+            ).exists()
 
             if exists and skip_existing:
                 self.stdout.write(f"  skip  {data['team_abbr']} (already exists)")
@@ -280,6 +307,7 @@ class Command(BaseCommand):
 
             _, was_created = TeamSeasonOutlook.objects.update_or_create(
                 team_slug=slug,
+                season=target_season,
                 defaults=data,
             )
             if was_created:

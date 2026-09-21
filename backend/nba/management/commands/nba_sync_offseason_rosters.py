@@ -31,15 +31,13 @@ from nba.models import (
     NBASeason,
     NBATeam,
     NBAPlayer,
+    NBAPlayerGameStats,
     NBAPlayerSeasonStats,
     TeamOutseasonMove,
     TeamSeasonOutlook,
 )
-from nba.providers.nba_api_provider import NBAApiProvider
+from nba.providers.nba_api_provider import NBAApiProvider, _season_str
 from nba.utils.name_utils import normalize_name
-
-MIN_MPG = 5.0
-MIN_GP = 10
 
 
 class Command(BaseCommand):
@@ -61,7 +59,9 @@ class Command(BaseCommand):
         )
         parser.add_argument(
             "--nba-season", dest="nba_season", default=None, metavar="SEASON_STR",
-            help='NBA.com season string, e.g. "2025-26". Defaults to auto-derived from --source-season.',
+            help='NBA.com season key that drives the "current roster" fetch, e.g. '
+                 '"2026-27". Defaults to the target season (e.g. 2026-27 for '
+                 '--target-season 2027).',
         )
         parser.add_argument(
             "--team", dest="team_filter", default=None, metavar="SLUG",
@@ -75,14 +75,27 @@ class Command(BaseCommand):
             "--skip-existing", dest="skip_existing", action="store_true",
             help="Skip players who already have any TeamOutseasonMove for the target outlook.",
         )
+        parser.add_argument(
+            "--replace", action="store_true",
+            help=(
+                "Delete existing source='sync' moves for the target season before "
+                "recreating them, so departed / re-signed players self-heal instead "
+                "of lingering. Draft- and manual-sourced rows are left untouched."
+            ),
+        )
 
     def handle(self, *args, **options):
         source_season: int = options["source_season"]
         target_season: int = options["target_season"]
-        nba_season_str: str = options["nba_season"] or f"{source_season - 1}-{str(source_season)[2:]}"
+        # "Current" rosters = the projection (target) season's rosters, so the
+        # default season key derives from target_season, not source_season. This
+        # resolved string is authoritative: it drives BOTH the fetch (Step 2) and
+        # the header, so the log can never claim a season the fetch didn't use.
+        nba_season_str: str = options["nba_season"] or _season_str(target_season)
         team_filter: str | None = options.get("team_filter")
         dry_run: bool = options["dry_run"]
         skip_existing: bool = options["skip_existing"]
+        replace: bool = options["replace"]
 
         if dry_run:
             self.stdout.write(self.style.WARNING("DRY RUN — no rows will be written.\n"))
@@ -94,31 +107,46 @@ class Command(BaseCommand):
             raise CommandError(f"NBASeason with year={source_season} not found.")
 
         self.stdout.write(
-            f"Loading prior-season player-team associations "
-            f"(season {source_season_obj.display_name}, gp≥{MIN_GP}, mpg≥{MIN_MPG})…"
+            f"Loading end-of-season prior teams "
+            f"(season {source_season_obj.display_name}, team of each player's last game)…"
         )
 
-        qs = NBAPlayerSeasonStats.objects.select_related("player", "team").filter(
-            season=source_season_obj,
-            season_type="regular",
-            gp__gte=MIN_GP,
-            mpg__gte=MIN_MPG,
+        # The offseason diff baseline is where each player ACTUALLY was going into
+        # the offseason = their team in their LAST game of the source season (by
+        # date). Built gate-free (any player who logged a game) and single-valued
+        # per player. This replaces the old gp≥10/mpg≥5 season-stats gate, which:
+        #  (a) silently dropped low-minute players so their departures vanished, and
+        #  (b) attributed multi-team players to an ARBITRARY stint, so a MID-SEASON
+        #      trade read as an offseason move. With end-of-season attribution a
+        #      player who ended the season on the team he's still on has
+        #      current == prior in Step 3 and correctly produces no move.
+        last_game_rows = list(
+            NBAPlayerGameStats.objects
+            .filter(game__season=source_season_obj, team__isnull=False)
+            .order_by("player_id", "-game__date", "-game__game_id")
+            .distinct("player_id")
+            .select_related("player", "team")
         )
 
         prior_team_by_player_id: dict[int, str] = {}
         prior_team_by_name: dict[str, str] = {}
         player_name_by_id: dict[int, str] = {}
 
-        for row in qs:
-            if row.team is None:
-                continue
+        for row in last_game_rows:
             pid = row.player.player_id
             prior_team_by_player_id[pid] = row.team.slug
             player_name_by_id[pid] = row.player.name
             prior_team_by_name[normalize_name(row.player.name)] = row.team.slug
 
+        # Correctness invariant: distinct('player_id') yields exactly one row per
+        # player, so the prior map is single-valued — the guard against attaching a
+        # departure to the wrong (self-attribution-class) ledger for a traded player.
+        assert len(prior_team_by_player_id) == len(last_game_rows), (
+            "end-of-season prior map is not single-valued per player"
+        )
+
         self.stdout.write(
-            f"  {len(prior_team_by_player_id)} qualifying players from prior season.\n"
+            f"  {len(prior_team_by_player_id)} players with an end-of-season team.\n"
         )
 
         # ── Step 2: Load current rosters from NBA.com ─────────────────────────
@@ -140,7 +168,7 @@ class Command(BaseCommand):
         teams_with_empty_roster: list[str] = []
 
         for team in all_teams:
-            roster = provider.get_team_roster(team.nba_team_id, source_season)
+            roster = provider.get_team_roster(team.nba_team_id, season=nba_season_str)
             if not roster:
                 teams_with_empty_roster.append(team.slug)
                 self.stderr.write(
@@ -218,7 +246,10 @@ class Command(BaseCommand):
                 }
 
         # ── Step 4: Build outlook lookup helper ───────────────────────────────
-        all_outlooks = list(TeamSeasonOutlook.objects.all())
+        # Scope to the target season's outlook rows — team_slug is no longer
+        # globally unique, so an unscoped .all() would collapse to an arbitrary
+        # season's row per slug once multiple seasons exist.
+        all_outlooks = list(TeamSeasonOutlook.objects.filter(season__year=target_season))
         outlooks_by_slug: dict[str, TeamSeasonOutlook] = {o.team_slug: o for o in all_outlooks}
         outlooks_by_abbr: dict[str, TeamSeasonOutlook] = {o.team_abbr: o for o in all_outlooks}
         teams_by_slug: dict[str, NBATeam] = {t.slug: t for t in NBATeam.objects.all()}
@@ -264,6 +295,26 @@ class Command(BaseCommand):
         dep_created = dep_existed = dep_no_outlook = 0
         acq_created = acq_existed = acq_no_outlook = acq_drafted_skip = 0
 
+        # ── Step 5a: --replace purge (source="sync" only) ─────────────────────
+        # get_or_create never removes rows, so a player who left (or re-signed
+        # elsewhere) leaves a stale sync move behind on every re-run. --replace
+        # clears this command's own rows for the target season first; draft- and
+        # manual-sourced moves are untouched so a routine re-sync can't nuke them.
+        if replace:
+            stale = TeamOutseasonMove.objects.filter(
+                team__in=all_outlooks, source="sync"
+            )
+            n = stale.count()
+            if dry_run:
+                self.stdout.write(self.style.WARNING(
+                    f"  --replace: WOULD delete {n} existing source='sync' moves.\n"
+                ))
+            else:
+                stale.delete()
+                self.stdout.write(self.style.WARNING(
+                    f"  --replace: deleted {n} existing source='sync' moves.\n"
+                ))
+
         # Departures
         for pid, dep in departures.items():
             outlook = get_outlook(dep["prior_team"])
@@ -286,9 +337,13 @@ class Command(BaseCommand):
             if not dry_run:
                 _, was_created = TeamOutseasonMove.objects.get_or_create(
                     team=outlook,
+                    season=outlook.season,
                     player_name=dep["name"],
                     move_type="lost",
-                    defaults={"detail": detail, "impact_rating": "medium"},
+                    # source="sync": roster-diff origin (vs manual CSV). transaction_date
+                    # left NULL — a snapshot diff has no per-transaction date to stamp.
+                    defaults={"detail": detail, "impact_rating": "medium",
+                              "source": "sync"},
                 )
                 if was_created:
                     dep_created += 1
@@ -347,9 +402,13 @@ class Command(BaseCommand):
             if not dry_run:
                 _, was_created = TeamOutseasonMove.objects.get_or_create(
                     team=outlook,
+                    season=outlook.season,
                     player_name=acq["name"],
                     move_type="signed",
-                    defaults={"detail": detail, "impact_rating": "medium"},
+                    # source="sync": roster-diff origin (vs manual CSV). transaction_date
+                    # left NULL — a snapshot diff has no per-transaction date to stamp.
+                    defaults={"detail": detail, "impact_rating": "medium",
+                              "source": "sync"},
                 )
                 if was_created:
                     acq_created += 1

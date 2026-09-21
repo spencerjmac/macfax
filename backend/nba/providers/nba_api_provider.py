@@ -305,10 +305,18 @@ class NBAApiProvider(NBADataProvider):
 
     # ── get_team_roster ───────────────────────────────────────────────────────
 
-    def get_team_roster(self, team_id: int, season_year: int) -> list[RawRosterEntry]:
+    def get_team_roster(
+        self, team_id: int, season_year: int | None = None, *, season: str | None = None
+    ) -> list[RawRosterEntry]:
         from nba_api.stats.endpoints import commonteamroster
 
-        season = _season_str(season_year)
+        # Prefer an explicit NBA.com season key (e.g. "2026-27") so callers pass
+        # the resolved string rather than relying on _season_str's year-1
+        # arithmetic. Fall back to deriving it from a season-ending year.
+        if season is None:
+            if season_year is None:
+                raise ValueError("get_team_roster requires season or season_year")
+            season = _season_str(season_year)
 
         def _call():
             r = commonteamroster.CommonTeamRoster(
