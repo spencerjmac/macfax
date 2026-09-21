@@ -160,6 +160,20 @@ class Command(BaseCommand):
             return
         self.stdout.write(f"  {len(folds)} folds: {[(tr, te) for tr, te in folds]}")
 
+        FIRST_VALID_RAPM_SEASON = 2025  # ESPN never served substitution events before ~Feb 2025;
+        # pre-2025 "rapm" is a starters-only placeholder-lineup team-margin share, not real
+        # individual impact (docs/bpr_audit/03_weakness_report.md item 1.1, 06_bpr_v2_recommendation.md).
+        # Using it as a predictor season silently reintroduces that contamination (see doc 15).
+        contaminated_predictors = sorted({tr for tr, _te in folds if tr < FIRST_VALID_RAPM_SEASON})
+        if contaminated_predictors:
+            self.stdout.write(
+                f"  ⚠  WARNING: predictor season(s) {contaminated_predictors} predate real NCAA "
+                f"lineup data (placeholder starters-only pre-{FIRST_VALID_RAPM_SEASON}). Macfax "
+                f"'bpr' for these seasons is ~93% RAPM-sourced from degenerate pseudo-lineups, not "
+                f"real individual impact. Results including these folds are NOT a fair test of BPR "
+                f"vs EM/box_bpr/adj_em -- see docs/bpr_audit/15_em_bakeoff_clean_data_correction.md."
+            )
+
         # ── Per-fold accumulators ─────────────────────────────────────────────
         all_results: dict[str, list] = {p: [] for p in PRED_ORDER}
         fold_summaries = []
