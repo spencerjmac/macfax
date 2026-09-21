@@ -89,6 +89,7 @@ const TRAD_DEFAULT_KEYS = [
 // User-toggleable optional extras
 const TRAD_OPTIONAL_KEYS = [
   'fg3_pct', 'ft_pct', 'fga_pg', 'fg3a_pg', 'fta_pg', 'oreb_pg', 'dreb_pg',
+  'usg_pct', 'fta_rate', 'fg3_rate', 'ast_usg',
 ];
 
 // ── Impact ────────────────────────────────────────────────────────────────────

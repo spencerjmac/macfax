@@ -572,6 +572,10 @@ export interface NCAAPlayerSeasonStats {
   efg_pct: number | null;
   ts_pct: number | null;
   ast_to: number | null;
+  usg_pct: number | null;
+  fta_rate: number | null;
+  fg3_rate: number | null;
+  ast_usg: number | null;
   // On-court impact (from ESPN PBP)
   on_court_secs_pg: number | null;
   on_court_pts_pg: number | null;

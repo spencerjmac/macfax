@@ -1498,6 +1498,7 @@ class PlayerSeasonStatsSerializer(serializers.ModelSerializer):
             "fg_pct", "fg3_pct", "ft_pct", "fga_pg", "fg3a_pg",
             "ftm_pg", "fta_pg", "oreb_pg", "dreb_pg",
             "efg_pct", "ts_pct", "ast_to",
+            "usg_pct", "fta_rate", "fg3_rate", "ast_usg",
             # On-court raw ratings (from ESPN PBP lineup reconstruction)
             "on_court_secs_pg", "on_court_pts_pg", "on_court_def_pg",
             "on_court_net_pg",

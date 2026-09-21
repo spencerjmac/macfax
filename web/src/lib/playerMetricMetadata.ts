@@ -46,6 +46,10 @@ export const PLAYER_TRADITIONAL_METRICS: PlayerMetricMeta[] = [
   { key: 'efg_pct', label: 'eFG%',  tooltip: 'Effective FG% = (FGM + 0.5×FG3M) / FGA. Adjusts for 3-pointers being worth more.', format: 'pct4', better: 'higher', showRank: false, heatmap: true,  tier: 'primary'   },
   { key: 'ts_pct',  label: 'TS%',   tooltip: 'True Shooting% = PTS / (2 × (FGA + 0.44 × FTA)). Most complete single shooting efficiency stat.', format: 'pct4', better: 'higher', showRank: true, heatmap: true, tier: 'primary' },
   { key: 'ast_to',  label: 'AST/TO', tooltip: 'Assist-to-turnover ratio. Higher is better.', format: 'number2', better: 'higher', showRank: false, heatmap: true, tier: 'primary' },
+  { key: 'usg_pct',  label: 'USG%',   tooltip: 'Usage%: share of team offensive possessions used by this player while on the floor.', format: 'pct_raw', better: 'neutral', showRank: false, heatmap: false, tier: 'optional' },
+  { key: 'fta_rate', label: 'FTr',    tooltip: 'Free Throw Rate = FTA / FGA. How often the player gets to the line relative to shot attempts.', format: 'pct4', better: 'neutral', showRank: false, heatmap: false, tier: 'optional' },
+  { key: 'fg3_rate', label: '3PAr',   tooltip: '3-Point Attempt Rate = FG3A / FGA. Share of field goal attempts that are threes.', format: 'pct4', better: 'neutral', showRank: false, heatmap: false, tier: 'optional' },
+  { key: 'ast_usg',  label: 'AST/USG', tooltip: 'Assists per game relative to usage rate — playmaking output independent of shot volume. Higher is better.', format: 'number2', better: 'higher', showRank: false, heatmap: false, tier: 'optional' },
 ];
 
 // ─── NCAA Impact (on-court raw from PBP) ─────────────────────────────────────
