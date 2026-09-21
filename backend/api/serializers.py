@@ -172,7 +172,7 @@ class RankingsSerializer(serializers.Serializer):
     adj_tempo = serializers.FloatField()
 
     # Four Factor Index - Adjusted
-    four_factor_index_100 = serializers.FloatField(source="ffi_raw")
+    four_factor_index_100 = serializers.FloatField(source="ffi_adj")
     rank_four_factor_index_100 = serializers.SerializerMethodField()
 
     # Four Factor Index - Raw
