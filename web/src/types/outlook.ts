@@ -218,3 +218,21 @@ export interface PlaceholderArchetype {
 export interface PlaceholderListResponse {
   archetypes: PlaceholderArchetype[];
 }
+
+// ── GET /api/outlook/top/ ─────────────────────────────────────────────────
+
+export interface OutlookTopTeam {
+  rank: number;
+  team_name: string;
+  team_slug: string;
+  logo_url: string | null;
+  projected_adj_em: number;
+  adj_em_low: number;
+  adj_em_high: number;
+}
+
+export interface OutlookTopTeamsResponse {
+  season: number;
+  projected_season_year: number;
+  teams: OutlookTopTeam[];
+}

@@ -20,47 +20,33 @@ import type {
 } from '@/types/nba';
 import type { GameDetailResponse } from '@/types/games';
 
-const SERVER_API_BASE_URL = (
-  process.env.API_INTERNAL_URL ||
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  'http://127.0.0.1:8000'
-).replace(/\/$/, '');
+import { createApi, unwrapResults, type ApiClientConfig, type QueryParams } from './api-client';
+import { LOCAL_API_ORIGIN, WEB_FETCH_OPTIONS, stripTrailingSlash, webApiOrigin } from './api-env';
 
-type QueryParams = Record<string, string | number | boolean | undefined | null>;
+const SERVER_API_BASE_URL = stripTrailingSlash(webApiOrigin(LOCAL_API_ORIGIN));
+
+const nbaClientConfig: Omit<ApiClientConfig, 'baseUrl'> = {
+  fetchOptions: WEB_FETCH_OPTIONS,
+  formatError: (status, body) => `NBA API request failed (${status}): ${body.slice(0, 200)}`,
+  invalidJsonMessage: null,
+  lenientErrorBody: true,
+};
+
+// Server: straight to Django. Browser: same-origin /nba-api proxy route
+// (app/nba-api/[...path]), which re-adds the trailing slash Django expects.
+const serverClient = createApi({ baseUrl: `${SERVER_API_BASE_URL}/api/nba`, ...nbaClientConfig });
+const browserClient = createApi({ baseUrl: '/nba-api', stripTrailingSlash: true, ...nbaClientConfig });
+
+function client() {
+  return typeof window !== 'undefined' ? browserClient : serverClient;
+}
 
 function buildUrl(path: string, params?: QueryParams): string {
-  const isBrowser = typeof window !== 'undefined';
-  const rawPath = path.startsWith('/') ? path : `/${path}`;
-  const normalizedPath = isBrowser && rawPath.length > 1
-    ? rawPath.replace(/\/+$/, '')
-    : rawPath;
-  const base = isBrowser ? window.location.origin : SERVER_API_BASE_URL;
-  const apiRoot = isBrowser ? '/nba-api' : '/api/nba';
-  const url = new URL(`${apiRoot}${normalizedPath}`, base);
-  if (params) {
-    Object.entries(params).forEach(([key, value]) => {
-      if (value === undefined || value === null || value === '') return;
-      url.searchParams.set(key, String(value));
-    });
-  }
-  return isBrowser ? `${url.pathname}${url.search}` : url.toString();
+  return client().url(path, params);
 }
 
-async function fetchJson<T>(url: string): Promise<T> {
-  const res = await fetch(url, { cache: 'no-store' });
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`NBA API request failed (${res.status}): ${text.slice(0, 200)}`);
-  }
-  return res.json() as Promise<T>;
-}
-
-function unwrapResults<T>(data: unknown): T[] {
-  if (Array.isArray(data)) return data as T[];
-  if (data && typeof data === 'object' && Array.isArray((data as { results?: unknown }).results)) {
-    return (data as { results: T[] }).results;
-  }
-  return [];
+function fetchJson<T>(url: string): Promise<T> {
+  return client().getJson<T>(url);
 }
 
 export const nbaApi = {

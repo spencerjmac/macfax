@@ -1,8 +1,22 @@
 import type { TeamsData, TeamSeason, DatasetMetadata, SeasonInfo } from '@/types';
+import type { OutlookTopTeamsResponse, RosterOutlookData } from '@/types/outlook';
 import { buildTeamRanks, buildChampionChecklist, buildCinderellaIndex } from './rankings';
+import { createApi } from './api-client';
+import {
+  LOCALHOST_API_ORIGIN,
+  WEB_FETCH_OPTIONS,
+  isBuildPhase,
+  stripTrailingSlash,
+  webApiOrigin,
+} from './api-env';
 
 const API_RANKINGS_PATH = '/api/rankings/';
 const API_SEASONS_PATH = '/api/seasons/'
+
+/** Resolved per call; the origin is used unstripped, so paths carry their own /api prefix. */
+function dataClient() {
+  return createApi({ baseUrl: webApiOrigin(LOCALHOST_API_ORIGIN), fetchOptions: WEB_FETCH_OPTIONS });
+}
 
 /** Map API ranking row (snake_case) to frontend TeamSeason */
 function mapApiRowToTeamSeason(team: Record<string, unknown>): TeamSeason {
@@ -83,16 +97,12 @@ function mapApiRowToTeamSeason(team: Record<string, unknown>): TeamSeason {
 
 /** Fetch rankings from backend API */
 async function fetchRankingsFromApi(season?: number, isPreTournament?: boolean): Promise<TeamsData> {
-  // Server-side: prefer the internal Docker URL (never exposed to browsers).
-  // Client-side: falls back to the public URL baked in at build time.
-  const base = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
+  const client = dataClient();
   const queryParams = new URLSearchParams();
   if (season) queryParams.set('season', season.toString());
   if (isPreTournament) queryParams.set('pre_tournament', 'true');
   const paramsStr = queryParams.toString() ? `?${queryParams.toString()}` : '';
-  const url = `${base}${API_RANKINGS_PATH}${paramsStr}`;
-
-  const res = await fetch(url, { cache: 'no-store' });
+  const res = await client.fetch(client.rawUrl(`${API_RANKINGS_PATH}${paramsStr}`));
 
   if (!res.ok) {
     console.error('[fetchRankingsFromApi] Fetch failed:', res.status, res.statusText);
@@ -133,9 +143,8 @@ async function fetchRankingsFromApi(season?: number, isPreTournament?: boolean):
 
 /** Fetch the list of seasons that have computed ratings */
 async function fetchSeasonsFromApi(): Promise<SeasonInfo[]> {
-  const base = process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
-  const url = `${base}${API_SEASONS_PATH}?has_ratings=true`;
-  const res = await fetch(url, { cache: 'no-store' });
+  const client = dataClient();
+  const res = await client.fetch(client.rawUrl(`${API_SEASONS_PATH}?has_ratings=true`));
   if (!res.ok) return [];
   const json = (await res.json()) as SeasonInfo[] | { results?: SeasonInfo[] };
   return Array.isArray(json) ? json : (json.results ?? []);
@@ -147,9 +156,6 @@ const emptyMetadata: DatasetMetadata = {
   teamCount: 0,
   sources: { kenpom: 0, torvik: 0, cbbAnalytics: 0 },
 };
-
-/** During Next.js production build (e.g. Docker) no backend is running; avoid fetch. */
-const isBuildPhase = () => process.env.NEXT_PHASE === 'phase-production-build';
 
 export async function getAllSeasons(): Promise<SeasonInfo[]> {
   if (isBuildPhase()) return [];
@@ -188,4 +194,37 @@ export async function getTeamWithContext(slug: string): Promise<
   const cinderella = buildCinderellaIndex(teams, team);
 
   return { team, ranks, checklist, cinderella };
+}
+
+/** Projected top teams for the /ncaa/outlook landing page; null on any failure. */
+export async function getOutlookTopTeams(): Promise<OutlookTopTeamsResponse | null> {
+  const client = createApi({
+    baseUrl: stripTrailingSlash(webApiOrigin(LOCALHOST_API_ORIGIN)),
+    fetchOptions: WEB_FETCH_OPTIONS,
+  });
+  try {
+    const res = await client.fetch(client.rawUrl('/api/outlook/top/?limit=10'));
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
+}
+
+/** Roster outlook for /ncaa/outlook/[slug]; null during build or on any failure. */
+export async function getRosterOutlookOrNull(slug: string, season?: string): Promise<RosterOutlookData | null> {
+  if (isBuildPhase()) return null;
+
+  const client = createApi({
+    baseUrl: stripTrailingSlash(webApiOrigin(LOCALHOST_API_ORIGIN)),
+    fetchOptions: WEB_FETCH_OPTIONS,
+  });
+  const params = season ? `?season=${season}` : '';
+  try {
+    const res = await client.fetch(client.rawUrl(`/api/outlook/${slug}/${params}`));
+    if (!res.ok) return null;
+    return (await res.json()) as RosterOutlookData;
+  } catch {
+    return null;
+  }
 }
