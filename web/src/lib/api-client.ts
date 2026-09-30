@@ -129,6 +129,8 @@ export function createApi(config: ApiClientConfig): ApiClient {
 
   function request(requestUrl: string, init?: RequestInit): Promise<Response> {
     // Resolve the global fetch per call so runtime patches (e.g. Next.js) apply.
+    // With nothing to merge, pass no init at all, like a bare fetch(url).
+    if (!fetchOptions && !init) return fetch(requestUrl);
     return fetch(requestUrl, { ...fetchOptions, ...init });
   }
 

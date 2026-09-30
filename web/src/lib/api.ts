@@ -34,7 +34,14 @@ import {
   unwrapResults,
   type QueryParams,
 } from './api-client';
-import { LOCAL_API_ORIGIN, WEB_FETCH_OPTIONS, stripTrailingSlash, webApiOrigin } from './api-env';
+import {
+  LOCAL_API_ORIGIN,
+  LOCALHOST_API_ORIGIN,
+  WEB_FETCH_OPTIONS,
+  publicApiOrigin,
+  stripTrailingSlash,
+  webApiOrigin,
+} from './api-env';
 
 const API_BASE_URL = stripTrailingSlash(webApiOrigin(LOCAL_API_ORIGIN));
 const client = createApi({ baseUrl: `${API_BASE_URL}/api`, fetchOptions: WEB_FETCH_OPTIONS });
@@ -45,6 +52,15 @@ function buildUrl(path: string, params?: QueryParams): string {
 
 function fetchJson<T>(url: string): Promise<T> {
   return client.getJson<T>(url);
+}
+
+/**
+ * NCAA team game log (TeamPageTabs). Raw Response so callers keep their own
+ * status handling; public URL, unstripped, and no fetch options, as before.
+ */
+export function fetchTeamGameLog(teamId: string, seasonYear: number): Promise<Response> {
+  const gameLogClient = createApi({ baseUrl: publicApiOrigin(LOCALHOST_API_ORIGIN) });
+  return gameLogClient.fetch(gameLogClient.rawUrl(`/api/teams/${teamId}/gamelog/?season=${seasonYear}`));
 }
 
 export const api = {

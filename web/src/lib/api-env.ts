@@ -16,6 +16,11 @@ export function webApiOrigin(fallback: string): string {
   return process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_BASE_URL || fallback;
 }
 
+/** Public URL only (no API_INTERNAL_URL), for callers that only ever run in the browser. */
+export function publicApiOrigin(fallback: string): string {
+  return process.env.NEXT_PUBLIC_API_BASE_URL || fallback;
+}
+
 export function stripTrailingSlash(url: string): string {
   return url.replace(/\/$/, '');
 }
