@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { ChevronRight, Clock } from 'lucide-react';
-import type { MethodologyContent } from '@/lib/methodologyTypes';
+import type { MethodologyContent } from '@macfax/core/lib/methodologyTypes';
 import { FormulaBlock } from './FormulaBlock';
 import { InterpretationBand } from './InterpretationBand';
 import { LimitationCallout } from './LimitationCallout';

@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import clsx from 'clsx';
-import type { OutlookPlayer, ScenarioPlayer, RecruitmentType } from '@/types/outlook';
+import type { OutlookPlayer, ScenarioPlayer, RecruitmentType } from '@macfax/core/types/outlook';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

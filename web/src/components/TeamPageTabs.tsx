@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { TeamSeason, NCAAPlayerSeasonStats } from '@/types';
-import { TeamRanks, ChecklistItem, CinderellaIndexResult } from '@/lib/rankings';
+import { TeamSeason, NCAAPlayerSeasonStats } from '@macfax/core/types';
+import { TeamRanks, ChecklistItem, CinderellaIndexResult } from '@macfax/core/lib/rankings';
 import { StatCard, MetricCard, FactorCardWithRanks } from './StatCards';
 import ChampionChecklistCard from './ChampionChecklistCard';
 import Link from 'next/link';

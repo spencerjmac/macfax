@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import clsx from 'clsx';
-import type { OutlookPlayer, PlayerSearchResult, PlaceholderArchetype } from '@/types/outlook';
+import type { OutlookPlayer, PlayerSearchResult, PlaceholderArchetype } from '@macfax/core/types/outlook';
 import { api } from '@/lib/api';
 
 interface PlayerSearchModalProps {

@@ -2,9 +2,9 @@ import type {
   WorldCupTeam,
   WorldCupMatchupResult,
   WorldCupGroupResult,
-} from '@/types/worldcup';
+} from '@macfax/core/types/worldcup';
 
-import { createApi } from './api-client';
+import { createApi } from '@macfax/core/api-client';
 import { LOCAL_API_ORIGIN, WEB_FETCH_OPTIONS, stripTrailingSlash, webApiOrigin } from './api-env';
 
 const API_BASE_URL = stripTrailingSlash(webApiOrigin(LOCAL_API_ORIGIN));

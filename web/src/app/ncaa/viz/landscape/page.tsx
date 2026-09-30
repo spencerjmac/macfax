@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
-import type { EfficiencyLandscapeData, Conference } from '@/types';
+import type { EfficiencyLandscapeData, Conference } from '@macfax/core/types';
 import SeasonSelect from '@/components/SeasonSelect';
 import {
   ResponsiveContainer,

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import * as echarts from 'echarts';
-import type { ValidationWeekEntry } from '@/types/validation';
+import type { ValidationWeekEntry } from '@macfax/core/types/validation';
 
 interface AccuracyOverTimeChartProps {
   weeks: ValidationWeekEntry[];

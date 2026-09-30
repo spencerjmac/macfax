@@ -3,8 +3,8 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { BlockMath } from 'react-katex';
-import type { GlossaryTerm, GlossaryCategory } from '@/lib/glossaryTypes';
-import { CATEGORY_LABELS } from '@/lib/glossaryTypes';
+import type { GlossaryTerm, GlossaryCategory } from '@macfax/core/lib/glossaryTypes';
+import { CATEGORY_LABELS } from '@macfax/core/lib/glossaryTypes';
 
 interface GlossaryTableProps {
   terms: GlossaryTerm[];

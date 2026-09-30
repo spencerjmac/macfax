@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import {
   getMethodologyBySlug,
   getAllMethodologySlugs,
-} from '@/lib/methodologyContent';
+} from '@macfax/core/lib/methodologyContent';
 import { MethodologyArticle } from '@/components/methodology/MethodologyArticle';
 
 interface Props {

@@ -1,7 +1,7 @@
 import { Metadata } from 'next';
-import prospectsData from '@/data/prospects_2026.json';
+import prospectsData from '@macfax/core/data/prospects_2026.json';
 import { ProspectsBigBoard } from '@/components/prospects/ProspectsBigBoard';
-import { ProspectsData } from '@/types/prospects';
+import { ProspectsData } from '@macfax/core/types/prospects';
 
 export const metadata: Metadata = {
   title: '2026 NBA Draft Big Board | MacFacts',

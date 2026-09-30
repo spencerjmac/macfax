@@ -1,7 +1,7 @@
-import type { TeamsData, TeamSeason, DatasetMetadata, SeasonInfo } from '@/types';
-import type { OutlookTopTeamsResponse, RosterOutlookData } from '@/types/outlook';
-import { buildTeamRanks, buildChampionChecklist, buildCinderellaIndex } from './rankings';
-import { createApi } from './api-client';
+import type { TeamsData, TeamSeason, DatasetMetadata, SeasonInfo } from '@macfax/core/types';
+import type { OutlookTopTeamsResponse, RosterOutlookData } from '@macfax/core/types/outlook';
+import { buildTeamRanks, buildChampionChecklist, buildCinderellaIndex } from '@macfax/core/lib/rankings';
+import { createApi } from '@macfax/core/api-client';
 import {
   LOCALHOST_API_ORIGIN,
   WEB_FETCH_OPTIONS,

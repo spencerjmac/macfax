@@ -11,9 +11,9 @@ import type {
   VizStats,
   VizScatterData,
   NCAAPlayerSeasonStats,
-} from '@/types';
-import type { NBALandscapeData, NBACrystalBallData, NBALuckChartData } from '@/types/nba';
-import type { GameDetailResponse } from '@/types/games';
+} from '@macfax/core/types';
+import type { NBALandscapeData, NBACrystalBallData, NBALuckChartData } from '@macfax/core/types/nba';
+import type { GameDetailResponse } from '@macfax/core/types/games';
 import type {
   RosterOutlookData,
   ScenarioRequest,
@@ -21,19 +21,19 @@ import type {
   OutlookPlayer,
   PlayerSearchResult,
   PlaceholderListResponse,
-} from '@/types/outlook';
+} from '@macfax/core/types/outlook';
 import type {
   ValidationSummaryResponse,
   ValidationWeeklyResponse,
   ValidationRecentGamesResponse,
-} from '@/types/validation';
+} from '@macfax/core/types/validation';
 
 import {
   createApi,
   defaultErrorFormatter,
   unwrapResults,
   type QueryParams,
-} from './api-client';
+} from '@macfax/core/api-client';
 import {
   LOCAL_API_ORIGIN,
   LOCALHOST_API_ORIGIN,

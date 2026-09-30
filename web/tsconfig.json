@@ -25,6 +25,9 @@
     "paths": {
       "@/*": [
         "./src/*"
+      ],
+      "@macfax/core/*": [
+        "../packages/core/src/*"
       ]
     }
   },

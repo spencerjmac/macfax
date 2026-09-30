@@ -10,7 +10,7 @@ import {
   type SortingState,
 } from '@tanstack/react-table';
 import clsx from 'clsx';
-import type { PlayerBoxRow, GameTeamRef } from '@/types/games';
+import type { PlayerBoxRow, GameTeamRef } from '@macfax/core/types/games';
 
 interface Props {
   homeRows: PlayerBoxRow[];

@@ -9,7 +9,7 @@ import type {
   OutlookPlayer,
   TeamOutlookProjection,
   PlaceholderArchetype,
-} from '@/types/outlook';
+} from '@macfax/core/types/outlook';
 import { api } from '@/lib/api';
 import { OutlookTopCards } from './OutlookTopCards';
 import { PlayerOutlookTable } from './PlayerOutlookTable';

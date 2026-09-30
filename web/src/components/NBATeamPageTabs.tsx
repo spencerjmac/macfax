@@ -3,9 +3,9 @@
 import { useState, useEffect } from 'react';
 import clsx from 'clsx';
 import Link from 'next/link';
-import { NBA_TEAM_TABS } from '@/config/nba';
+import { NBA_TEAM_TABS } from '@macfax/core/config/nba';
 import { nbaApi } from '@/lib/nba-api';
-import type { NBATeamSeasonRatings, NBAGame, NBAPlayerSeasonStats, TeamRosterValueResponse } from '@/types/nba';
+import type { NBATeamSeasonRatings, NBAGame, NBAPlayerSeasonStats, TeamRosterValueResponse } from '@macfax/core/types/nba';
 import { TeamRosterValueView } from './TeamRosterValueView';
 
 interface NBATeamPageTabsProps {

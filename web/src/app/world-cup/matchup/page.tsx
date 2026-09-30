@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { worldCupApi } from '@/lib/worldcup-api';
-import { getWorldCupTeamColors } from '@/lib/worldcup-colors';
-import type { WorldCupTeam, WorldCupMatchupResult } from '@/types/worldcup';
+import { getWorldCupTeamColors } from '@macfax/core/lib/worldcup-colors';
+import type { WorldCupTeam, WorldCupMatchupResult } from '@macfax/core/types/worldcup';
 
 export const dynamic = 'force-dynamic';
 

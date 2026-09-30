@@ -16,7 +16,7 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import type { BracketData, BracketTeamData, TeamRoundProbs } from '@/types';
+import type { BracketData, BracketTeamData, TeamRoundProbs } from '@macfax/core/types';
 
 // ─── layout constants ─────────────────────────────────────────────────────
 const SLOT_H   = 34;              // px per team row

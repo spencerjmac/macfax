@@ -11,7 +11,7 @@ import {
   SortingState,
 } from '@tanstack/react-table';
 import clsx from 'clsx';
-import type { WorldCupTeam } from '@/types/worldcup';
+import type { WorldCupTeam } from '@macfax/core/types/worldcup';
 
 interface RankingsTableProps {
   data: WorldCupTeam[];

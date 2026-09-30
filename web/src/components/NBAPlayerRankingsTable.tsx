@@ -16,16 +16,16 @@ import {
 } from '@tanstack/react-table';
 import clsx from 'clsx';
 import HeaderWithTooltip from './HeaderWithTooltip';
-import { computeRanks, heatStyleFromPercentile } from '@/lib/rankingUtils';
-import { getBPRTier, fmtSigned } from '@/lib/bprTiers';
+import { computeRanks, heatStyleFromPercentile } from '@macfax/core/lib/rankingUtils';
+import { getBPRTier, fmtSigned } from '@macfax/core/lib/bprTiers';
 import {
   PLAYER_TRADITIONAL_METRICS,
   NBA_ADVANCED_METRICS,
   NBA_IMPACT_METRICS,
   formatPlayerMetric,
   type PlayerMetricMeta,
-} from '@/lib/playerMetricMetadata';
-import type { NBAPlayerSeasonStats } from '@/types/nba';
+} from '@macfax/core/lib/playerMetricMetadata';
+import type { NBAPlayerSeasonStats } from '@macfax/core/types/nba';
 
 type TabId = 'traditional' | 'advanced' | 'impact';
 

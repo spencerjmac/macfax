@@ -17,10 +17,10 @@ import type {
   TeamRosterValueResponse,
   TeamSeasonOutlookSummary,
   TeamSeasonOutlookDetail,
-} from '@/types/nba';
-import type { GameDetailResponse } from '@/types/games';
+} from '@macfax/core/types/nba';
+import type { GameDetailResponse } from '@macfax/core/types/games';
 
-import { createApi, unwrapResults, type ApiClientConfig, type QueryParams } from './api-client';
+import { createApi, unwrapResults, type ApiClientConfig, type QueryParams } from '@macfax/core/api-client';
 import { LOCAL_API_ORIGIN, WEB_FETCH_OPTIONS, stripTrailingSlash, webApiOrigin } from './api-env';
 
 const SERVER_API_BASE_URL = stripTrailingSlash(webApiOrigin(LOCAL_API_ORIGIN));

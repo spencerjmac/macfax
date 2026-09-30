@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { api } from '@/lib/api';
 import { nbaApi } from '@/lib/nba-api';
-import type { GameDetailResponse } from '@/types/games';
+import type { GameDetailResponse } from '@macfax/core/types/games';
 import WPChart from './WPChart';
 import BoxScoreTable from './BoxScoreTable';
 import FourFactorsTab from './FourFactorsTab';

@@ -1,7 +1,7 @@
 'use client';
 
 import clsx from 'clsx';
-import type { FourFactorsTeam, GameTeamRef } from '@/types/games';
+import type { FourFactorsTeam, GameTeamRef } from '@macfax/core/types/games';
 
 interface Props {
   fourFactors: { home: FourFactorsTeam; away: FourFactorsTeam };

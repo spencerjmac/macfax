@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { TeamSeason } from '@/types';
-import { getTeamColors, readable, DEFAULT_A, DEFAULT_B } from '@/lib/team-colors';
+import { TeamSeason } from '@macfax/core/types';
+import { getTeamColors, readable, DEFAULT_A, DEFAULT_B } from '@macfax/core/lib/team-colors';
 
 interface MatchupToolProps {
   teams: TeamSeason[];

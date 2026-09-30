@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import * as echarts from 'echarts';
-import { TeamSeason } from '@/types';
+import { TeamSeason } from '@macfax/core/types';
 
 interface TrapezoidChartProps {
   teams: TeamSeason[];

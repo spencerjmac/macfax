@@ -5,7 +5,7 @@
  * Do not copy NCAA weights or thresholds here — they are different sports.
  */
 
-import type { Better } from '@/lib/metricMetadata';
+import type { Better } from '../lib/metricMetadata';
 
 export const NBA_SPORT_CONFIG = {
   id: 'nba' as const,

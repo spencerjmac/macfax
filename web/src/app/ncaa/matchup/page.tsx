@@ -3,9 +3,9 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
-import { getTeamColors, withOpacity, DEFAULT_A, DEFAULT_B, type TeamColors } from '@/lib/team-colors';
+import { getTeamColors, withOpacity, DEFAULT_A, DEFAULT_B, type TeamColors } from '@macfax/core/lib/team-colors';
 import { extractDominantColor } from '@/lib/color-extract';
-import type { MatchupResult, TopDriver, Team } from '@/types';
+import type { MatchupResult, TopDriver, Team } from '@macfax/core/types';
 
 export const dynamic = 'force-dynamic';
 

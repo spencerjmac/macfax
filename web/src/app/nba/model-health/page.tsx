@@ -1,6 +1,6 @@
 import { Metadata } from 'next';
 import { nbaApi } from '@/lib/nba-api';
-import { NBAModelCalibration } from '@/types/nba';
+import { NBAModelCalibration } from '@macfax/core/types/nba';
 import { AlertTriangle, CheckCircle, FlaskConical, Info } from 'lucide-react';
 import clsx from 'clsx';
 

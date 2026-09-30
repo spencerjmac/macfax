@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import clsx from 'clsx';
-import { Prospect } from '@/types/prospects';
+import { Prospect } from '@macfax/core/types/prospects';
 
 interface Props {
   prospect: Prospect;

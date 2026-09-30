@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { api } from '@/lib/api';
-import type { TrapezoidData, Conference } from '@/types';
+import type { TrapezoidData, Conference } from '@macfax/core/types';
 import SeasonSelect from '@/components/SeasonSelect';
 
 // Dynamically import ECharts to avoid SSR issues

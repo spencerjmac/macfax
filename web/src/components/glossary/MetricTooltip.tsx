@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react';
 import Link from 'next/link';
-import { getGlossaryTerm } from '@/lib/glossaryContent';
+import { getGlossaryTerm } from '@macfax/core/lib/glossaryContent';
 
 interface MetricTooltipProps {
   termId: string;

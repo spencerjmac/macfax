@@ -3,9 +3,9 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { nbaApi } from '@/lib/nba-api';
-import { getTeamColors, withOpacity, DEFAULT_A, DEFAULT_B, type TeamColors } from '@/lib/team-colors';
+import { getTeamColors, withOpacity, DEFAULT_A, DEFAULT_B, type TeamColors } from '@macfax/core/lib/team-colors';
 import { extractDominantColor } from '@/lib/color-extract';
-import type { NBATeam, NBAMatchupResult, NBASeriesPrediction } from '@/types/nba';
+import type { NBATeam, NBAMatchupResult, NBASeriesPrediction } from '@macfax/core/types/nba';
 
 export const dynamic = 'force-dynamic';
 

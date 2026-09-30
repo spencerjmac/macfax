@@ -5,7 +5,7 @@ import { useEffect, useState, Suspense } from "react";
 import { nbaApi } from "@/lib/nba-api";
 import { PlayerCompareView } from "@/components/PlayerCompareView";
 import { PlayerScoutingCard } from "@/components/PlayerScoutingCard";
-import type { NBAPlayerSeasonStats } from "@/types/nba";
+import type { NBAPlayerSeasonStats } from "@macfax/core/types/nba";
 
 function ComparePageInner() {
   const searchParams = useSearchParams();

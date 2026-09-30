@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
-import type { SeasonInfo } from '@/types';
+import type { SeasonInfo } from '@macfax/core/types';
 
 interface SeasonSelectProps {
   value: number;

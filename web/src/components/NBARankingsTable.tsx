@@ -15,9 +15,9 @@ import {
 import Link from 'next/link';
 import clsx from 'clsx';
 import HeaderWithTooltip from './HeaderWithTooltip';
-import { NBATeamSeasonRatings, NBASeasonInfo } from '@/types/nba';
-import { NBA_METRIC_DEFINITIONS, NBAMetricMeta } from '@/config/nba';
-import { computeRanks, heatStyleFromPercentile, RankData } from '@/lib/rankingUtils';
+import { NBATeamSeasonRatings, NBASeasonInfo } from '@macfax/core/types/nba';
+import { NBA_METRIC_DEFINITIONS, NBAMetricMeta } from '@macfax/core/config/nba';
+import { computeRanks, heatStyleFromPercentile, RankData } from '@macfax/core/lib/rankingUtils';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types

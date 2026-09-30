@@ -1,7 +1,7 @@
 'use client';
 
 import clsx from 'clsx';
-import type { FitGrade as FitGradeType } from '@/types/outlook';
+import type { FitGrade as FitGradeType } from '@macfax/core/types/outlook';
 
 interface FitGradeBadgeProps {
   grade: FitGradeType | null | undefined;

@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import ReactECharts from 'echarts-for-react';
-import type { WorldCupTeam } from '@/types/worldcup';
+import type { WorldCupTeam } from '@macfax/core/types/worldcup';
 
 interface PowerPerceptionScatterProps {
   teams: WorldCupTeam[];
