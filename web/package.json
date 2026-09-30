@@ -8,7 +8,7 @@
     "dev:backend": "cd ../backend && uv run python manage.py runserver",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "eslint ."
   },
   "dependencies": {
     "@tanstack/react-table": "^8.20.0",
