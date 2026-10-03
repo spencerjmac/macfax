@@ -5,6 +5,9 @@
     "paths": {
       "@/*": [
         "./*"
+      ],
+      "@macfax/core/*": [
+        "../../packages/core/src/*"
       ]
     }
   },
@@ -12,6 +15,7 @@
     "**/*.ts",
     "**/*.tsx",
     ".expo/types/**/*.ts",
-    "expo-env.d.ts"
+    "expo-env.d.ts",
+    "../../packages/core/src/**/*.ts"
   ]
 }
