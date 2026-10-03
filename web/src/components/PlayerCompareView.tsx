@@ -1,7 +1,7 @@
 "use client";
 
-import type { NBAPlayerSeasonStats } from "@/types/nba";
-import { getBPRTier, fmtSigned } from "@/lib/bprTiers";
+import type { NBAPlayerSeasonStats } from "@macfax/core/types/nba";
+import { getBPRTier, fmtSigned } from "@macfax/core/lib/bprTiers";
 import { clsx } from "clsx";
 
 interface Props {

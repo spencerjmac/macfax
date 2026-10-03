@@ -2,7 +2,7 @@
 
 import 'katex/dist/katex.min.css';
 import { BlockMath } from 'react-katex';
-import type { FormulaContent } from '@/lib/methodologyTypes';
+import type { FormulaContent } from '@macfax/core/lib/methodologyTypes';
 
 interface FormulaBlockProps {
   formula: FormulaContent;

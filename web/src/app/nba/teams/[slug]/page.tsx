@@ -10,7 +10,7 @@ import type {
   ProjectedStarter,
   TeamOutseasonMove,
   TeamSeasonOutlookDetail,
-} from '@/types/nba';
+} from '@macfax/core/types/nba';
 import { nbaApi } from '@/lib/nba-api';
 import {
   formatArchetype,
@@ -39,7 +39,7 @@ import {
   getStarConcentrationLabel,
   getTeamRiskSignal,
   getTierClass,
-} from '@/lib/nba-outlook-helpers';
+} from '@macfax/core/lib/nba-outlook-helpers';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;

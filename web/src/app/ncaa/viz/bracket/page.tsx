@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
-import type { BracketData, BracketTeamData, TeamRoundProbs } from '@/types';
+import type { BracketData, BracketTeamData, TeamRoundProbs } from '@macfax/core/types';
 import VisualBracket from '@/components/VisualBracket';
 
 // ---------------------------------------------------------------------------

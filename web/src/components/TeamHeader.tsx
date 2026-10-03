@@ -1,6 +1,6 @@
 'use client';
 
-import { TeamSeason } from '@/types';
+import { TeamSeason } from '@macfax/core/types';
 import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
 

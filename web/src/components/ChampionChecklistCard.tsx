@@ -1,6 +1,6 @@
 'use client';
 
-import { ChecklistItem } from '@/lib/rankings';
+import { ChecklistItem } from '@macfax/core/lib/rankings';
 import clsx from 'clsx';
 
 // Simple SVG icons

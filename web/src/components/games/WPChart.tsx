@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import ReactECharts from 'echarts-for-react';
-import type { WPPoint, GameTeamRef } from '@/types/games';
+import type { WPPoint, GameTeamRef } from '@macfax/core/types/games';
 
 interface WPChartProps {
   curve: WPPoint[];

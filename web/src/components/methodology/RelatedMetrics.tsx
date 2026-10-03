@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
-import type { RelatedMetric } from '@/lib/methodologyTypes';
+import type { RelatedMetric } from '@macfax/core/lib/methodologyTypes';
 
 interface RelatedMetricsProps {
   metrics: RelatedMetric[];

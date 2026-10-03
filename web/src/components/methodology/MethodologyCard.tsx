@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import type { MethodologyContent } from '@/lib/methodologyTypes';
+import type { MethodologyContent } from '@macfax/core/lib/methodologyTypes';
 
 interface MethodologyCardProps {
   content: MethodologyContent;

@@ -14,7 +14,7 @@ import {
   useXAxisScale,
   useYAxisScale,
 } from 'recharts';
-import type { NBALandscapeData, NBALandscapeTeam } from '@/types/nba';
+import type { NBALandscapeData, NBALandscapeTeam } from '@macfax/core/types/nba';
 
 // ---------------------------------------------------------------------------
 // Constants

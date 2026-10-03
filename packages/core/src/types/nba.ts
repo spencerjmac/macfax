@@ -4,7 +4,7 @@
  * These are NBA-specific and intentionally separate from the NCAA types in types/index.ts.
  */
 
-import type { ChecklistItem } from '@/types';
+import type { ChecklistItem } from './index';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Domain models

@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { METHODOLOGY_SECTIONS } from '@/lib/methodologyContent';
+import { METHODOLOGY_SECTIONS } from '@macfax/core/lib/methodologyContent';
 import { MethodologySectionGroup } from '@/components/methodology/MethodologySectionGroup';
 
 export const metadata: Metadata = {

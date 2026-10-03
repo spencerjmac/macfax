@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
-import type { CrystalBallData, CrystalBallTeam, ChecklistItem } from '@/types';
+import type { CrystalBallData, CrystalBallTeam, ChecklistItem } from '@macfax/core/types';
 import SeasonSelect from '@/components/SeasonSelect';
 import clsx from 'clsx';
 

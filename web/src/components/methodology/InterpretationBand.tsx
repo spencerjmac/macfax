@@ -1,4 +1,4 @@
-import type { InterpretationBandEntry } from '@/lib/methodologyTypes';
+import type { InterpretationBandEntry } from '@macfax/core/lib/methodologyTypes';
 import clsx from 'clsx';
 
 interface InterpretationBandProps {

@@ -14,7 +14,7 @@ import {
   Customized,
 } from 'recharts';
 import clsx from 'clsx';
-import type { NBALuckChartData, NBALuckChartTeam } from '@/types/nba';
+import type { NBALuckChartData, NBALuckChartTeam } from '@macfax/core/types/nba';
 
 // ---------------------------------------------------------------------------
 // Constants

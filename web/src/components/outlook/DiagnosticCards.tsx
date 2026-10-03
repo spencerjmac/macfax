@@ -1,7 +1,7 @@
 'use client';
 
 import clsx from 'clsx';
-import type { TeamOutlookProjection, TeamOutlookFit, OutlookPlayer } from '@/types/outlook';
+import type { TeamOutlookProjection, TeamOutlookFit, OutlookPlayer } from '@macfax/core/types/outlook';
 import { FitGradeBadge } from './FitGrade';
 
 // ── Reusable stat bar ─────────────────────────────────────────────────────────

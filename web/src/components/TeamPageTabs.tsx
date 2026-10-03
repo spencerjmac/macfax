@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { TeamSeason, NCAAPlayerSeasonStats } from '@/types';
-import { TeamRanks, ChecklistItem, CinderellaIndexResult } from '@/lib/rankings';
+import { TeamSeason, NCAAPlayerSeasonStats } from '@macfax/core/types';
+import { TeamRanks, ChecklistItem, CinderellaIndexResult } from '@macfax/core/lib/rankings';
 import { StatCard, MetricCard, FactorCardWithRanks } from './StatCards';
 import ChampionChecklistCard from './ChampionChecklistCard';
 import Link from 'next/link';
-import { api } from '@/lib/api';
+import { api, fetchTeamGameLog } from '@/lib/api';
 import clsx from 'clsx';
 import { MetricTooltip } from './glossary/MetricTooltip';
 
@@ -521,11 +521,9 @@ function ResumeTab({ team, ranks }: { team: TeamSeason; ranks: TeamRanks }) {
   useEffect(() => {
     async function fetchGameLog() {
       try {
-        const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
         // Parse season year: "2025-26" -> 2026 (use ending year)
         const seasonYear = parseInt(team.season.split('-')[0]) + 1;
-        const url = `${apiBase}/api/teams/${team.teamId}/gamelog/?season=${seasonYear}`;
-        const response = await fetch(url);
+        const response = await fetchTeamGameLog(team.teamId, seasonYear);
         if (response.ok) {
           const data = await response.json();
           setGameLog(data.game_log || []);
@@ -871,12 +869,9 @@ function GameLogTab({ team }: { team: TeamSeason }) {
         setLoading(true);
         setError(null);
 
-        const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
         // Parse season year: "2025-26" -> 2026 (use ending year)
         const seasonYear = parseInt(team.season.split('-')[0]) + 1;
-        const response = await fetch(
-          `${apiBase}/api/teams/${team.teamId}/gamelog/?season=${seasonYear}`
-        );
+        const response = await fetchTeamGameLog(team.teamId, seasonYear);
         
         if (!response.ok) {
           throw new Error(`Failed to fetch game log: ${response.statusText}`);

@@ -3,9 +3,9 @@ import { ArrowRight } from 'lucide-react';
 import { getAllTeams } from '@/lib/data';
 import { nbaApi } from '@/lib/nba-api';
 import { worldCupApi } from '@/lib/worldcup-api';
-import type { TeamSeason } from '@/types';
-import type { NBATeamSeasonRatings } from '@/types/nba';
-import type { WorldCupTeam } from '@/types/worldcup';
+import type { TeamSeason } from '@macfax/core/types';
+import type { NBATeamSeasonRatings } from '@macfax/core/types/nba';
+import type { WorldCupTeam } from '@macfax/core/types/worldcup';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;

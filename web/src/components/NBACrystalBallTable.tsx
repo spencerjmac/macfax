@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import clsx from 'clsx';
-import type { ChecklistItem } from '@/types';
-import type { NBACrystalBallData, NBACrystalBallTeam } from '@/types/nba';
+import type { ChecklistItem } from '@macfax/core/types';
+import type { NBACrystalBallData, NBACrystalBallTeam } from '@macfax/core/types/nba';
 
 // ---------------------------------------------------------------------------
 // Helpers

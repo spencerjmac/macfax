@@ -5,7 +5,7 @@ import { Suspense } from 'react';
 import dynamicImport from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
-import type { VizStats, VizScatterData, StatMetadata } from '@/types';
+import type { VizStats, VizScatterData, StatMetadata } from '@macfax/core/types';
 import SeasonSelect from '@/components/SeasonSelect';
 
 export const dynamic = 'force-dynamic';

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { TeamSearchWidget } from '@/components/outlook/TeamSearchWidget';
+import { getOutlookTopTeams } from '@/lib/data';
 
 export const metadata: Metadata = {
   title: 'Roster Outlook | macfax',
@@ -8,35 +9,8 @@ export const metadata: Metadata = {
     'Next-season team projections built from the roster up. Player talent, minutes, fit grades, continuity, and scenario editing for every Division I program.',
 };
 
-interface TopTeam {
-  rank: number;
-  team_name: string;
-  team_slug: string;
-  logo_url: string | null;
-  projected_adj_em: number;
-  adj_em_low: number;
-  adj_em_high: number;
-}
-
-interface TopTeamsResponse {
-  season: number;
-  projected_season_year: number;
-  teams: TopTeam[];
-}
-
-async function fetchTopTeams(): Promise<TopTeamsResponse | null> {
-  const base = (process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000').replace(/\/$/, '');
-  try {
-    const res = await fetch(`${base}/api/outlook/top/?limit=10`, { cache: 'no-store' });
-    if (!res.ok) return null;
-    return res.json();
-  } catch {
-    return null;
-  }
-}
-
 export default async function OutlookLandingPage() {
-  const top = await fetchTopTeams();
+  const top = await getOutlookTopTeams();
   const projectedLabel = top
     ? `${top.projected_season_year - 1}-${String(top.projected_season_year).slice(2)}`
     : null;

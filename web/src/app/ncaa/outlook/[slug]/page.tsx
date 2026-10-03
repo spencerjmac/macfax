@@ -1,8 +1,8 @@
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import type { RosterOutlookData } from '@/types/outlook';
 import RosterOutlookPage from '@/components/outlook/RosterOutlookPage';
 import { TeamSearchWidget } from '@/components/outlook/TeamSearchWidget';
+import { getRosterOutlookOrNull } from '@/lib/data';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -12,24 +12,9 @@ interface OutlookPageProps {
   searchParams: Promise<{ season?: string }>;
 }
 
-async function fetchOutlook(slug: string, season?: string): Promise<RosterOutlookData | null> {
-  // Build-phase guard
-  if (process.env.NEXT_PHASE === 'phase-production-build') return null;
-
-  const base = (process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000').replace(/\/$/, '');
-  const params = season ? `?season=${season}` : '';
-  try {
-    const res = await fetch(`${base}/api/outlook/${slug}/${params}`, { cache: 'no-store' });
-    if (!res.ok) return null;
-    return (await res.json()) as RosterOutlookData;
-  } catch {
-    return null;
-  }
-}
-
 export async function generateMetadata({ params }: OutlookPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const data = await fetchOutlook(slug);
+  const data = await getRosterOutlookOrNull(slug);
   if (!data) return { title: 'Roster Outlook | macfax' };
   return {
     title: `${data.team.name} Roster Outlook ${data.season.projected_season_year} | macfax`,
@@ -40,7 +25,7 @@ export async function generateMetadata({ params }: OutlookPageProps): Promise<Me
 export default async function OutlookPage({ params, searchParams }: OutlookPageProps) {
   const { slug } = await params;
   const { season } = await searchParams;
-  const data = await fetchOutlook(slug, season);
+  const data = await getRosterOutlookOrNull(slug, season);
 
   if (!data) notFound();
 

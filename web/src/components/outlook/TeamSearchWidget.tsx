@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Team } from '@/types';
+import type { Team } from '@macfax/core/types';
 import { api } from '@/lib/api';
 
 interface TeamSearchWidgetProps {

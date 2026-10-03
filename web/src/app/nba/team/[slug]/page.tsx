@@ -26,7 +26,7 @@ export default async function NBATeamPage({ params, searchParams }: NBATeamPageP
   const seasonYear = sp.season ? parseInt(sp.season, 10) : undefined;
 
   let teamDetail = null;
-  let games: import('@/types/nba').NBAGame[] = [];
+  let games: import('@macfax/core/types/nba').NBAGame[] = [];
   let error: string | null = null;
 
   try {

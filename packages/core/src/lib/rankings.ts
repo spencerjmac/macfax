@@ -1,4 +1,4 @@
-import type { TeamSeason } from '@/types';
+import type { TeamSeason } from '../types';
 
 export interface TeamRanks {
   adjEM: number | null;

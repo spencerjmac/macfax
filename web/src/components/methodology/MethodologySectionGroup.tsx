@@ -1,5 +1,5 @@
 import { MethodologyCard } from './MethodologyCard';
-import { methodologyContent } from '@/lib/methodologyContent';
+import { methodologyContent } from '@macfax/core/lib/methodologyContent';
 
 interface MethodologySectionGroupProps {
   id: string;

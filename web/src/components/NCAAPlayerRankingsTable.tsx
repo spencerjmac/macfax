@@ -16,15 +16,15 @@ import {
 import clsx from 'clsx';
 import HeaderWithTooltip from './HeaderWithTooltip';
 import MetricDefinitionsCard, { type MetricDefinition } from './MetricDefinitionsCard';
-import { computeRanks, heatStyleFromPercentile } from '@/lib/rankingUtils';
+import { computeRanks, heatStyleFromPercentile } from '@macfax/core/lib/rankingUtils';
 import {
   PLAYER_TRADITIONAL_METRICS,
   NCAA_IMPACT_METRICS,
   NCAA_FF_METRICS,
   formatPlayerMetric,
   type PlayerMetricMeta,
-} from '@/lib/playerMetricMetadata';
-import type { NCAAPlayerSeasonStats } from '@/types';
+} from '@macfax/core/lib/playerMetricMetadata';
+import type { NCAAPlayerSeasonStats } from '@macfax/core/types';
 import { BPRConfidenceBadge, type BprSource } from './BPRConfidenceBadge';
 
 type TabId = 'traditional' | 'impact' | 'fourfactors';

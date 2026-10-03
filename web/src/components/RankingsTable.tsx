@@ -12,13 +12,13 @@ import {
   SortingState,
   ColumnFiltersState,
 } from '@tanstack/react-table';
-import { TeamSeason, SeasonInfo } from '@/types';
+import { TeamSeason, SeasonInfo } from '@macfax/core/types';
 import Link from 'next/link';
 import clsx from 'clsx';
 import HeaderWithTooltip from './HeaderWithTooltip';
 import MetricDefinitionsCard, { type MetricDefinition } from './MetricDefinitionsCard';
-import { METRIC_DEFINITIONS, MetricMeta } from '@/lib/metricMetadata';
-import { computeRanks, heatStyleFromPercentile, RankData } from '@/lib/rankingUtils';
+import { METRIC_DEFINITIONS, MetricMeta } from '@macfax/core/lib/metricMetadata';
+import { computeRanks, heatStyleFromPercentile, RankData } from '@macfax/core/lib/rankingUtils';
 
 interface RankingsTableProps {
   data: TeamSeason[];

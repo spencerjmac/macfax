@@ -11,9 +11,9 @@ import type {
   VizStats,
   VizScatterData,
   NCAAPlayerSeasonStats,
-} from '@/types';
-import type { NBALandscapeData, NBACrystalBallData, NBALuckChartData } from '@/types/nba';
-import type { GameDetailResponse } from '@/types/games';
+} from '@macfax/core/types';
+import type { NBALandscapeData, NBACrystalBallData, NBALuckChartData } from '@macfax/core/types/nba';
+import type { GameDetailResponse } from '@macfax/core/types/games';
 import type {
   RosterOutlookData,
   ScenarioRequest,
@@ -21,78 +21,46 @@ import type {
   OutlookPlayer,
   PlayerSearchResult,
   PlaceholderListResponse,
-} from '@/types/outlook';
+} from '@macfax/core/types/outlook';
 import type {
   ValidationSummaryResponse,
   ValidationWeeklyResponse,
   ValidationRecentGamesResponse,
-} from '@/types/validation';
+} from '@macfax/core/types/validation';
 
-type QueryParams = Record<string, string | number | boolean | undefined | null>;
+import {
+  createApi,
+  defaultErrorFormatter,
+  unwrapResults,
+  type QueryParams,
+} from '@macfax/core/api-client';
+import {
+  LOCAL_API_ORIGIN,
+  LOCALHOST_API_ORIGIN,
+  WEB_FETCH_OPTIONS,
+  publicApiOrigin,
+  stripTrailingSlash,
+  webApiOrigin,
+} from './api-env';
 
-const API_BASE_URL = (process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8000').replace(/\/$/, '');
-const API_ROOT = `${API_BASE_URL}/api`;
+const API_BASE_URL = stripTrailingSlash(webApiOrigin(LOCAL_API_ORIGIN));
+const client = createApi({ baseUrl: `${API_BASE_URL}/api`, fetchOptions: WEB_FETCH_OPTIONS });
 
 function buildUrl(path: string, params?: QueryParams): string {
-  const url = new URL(`${API_ROOT}${path.startsWith('/') ? '' : '/'}${path}`);
-  if (params) {
-    Object.entries(params).forEach(([key, value]) => {
-      if (value === undefined || value === null || value === '') return;
-      url.searchParams.set(key, String(value));
-    });
-  }
-  return url.toString();
+  return client.url(path, params);
+}
+
+function fetchJson<T>(url: string): Promise<T> {
+  return client.getJson<T>(url);
 }
 
 /**
- * Turn API error response body into a short, readable message.
- * Avoids dumping Django debug HTML or long stack traces into the UI.
+ * NCAA team game log (TeamPageTabs). Raw Response so callers keep their own
+ * status handling; public URL, unstripped, and no fetch options, as before.
  */
-function parseErrorMessage(status: number, body: string): string {
-  const statusLabel = status >= 500 ? 'Server error' : 'Request failed';
-  // Prefer JSON error payload
-  const trimmed = body.trim();
-  if (trimmed.startsWith('{')) {
-    try {
-      const json = JSON.parse(body) as { error?: string; detail?: string; message?: string };
-      const msg = json.error ?? json.detail ?? json.message;
-      if (typeof msg === 'string' && msg.length > 0 && msg.length < 500) return msg;
-    } catch {
-      // not JSON, fall through
-    }
-  }
-  // If response looks like HTML (e.g. Django debug page), show generic message
-  if (
-    trimmed.startsWith('<!') ||
-    trimmed.toLowerCase().includes('</html>') ||
-    trimmed.toLowerCase().includes('<html')
-  ) {
-    return status >= 500
-      ? `${statusLabel} (${status}). Check the server logs or try again later.`
-      : `${statusLabel} (${status}).`;
-  }
-  // Short plain text is fine to show
-  if (body.length <= 200) return body;
-  return `${statusLabel} (${status}).`;
-}
-
-async function fetchJson<T>(url: string): Promise<T> {
-  const res = await fetch(url, { cache: 'no-store' });
-  const text = await res.text();
-  if (!res.ok) {
-    throw new Error(parseErrorMessage(res.status, text) || `Request failed (${res.status})`);
-  }
-  try {
-    return JSON.parse(text) as T;
-  } catch {
-    throw new Error('Invalid JSON in response');
-  }
-}
-
-function unwrapResults<T>(data: any): T[] {
-  if (Array.isArray(data)) return data as T[];
-  if (data && Array.isArray(data.results)) return data.results as T[];
-  return [] as T[];
+export function fetchTeamGameLog(teamId: string, seasonYear: number): Promise<Response> {
+  const gameLogClient = createApi({ baseUrl: publicApiOrigin(LOCALHOST_API_ORIGIN) });
+  return gameLogClient.fetch(gameLogClient.rawUrl(`/api/teams/${teamId}/gamelog/?season=${seasonYear}`));
 }
 
 export const api = {
@@ -211,22 +179,10 @@ export const api = {
   },
 
   async getScenarioProjection(body: ScenarioRequest): Promise<ScenarioProjectionResult> {
-    const url = buildUrl('/outlook/scenario/');
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-      cache: 'no-store',
+    return client.postJson<ScenarioProjectionResult>(buildUrl('/outlook/scenario/'), body, {
+      formatError: defaultErrorFormatter('Scenario request failed'),
+      invalidJsonMessage: 'Invalid JSON in scenario response',
     });
-    const text = await res.text();
-    if (!res.ok) {
-      throw new Error(parseErrorMessage(res.status, text) || `Scenario request failed (${res.status})`);
-    }
-    try {
-      return JSON.parse(text) as ScenarioProjectionResult;
-    } catch {
-      throw new Error('Invalid JSON in scenario response');
-    }
   },
 
   async searchPlayers(q: string, season?: number): Promise<PlayerSearchResult[]> {

@@ -8,7 +8,8 @@
     "dev:backend": "cd ../backend && uv run python manage.py runserver",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "eslint .",
+    "lint:core": "cd .. && eslint -c web/eslint.config.mjs packages/core/src"
   },
   "dependencies": {
     "@tanstack/react-table": "^8.20.0",

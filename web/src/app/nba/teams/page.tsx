@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ArrowUpDown, Search } from 'lucide-react';
 import TeamLogo from '@/components/TeamLogo';
-import type { TeamSeasonOutlookSummary } from '@/types/nba';
+import type { TeamSeasonOutlookSummary } from '@macfax/core/types/nba';
 import { nbaApi } from '@/lib/nba-api';
 import {
   formatProjectedRecord,
@@ -18,7 +18,7 @@ import {
   getTeamRiskSignal,
   getTierClass,
   getTierDotClass,
-} from '@/lib/nba-outlook-helpers';
+} from '@macfax/core/lib/nba-outlook-helpers';
 
 type ConferenceFilter = 'All' | 'East' | 'West';
 type SortOption = 'rank' | 'wins' | 'adjnet' | 'youngest' | 'continuity';

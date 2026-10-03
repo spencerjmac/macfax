@@ -2,7 +2,7 @@
 
 import { Info } from 'lucide-react';
 import { useState } from 'react';
-import { Better } from '@/lib/metricMetadata';
+import { Better } from '@macfax/core/lib/metricMetadata';
 
 interface HeaderWithTooltipProps {
   label: string;

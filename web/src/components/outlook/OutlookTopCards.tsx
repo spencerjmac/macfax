@@ -1,7 +1,7 @@
 'use client';
 
 import clsx from 'clsx';
-import type { TeamOutlookProjection, TeamOutlookFit } from '@/types/outlook';
+import type { TeamOutlookProjection, TeamOutlookFit } from '@macfax/core/types/outlook';
 import { FitGradeBadge } from './FitGrade';
 
 interface OutlookTopCardsProps {

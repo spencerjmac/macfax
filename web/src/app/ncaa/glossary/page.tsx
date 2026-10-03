@@ -1,5 +1,5 @@
 import { Metadata } from 'next';
-import { GLOSSARY_TERMS } from '@/lib/glossaryContent';
+import { GLOSSARY_TERMS } from '@macfax/core/lib/glossaryContent';
 import GlossaryTable from '@/components/GlossaryTable';
 
 export const metadata: Metadata = {

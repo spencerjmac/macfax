@@ -4,7 +4,7 @@ import type {
   OutlookTier,
   TeamOutseasonMove,
   TeamSeasonOutlookSummary,
-} from '@/types/nba';
+} from '../types/nba';
 
 export type OutlookTierLabel =
   | 'Title Favorite'

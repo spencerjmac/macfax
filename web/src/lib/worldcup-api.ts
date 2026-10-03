@@ -2,38 +2,34 @@ import type {
   WorldCupTeam,
   WorldCupMatchupResult,
   WorldCupGroupResult,
-} from '@/types/worldcup';
+} from '@macfax/core/types/worldcup';
 
-const API_BASE_URL = (
-  process.env.API_INTERNAL_URL ||
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  'http://127.0.0.1:8000'
-).replace(/\/$/, '');
+import { createApi } from '@macfax/core/api-client';
+import { LOCAL_API_ORIGIN, WEB_FETCH_OPTIONS, stripTrailingSlash, webApiOrigin } from './api-env';
 
-const WORLDCUP_API_ROOT = `${API_BASE_URL}/api/world-cup`;
+const API_BASE_URL = stripTrailingSlash(webApiOrigin(LOCAL_API_ORIGIN));
 
-async function fetchJson<T>(url: string): Promise<T> {
-  const res = await fetch(url, { cache: 'no-store' });
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`World Cup API request failed (${res.status}): ${text.slice(0, 200)}`);
-  }
-  return res.json() as Promise<T>;
-}
+const client = createApi({
+  baseUrl: `${API_BASE_URL}/api/world-cup`,
+  fetchOptions: WEB_FETCH_OPTIONS,
+  formatError: (status, body) => `World Cup API request failed (${status}): ${body.slice(0, 200)}`,
+  invalidJsonMessage: null,
+  lenientErrorBody: true,
+});
 
 export const worldCupApi = {
   async getRankings(): Promise<WorldCupTeam[]> {
-    const data = await fetchJson<{ teams: WorldCupTeam[] }>(`${WORLDCUP_API_ROOT}/rankings/`);
+    const data = await client.getJson<{ teams: WorldCupTeam[] }>(client.rawUrl('/rankings/'));
     return data.teams;
   },
 
   async getMatchup(teamA: string, teamB: string): Promise<WorldCupMatchupResult> {
-    return fetchJson(
-      `${WORLDCUP_API_ROOT}/matchup/?teamA=${encodeURIComponent(teamA)}&teamB=${encodeURIComponent(teamB)}`
+    return client.getJson(
+      client.rawUrl(`/matchup/?teamA=${encodeURIComponent(teamA)}&teamB=${encodeURIComponent(teamB)}`)
     );
   },
 
   async getGroup(group: string): Promise<WorldCupGroupResult> {
-    return fetchJson(`${WORLDCUP_API_ROOT}/group/${encodeURIComponent(group)}/`);
+    return client.getJson(client.rawUrl(`/group/${encodeURIComponent(group)}/`));
   },
 };

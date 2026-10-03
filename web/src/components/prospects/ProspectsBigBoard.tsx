@@ -3,7 +3,7 @@
 import React, { useMemo, useState } from 'react';
 import Image from 'next/image';
 import clsx from 'clsx';
-import { Prospect, ProspectsData } from '@/types/prospects';
+import { Prospect, ProspectsData } from '@macfax/core/types/prospects';
 import { ProspectCard } from './ProspectCard';
 
 // ─── Constants ────────────────────────────────────────────────────────────────

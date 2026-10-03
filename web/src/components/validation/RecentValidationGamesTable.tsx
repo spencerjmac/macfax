@@ -9,7 +9,7 @@ import {
   createColumnHelper,
   type SortingState,
 } from '@tanstack/react-table';
-import type { ValidationRecentGame } from '@/types/validation';
+import type { ValidationRecentGame } from '@macfax/core/types/validation';
 
 interface RecentValidationGamesTableProps {
   games: ValidationRecentGame[];
