@@ -1,5 +1,6 @@
 // Learn more: https://docs.expo.dev/guides/customizing-metro/
 const { getDefaultConfig } = require('expo/metro-config');
+const { withNativeWind } = require('nativewind/metro');
 const path = require('path');
 
 const projectRoot = __dirname;
@@ -14,4 +15,4 @@ config.watchFolders = [coreRoot];
 // package they import from this app's node_modules.
 config.resolver.nodeModulesPaths = [path.resolve(projectRoot, 'node_modules')];
 
-module.exports = config;
+module.exports = withNativeWind(config, { input: './global.css' });

@@ -1,19 +1,13 @@
 import { Link } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 export default function Index() {
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Macfax</Text>
-      <Link href="/gate" style={styles.link}>
+    <View className="flex-1 items-center justify-center gap-4 bg-bg">
+      <Text className="font-display text-4xl uppercase text-text-onDark">Macfax</Text>
+      <Link href="/gate" className="font-sans-medium text-base text-brand underline">
         Open gate screen
       </Link>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16 },
-  title: { fontSize: 28, fontWeight: '700' },
-  link: { fontSize: 16, textDecorationLine: 'underline' },
-});
