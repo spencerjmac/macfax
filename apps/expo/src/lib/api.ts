@@ -1,4 +1,5 @@
 import { createApi } from '@macfax/core/api-client';
+import type { GameDetailResponse, GameTeamRef, WPPoint } from '@macfax/core/types/games';
 
 /** Used when EXPO_PUBLIC_API_BASE_URL is unset, so phones always reach a real host. */
 const DEFAULT_API_ORIGIN = 'https://macfax.usu.edu';
@@ -59,4 +60,38 @@ function mapApiRowToRankingRow(team: Record<string, unknown>): RankingRow {
 export async function fetchRankings(): Promise<RankingRow[]> {
   const json = await api.getJson<{ results?: Record<string, unknown>[] }>(api.rawUrl(API_RANKINGS_PATH));
   return (json.results ?? []).map(mapApiRowToRankingRow);
+}
+
+/** What the win-probability chart needs from /api/games/<id>/detail/. Small and serializable. */
+export interface WPChartData {
+  gameId: number;
+  date: string;
+  homeTeam: GameTeamRef;
+  awayTeam: GameTeamRef;
+  curve: WPPoint[];
+}
+
+const SAMPLE_GAME_CANDIDATES = 5;
+
+/**
+ * A recent finished game that has a win-probability curve, for the chart
+ * experiment. Game ids differ between databases, so the id is looked up
+ * rather than hard-coded.
+ */
+export async function fetchSampleWPChartData(): Promise<WPChartData> {
+  const list = await api.getJson<{ results?: { id: number; status?: string }[] }>(api.rawUrl('/api/games/'));
+  const finals = (list.results ?? []).filter((g) => g.status === 'final').slice(0, SAMPLE_GAME_CANDIDATES);
+  for (const game of finals) {
+    const detail = await api.getJson<GameDetailResponse>(api.rawUrl(`/api/games/${game.id}/detail/`));
+    if (detail.wp_curve?.length) {
+      return {
+        gameId: detail.game_meta.id,
+        date: detail.game_meta.date,
+        homeTeam: detail.game_meta.home_team,
+        awayTeam: detail.game_meta.away_team,
+        curve: detail.wp_curve,
+      };
+    }
+  }
+  throw new Error('No recent game has a win-probability curve.');
 }

@@ -2,19 +2,21 @@ import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
+import { ChartExperiment, type ChartApproach } from '@/src/components/ChartExperiment';
 import { RankingsTable } from '@/src/components/RankingsTable';
 import { ThemeSample } from '@/src/components/ThemeSample';
 
 const TABS = [
   { key: 'theme', label: 'Theme' },
   { key: 'table', label: 'Table' },
+  { key: 'chart', label: 'Chart' },
 ] as const;
 
 type TabKey = (typeof TABS)[number]['key'];
 
 export default function Gate() {
-  // /gate?tab=table opens a tab directly (handy for deep links and screenshots).
-  const params = useLocalSearchParams<{ tab?: string }>();
+  // /gate?tab=chart&chart=b opens a tab directly (handy for deep links and screenshots).
+  const params = useLocalSearchParams<{ tab?: string; chart?: string }>();
   const initialTab = TABS.find(({ key }) => key === params.tab)?.key ?? 'theme';
   const [tab, setTab] = useState<TabKey>(initialTab);
 
@@ -39,6 +41,7 @@ export default function Gate() {
       </View>
       {tab === 'theme' ? <ThemeSample /> : null}
       {tab === 'table' ? <RankingsTable /> : null}
+      {tab === 'chart' ? <ChartExperiment initial={(params.chart === 'b' ? 'b' : 'a') satisfies ChartApproach} /> : null}
     </View>
   );
 }
