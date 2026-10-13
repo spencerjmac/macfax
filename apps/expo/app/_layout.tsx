@@ -17,7 +17,8 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
-import { fontFamily, ink, palette } from '@/src/theme/tokens';
+import { AppHeader } from '@/src/components/ui/AppHeader';
+import { palette } from '@/src/theme/tokens';
 
 // Keep the splash screen up until the fonts are ready.
 SplashScreen.preventAutoHideAsync();
@@ -49,16 +50,17 @@ export default function RootLayout() {
 
   return (
     <>
+      {/* Tabs are the root screen; detail screens push on top of them with a back button. */}
       <Stack
         screenOptions={{
-          headerStyle: { backgroundColor: ink[2] },
-          headerTintColor: palette.textOnDark,
-          headerTitleStyle: { fontFamily: fontFamily['display-semibold'] },
+          header: ({ options }) => <AppHeader title={options.title} showBack />,
           contentStyle: { backgroundColor: palette.bg },
         }}
       >
-        <Stack.Screen name="index" options={{ title: 'Macfax' }} />
-        <Stack.Screen name="gate" options={{ title: 'Gate' }} />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="team/[slug]" options={{ title: 'Team' }} />
+        <Stack.Screen name="methodology/[slug]" options={{ title: 'Methodology' }} />
+        <Stack.Screen name="gate" options={{ title: 'Dev gate' }} />
       </Stack>
       <StatusBar style="light" />
     </>

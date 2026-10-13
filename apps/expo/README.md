@@ -45,21 +45,49 @@ test.
 - `EXPO_PUBLIC_` values are embedded in the JavaScript bundle. Never put secrets
   in them.
 - `.env.example` documents the variable. Expo does not load it.
+- After changing an `EXPO_PUBLIC_` value, add `--clear` to the next
+  `expo export` (and to `expo start` if the old value seems to stick). Metro's
+  cache otherwise keeps the value from the previous build.
+- The production website sends no CORS headers for other origins, so the web
+  build can only load data from a host that allows its origin (local Django
+  with `http://localhost:8081` allowed). Phones are not affected.
 
 ## Checks
 
 ```bash
+npx expo customize tsconfig.json    # regenerates route types in .expo/types after adding a screen
 npx tsc --noEmit
+npx expo lint
 npx expo-doctor
 npx expo install --check
-npx expo export --platform web      # also ios, android
+npx expo export --clear --platform web      # also ios, android
 ```
 
 `expo export` writes to `dist/`, which is gitignored.
 
+## Screens
+
+| Route | File | What it is |
+| --- | --- | --- |
+| `/` | `app/(tabs)/index.tsx` | Home: the NCAA hub |
+| `/rankings` | `app/(tabs)/rankings.tsx` | Team rankings table |
+| `/methodology` | `app/(tabs)/methodology.tsx` | Methodology index |
+| `/team/[slug]` | `app/team/[slug].tsx` | Team screen (placeholder) |
+| `/methodology/[slug]` | `app/methodology/[slug].tsx` | Methodology article |
+| `/gate` | `app/gate.tsx` | Developer test bench |
+
+`/gate` exists only in development, or in a build made with
+`EXPO_PUBLIC_ENABLE_GATE=1`. Otherwise it redirects to Home.
+
 ## Layout
 
-- `app/` holds the Expo Router screens.
+- `app/` holds the Expo Router screens. `app/(tabs)/` are the bottom tabs;
+  everything else pushes on top of them with a back button.
+- `src/lib/api.ts` is the only place that talks to the network.
+- `src/components/` holds shared components; `src/components/ui/` has the
+  header, logo, and loading / error / empty states.
+- `src/charts/` holds chart components, which take data as props.
+  `src/charts/experimental/` is unverified on devices.
 - `src/theme/tokens.ts` holds the design tokens, copied by hand from
   `web/src/app/globals.css` and `web/tailwind.config.js`.
 - `tailwind.config.js`, `global.css`, `babel.config.js` and `metro.config.js`
