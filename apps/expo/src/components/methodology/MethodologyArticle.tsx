@@ -1,6 +1,6 @@
-import type { MethodologyContent } from '@macfax/core/lib/methodologyTypes';
+import type { FormulaContent, MethodologyContent } from '@macfax/core/lib/methodologyTypes';
 import { AlertTriangle, ArrowRight, BookOpen, Clock } from '@/src/components/ui/icons';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 
 import { openLink } from '@/src/lib/links';
 import { ink, palette } from '@/src/theme/tokens';
@@ -23,6 +23,36 @@ function SectionHeading({ children }: { children: string }) {
 
 function Body({ children }: { children: string }) {
   return <Text className="font-sans text-base leading-6 text-ink-fg">{children}</Text>;
+}
+
+/**
+ * The article's formula as plain monospace text. Web typesets `latex` with
+ * KaTeX; the app has no math renderer, so it shows the LaTeX source as written,
+ * followed by the plain-language version (`prose`) when there is one.
+ */
+function FormulaCard({ formula }: { formula: FormulaContent }) {
+  return (
+    <View className="mt-8 overflow-hidden rounded-lg border border-ink-line bg-ink-2">
+      <View className="flex-row items-center justify-between border-b border-ink-line bg-ink-3 px-4 py-2">
+        <Text className="font-display-semibold text-xs uppercase tracking-widest text-text-onDark">Formula</Text>
+        {formula.latex ? <Text className="font-mono text-[10px] uppercase tracking-wider text-ink-fg2">LaTeX source</Text> : null}
+      </View>
+      <View className="gap-3 p-4">
+        {formula.latex ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <Text selectable className="font-mono text-sm leading-6 text-brand2">
+              {formula.latex.trim()}
+            </Text>
+          </ScrollView>
+        ) : null}
+        {formula.prose ? (
+          <Text selectable className="font-mono text-sm leading-6 text-text-onDark">
+            {formula.prose}
+          </Text>
+        ) : null}
+      </View>
+    </View>
+  );
 }
 
 /**
@@ -62,27 +92,7 @@ export function MethodologyArticle({ content }: { content: MethodologyContent })
         </View>
       ) : null}
 
-      {content.basicFormula ? (
-        <>
-          <SectionHeading>Formula</SectionHeading>
-          <View className="rounded-lg border border-ink-line bg-ink-2 p-4">
-            {/* Web typesets `latex` with KaTeX. The app has no math renderer yet, so it shows the source. */}
-            {content.basicFormula.latex ? (
-              <>
-                <Text className="mb-2 font-sans-medium text-[10px] uppercase tracking-wider text-ink-fg2">LaTeX source</Text>
-                <Text selectable className="font-mono text-sm leading-5 text-text-onDark">
-                  {content.basicFormula.latex.trim()}
-                </Text>
-              </>
-            ) : null}
-            {content.basicFormula.prose ? (
-              <Text selectable className={`font-mono text-sm leading-6 text-text-onDark ${content.basicFormula.latex ? 'mt-3' : ''}`}>
-                {content.basicFormula.prose}
-              </Text>
-            ) : null}
-          </View>
-        </>
-      ) : null}
+      {content.basicFormula ? <FormulaCard formula={content.basicFormula} /> : null}
 
       {content.weights?.length ? (
         <>

@@ -124,7 +124,12 @@ export default function RankingsScreen() {
     return buildColumns(ranks);
   }, [teams]);
 
-  const openTeam = useCallback((team: RankingRow) => router.push(`/team/${team.teamId}`), []);
+  // Pass the selected season along so the team screen shows the same one. No param means the current season.
+  const openTeam = useCallback(
+    (team: RankingRow) =>
+      router.push({ pathname: '/team/[slug]', params: season ? { slug: team.teamId, season: String(season) } : { slug: team.teamId } }),
+    [season],
+  );
 
   const seasonLabel = rankings.status === 'ready' ? rankings.data.season : '';
   const updated = rankings.status === 'ready' ? formatUpdated(rankings.data.lastUpdated) : null;

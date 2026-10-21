@@ -129,6 +129,54 @@ export async function fetchSeasons(): Promise<SeasonInfo[]> {
   return Array.isArray(json) ? json : (json.results ?? []);
 }
 
+/**
+ * The API's season year for a label: "2025-26" -> 2026 (the ending year),
+ * the same rule web's TeamPageTabs uses. Null if the label is not "YYYY-YY".
+ */
+export function seasonYearFromLabel(label: string): number | null {
+  const start = parseInt(label.split('-')[0], 10);
+  return Number.isNaN(start) ? null : start + 1;
+}
+
+/**
+ * One game from /api/teams/<slug>/gamelog/. Only the fields the app shows are
+ * typed; the API sends about 60 more. Percentages are percentage points
+ * (64.3 means 64.3%).
+ */
+export interface GameLogEntry {
+  id: number;
+  /** Id for /ncaa/games/<game_id> on the website, when the game has a detail page. */
+  game_id: number | null;
+  game_date: string;
+  opponent_name: string;
+  opponent_slug: string | null;
+  opponent_is_d1: boolean;
+  home_away: 'H' | 'A' | 'N';
+  result: 'W' | 'L';
+  went_to_ot: boolean;
+  pts: number;
+  /** Team points minus opponent points; null when unknown. */
+  margin: number | null;
+  ortg: number | null;
+  drtg: number | null;
+  efg_pct: number | null;
+  tov_pct: number | null;
+  orb_pct: number | null;
+  ftr: number | null;
+}
+
+/**
+ * A team's games for one season (the API's ending-year number, e.g. 2026).
+ * Same endpoint as fetchTeamGameLog in web/src/lib/api.ts; unlike web, a
+ * failed request throws so the screen can offer Retry.
+ */
+export async function fetchTeamGameLog(teamId: string, seasonYear: number): Promise<GameLogEntry[]> {
+  const json = await api.getJson<{ game_log?: GameLogEntry[] }>(
+    api.rawUrl(`/api/teams/${encodeURIComponent(teamId)}/gamelog/?season=${seasonYear}`),
+  );
+  return json.game_log ?? [];
+}
+
 /** What the win-probability chart needs from /api/games/<id>/detail/. Small and serializable. */
 export interface WPChartData {
   gameId: number;
