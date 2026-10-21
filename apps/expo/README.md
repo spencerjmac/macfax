@@ -72,12 +72,34 @@ npx expo export --clear --platform web      # also ios, android
 | `/` | `app/(tabs)/index.tsx` | Home: the NCAA hub |
 | `/rankings` | `app/(tabs)/rankings.tsx` | Team rankings table |
 | `/methodology` | `app/(tabs)/methodology.tsx` | Methodology index |
-| `/team/[slug]` | `app/team/[slug].tsx` | Team screen (placeholder) |
+| `/team/[slug]?season=2025` | `app/team/[slug].tsx` | Team: Overview and Game log tabs |
 | `/methodology/[slug]` | `app/methodology/[slug].tsx` | Methodology article |
 | `/gate` | `app/gate.tsx` | Developer test bench |
 
 `/gate` exists only in development, or in a build made with
 `EXPO_PUBLIC_ENABLE_GATE=1`. Otherwise it redirects to Home.
+
+## Known issues
+
+- **Win-probability data for game 123501.** The curve from
+  `/api/games/123501/detail/` (Michigan 69–63 Connecticut) keeps going after
+  the final score and ends at 90–87. The website shows the same curve, so it
+  is backend data, not the chart. Do not draw a curve whose last point
+  disagrees with the game's final score; hide the chart or flag the game.
+- **Native behaviour is unverified.** The app has been tested in a web browser
+  and bundle-compiled for iOS and Android, but not run on a phone. Unknowns:
+  tab bar and safe areas, the season picker modal, keyboard handling, scroll
+  smoothness, logo loading, external links, and the chart's WebView.
+  `src/charts/experimental/` has never run on a device.
+- **Stale `EXPO_PUBLIC_` values.** Metro's cache can keep the value from the
+  previous build. Add `--clear` to `expo export` (and to `expo start` if a
+  value sticks) after changing one.
+- **Not ported yet.** Team page tabs other than Overview and Game log (four
+  factors, offense/defense, résumé, charts, players); game pages; the
+  rankings four-factor views, conference/tournament filter, pre-tournament
+  toggle and player rankings; matchup, outlook, visualizations, glossary and
+  model health (these open the website); typeset formulas (shown as LaTeX
+  source); everything NBA and World Cup.
 
 ## Layout
 
