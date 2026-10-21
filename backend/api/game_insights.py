@@ -2,16 +2,15 @@
 AI-powered game insights generation using Claude claude-sonnet-4-6.
 
 Generates 3 analytical observations per game from four-factors and WP curve data.
-Results must be cached to game.game_insights by the caller after first generation.
+Views should call load_or_generate_insights(), which saves a successful result to
+game.game_insights once and never saves a failure.
 
 Usage
 -----
-    from api.game_insights import generate_game_insights
+    from api.game_insights import load_or_generate_insights
 
-    insights = generate_game_insights(game_meta, four_factors, wp_curve)
-    # insights is a list[str] of 3 insight strings
-    game.game_insights = json.dumps(insights)
-    game.save(update_fields=["game_insights"])
+    insights = load_or_generate_insights(game, game_meta, four_factors, wp_curve)
+    # insights is a list[str] (3 strings, or one placeholder if generation failed)
 """
 from __future__ import annotations
 
@@ -73,7 +72,7 @@ def generate_game_insights(
     game_meta: dict,
     four_factors: dict,
     wp_curve: list[dict],
-) -> list[str]:
+) -> list[str] | None:
     """
     Generate 3 analytical game insights via Claude API.
 
@@ -87,13 +86,14 @@ def generate_game_insights(
 
     Returns
     -------
-    list[str] of 3 insight strings (may be shorter on API error)
+    list[str] of 3 insight strings, or None if generation failed (SDK missing,
+    API error, unparseable reply). The reason is logged.
     """
     try:
         import anthropic
     except ImportError:
         _log.warning("anthropic SDK not installed — skipping insights generation")
-        return ["Game insights unavailable — analytics module not installed."]
+        return None
 
     home_name = game_meta["home_team"]["name"]
     away_name = game_meta["away_team"]["name"]
@@ -176,7 +176,35 @@ Generate exactly 3 analytical insights as a JSON array of strings."""
 
     except json.JSONDecodeError as exc:
         _log.warning("Failed to parse insights JSON: %s — raw: %r", exc, raw[:200])
-        return ["Game insights could not be parsed."]
+        return None
     except Exception as exc:  # noqa: BLE001
         _log.warning("Insights generation failed: %s", exc)
+        return None
+
+
+def load_or_generate_insights(
+    game,
+    game_meta: dict,
+    four_factors: dict,
+    wp_curve: list[dict],
+) -> list[str]:
+    """
+    Return the insights saved on `game`, generating and saving them on first use.
+
+    Works for NCAA and NBA games (both have a game_insights text field). A failed
+    generation returns a placeholder but is NOT saved, so the next request tries
+    again instead of serving the failure text forever.
+    """
+    if game.game_insights:
+        try:
+            return json.loads(game.game_insights)
+        except json.JSONDecodeError:
+            return [game.game_insights]
+
+    insights = generate_game_insights(game_meta, four_factors, wp_curve)
+    if insights is None:
         return ["Game insights temporarily unavailable."]
+
+    game.game_insights = json.dumps(insights)
+    game.save(update_fields=["game_insights"])
+    return insights

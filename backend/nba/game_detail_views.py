@@ -6,7 +6,6 @@ Returns a unified game detail payload matching the NCAA contract.
 """
 from __future__ import annotations
 
-import json
 import logging
 
 from django.http import JsonResponse
@@ -21,7 +20,7 @@ from .models import (
     NBAModelCalibration,
 )
 from api.wp_reconstruction import build_wp_curve, FALLBACK_SIGMA
-from api.game_insights import generate_game_insights
+from api.game_insights import load_or_generate_insights
 
 _log = logging.getLogger(__name__)
 
@@ -151,16 +150,8 @@ def nba_game_detail(request, game_id: int):
         "status": game.status,
     }
 
-    # ── AI insights (generate once, cache forever) ────────────────────────────
-    if game.game_insights:
-        try:
-            insights = json.loads(game.game_insights)
-        except json.JSONDecodeError:
-            insights = [game.game_insights]
-    else:
-        insights = generate_game_insights(game_meta, four_factors, wp_curve)
-        game.game_insights = json.dumps(insights)
-        game.save(update_fields=["game_insights"])
+    # ── AI insights (generated once and saved; failures are not saved) ────────
+    insights = load_or_generate_insights(game, game_meta, four_factors, wp_curve)
 
     return JsonResponse(
         {
