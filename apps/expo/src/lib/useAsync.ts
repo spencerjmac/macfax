@@ -19,9 +19,17 @@ export function useAsync<T>(load: (options: { force: boolean }) => Promise<T>, d
   const [state, setState] = useState<AsyncState<T>>({ status: 'loading' });
   const [attempt, setAttempt] = useState(0);
 
+  // Back to loading as soon as the inputs change (React's "adjust state while rendering"),
+  // so the effect below only sets state from the async callbacks.
+  const inputs = [...deps, attempt];
+  const [seenInputs, setSeenInputs] = useState(inputs);
+  if (inputs.length !== seenInputs.length || inputs.some((value, i) => !Object.is(value, seenInputs[i]))) {
+    setSeenInputs(inputs);
+    setState({ status: 'loading' });
+  }
+
   useEffect(() => {
     let cancelled = false;
-    setState({ status: 'loading' });
     load({ force: attempt > 0 })
       .then((data) => {
         if (!cancelled) setState({ status: 'ready', data });
