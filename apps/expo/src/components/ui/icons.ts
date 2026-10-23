@@ -21,5 +21,6 @@ export { default as Inbox } from 'lucide-react-native/icons/inbox';
 export { default as ScatterChart } from 'lucide-react-native/icons/chart-scatter';
 export { default as Search } from 'lucide-react-native/icons/search';
 export { default as Sparkles } from 'lucide-react-native/icons/sparkles';
+export { default as Star } from 'lucide-react-native/icons/star';
 export { default as Swords } from 'lucide-react-native/icons/swords';
 export { default as Trophy } from 'lucide-react-native/icons/trophy';

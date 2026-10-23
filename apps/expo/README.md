@@ -108,6 +108,12 @@ npx expo export --clear --platform web      # also ios, android
 - `src/lib/api.ts` is the only place that talks to the network.
 - `src/components/` holds shared components; `src/components/ui/` has the
   header, logo, and loading / error / empty states.
+- `src/store/` holds the Redux store (Redux Toolkit). `favoritesSlice.ts` is
+  "My Teams": `toggleFavorite`, `removeFavorite` and `clearFavorites` actions
+  over a list of starred team ids. `FavoriteButton` on the team screen
+  dispatches; Home's My Teams section and the rankings star read it. Use the
+  typed `useAppDispatch` / `useAppSelector` from `src/store/hooks.ts`. The
+  store is in memory only, so starred teams reset when the app restarts.
 - `src/charts/` holds chart components, which take data as props.
   `src/charts/experimental/` is unverified on devices.
 - `src/theme/tokens.ts` holds the design tokens, copied by hand from

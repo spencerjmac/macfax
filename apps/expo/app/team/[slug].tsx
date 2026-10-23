@@ -2,6 +2,7 @@ import { Stack, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
+import { FavoriteButton } from '@/src/components/FavoriteButton';
 import { GameLogTable } from '@/src/components/team/GameLogTable';
 import { ExternalLink } from '@/src/components/ui/icons';
 import { Container } from '@/src/components/ui/Screen';
@@ -129,6 +130,7 @@ export default function TeamScreen() {
                     <Text className="mt-1 font-display text-3xl uppercase text-text-onDark md:text-4xl">{data.teamName}</Text>
                     <Text className="mt-1 font-mono text-sm text-ink-fg">{data.record}</Text>
                   </View>
+                  <FavoriteButton teamId={data.teamId} teamName={data.teamName} />
                 </Container>
                 <Container className="flex-row">
                   {TABS.map(({ key, label }) => (

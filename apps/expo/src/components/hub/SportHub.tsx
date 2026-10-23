@@ -1,6 +1,7 @@
 import { ArrowRight, ExternalLink } from '@/src/components/ui/icons';
 import { Pressable, Text, View } from 'react-native';
 
+import { MyTeams } from '@/src/components/hub/MyTeams';
 import { VizArt } from '@/src/components/hub/VizArt';
 import { Container } from '@/src/components/ui/Screen';
 import { AsyncView } from '@/src/components/ui/StateViews';
@@ -164,6 +165,11 @@ export function SportHub({ config, rankings }: SportHubProps) {
           {leader ? <LeaderCard leader={leader} label={config.label} /> : null}
         </Container>
       </View>
+
+      {/* My Teams (starred teams, from the Redux store) */}
+      <Container className="pt-10 md:pt-14">
+        <MyTeams rankings={rankings} />
+      </Container>
 
       {/* Top 5 */}
       <Container className="py-10 md:py-14">

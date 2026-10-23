@@ -16,8 +16,10 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
+import { Provider } from 'react-redux';
 
 import { AppHeader } from '@/src/components/ui/AppHeader';
+import { store } from '@/src/store';
 import { palette } from '@/src/theme/tokens';
 
 // Keep the splash screen up until the fonts are ready.
@@ -49,7 +51,8 @@ export default function RootLayout() {
   }
 
   return (
-    <>
+    // The Redux store is available to every screen below this Provider.
+    <Provider store={store}>
       {/* Tabs are the root screen; detail screens push on top of them with a back button. */}
       <Stack
         screenOptions={{
@@ -63,6 +66,6 @@ export default function RootLayout() {
         <Stack.Screen name="gate" options={{ title: 'Dev gate' }} />
       </Stack>
       <StatusBar style="light" />
-    </>
+    </Provider>
   );
 }

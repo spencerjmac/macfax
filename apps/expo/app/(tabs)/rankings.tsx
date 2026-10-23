@@ -6,6 +6,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { Text, View } from 'react-native';
 
 import { DataTable } from '@/src/components/DataTable';
+import { FavoriteStar } from '@/src/components/FavoriteButton';
 import { SeasonSelect } from '@/src/components/SeasonSelect';
 import { Container } from '@/src/components/ui/Screen';
 import { AsyncView } from '@/src/components/ui/StateViews';
@@ -79,6 +80,7 @@ function buildColumns(ranks: MetricRanks): ColumnDef<RankingRow, any>[] {
             <Text numberOfLines={1} className="flex-1 font-sans-medium text-sm text-text-onDark">
               {team.teamName}
             </Text>
+            <FavoriteStar teamId={team.teamId} />
           </View>
         );
       },
