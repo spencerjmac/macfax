@@ -77,7 +77,7 @@ class ChecklistTestCase(TestCase):
             ftr=38.2,
             efg_pct_d=45.8,
             tov_pct_d=21.3,
-            drb_pct=75.2,
+            drb_pct=27.0,   # opponent ORB%: the model stores drb_pct that way (reb_edge = orb_pct - drb_pct)
             ftr_d=30.1,
             fg3_pct=38.5,
             ft_pct=76.2,
@@ -106,7 +106,7 @@ class ChecklistTestCase(TestCase):
             ftr=35.1,
             efg_pct_d=49.2,
             tov_pct_d=18.5,
-            drb_pct=72.8,
+            drb_pct=29.0,
             ftr_d=33.2,
             fg3_pct=34.2,
             ft_pct=71.5,
@@ -135,7 +135,7 @@ class ChecklistTestCase(TestCase):
             ftr=32.5,
             efg_pct_d=50.2,
             tov_pct_d=17.8,
-            drb_pct=71.5,
+            drb_pct=29.0,
             ftr_d=34.1,
             fg3_pct=31.2,
             ft_pct=68.5,
@@ -272,49 +272,79 @@ class ChecklistTestCase(TestCase):
         self.assertFalse(result['pass'])
         self.assertEqual(result['value'], 'N/A')
     
+    def _context(self, **stats):
+        """
+        A hand-built season context so the dynamic thresholds are known.
+        Every mean is 0 and every std is 1 (FFI: mean 50, std 10) unless
+        overridden; threshold = mean + z * std.
+        """
+        base = {
+            "efg_mean": 0.0, "efg_std": 1.0,
+            "ftr_mean": 0.0, "ftr_std": 1.0,
+            "reb_mean": 0.0, "reb_std": 1.0,
+            "tov_mean": 0.0, "tov_std": 1.0,
+            "ffi_mean": 50.0, "ffi_std": 10.0,
+        }
+        base.update(stats)
+        return {"stats": base}
+
     def test_efg_margin_pass(self):
-        """Test eFG margin check passing"""
-        # Elite team should have high eFG margin
-        result = _check_efg_margin(self.elite_stats)
-        # efg_margin is auto-calculated in model save
-        if self.elite_stats.efg_margin >= 2.798:
-            self.assertTrue(result['pass'])
-    
-    def test_ftr_margin_pass(self):
-        """Test FTR margin check passing"""
-        # Check if FTR margin >= -7.31
-        result = _check_ftr_margin(self.elite_stats)
-        # ftr_margin is auto-calculated in model save
-        if self.elite_stats.ftr_margin >= -7.31:
-            self.assertTrue(result['pass'])
-    
-    def test_rebounding_edge_pass(self):
-        """Test rebounding edge check passing"""
-        # Check if rebounding edge >= 0
-        result = _check_rebounding_edge(self.elite_stats)
-        if self.elite_stats.reb_edge >= 0:
-            self.assertTrue(result['pass'])
-    
-    def test_turnover_edge_pass(self):
-        """Test turnover edge check passing"""
-        # Elite team should have positive turnover edge
-        result = _check_turnover_edge(self.elite_stats)
-        # tov_edge is auto-calculated in model save
-        if self.elite_stats.tov_edge >= 0.6:
-            self.assertTrue(result['pass'])
-    
-    def test_four_factor_index_pass(self):
-        """Test Four Factor Index check passing"""
-        # Elite team: 82.3 > 68.7
-        result = _check_four_factor_index(self.elite_stats)
+        """Elite team's eFG margin (55.2 - 45.8 = 9.4) clears the threshold"""
+        result = _check_efg_margin(self.elite_stats, self._context())
         self.assertTrue(result['pass'])
-    
-    def test_four_factor_index_fail(self):
-        """Test Four Factor Index check failing"""
-        # Average team: 52.1 < 68.7
-        result = _check_four_factor_index(self.avg_stats)
+
+    def test_efg_margin_fail(self):
+        """Average team's eFG margin is negative, below the threshold"""
+        result = _check_efg_margin(self.avg_stats, self._context())
         self.assertFalse(result['pass'])
-    
+
+    def test_efg_margin_threshold_follows_season_stats(self):
+        """A tougher season (higher mean) raises the bar the same team must clear"""
+        easy = _check_efg_margin(self.elite_stats, self._context(efg_mean=0.0))
+        hard = _check_efg_margin(self.elite_stats, self._context(efg_mean=20.0))
+        self.assertTrue(easy['pass'])
+        self.assertFalse(hard['pass'])
+
+    def test_ftr_margin_pass(self):
+        result = _check_ftr_margin(self.elite_stats, self._context())
+        self.assertTrue(result['pass'])
+
+    def test_ftr_margin_fail(self):
+        result = _check_ftr_margin(self.avg_stats, self._context())
+        self.assertFalse(result['pass'])
+
+    def test_rebounding_edge_pass(self):
+        result = _check_rebounding_edge(self.elite_stats, self._context())
+        self.assertTrue(result['pass'])
+
+    def test_rebounding_edge_fail(self):
+        result = _check_rebounding_edge(self.avg_stats, self._context())
+        self.assertFalse(result['pass'])
+
+    def test_turnover_edge_pass(self):
+        result = _check_turnover_edge(self.elite_stats, self._context())
+        self.assertTrue(result['pass'])
+
+    def test_turnover_edge_fail(self):
+        result = _check_turnover_edge(self.avg_stats, self._context())
+        self.assertFalse(result['pass'])
+
+    def test_four_factor_index_pass(self):
+        """Elite 82.3 vs threshold 50 + 2.01 * 10 = 70.1"""
+        result = _check_four_factor_index(self.elite_stats, self._context())
+        self.assertTrue(result['pass'])
+
+    def test_four_factor_index_fail(self):
+        """Average 52.1 is below 70.1"""
+        result = _check_four_factor_index(self.avg_stats, self._context())
+        self.assertFalse(result['pass'])
+
+    def test_four_factor_index_null(self):
+        self.avg_stats.four_factor_index_100 = None
+        result = _check_four_factor_index(self.avg_stats, self._context())
+        self.assertFalse(result['pass'])
+        self.assertEqual(result['value'], 'N/A')
+
     def test_wab_pass(self):
         """Test WAB check passing"""
         # Elite team: 8.2 > 5
@@ -335,9 +365,15 @@ class ChecklistTestCase(TestCase):
     
     def test_ft_pct_fail(self):
         """Test free throw percentage check failing"""
-        # Average team: 68.5% < 70%
-        result = _check_ft_pct(self.avg_stats)
-        self.assertFalse(result['pass'])
+        # Threshold is 68.0%: 67.9% just misses, 68.0% just makes it
+        self.avg_stats.ft_pct = 67.9
+        self.assertFalse(_check_ft_pct(self.avg_stats)['pass'])
+        self.avg_stats.ft_pct = 68.0
+        self.assertTrue(_check_ft_pct(self.avg_stats)['pass'])
+
+    def test_ft_pct_threshold_text_matches_logic(self):
+        """The text shown to users must describe the threshold actually applied"""
+        self.assertEqual(_check_ft_pct(self.elite_stats)['threshold'], '≥ 68.0%')
     
     def test_ft_pct_null(self):
         """Test free throw percentage with null value"""
@@ -355,14 +391,12 @@ class ChecklistTestCase(TestCase):
         self.assertGreater(checklist['passedCount'], 10)  # Elite team should pass most
         self.assertEqual(len(checklist['items']), 15)
         
-        # Verify structure of items
+        # Verify structure of items: every item has the same six keys
         for item in checklist['items']:
-            self.assertIn('key', item)
-            self.assertIn('label', item)
-            self.assertIn('pass', item)
-            self.assertIn('value', item)
-            self.assertIn('threshold', item)
-            self.assertIn('details', item)
+            self.assertEqual(
+                set(item), {'key', 'label', 'pass', 'value', 'threshold', 'details'},
+                f"unexpected keys on item {item.get('key')!r}",
+            )
     
     def test_full_checklist_average_team(self):
         """Test full checklist computation for average team"""

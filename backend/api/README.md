@@ -1,5 +1,4 @@
-
----
+--
 
 ## 1. One sentence
 
@@ -27,7 +26,7 @@ Example: the website loads the Duke roster outlook page. It asks `GET /api/outlo
 4. Django REST Framework (DRF) turns the result into JSON, because `config/settings.py` allows only the JSON renderer (`REST_FRAMEWORK`, around line 132).
 5. The website receives the JSON and draws the page.
 
-### 3b. Map of the files (32 source files plus a `tests/` folder; about 9,600 lines of source and 3,900 lines of tests)
+### 3b. Map of the files (32 source files plus a `tests/` folder; about 9,600 lines of source and 3,300 lines of tests)
 
 **Wiring**
 | File | What it is |
@@ -60,7 +59,7 @@ Example: the website loads the Duke roster outlook page. It asks `GET /api/outlo
 |---|---|
 | `matchup_engine.py` | Forecasts a game between two teams: pace, expected points, win probability, volatility. About 840 lines of pure maths with no web code. |
 | `bracket_engine.py` | Simulates the NCAA tournament thousands of times (Monte Carlo = repeated random trials) to get each team's odds of reaching each round. |
-| `checklist.py` | The NCAA 15-item "national champion checklist" for one team (shown on the team page). |
+| `checklist.py` | An NCAA 15-item "national champion checklist" for one team. Only reachable through `TeamViewSet`'s `stats` and `profile` sub-routes, which nothing calls. The checklist the website actually shows is computed in `packages/core/src/lib/rankings.ts`, and the Crystal Ball page uses `crystal_ball_views.py`. Kept for now, with its tests (`tests/test_checklist.py`) brought up to date; retire it together with those two sub-routes if you decide they are not needed. |
 | `checklist_utils.py` | One small helper (`_item`) that builds one checklist row; shared by NCAA and NBA. |
 | `resume_utils.py` | NCAA "quadrant" logic (is this a Quad 1 win?). Only `get_quadrant` is used today; the rest is kept for planned resume features. |
 | `wp_reconstruction.py` | Rebuilds a game's win-probability curve from who was on the court (lineup "stints"). |
@@ -79,7 +78,7 @@ Example: the website loads the Duke roster outlook page. It asks `GET /api/outlo
 | `game_detail_views.py` | One-game page: box score, win-probability curve, four factors, AI insights. |
 | `auth_views.py` | Login, logout, "who am I", and the security-cookie handshake for the admin page. |
 | `job_views.py`, `job_tasks.py` | Admin-only: start, watch, cancel and clean up the big "update everything" data job. |
-| `tests/` | 11 test files that check the api works. |
+| `tests/` | 9 test files (223 tests) that check the api works, plus `base.py` (see "Running the tests" below). |
 
 ### 3c. The 5 most important files in detail
 
@@ -101,7 +100,8 @@ Example: the website loads the Duke roster outlook page. It asks `GET /api/outlo
 
 **3) `serializers.py`: the plating**
 - A **serializer** takes a database row (or a bundle of rows) and decides exactly which fields to show and how to name and round them.
-- `RankingsSerializer` builds each rankings row, with many computed fields. It also attaches the champion checklist: the `national_champion_checklist` field calls `compute_national_champion_checklist` from `checklist.py`.
+- `RankingsSerializer` builds each rankings row, with many computed fields.
+- `TeamSeasonStatsSerializer` (used only by `TeamViewSet`'s `stats` and `profile` sub-routes) carries a `national_champion_checklist` field that calls `compute_national_champion_checklist` from `checklist.py`.
 - Other serializers: seasons, conferences, teams, game logs, team metrics, player stats, pipeline config, job rows, placeholder archetypes.
 - *If missing:* the views have no way to produce their JSON; most endpoints would crash on import.
 - *Why it's long:* it does a lot of derived-stat maths inline. It is the file most worth splitting up someday.
@@ -131,6 +131,18 @@ Example: the website loads the Duke roster outlook page. It asks `GET /api/outlo
 - `TeamViewSet` actions `stats`, `profile`, `games`, `season-stats`.
 - `resume_utils.py` functions `is_quality_win`, `is_bad_loss`, `get_quadrant_records`, `format_quadrant_record`.
 - Job endpoints `logs` and `stream`.
+
+### Running the tests
+
+```
+cd backend
+python manage.py test api              # everything in this folder
+python manage.py test api.tests.test_matchup_api   # one file
+```
+
+Django creates a throwaway `test_<dbname>` database, runs the tests, and deletes it; your real database is not touched. (`pytest` is not installed in `backend/.venv`; use `manage.py test`.)
+
+Views such as `/api/matchup/` and `/api/rankings/` cache their answers. Tests that call them inherit from `IsolatedCacheTestCase` (`tests/base.py`), which swaps in a private in-memory cache and empties it before each test. Without it, tests read each other's cached answers and leave fake data in the dev server's Redis. If you add a test that calls a cached view, use that base class and call `super().setUp()` in your `setUp`.
 
 ### 3f. Removed on 2026-10-21 (recoverable from git history)
 

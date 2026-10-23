@@ -4,7 +4,7 @@ Integration tests for Matchup API endpoint
 Tests API behavior, site toggle, edge cases, and data validation.
 """
 
-from django.test import TestCase, Client
+from django.test import Client
 from django.urls import reverse
 from ncaa.models import (
     Season, Conference, Team, TeamSeasonRatings, 
@@ -13,12 +13,15 @@ from ncaa.models import (
 from decimal import Decimal
 from datetime import date, datetime
 
+from api.tests.base import IsolatedCacheTestCase
 
-class MatchupAPITestCase(TestCase):
+
+class MatchupAPITestCase(IsolatedCacheTestCase):
     """Integration tests for /api/matchup/ endpoint"""
     
     def setUp(self):
         """Set up test data"""
+        super().setUp()
         self.client = Client()
         
         # Create season
@@ -545,11 +548,12 @@ class MatchupAPITestCase(TestCase):
         )
 
 
-class MatchupEdgeCasesTestCase(TestCase):
+class MatchupEdgeCasesTestCase(IsolatedCacheTestCase):
     """Tests for edge cases in matchup predictions"""
     
     def setUp(self):
         """Set up minimal test data"""
+        super().setUp()
         self.client = Client()
         
         self.season = Season.objects.create(
@@ -813,3 +817,43 @@ class MatchupEdgeCasesTestCase(TestCase):
         self.assertGreater(ff['tov_edge'], 4.0)
         self.assertGreater(ff['orb_edge'], 5.0)
         self.assertGreater(ff['ftr_edge'], 10.0)
+
+    def _make_ratings(self, team):
+        """Average ratings for `team` in the test season."""
+        return TeamSeasonRatings.objects.create(
+            team=team, season=self.season,
+            wins=15, losses=10, games_played=25, rank_adj_em=50,
+            adj_em=5.0, adj_o=110.0, adj_d=105.0, adj_tempo=68.0,
+            adj_efg_pct=51.0, adj_tov_pct=17.0, adj_orb_pct=29.0, adj_ftr=33.0,
+            adj_opp_efg_pct=49.0, adj_opp_tov_pct=19.0, adj_drb_pct=71.0, adj_opp_ftr=31.0,
+            adj_efg_margin=2.0, adj_tov_edge=2.0, adj_reb_edge=2.0, adj_ftr_margin=2.0,
+            ffi_adj=52.0, ffi_raw=50.0, total_possessions=1500,
+        )
+
+    def test_team_without_ratings_returns_404(self):
+        """A team that exists but has no ratings this season cannot be forecast."""
+        self._make_ratings(self.team_b)  # team_a deliberately has none
+
+        response = self.client.get('/api/matchup/', {
+            'teamA': 'team-a',
+            'teamB': 'team-b',
+            'site': 'neutral'
+        })
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_missing_team_stats_gives_null_shot_profile(self):
+        """Without TeamSeasonStats there is no shot profile; the forecast still works."""
+        self._make_ratings(self.team_a)
+        self._make_ratings(self.team_b)
+
+        response = self.client.get('/api/matchup/', {
+            'teamA': 'team-a',
+            'teamB': 'team-b',
+            'site': 'neutral'
+        })
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertIn('forecast', data)
+        self.assertIsNone(data['shot_profile'])

@@ -1,12 +1,12 @@
 from datetime import datetime, timezone as dt_timezone
 
-from django.test import TestCase
 from django.urls import reverse
 
+from api.tests.base import IsolatedCacheTestCase
 from ncaa.models import Season, Team, TeamSeasonRatings
 
 
-class RankingsTimestampTests(TestCase):
+class RankingsTimestampTests(IsolatedCacheTestCase):
     def test_rankings_rows_expose_computed_timestamp_as_updated_at(self):
         season = Season.objects.create(
             year=2026,

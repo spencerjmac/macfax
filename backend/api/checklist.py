@@ -291,7 +291,7 @@ def _check_title_favorite(team_stats: TeamSeasonStats, context: Dict[str, Any]) 
 
 
 def _check_win_pct(team_stats: TeamSeasonStats) -> Dict[str, Any]:
-    """Check win percentage > 74%"""
+    """Check win percentage >= 75%"""
     if team_stats.games == 0:
         win_pct = 0.0
     else:
@@ -304,7 +304,7 @@ def _check_win_pct(team_stats: TeamSeasonStats) -> Dict[str, Any]:
         "label": "Win Percentage",
         "pass": passes,
         "value": f"{win_pct * 100:.1f}%",
-        "expected": ">= 75.0%",
+        "threshold": "≥ 75.0%",
         "details": f"{team_stats.record} ({win_pct * 100:.1f}%)"
     }
 
@@ -597,6 +597,6 @@ def _check_ft_pct(team_stats: TeamSeasonStats) -> Dict[str, Any]:
         "label": "Free Throw %",
         "pass": passes,
         "value": display_value,
-        "threshold": "> 70%",
+        "threshold": "≥ 68.0%",
         "details": f"Team FT%: {display_value}"
     }
