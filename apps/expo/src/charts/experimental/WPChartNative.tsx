@@ -31,7 +31,8 @@ interface WPChartNativeProps {
  */
 export function WPChartNative({ curve, homeTeam, awayTeam }: WPChartNativeProps) {
   const [width, setWidth] = useState(0);
-  const [renderError, setRenderError] = useState<string | null>(null);
+  // An error is tagged with the inputs that caused it and hidden once they change.
+  const [failure, setFailure] = useState<{ message: string; inputs: unknown[] } | null>(null);
   const chartRef = useRef<any>(null);
 
   useEffect(() => {
@@ -40,12 +41,15 @@ export function WPChartNative({ curve, homeTeam, awayTeam }: WPChartNativeProps)
     try {
       chart = echarts.init(chartRef.current, undefined, { renderer: 'svg', width, height: CHART_HEIGHT });
       chart.setOption(buildWPOption(curve, homeTeam, awayTeam));
-      setRenderError(null);
     } catch (error) {
-      setRenderError(error instanceof Error ? error.message : String(error));
+      // echarts runs synchronously here (it needs the ref), so its exception can only reach the UI through state.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setFailure({ message: error instanceof Error ? error.message : String(error), inputs: [curve, homeTeam, awayTeam, width] });
     }
     return () => chart?.dispose();
   }, [curve, homeTeam, awayTeam, width]);
+
+  const renderError = failure && [curve, homeTeam, awayTeam, width].every((value, i) => value === failure.inputs[i]) ? failure.message : null;
 
   return (
     <View className="rounded-md border border-ink-line bg-ink-2 p-3">

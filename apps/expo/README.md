@@ -1,6 +1,6 @@
 # Macfax (Expo)
 
-The Macfax mobile and web client, built with Expo SDK 54 and Expo Router. It is a
+The Macfax mobile and web client, built with Expo SDK 58 and Expo Router. It is a
 separate app from `web/` (the Next.js site) and shares pure TypeScript code with
 it through `packages/core`, imported as `@macfax/core/*`.
 
@@ -25,15 +25,12 @@ npx expo start --tunnel
 `--tunnel` needs `@expo/ngrok`, which is not a dependency of this app. Expo's
 docs install it with `npm i -g @expo/ngrok`.
 
-## Expo Go and SDK 54
+## Expo Go and SDK 58
 
-This app stays on SDK 54 on purpose. The App Store build of Expo Go supports
-SDK 54; newer SDKs on a physical iPhone need `eas go`, which requires a paid
-Apple Developer Program membership.
-
-If the App Store build of Expo Go moves to a newer SDK, this project will stop
-opening on an iPhone. Check which SDK the store build supports before each phone
-test.
+This app is on SDK 58. Expo Go only opens projects whose SDK matches the Expo Go
+build on the phone, so check that the installed Expo Go supports SDK 58 before a
+phone test. SDK 54 was dropped because the Expo Go build in use no longer
+supported it.
 
 ## API base URL
 
