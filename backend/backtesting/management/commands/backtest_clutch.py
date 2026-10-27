@@ -47,17 +47,9 @@ from scipy import stats as scipy_stats
 
 from django.core.management.base import BaseCommand
 
+from backtesting.rating_replay import predict_margin, run_ratings, time_weights
 from ncaa.models import Game, NationalAverages, Team, TeamGameStats
 
-# ── Production constants (mirror backtest_opponent_adjust.py exactly) ────────
-CONVERGENCE      = 0.001
-MAX_ITERATIONS   = 50
-RECENCY_LAMBDA   = 0.0040
-IMP_C            = 40.0
-IMP_FLOOR        = 0.35
-CLOSE_M          = 12.0
-BOOST_MAX        = 1.40
-FREEZE_ITERATION = 6
 
 # Fixed threshold used when reporting the close-game-only accuracy section
 CLOSE_REPORT_THRESHOLD = 5
@@ -91,132 +83,6 @@ CONFIGS = [
 
 CONFIG_MAP = {cfg.label: cfg for cfg in CONFIGS}
 LABELS = ["base"] + [cfg.label for cfg in CONFIGS]
-
-
-# ── Helpers (identical to backtest_opponent_adjust.py) ───────────────────────
-
-def _time_weights(train_stats, game_dates, ref_date):
-    gtw = {
-        gs.game_id: math.exp(-RECENCY_LAMBDA * max(0, (ref_date - game_dates[gs.game_id]).days))
-        for gs in train_stats
-    }
-    sum_p: defaultdict = defaultdict(float)
-    sum_pw: defaultdict = defaultdict(float)
-    for gs in train_stats:
-        p = gs.poss_team
-        if not p or p <= 0:
-            continue
-        sum_p[gs.team_id] += p
-        sum_pw[gs.team_id] += p * gtw.get(gs.game_id, 1.0)
-    tts = {
-        tid: (sum_p[tid] / sum_pw[tid]) if sum_pw[tid] > 0 else 1.0
-        for tid in sum_p
-    }
-    return gtw, tts
-
-
-def _run_ratings(by_team_train, train_stats, stats_lookup, team_ids, nat_avg, gtw, tts, k):
-    ratings = {
-        tid: {"aor": nat_avg.avg_ortg, "adr": nat_avg.avg_ortg, "pace": nat_avg.avg_pace}
-        for tid in team_ids
-    }
-    frozen_imp: dict = {}
-    imp_scale: dict = {}
-
-    for iteration in range(1, MAX_ITERATIONS + 1):
-        cur_imp: dict = {}
-        new_r: dict = {}
-        max_change = 0.0
-
-        for tid in team_ids:
-            sw_aor = sw_adr = sw_pace = sw = 0.0
-            for gs in by_team_train.get(tid, []):
-                poss_g = gs.poss_team
-                if not poss_g or poss_g <= 0:
-                    continue
-                opp_id = gs.opponent_id
-                if opp_id not in ratings:
-                    continue
-                opp_st = stats_lookup.get((gs.game_id, opp_id))
-                if not opp_st:
-                    continue
-                minutes = gs.game_minutes or 40
-                raw_oe = 100 * gs.pts / poss_g
-                raw_de = 100 * opp_st.pts / poss_g
-                raw_pace = 40 * poss_g / minutes
-                opp_aor = ratings[opp_id]["aor"]
-                opp_adr = ratings[opp_id]["adr"]
-                opp_pace = ratings[opp_id]["pace"]
-                aor_g = raw_oe * (nat_avg.avg_ortg / opp_adr) * gs.site_factor if opp_adr > 0 else raw_oe
-                adr_g = raw_de * (nat_avg.avg_ortg / opp_aor) * gs.defensive_site_factor if opp_aor > 0 else raw_de
-                blend = (opp_pace + nat_avg.avg_pace) / 2
-                pace_g = raw_pace * (nat_avg.avg_pace / blend) if blend > 0 else raw_pace
-                w_time = gtw.get(gs.game_id, 1.0) * tts.get(tid, 1.0)
-                imp_key = (tid, gs.game_id)
-                if iteration <= FREEZE_ITERATION:
-                    t_aem = ratings[tid]["aor"] - ratings[tid]["adr"]
-                    o_aem = opp_aor - opp_adr
-                    gap = abs(t_aem - o_aem)
-                    base = max(IMP_FLOOR, 1.0 / (1.0 + (gap / IMP_C) ** 2))
-                    closer = max(0.0, abs(t_aem - o_aem) - abs(aor_g - adr_g))
-                    cf = 1.0 - math.exp(-closer / CLOSE_M)
-                    w_imp = min(1.0, base * (1.0 + (BOOST_MAX - 1.0) * cf))
-                    cur_imp[imp_key] = w_imp
-                else:
-                    w_imp = frozen_imp.get(imp_key, 1.0)
-                wt = poss_g * w_time * w_imp * imp_scale.get(tid, 1.0)
-                sw_aor += wt * aor_g
-                sw_adr += wt * adr_g
-                sw_pace += wt * pace_g
-                sw += wt
-            if sw > 0:
-                aor_s = (sw_aor + k * nat_avg.avg_ortg) / (sw + k)
-                adr_s = (sw_adr + k * nat_avg.avg_ortg) / (sw + k)
-                pace_s = (sw_pace + k * nat_avg.avg_pace) / (sw + k)
-            else:
-                aor_s = adr_s = nat_avg.avg_ortg
-                pace_s = nat_avg.avg_pace
-            old_aem = ratings[tid]["aor"] - ratings[tid]["adr"]
-            new_aem = aor_s - adr_s
-            max_change = max(max_change, abs(new_aem - old_aem))
-            new_r[tid] = {"aor": aor_s, "adr": adr_s, "pace": pace_s}
-
-        if iteration == FREEZE_ITERATION:
-            frozen_imp = dict(cur_imp)
-            sb: defaultdict = defaultdict(float)
-            si: defaultdict = defaultdict(float)
-            for gs in train_stats:
-                p = gs.poss_team
-                if not p or p <= 0:
-                    continue
-                wt = gtw.get(gs.game_id, 1.0) * tts.get(gs.team_id, 1.0)
-                wi = frozen_imp.get((gs.team_id, gs.game_id), 1.0)
-                sb[gs.team_id] += p * wt
-                si[gs.team_id] += p * wt * wi
-            imp_scale = {
-                t: max(0.85, min(1.30, (sb[t] / si[t]) if si[t] > 0 else 1.0))
-                for t in sb
-            }
-
-        ratings = new_r
-        if max_change < CONVERGENCE:
-            break
-
-    return ratings
-
-
-def _predict_margin(home_r, away_r, nat_avg, neutral_site):
-    hp, ap = home_r["pace"], away_r["pace"]
-    pace = (2 * hp * ap) / (hp + ap) if hp > 0 and ap > 0 else nat_avg.avg_pace
-    exp_oe_home = (home_r["aor"] * away_r["adr"]) / nat_avg.avg_ortg
-    exp_oe_away = (away_r["aor"] * home_r["adr"]) / nat_avg.avg_ortg
-    pts_home = exp_oe_home * (pace / 100)
-    pts_away = exp_oe_away * (pace / 100)
-    hca = nat_avg.hca_points or 3.20
-    if not neutral_site:
-        pts_home += hca / 2
-        pts_away -= hca / 2
-    return pts_home - pts_away
 
 
 # ── Clutch factor computation ─────────────────────────────────────────────────
@@ -280,7 +146,7 @@ def _compute_clutch_factors(train_stats, stats_lookup, ratings, nat_avg, cfg, mi
         home_id = tid if is_home else opp_id
         away_id = opp_id if is_home else tid
 
-        pred_home = _predict_margin(ratings[home_id], ratings[away_id], nat_avg, gs.game.neutral_site)
+        pred_home = predict_margin(ratings[home_id], ratings[away_id], nat_avg, gs.game.neutral_site)
         actual_home = gs.pts - opp_st.pts if is_home else opp_st.pts - gs.pts
         residual_home = actual_home - pred_home
 
@@ -482,7 +348,7 @@ class Command(BaseCommand):
             for gs in train_stats:
                 by_team_train[gs.team_id].append(gs)
 
-            gtw, tts = _time_weights(train_stats, game_dates, cutoff)
+            gtw, tts = time_weights(train_stats, game_dates, cutoff)
 
             spread_games = [
                 g for g in all_d1_games
@@ -502,7 +368,7 @@ class Command(BaseCommand):
             )
 
             # Compute ratings once per cutoff
-            ratings = _run_ratings(
+            ratings = run_ratings(
                 by_team_train, train_stats, stats_lookup,
                 team_ids, nat_avg, gtw, tts, ratings_k,
             )
@@ -527,7 +393,7 @@ class Command(BaseCommand):
                 if not home_r or not away_r:
                     continue
 
-                pred_base = _predict_margin(home_r, away_r, nat_avg, g["neutral_site"])
+                pred_base = predict_margin(home_r, away_r, nat_avg, g["neutral_site"])
                 actual    = g["home_score"] - g["away_score"]
                 is_close_actual = abs(actual) <= CLOSE_REPORT_THRESHOLD  # OT excluded from spread_games
 
@@ -561,7 +427,7 @@ class Command(BaseCommand):
                 if not home_r or not away_r:
                     continue
 
-                pred_base    = _predict_margin(home_r, away_r, nat_avg, g["neutral_site"])
+                pred_base    = predict_margin(home_r, away_r, nat_avg, g["neutral_site"])
                 is_close_actual = (
                     abs(g["home_score"] - g["away_score"]) <= CLOSE_REPORT_THRESHOLD
                     or g["went_to_ot"]
