@@ -103,6 +103,10 @@ class Command(BasePipelineCommand):
 
         connection.close()
 
+        if not self._season_has_final_games(season_year):
+            self._finish_without_games("NCAA TEAM DATA UPDATE", season_year, steps, start_time)
+            return
+
         self._run_step(
             "Compute team metrics",
             "compute_team_metrics",
@@ -110,6 +114,16 @@ class Command(BasePipelineCommand):
             steps,
             fatal=True,
             label=f"[2/{TOTAL_STEPS}]",
+        )
+        # Conferences for the season (data file / frozen map). Needs the metrics rows
+        # from the step above; not fatal -- ratings can still compute without it.
+        self._run_step(
+            "Seed conferences",
+            "seed_conferences",
+            {"season": season_year},
+            steps,
+            fatal=False,
+            label=f"[2a/{TOTAL_STEPS}]",
         )
         self._run_step(
             "Compute national averages",

@@ -31,10 +31,10 @@ export default function EfficiencyLandscapePage() {
   const [topN, setTopN] = useState(365);
   const [debouncedTopN, setDebouncedTopN] = useState(365);
   
-  // Load conferences only once on mount
+  // Conferences differ by season (realignment), so reload when the season changes
   useEffect(() => {
-    loadConferences();
-  }, []);
+    loadConferences(season);
+  }, [season]);
   
   // Debounce topN input
   useEffect(() => {
@@ -66,9 +66,9 @@ export default function EfficiencyLandscapePage() {
     loadData();
   }, [loadData]);
 
-  async function loadConferences() {
+  async function loadConferences(forSeason?: number) {
     try {
-      const confs = await api.getConferences();
+      const confs = await api.getConferences(forSeason);
       setConferences(confs);
     } catch (err) {
       console.error('Failed to load conferences:', err);

@@ -1,5 +1,7 @@
 # Comprehensive NCAA Website Team Name to Database Team Name Mappings
-# This file provides explicit mappings for ALL 365 D1 teams
+# This file provides explicit mappings for ALL D1 teams (366 names: the 365 teams of 2026-27, plus
+# Saint Francis, which left D1 after 2025-26 but stays listed so its is_d1 flag -- which the ratings
+# code filters on -- does not change 2025-26 results when they are recomputed)
 # NCAA Name: Database Name
 
 ncaa:
@@ -35,6 +37,8 @@ ncaa:
   "North Florida": "North Florida"
   "Queens (NC)": "Queens"
   "Stetson": "Stetson"
+  # New D1 team for 2026-27 (moved up from Division II, joins the ASUN)
+  "West Florida": "West Florida"
   "West Ga.": "West Georgia"
   
   # America East (9 teams)

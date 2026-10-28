@@ -75,8 +75,9 @@ export const api = {
     );
   },
 
-  async getConferences(): Promise<Conference[]> {
-    const data = await fetchJson<any>(buildUrl('/conferences/'));
+  /** Conferences with teams in a season (default: the current season). */
+  async getConferences(season?: number): Promise<Conference[]> {
+    const data = await fetchJson<any>(buildUrl('/conferences/', { season }));
     return unwrapResults<Conference>(data);
   },
 

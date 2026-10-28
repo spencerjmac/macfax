@@ -94,6 +94,10 @@ class Command(BasePipelineCommand):
                 "Skipped (--skip-ingest)",
             )
 
+        if not self._season_has_final_games(season_year):
+            self._finish_without_games("NCAA PLAYER DATA UPDATE", season_year, steps, start_time)
+            return
+
         self._run_step(
             "Compute NCAA player season stats",
             "compute_ncaa_player_season_stats",

@@ -48,6 +48,13 @@ const CONFERENCE_COLORS: Record<string, string> = {
   'SWAC': '#CEDB9C',
   'Summit': '#393B79',
   'IND': '#6B6B6B',  // Independent
+  // New in 2026-27
+  'Metro': '#AD494A', // formerly MAAC
+  'UAC': '#8C564B',   // formerly (most of) the WAC
+  // Codes as stored in the Conference table; the keys above predate them, so those
+  // conferences got a hash-derived color instead of a chosen one.
+  'Amer': '#FF7F0E', 'SC': '#AEC7E8', 'BW': '#FFBB78', 'BSky': '#98DF8A', 'Horz': '#C5B0D5',
+  'AE': '#F7B6D2', 'Pat': '#DBDB8D', 'BSth': '#843C39', 'Slnd': '#DE9ED6', 'Sum': '#393B79',
 };
 
 // Fallback: deterministic color from conference code so unknown conferences aren't grey

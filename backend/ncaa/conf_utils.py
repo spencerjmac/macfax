@@ -5,7 +5,7 @@ CONF_MAP maps team slugs → conference codes (2025-26 season).
 
 Conference tier constants:
   POWER_CONFS     – true Power 5 + Big East (ACC, B10, B12, SEC, BE)
-  HIGH_MID_CONFS  – elite non-power conferences (WCC, MWC, A10, Amer)
+  HIGH_MID_CONFS  – elite non-power conferences (WCC, MWC, A10, Amer, P12)
 
 Two classification functions with different granularity:
 
@@ -20,8 +20,12 @@ Two classification functions with different granularity:
       Returns 'mid_major' for all remaining non-power conferences.
 """
 
+from ncaa.conferences import season_conference_map
+
 # --------------------------------------------------------------------------- #
-# Canonical slug → conference code mapping (2025-26 season)
+# Canonical slug → conference code mapping (2025-26 season) -- FROZEN.
+# Seasons from 2027 on are defined by ncaa/data/conferences/<season>.csv instead
+# (see ncaa/conferences.py); do not edit this map for realignment.
 # --------------------------------------------------------------------------- #
 
 CONF_MAP: dict[str, str] = {
@@ -554,20 +558,37 @@ CONF_MAP: dict[str, str] = {
 POWER_CONFS: frozenset[str] = frozenset({"ACC", "B10", "B12", "SEC", "BE"})
 
 # High mid-major: elite non-power conferences
-HIGH_MID_CONFS: frozenset[str] = frozenset({"WCC", "MWC", "A10", "Amer"})
+# P12 (rebuilt for 2026-27 around Gonzaga, Boise St., San Diego St., ...) is treated like
+# the WCC/MWC it drew from, not as a power conference.
+HIGH_MID_CONFS: frozenset[str] = frozenset({"WCC", "MWC", "A10", "Amer", "P12"})
 
 
-def get_team_conference(team_slug: str) -> str:
+def _conference_code(team_slug: str, season: int | None) -> str | None:
+    """
+    Conference code for a slug. With a season, the season's data file wins
+    (ncaa/conferences.py); seasons before the first file, and teams a file does not
+    list, use the frozen CONF_MAP. season=None is always the frozen CONF_MAP, so
+    existing callers (archetypes, backtests, market value) keep their behavior.
+    """
+    slug = team_slug.lower()
+    if season is not None:
+        by_slug = season_conference_map(season)
+        if by_slug is not None and slug in by_slug:
+            return by_slug[slug]
+    return CONF_MAP.get(slug)
+
+
+def get_team_conference(team_slug: str, season: int | None = None) -> str:
     """
     Return the raw conference code for a team slug (e.g. 'ACC', 'WCC', 'MAAC').
 
     Used for per-conference archetype generation.
-    Unknown slugs return 'Unknown'.
+    Unknown slugs return 'Unknown'. Pass `season` for that season's membership.
     """
-    return CONF_MAP.get(team_slug.lower(), "Unknown")
+    return _conference_code(team_slug, season) or "Unknown"
 
 
-def get_conf_group(team_slug: str) -> str:
+def get_conf_group(team_slug: str, season: int | None = None) -> str:
     """
     Coarse 2-tier classifier: 'power' | 'mid_major'.
 
@@ -575,7 +596,7 @@ def get_conf_group(team_slug: str) -> str:
     ensure adequate bucket mass for the 15 broad baseline archetypes.
     Unknown slugs default to 'mid_major'.
     """
-    conf = CONF_MAP.get(team_slug.lower(), None)
+    conf = _conference_code(team_slug, season)
     if conf is None:
         return "mid_major"
     if conf in POWER_CONFS:
@@ -583,7 +604,7 @@ def get_conf_group(team_slug: str) -> str:
     return "mid_major"
 
 
-def get_conf_detail(team_slug: str) -> str:
+def get_conf_detail(team_slug: str, season: int | None = None) -> str:
     """
     Fine-grained 3-tier classifier: 'power' | 'high_mid' | 'mid_major'.
 
@@ -592,7 +613,7 @@ def get_conf_detail(team_slug: str) -> str:
     dedicated archetype generation.  All other non-power conferences return
     'mid_major'.  Unknown slugs default to 'mid_major'.
     """
-    conf = CONF_MAP.get(team_slug.lower(), None)
+    conf = _conference_code(team_slug, season)
     if conf is None:
         return "mid_major"
     if conf in POWER_CONFS:

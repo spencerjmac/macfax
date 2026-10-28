@@ -60,7 +60,7 @@ class SeasonViewSet(viewsets.ReadOnlyModelViewSet):
     Returns list of all available seasons
 
     Query Params:
-    - has_ratings: if 'true', only return seasons that have TeamSeasonRatings data
+    - has_ratings: if 'true', only return seasons that have TeamSeasonRatings data and final games
     """
 
     serializer_class = SeasonSerializer
@@ -73,19 +73,50 @@ class SeasonViewSet(viewsets.ReadOnlyModelViewSet):
             seasons_with_ratings = (
                 TeamSeasonRatings.objects.values_list('season_id', flat=True).distinct()
             )
-            qs = qs.filter(id__in=seasons_with_ratings)
+            # ...and real games: a pipeline run before tip-off can leave all-zero ratings
+            # rows that would list an empty season in the picker.
+            seasons_with_games = Game.objects.filter(status='final').values_list('season_year', flat=True)
+            qs = qs.filter(id__in=seasons_with_ratings, year__in=seasons_with_games)
         return qs
 
 
 class ConferenceViewSet(viewsets.ReadOnlyModelViewSet):
     """
-    GET /api/conferences
-    Returns list of all conferences
+    GET /api/conferences/?season=2027
+
+    Conferences that have teams in a season (default: the current season), so a
+    realigned league does not list conferences that no longer exist (WAC, MAAC)
+    or have not started yet (P12). Falls back to every conference when the season
+    has none assigned yet. ?all=true returns every conference ever stored.
     """
 
-    queryset = Conference.objects.all()
     serializer_class = ConferenceSerializer
     pagination_class = None  # Disable pagination for conferences
+
+    def get_queryset(self):
+        qs = Conference.objects.all()
+        params = self.request.query_params
+        if params.get("all") == "true":
+            return qs
+
+        season_year = None
+        if params.get("season"):
+            try:
+                season_year = int(params["season"])
+            except ValueError:
+                return qs
+        else:
+            current = Season.objects.filter(is_current=True).first()
+            season_year = current.year if current else None
+        if season_year is None:
+            return qs
+
+        in_season = qs.filter(
+            id__in=TeamSeasonMetrics.objects.filter(
+                season__year=season_year, conference__isnull=False
+            ).values("conference_id")
+        )
+        return in_season if in_season.exists() else qs
 
 
 @method_decorator(cache_page(60 * 5), name="list")  # Cache for 5 minutes

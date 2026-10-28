@@ -1,67 +1,35 @@
 """
-Seed the Conference table and assign each TeamSeasonMetrics to a conference.
+Seed the Conference table and assign each TeamSeasonMetrics to its conference.
 
-Conferences are created from a static D1 list. Each team's conference is looked up
-using the same slug->code mapping as the rankings API (RankingsSerializer.get_conference).
-Run this after you have TeamSeasonMetrics (e.g. after compute_team_metrics).
+Conference rows come from the registry in ncaa/conferences.py. A team's conference
+for a season comes from that season's data file (ncaa/data/conferences/<season>.csv)
+when one applies, else from the frozen CONF_MAP (seasons <= 2026). Run after
+compute_team_metrics -- update_ncaa_teams does this automatically.
 
 Usage:
-    python manage.py seed_conferences --season 2026
-    python manage.py seed_conferences --season 2026 --dry-run
+    python manage.py seed_conferences                 # season in play
+    python manage.py seed_conferences --season 2027
+    python manage.py seed_conferences --season 2027 --dry-run
 """
 
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
-from ncaa.models import Conference, Season, TeamSeasonMetrics
-
-
-# D1 conferences (code, full name) for 2025-26
-# Codes here MUST match the keys returned by RankingsSerializer.get_conference (conf_map)
-CONFERENCES = [
-    ("ACC", "Atlantic Coast Conference"),
-    ("AE", "America East"),
-    ("Amer", "American Athletic Conference"),
-    ("A10", "Atlantic 10"),
-    ("ASun", "ASUN Conference"),
-    ("B10", "Big Ten"),
-    ("B12", "Big 12"),
-    ("BE", "Big East"),
-    ("BSky", "Big Sky"),
-    ("BSth", "Big South"),
-    ("BW", "Big West"),
-    ("CAA", "Colonial Athletic Association"),
-    ("CUSA", "Conference USA"),
-    ("Horz", "Horizon League"),
-    ("Ivy", "Ivy League"),
-    ("MAAC", "Metro Atlantic Athletic Conference"),
-    ("MAC", "Mid-American Conference"),
-    ("MEAC", "Mid-Eastern Athletic Conference"),
-    ("MVC", "Missouri Valley Conference"),
-    ("MWC", "Mountain West Conference"),
-    ("NEC", "Northeast Conference"),
-    ("OVC", "Ohio Valley Conference"),
-    ("Pat", "Patriot League"),
-    ("SB", "Sun Belt"),
-    ("SC", "Southern Conference"),
-    ("SEC", "Southeastern Conference"),
-    ("Slnd", "Southland Conference"),
-    ("Sum", "Summit League"),
-    ("SWAC", "Southwestern Athletic Conference"),
-    ("WAC", "Western Athletic Conference"),
-    ("WCC", "West Coast Conference"),
-]
+from ncaa.conf_utils import get_team_conference
+from ncaa.conferences import CONFERENCES, file_year_for, season_conference_map
+from ncaa.models import Conference, Season, Team, TeamSeasonMetrics
+from ncaa.seasons import resolve_season_year
 
 
 class Command(BaseCommand):
-    help = "Seed Conference table and set TeamSeasonMetrics.conference from slug mapping"
+    help = "Seed Conference table and set TeamSeasonMetrics.conference for a season"
 
     def add_arguments(self, parser):
         parser.add_argument(
             "--season",
             type=int,
-            required=True,
-            help="Season year (e.g. 2026)",
+            default=None,
+            help="Season year (e.g. 2027 for 2026-27) (default: the season in play)",
         )
         parser.add_argument(
             "--dry-run",
@@ -70,7 +38,7 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        season_year = options["season"]
+        season_year = resolve_season_year(options["season"])
         dry_run = options["dry_run"]
 
         try:
@@ -79,59 +47,71 @@ class Command(BaseCommand):
             self.stderr.write(self.style.ERROR(f"Season {season_year} not found."))
             return
 
-        # Use the same conference lookup as the rankings API
-        from api.serializers import RankingsSerializer
+        file_year = file_year_for(season_year)
+        source = f"{file_year}.csv" if file_year is not None else "frozen CONF_MAP"
+        self.stdout.write(f"Season {season_year}: conference source = {source}")
 
-        serializer = RankingsSerializer()
+        metrics_qs = TeamSeasonMetrics.objects.filter(season=season).select_related("team", "conference")
 
         if dry_run:
-            self.stdout.write(f"[DRY RUN] Would seed {len(CONFERENCES)} conferences")
-            metrics_count = TeamSeasonMetrics.objects.filter(season=season).count()
-            self.stdout.write(
-                f"[DRY RUN] Would assign conference for {metrics_count} TeamSeasonMetrics"
-            )
+            self.stdout.write(f"[DRY RUN] Would ensure {len(CONFERENCES)} conferences")
+            self.stdout.write(f"[DRY RUN] Would assign a conference to {metrics_qs.count()} TeamSeasonMetrics")
+            self._report_coverage(season_year, metrics_qs)
             return
 
         with transaction.atomic():
-            # 1. Seed Conference table
-            created_conf = 0
-            for code, name in CONFERENCES:
-                _, created = Conference.objects.get_or_create(
-                    code=code, defaults={"name": name}
-                )
-                if created:
-                    created_conf += 1
+            created = 0
+            conf_by_code: dict[str, Conference] = {}
+            for c in CONFERENCES:
+                conf, was_created = Conference.objects.get_or_create(code=c.code, defaults={"name": c.name})
+                conf_by_code[c.code] = conf
+                created += was_created
             self.stdout.write(
-                self.style.SUCCESS(f"Conferences: {created_conf} created, {Conference.objects.count()} total")
+                self.style.SUCCESS(f"Conferences: {created} created, {Conference.objects.count()} total")
             )
 
-            # 2. Assign conference to each TeamSeasonMetrics for this season
-            metrics_qs = TeamSeasonMetrics.objects.filter(season=season).select_related(
-                "team", "conference"
-            )
-            updated = 0
+            updated = unchanged = 0
+            unknown: list[str] = []
             for metrics in metrics_qs:
-                # Build a minimal object so serializer.get_conference works (uses slug -> code)
-                class _Rating:
-                    pass
-
-                r = _Rating()
-                r.team = metrics.team
-                r.season = metrics.season
-                code = serializer.get_conference(r)
-                try:
-                    conf = Conference.objects.get(code=code)
-                except Conference.DoesNotExist:
-                    conf, _ = Conference.objects.get_or_create(
-                        code=code, defaults={"name": code}
-                    )
-                if metrics.conference_id != conf.id:
+                code = get_team_conference(metrics.team.slug, season_year)
+                conf = conf_by_code.get(code)
+                if conf is None:
+                    unknown.append(metrics.team.slug)
+                    continue
+                if metrics.conference_id == conf.id:
+                    unchanged += 1
+                else:
                     metrics.conference = conf
                     metrics.save(update_fields=["conference"])
                     updated += 1
 
             self.stdout.write(
-                self.style.SUCCESS(f"TeamSeasonMetrics: {updated} updated with conference")
+                self.style.SUCCESS(f"TeamSeasonMetrics: {updated} updated, {unchanged} already correct")
             )
+            if unknown:
+                self.stdout.write(
+                    self.style.WARNING(
+                        f"{len(unknown)} team(s) not in any conference list, left unassigned: {sorted(unknown)}"
+                    )
+                )
 
+        self._report_coverage(season_year, metrics_qs)
         self.stdout.write(self.style.SUCCESS("Done."))
+
+    def _report_coverage(self, season_year: int, metrics_qs):
+        """Flag mismatches between the season's data file and the teams in the DB."""
+        by_slug = season_conference_map(season_year)
+        if by_slug is None:
+            return
+        db_slugs = set(Team.objects.filter(is_d1=True).values_list("slug", flat=True))
+        in_file_not_db = sorted(set(by_slug) - set(Team.objects.values_list("slug", flat=True)))
+        d1_not_in_file = sorted(db_slugs - set(by_slug))
+        if in_file_not_db:
+            self.stdout.write(
+                self.style.WARNING(
+                    f"In the data file but no Team in the DB (run ensure_ncaa_teams / add to "
+                    f"mappings/ncaa_team_name_mappings.yml): {in_file_not_db}"
+                )
+            )
+        if d1_not_in_file:
+            self.stdout.write(f"D1 teams in the DB not in the data file (no {season_year} conference): {d1_not_in_file}")

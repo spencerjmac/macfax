@@ -75,6 +75,25 @@ class BasePipelineCommand(BaseCommand):
                 self._print_summary(timezone.now(), timezone.now(), 0.0, steps)
                 sys.exit(1)
 
+    @staticmethod
+    def _season_has_final_games(season_year: int) -> bool:
+        from ncaa.models import Game
+
+        return Game.objects.filter(season_year=season_year, status="final").exists()
+
+    def _finish_without_games(self, title: str, season_year: int, steps: list, start_time):
+        """
+        Stop a pipeline cleanly when its season has no final games yet (e.g. Nov 1, the
+        day the daily gate opens, before the first tip-off). Computing on an empty
+        season would write all-zero ratings rows and list a game-less season in the
+        season picker, so nothing is computed and the run does not fail.
+        """
+        note = f"Skipped: no final {season_year} games yet"
+        self.stdout.write(self.style.WARNING(f"[SKIP] {note} -- nothing to compute\n"))
+        steps.append((title, True, note))
+        end_time = timezone.now()
+        self._print_summary(start_time, end_time, (end_time - start_time).total_seconds(), steps, title=title)
+
     def _activate_latest_season(self, steps: list):
         """Move is_current to the newest season with a final game (non-fatal)."""
         from ncaa.seasons import activate_latest_season

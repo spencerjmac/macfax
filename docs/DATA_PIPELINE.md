@@ -216,3 +216,32 @@ If the canonical name is not in the Team table, run `ensure_ncaa_teams` which cr
 6. python manage.py import_logos
 7. python manage.py collectstatic --noinput
 ```
+
+---
+
+## Conference membership (realignment)
+
+Which conference a team plays in is stored per season (`TeamSeasonMetrics.conference`), so
+history never changes when leagues move. Membership comes from data files, one per summer
+in which something moved:
+
+```
+backend/ncaa/data/conferences/<season>.csv      # 2027.csv = the 2026-27 season
+```
+
+- A season uses the newest file whose year is <= the season (2028 reuses `2027.csv` until a `2028.csv` exists).
+- Seasons before the first file (<= 2026) use the frozen `CONF_MAP` in `backend/ncaa/conf_utils.py`. Do not edit that map.
+- `update_ncaa_teams` runs `seed_conferences` right after `compute_team_metrics`, so each team gets
+  its conference the day it plays its first game. Until then the API falls back to the same file.
+- `/api/conferences/?season=YYYY` lists only conferences that have teams that season (default: current season).
+
+**Next summer's rollover**
+
+1. Copy the last file to `<next season>.csv` and edit the rows that moved. Columns:
+   `slug,team,conference,previous_conference,change,announced_future_move`
+   (`slug` is the `Team.slug`; `conference` is the display name from `CONFERENCES` in `backend/ncaa/conferences.py`).
+2. New conference? Add it to `CONFERENCES` and add a migration that creates its row (see `0070_add_realignment_conferences.py`).
+3. New D1 team? Add it to `backend/mappings/ncaa_team_name_mappings.yml` (this list also decides `is_d1`).
+   A team that left D1 can stay listed there: ratings code filters on `is_d1`, so removing it would change
+   that team's past seasons the next time they are recomputed.
+4. `python manage.py seed_conferences --season <year> --dry-run` reports file teams missing from the DB and D1 teams missing from the file.
