@@ -75,13 +75,13 @@ export const api = {
     );
   },
 
-  async getConferences(): Promise<Conference[]> {
-    const data = await fetchJson<any>(buildUrl('/conferences/'));
+  async getConferences(season?: number): Promise<Conference[]> {
+    const data = await fetchJson<any>(buildUrl('/conferences/', { season }));
     return unwrapResults<Conference>(data);
   },
 
   async getSeasons(): Promise<SeasonInfo[]> {
-    const data = await fetchJson<any>(buildUrl('/seasons/', { has_ratings: 'true' }));
+    const data = await fetchJson<any>(buildUrl('/seasons/'));
     return unwrapResults<SeasonInfo>(data);
   },
 
