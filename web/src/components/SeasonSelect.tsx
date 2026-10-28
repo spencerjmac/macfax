@@ -3,9 +3,11 @@
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import type { SeasonInfo } from '@macfax/core/types';
+import { pickCurrentSeason } from '@macfax/core/lib/season';
 
 interface SeasonSelectProps {
-  value: number;
+  /** Selected season year; omit to show the API's current season. */
+  value?: number;
   onChange: (season: number) => void;
   className?: string;
 }
@@ -19,11 +21,13 @@ export default function SeasonSelect({ value, onChange, className }: SeasonSelec
 
   if (seasons.length <= 1) return null;
 
+  const selected = value ?? pickCurrentSeason(seasons)?.year;
+
   return (
     <div className="flex items-center gap-2">
       <label className="text-sm font-medium text-text-muted">Season:</label>
       <select
-        value={value}
+        value={selected}
         onChange={(e) => onChange(Number(e.target.value))}
         className={
           className ??

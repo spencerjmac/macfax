@@ -58,7 +58,7 @@ export default async function NBALandscapePage({ searchParams }: Props) {
         ) : (
           <div className="text-center py-20 bg-ui-card border border-ui-border rounded-lg">
             <p className="text-text-muted">
-              No rankings data available. Run <code className="bg-gray-100 px-1 rounded text-xs">nba_compute_ratings --season {seasonYear ?? 2026}</code>
+              No rankings data available. Run <code className="bg-gray-100 px-1 rounded text-xs">nba_compute_ratings</code>
             </p>
           </div>
         )}

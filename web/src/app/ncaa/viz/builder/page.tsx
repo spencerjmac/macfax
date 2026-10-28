@@ -73,7 +73,8 @@ function VizBuilderPageInner() {
   // UI state from URL params
   const [xStat, setXStat] = useState(searchParams.get('x') || 'adj_o');
   const [yStat, setYStat] = useState(searchParams.get('y') || 'adj_d');
-  const [season, setSeason] = useState(2026);
+  // undefined = the API's current season (is_current)
+  const [season, setSeason] = useState<number | undefined>(undefined);
   const [showRegression, setShowRegression] = useState(searchParams.get('reg') !== '0');
   const [colorByConference, setColorByConference] = useState(searchParams.get('color') !== '0');
   const [invertX, setInvertX] = useState(searchParams.get('invX') === '1');

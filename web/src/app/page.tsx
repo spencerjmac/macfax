@@ -2,10 +2,9 @@ import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { getAllTeams } from '@/lib/data';
 import { nbaApi } from '@/lib/nba-api';
-import { worldCupApi } from '@/lib/worldcup-api';
+import { isHiddenRoute } from '@macfax/core/lib/hiddenRoutes';
 import type { TeamSeason } from '@macfax/core/types';
 import type { NBATeamSeasonRatings } from '@macfax/core/types/nba';
-import type { WorldCupTeam } from '@macfax/core/types/worldcup';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -13,12 +12,10 @@ export const revalidate = 0;
 async function getLeaderboardData(): Promise<{
   ncaaTop5: TeamSeason[];
   nbaTop3: NBATeamSeasonRatings[];
-  wcTop3: WorldCupTeam[];
 }> {
-  const [ncaaResult, nbaResult, wcResult] = await Promise.allSettled([
+  const [ncaaResult, nbaResult] = await Promise.allSettled([
     getAllTeams(),
     nbaApi.getRankings(),
-    worldCupApi.getRankings(),
   ]);
 
   const ncaaTop5 =
@@ -31,18 +28,11 @@ async function getLeaderboardData(): Promise<{
           .sort((a, b) => (a.rank_adj_net ?? 999) - (b.rank_adj_net ?? 999))
           .slice(0, 3)
       : [];
-  const wcTop3 =
-    wcResult.status === 'fulfilled'
-      ? [...wcResult.value]
-          .sort((a, b) => b.elo_rating - a.elo_rating)
-          .slice(0, 3)
-      : [];
-
-  return { ncaaTop5, nbaTop3, wcTop3 };
+  return { ncaaTop5, nbaTop3 };
 }
 
 export default async function HomePage() {
-  const { ncaaTop5, nbaTop3, wcTop3 } = await getLeaderboardData();
+  const { ncaaTop5, nbaTop3 } = await getLeaderboardData();
 
   const ncaaTop3 = ncaaTop5.slice(0, 3);
 
@@ -67,7 +57,7 @@ export default async function HomePage() {
             <div className="flex flex-col items-start gap-0">
               <p className="kicker-sport text-brand2 flex items-center gap-3 mb-6">
                 <span className="w-1.5 h-1.5 rounded-full bg-brand2 shadow-[0_0_0_4px_rgba(112,192,112,0.18)]" />
-                NCAA · NBA · WORLD CUP 2026 — Updated daily
+                NCAA · NBA — Updated daily
               </p>
               <h1 className="display-sport text-white mb-6 max-w-[16ch]">
                 The numbers behind the game.
@@ -83,10 +73,10 @@ export default async function HomePage() {
                   View rankings <ArrowRight className="w-[18px] h-[18px]" strokeWidth={1.5} />
                 </Link>
                 <Link
-                  href="/world-cup"
+                  href="/nba/rankings"
                   className="inline-flex items-center gap-2 bg-transparent hover:border-brand2 border border-[#2f3d59] text-white font-display font-semibold text-[16px] tracking-[0.04em] uppercase rounded-lg px-6 py-3.5 transition-colors"
                 >
-                  World Cup ratings
+                  NBA ratings
                   <ArrowRight className="w-[18px] h-[18px]" strokeWidth={1.5} />
                 </Link>
               </div>
@@ -158,17 +148,17 @@ export default async function HomePage() {
         <div className="max-w-[1240px] mx-auto px-8">
           <div className="flex items-end justify-between gap-6 mb-[30px]">
             <div>
-              <p className="kicker-sport text-brand mb-2">NCAA · NBA · WORLD CUP 2026</p>
+              <p className="kicker-sport text-brand mb-2">NCAA · NBA</p>
               <h2 className="head-sport text-text-primary">Pick your sport</h2>
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-[22px]">
+          <div className="grid grid-cols-2 gap-[22px]">
             {/* NCAA */}
             <LeagueCard
               title="College Basketball"
               sub="Adjusted efficiency ratings for every Division I team"
-              feats={['Rankings', 'Matchup', 'Roster Outlook', 'Visualizations']}
+              feats={feats([['Rankings', '/ncaa/rankings'], ['Matchup', '/ncaa/matchup'], ['Roster Outlook', '/ncaa/outlook'], ['Visualizations', '/ncaa/viz']])}
               href="/ncaa/rankings"
               btnLabel="Enter NCAA"
               icon={<BasketballIcon className="w-16 h-16 shrink-0" />}
@@ -184,7 +174,7 @@ export default async function HomePage() {
             <LeagueCard
               title="NBA"
               sub="Model projections for all 30 NBA franchises"
-              feats={['Rankings', 'Team Outlooks', 'Visualizations']}
+              feats={feats([['Rankings', '/nba/rankings'], ['Team Outlooks', '/nba/teams'], ['Visualizations', '/nba/viz']])}
               href="/nba"
               btnLabel="Enter NBA"
               icon={<BasketballIcon className="w-16 h-16 shrink-0" />}
@@ -193,24 +183,6 @@ export default async function HomePage() {
                 name: t.team_name,
                 logoUrl: t.team_logo_url ?? '',
                 em: t.adj_net ?? 0,
-              }))}
-            />
-
-            {/* World Cup */}
-            <LeagueCard
-              title="World Cup 2026"
-              sub="48 teams · group stage + knockout"
-              feats={['Elo Ratings', 'Group Stage', 'Power Rankings']}
-              href="/world-cup"
-              btnLabel="Enter World Cup"
-              icon={<SoccerBallIcon className="w-16 h-16 shrink-0" />}
-              format="elo"
-              teams={wcTop3.map(t => ({
-                id: t.name,
-                name: t.name,
-                logoUrl: '',
-                em: t.elo_rating,
-                emoji: t.flag_emoji,
               }))}
             />
           </div>
@@ -267,17 +239,16 @@ export default async function HomePage() {
   );
 }
 
+/** Feature chips for a league card; chips for hidden pages are dropped. */
+function feats(chips: [label: string, href: string][]): string[] {
+  return chips.filter(([, href]) => !isHiddenRoute(href)).map(([label]) => label);
+}
+
 // ── Icons ─────────────────────────────────────────────────────────────────────
 
 function BasketballIcon({ className }: { className?: string }) {
   return (
     <img src="/basketball-icon.jpg" alt="" aria-hidden="true" className={`object-contain ${className}`} />
-  );
-}
-
-function SoccerBallIcon({ className }: { className?: string }) {
-  return (
-    <img src="/world-cup-icon.jpg" alt="" aria-hidden="true" className={`object-contain ${className}`} />
   );
 }
 
@@ -290,7 +261,6 @@ function LeagueCard({
   href,
   btnLabel,
   icon,
-  format = 'em',
   teams,
 }: {
   title: string;
@@ -299,8 +269,7 @@ function LeagueCard({
   href: string;
   btnLabel: string;
   icon: React.ReactNode;
-  format?: 'em' | 'elo';
-  teams: { id: string; name: string; logoUrl: string; em: number; emoji?: string }[];
+  teams: { id: string; name: string; logoUrl: string; em: number }[];
 }) {
   return (
     <div className="border border-ui-border rounded-[16px] bg-surface overflow-hidden flex flex-col hover:border-brand hover:shadow-lg hover:-translate-y-0.5 transition-all duration-150">
@@ -338,8 +307,6 @@ function LeagueCard({
             <span className="font-mono font-bold text-[13px] text-muted-2">{i + 1}</span>
             {tm.logoUrl ? (
               <img src={tm.logoUrl} alt="" className="w-[26px] h-[26px] object-contain" />
-            ) : tm.emoji ? (
-              <span className="text-[20px] leading-none">{tm.emoji}</span>
             ) : (
               <div className="w-[26px] h-[26px] rounded-full bg-ui-surface flex items-center justify-center text-xs font-bold text-text-muted">
                 {tm.name.charAt(0)}
@@ -347,9 +314,7 @@ function LeagueCard({
             )}
             <span className="font-semibold text-[14px]">{tm.name}</span>
             <span className="font-mono font-bold text-[14px] text-brand">
-              {format === 'elo'
-                ? Math.round(tm.em).toString()
-                : `${tm.em > 0 ? '+' : ''}${tm.em.toFixed(2)}`}
+              {`${tm.em > 0 ? '+' : ''}${tm.em.toFixed(2)}`}
             </span>
           </div>
         ))}

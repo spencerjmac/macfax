@@ -329,7 +329,7 @@ export default function NBATeamPageTabs({ slug, seasonYear, ratings, games }: NB
           ) : (
             <div className="py-12 text-center text-text-muted text-sm">
               <p className="font-medium mb-1">No ratings data yet</p>
-              <p>Run <code className="bg-gray-100 px-1 rounded text-xs">nba_compute_ratings --season 2026</code></p>
+              <p>Run <code className="bg-gray-100 px-1 rounded text-xs">nba_compute_ratings</code></p>
             </div>
           )}
         </div>
@@ -471,7 +471,7 @@ export default function NBATeamPageTabs({ slug, seasonYear, ratings, games }: NB
           ) : (
             <div className="py-12 text-center text-text-muted text-sm">
               <p className="font-medium mb-1">No games loaded yet</p>
-              <p>Run <code className="bg-gray-100 px-1 rounded text-xs">nba_sync_games --season 2026</code></p>
+              <p>Run <code className="bg-gray-100 px-1 rounded text-xs">nba_sync_games</code></p>
             </div>
           )}
         </div>
@@ -489,11 +489,11 @@ export default function NBATeamPageTabs({ slug, seasonYear, ratings, games }: NB
               <p className="text-xs mt-1">
                 Run{' '}
                 <code className="bg-gray-100 px-1 rounded">
-                  nba_sync_team_logs --season {seasonYear ?? 2026}
+                  nba_sync_team_logs
                 </code>{' '}
                 then{' '}
                 <code className="bg-gray-100 px-1 rounded">
-                  nba_compute_player_stats --season {seasonYear ?? 2026}
+                  nba_compute_player_stats
                 </code>
               </p>
             </div>

@@ -94,8 +94,8 @@ export default async function NBARankingsPage({ searchParams }: NBAPageProps) {
           </p>
           <div className="mt-4 flex flex-col items-center gap-2 text-sm font-mono">
             <code className="bg-gray-100 px-3 py-1 rounded">python manage.py nba_sync_teams</code>
-            <code className="bg-gray-100 px-3 py-1 rounded">python manage.py nba_sync_games --season 2026</code>
-            <code className="bg-gray-100 px-3 py-1 rounded">python manage.py nba_compute_ratings --season 2026</code>
+            <code className="bg-gray-100 px-3 py-1 rounded">python manage.py nba_sync_games</code>
+            <code className="bg-gray-100 px-3 py-1 rounded">python manage.py nba_compute_ratings</code>
           </div>
         </div>
       ) : activeTab === 'teams' ? (
@@ -115,8 +115,8 @@ export default async function NBARankingsPage({ searchParams }: NBAPageProps) {
               Run the NBA ingestion pipeline first:
             </p>
             <div className="mt-4 flex flex-col items-center gap-2 text-sm font-mono">
-              <code className="bg-gray-100 px-3 py-1 rounded">python manage.py nba_sync_team_logs --season 2026</code>
-              <code className="bg-gray-100 px-3 py-1 rounded">python manage.py nba_compute_player_stats --season 2026</code>
+              <code className="bg-gray-100 px-3 py-1 rounded">python manage.py nba_sync_team_logs</code>
+              <code className="bg-gray-100 px-3 py-1 rounded">python manage.py nba_compute_player_stats</code>
             </div>
           </div>
         ) : (

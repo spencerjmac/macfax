@@ -325,7 +325,8 @@ export default function CinderellaPage() {
   const [data, setData] = useState<CinderellaData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [season, setSeason] = useState(2026);
+  // undefined = the API's current season (is_current)
+  const [season, setSeason] = useState<number | undefined>(undefined);
   const [showAll, setShowAll] = useState(false);
   const [seedFilter, setSeedFilter] = useState<(typeof SEED_FILTERS)[number]>(SEED_FILTERS[1]);
   const [search, setSearch] = useState('');

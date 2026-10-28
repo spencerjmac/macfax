@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { ArrowRight, type LucideIcon } from 'lucide-react';
+import { withoutHidden } from '@macfax/core/lib/hiddenRoutes';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -270,7 +271,7 @@ export default function SportHubPage({
             <h2 className="head-sport text-text-primary m-0">{config.label} tools</h2>
           </div>
           <div className="grid grid-cols-3 gap-4">
-            {config.tools.map(t => {
+            {withoutHidden(config.tools).map(t => {
               const Icon = t.icon;
               const inner = (
                 <div className="flex gap-4 items-start border border-ui-border rounded-[14px] p-[22px] bg-surface hover:border-brand hover:shadow-md hover:-translate-y-0.5 transition-all duration-150 h-full">
@@ -318,7 +319,7 @@ export default function SportHubPage({
             </Link>
           </div>
           <div className="grid grid-cols-3 gap-[18px]">
-            {config.viz.map(v => (
+            {withoutHidden(config.viz).map(v => (
               <Link
                 key={v.title}
                 href={v.href}

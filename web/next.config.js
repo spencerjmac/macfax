@@ -2,6 +2,7 @@
 const path = require('path')
 
 const srcDir = path.resolve(__dirname, 'src')
+const { routes: hiddenRoutes } = require('../packages/core/src/config/hidden-routes.json')
 
 // Backend origin for server-side proxying (evaluated at runtime, not build time)
 const backendOrigin = () =>
@@ -20,6 +21,20 @@ const nextConfig = {
   },
   turbopack: {
     root: path.resolve(__dirname, '..'),
+  },
+  // Redirects:
+  //  - World Cup 2026 pages were removed (the backend app is kept); old links land on the homepage.
+  //  - Hidden pages: single list in packages/core/src/config/hidden-routes.json (also drives
+  //    nav, hub tiles, footer and Expo). Delete an entry there to bring a page back.
+  async redirects() {
+    return [
+      { source: '/world-cup/:path*', destination: '/', permanent: false },
+      ...hiddenRoutes.map((r) => ({
+        source: `${r.path}/:path*`,
+        destination: r.redirectTo,
+        permanent: false,
+      })),
+    ]
   },
   // Proxy backend paths to Django.
   // /api/*    — REST API + admin

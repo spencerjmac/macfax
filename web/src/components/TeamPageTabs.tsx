@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { api, fetchTeamGameLog } from '@/lib/api';
 import clsx from 'clsx';
 import { MetricTooltip } from './glossary/MetricTooltip';
+import { isHiddenRoute } from '@macfax/core/lib/hiddenRoutes';
 
 interface TeamPageTabsProps {
   team: TeamSeason;
@@ -84,13 +85,15 @@ export default function TeamPageTabs({ team, ranks, checklist, cinderella }: Tea
                 {tab.label}
               </button>
             ))}
-            <Link
-              href={`/ncaa/outlook/${team.teamId}`}
-              className="px-[18px] py-[14px] font-display font-semibold text-[14px] tracking-[0.05em] uppercase border-b-[3px] border-transparent text-ink-fg2 hover:text-white transition-colors inline-flex items-center gap-1"
-            >
-              Outlook
-              <span className="text-brand text-xs font-semibold">↗</span>
-            </Link>
+            {!isHiddenRoute('/ncaa/outlook') && (
+              <Link
+                href={`/ncaa/outlook/${team.teamId}`}
+                className="px-[18px] py-[14px] font-display font-semibold text-[14px] tracking-[0.05em] uppercase border-b-[3px] border-transparent text-ink-fg2 hover:text-white transition-colors inline-flex items-center gap-1"
+              >
+                Outlook
+                <span className="text-brand text-xs font-semibold">↗</span>
+              </Link>
+            )}
           </div>
         </div>
       </div>
@@ -1058,8 +1061,8 @@ function PlayersTab({
       <div className="text-center py-12">
         <p className="text-text-muted mb-2">No player data available for this team.</p>
         <p className="text-xs text-text-muted font-mono">
-          Run: <code>python manage.py sync_ncaa_player_gamelogs --season 2025</code>
-          <br />then: <code>python manage.py compute_ncaa_player_season_stats --season 2025</code>
+          Run: <code>python manage.py sync_ncaa_player_gamelogs</code>
+          <br />then: <code>python manage.py compute_ncaa_player_season_stats</code>
         </p>
       </div>
     );

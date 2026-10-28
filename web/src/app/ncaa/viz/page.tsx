@@ -1,6 +1,7 @@
 import { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
+import { withoutHidden } from '@macfax/core/lib/hiddenRoutes';
 
 export const metadata: Metadata = {
   title: 'Visualizations | macfax',
@@ -311,7 +312,7 @@ export default function NCAAVizPage() {
 
         {/* Article grid */}
         <div className="grid grid-cols-3 gap-[22px]">
-          {ARTICLES.map((a) => {
+          {withoutHidden(ARTICLES).map((a) => {
             const Thumb = THUMB_MAP[a.thumb];
             return (
               <Link key={a.title} href={a.href} className="block">

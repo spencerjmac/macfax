@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { ChevronDown } from 'lucide-react';
 import clsx from 'clsx';
+import { withoutHidden } from '@macfax/core/lib/hiddenRoutes';
 
 type NavLink = { label: string; href: string };
 type NavSection = { label: string; href: string; items: NavLink[] };
@@ -38,17 +39,11 @@ const NAV_ITEMS: NavSection[] = [
       { label: 'Model Health', href: '/nba/model-health' },
     ],
   },
-  {
-    label: 'World Cup',
-    href: '/world-cup',
-    items: [
-      { label: 'Elo Rankings', href: '/world-cup' },
-      { label: 'Matchup', href: '/world-cup/matchup' },
-      { label: 'Group Odds', href: '/world-cup/groups' },
-      { label: 'Efficiency Landscape', href: '/world-cup/efficiency-landscape' },
-    ],
-  },
 ];
+
+const VISIBLE_NAV_ITEMS: NavSection[] = NAV_ITEMS
+  .map((section) => ({ ...section, items: withoutHidden(section.items) }))
+  .filter((section) => section.items.length > 0);
 
 function isSectionActive(pathname: string | null, section: NavSection): boolean {
   return !!pathname?.startsWith(section.href);
@@ -97,7 +92,7 @@ export default function Navigation() {
 
           {/* Nav Links */}
           <div className="hidden md:flex items-center gap-1">
-            {NAV_ITEMS.map((section) => (
+            {VISIBLE_NAV_ITEMS.map((section) => (
               <div key={section.href} className="relative group">
                 <Link
                   href={section.href}

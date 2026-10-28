@@ -25,7 +25,7 @@ const NCAA_CONFIG: Omit<HubConfig, 'facts'> = {
     { icon: Trophy,      title: 'Rankings',       body: 'Complete NCAA team and player rankings with AdjEM, adjusted efficiency, four factors, sorting, search, season, conference, and tournament filters.', href: '/ncaa/rankings' },
     { icon: Swords,      title: 'Matchup',        body: 'Head-to-head forecasts for any two teams, including projected score, margin, win probability, four-factor edges, key drivers, volatility, and recent form.', href: '/ncaa/matchup' },
     { icon: Sparkles,    title: 'Outlook',        body: 'Next-season roster projections built from player talent, minutes, fit, continuity, uncertainty, and editable roster scenarios.', href: '/ncaa/outlook' },
-    { icon: ScatterChart,title: 'Visualizations', body: 'Interactive charts like Trapezoid of Excellence, Efficiency Landscape, Crystal Ball, Cinderella Index, Bracket Simulator, and custom scatterplots.', href: '/ncaa/viz' },
+    { icon: ScatterChart,title: 'Visualizations', body: 'Interactive charts like Trapezoid of Excellence, Efficiency Landscape, Crystal Ball, Cinderella Index, and custom scatterplots.', href: '/ncaa/viz' },
     { icon: BookOpen,    title: 'Glossary',       body: 'Definitions, formulas, and interpretation notes for MacFax metrics and model concepts.', href: '/ncaa/glossary' },
     { icon: Gauge,       title: 'Model Health',   body: 'Locked-prediction validation showing winner accuracy, spread error, score error, calibration, trends, and recent evaluated games.', href: '/validation' },
   ],

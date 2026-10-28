@@ -24,7 +24,7 @@ import {
   formatPlayerMetric,
   type PlayerMetricMeta,
 } from '@macfax/core/lib/playerMetricMetadata';
-import type { NCAAPlayerSeasonStats } from '@macfax/core/types';
+import type { NCAAPlayerSeasonStats, SeasonInfo } from '@macfax/core/types';
 import { BPRConfidenceBadge, type BprSource } from './BPRConfidenceBadge';
 
 type TabId = 'traditional' | 'impact' | 'fourfactors';
@@ -73,12 +73,15 @@ const PLAYER_METRIC_DEFINITIONS: Record<TabId, MetricDefinition[]> = {
   ],
 };
 
-const PLAYER_SEASONS = [2020, 2021, 2022, 2023, 2024, 2025, 2026];
+// First season with player-level data; later seasons come from /seasons/ so a new season needs no edit here.
+const PLAYER_FIRST_SEASON = 2020;
 
 interface NCAAPlayerRankingsTableProps {
   data: NCAAPlayerSeasonStats[];
   seasonDisplay?: string;
   selectedSeason?: number;
+  /** Seasons from the API (`getAllSeasons`); the dropdown lists those with player data. */
+  seasons?: SeasonInfo[];
 }
 
 // ── Traditional ───────────────────────────────────────────────────────────────
@@ -126,8 +129,12 @@ const BPR_SOURCE_STYLES: Record<string, string> = {
 
 const PAGE_SIZE = 100;
 
-export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedSeason }: NCAAPlayerRankingsTableProps) {
+export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedSeason, seasons = [] }: NCAAPlayerRankingsTableProps) {
   const router = useRouter();
+  const playerSeasons = useMemo(
+    () => seasons.map((x) => x.year).filter((yr) => yr >= PLAYER_FIRST_SEASON).sort((a, b) => a - b),
+    [seasons],
+  );
   const [activeTab, setActiveTab] = useState<TabId>('impact');
   const [sorting, setSorting] = useState<SortingState>([{ id: 'bpr', desc: true }]);
   const [globalFilter, setGlobalFilter] = useState('');
@@ -650,8 +657,8 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
             className="px-3 py-2 bg-ui-surface border border-ui-border rounded-lg text-sm
                        focus:outline-none focus:ring-2 focus:ring-brand/50"
           >
-            <option value="">All Seasons</option>
-            {PLAYER_SEASONS.map((yr) => (
+            <option value="">Current season</option>
+            {playerSeasons.map((yr) => (
               <option key={yr} value={yr}>
                 {yr - 1}–{String(yr).slice(2)}
               </option>

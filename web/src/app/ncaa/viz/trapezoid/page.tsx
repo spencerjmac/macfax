@@ -16,7 +16,8 @@ export default function TrapezoidPage() {
   const [error, setError] = useState<string | null>(null);
   
   // Filters
-  const [season, setSeason] = useState(2026);
+  // undefined = the API's current season (is_current)
+  const [season, setSeason] = useState<number | undefined>(undefined);
   const [conferenceFilter, setConferenceFilter] = useState('ALL');
   const [topN, setTopN] = useState(365);
   const [debouncedTopN, setDebouncedTopN] = useState(365);

@@ -54,7 +54,7 @@ export default function AboutPage() {
             <div>
               <h3 className="font-bold mb-1">Visualizations</h3>
               <p className="text-text-muted text-sm">
-                The Trapezoid of Excellence, Efficiency Landscape, Kill Shot analysis, and Crystal Ball —
+                The Trapezoid of Excellence, Efficiency Landscape, Cinderella Index, and Crystal Ball —
                 original charts that tell a story beyond the box score.
               </p>
             </div>

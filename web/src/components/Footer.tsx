@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { isHiddenRoute } from '@macfax/core/lib/hiddenRoutes';
 
 export default function Footer() {
   return (
@@ -6,9 +7,11 @@ export default function Footer() {
       <div className="container mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-text-muted">
         <span className="font-semibold text-text-primary">macfax</span>
         <div className="flex items-center gap-6">
-          <Link href="/validation" className="hover:text-text-primary transition-colors">
-            Model Accuracy
-          </Link>
+          {!isHiddenRoute('/validation') && (
+            <Link href="/validation" className="hover:text-text-primary transition-colors">
+              Model Accuracy
+            </Link>
+          )}
           <Link href="/methodology" className="hover:text-text-primary transition-colors">
             Methodology
           </Link>

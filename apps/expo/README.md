@@ -96,7 +96,7 @@ npx expo export --clear --platform web      # also ios, android
   rankings four-factor views, conference/tournament filter, pre-tournament
   toggle and player rankings; matchup, outlook, visualizations, glossary and
   model health (these open the website); typeset formulas (shown as LaTeX
-  source); everything NBA and World Cup.
+  source); everything NBA.
 
 ## Layout
 
