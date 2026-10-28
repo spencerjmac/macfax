@@ -2,10 +2,8 @@ import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { getAllTeams } from '@/lib/data';
 import { nbaApi } from '@/lib/nba-api';
-import { worldCupApi } from '@/lib/worldcup-api';
 import type { TeamSeason } from '@macfax/core/types';
 import type { NBATeamSeasonRatings } from '@macfax/core/types/nba';
-import type { WorldCupTeam } from '@macfax/core/types/worldcup';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -13,12 +11,10 @@ export const revalidate = 0;
 async function getLeaderboardData(): Promise<{
   ncaaTop5: TeamSeason[];
   nbaTop3: NBATeamSeasonRatings[];
-  wcTop3: WorldCupTeam[];
 }> {
-  const [ncaaResult, nbaResult, wcResult] = await Promise.allSettled([
-    getAllTeams(),
-    nbaApi.getRankings(),
-    worldCupApi.getRankings(),
+  const [ncaaResult, nbaResult] = await Promise.allSettled([
+    getAllTeams(2027),
+    nbaApi.getRankings(2027),
   ]);
 
   const ncaaTop5 =
@@ -31,18 +27,11 @@ async function getLeaderboardData(): Promise<{
           .sort((a, b) => (a.rank_adj_net ?? 999) - (b.rank_adj_net ?? 999))
           .slice(0, 3)
       : [];
-  const wcTop3 =
-    wcResult.status === 'fulfilled'
-      ? [...wcResult.value]
-          .sort((a, b) => b.elo_rating - a.elo_rating)
-          .slice(0, 3)
-      : [];
-
-  return { ncaaTop5, nbaTop3, wcTop3 };
+  return { ncaaTop5, nbaTop3 };
 }
 
 export default async function HomePage() {
-  const { ncaaTop5, nbaTop3, wcTop3 } = await getLeaderboardData();
+  const { ncaaTop5, nbaTop3 } = await getLeaderboardData();
 
   const ncaaTop3 = ncaaTop5.slice(0, 3);
 
@@ -60,14 +49,13 @@ export default async function HomePage() {
         />
         <div className="max-w-[1240px] mx-auto px-8 relative">
           <div
-            className="grid items-center gap-14 py-[72px] pb-[84px]"
-            style={{ gridTemplateColumns: '1.15fr 0.85fr' }}
+            className="grid grid-cols-1 lg:grid-cols-2 items-center gap-14 py-[72px] pb-[84px]"
           >
             {/* Copy */}
             <div className="flex flex-col items-start gap-0">
               <p className="kicker-sport text-brand2 flex items-center gap-3 mb-6">
                 <span className="w-1.5 h-1.5 rounded-full bg-brand2 shadow-[0_0_0_4px_rgba(112,192,112,0.18)]" />
-                NCAA · NBA · WORLD CUP 2026 — Updated daily
+                NCAA · NBA — 2026–27 season
               </p>
               <h1 className="display-sport text-white mb-6 max-w-[16ch]">
                 The numbers behind the game.
@@ -77,16 +65,16 @@ export default async function HomePage() {
               </p>
               <div className="flex gap-3 flex-wrap">
                 <Link
-                  href="/ncaa/rankings"
+                  href="/nba/rankings"
                   className="inline-flex items-center gap-2 bg-brand hover:bg-brand-hover border border-brand hover:border-brand-hover text-white font-display font-semibold text-[16px] tracking-[0.04em] uppercase rounded-lg px-6 py-3.5 transition-colors"
                 >
-                  View rankings <ArrowRight className="w-[18px] h-[18px]" strokeWidth={1.5} />
+                  NBA rankings <ArrowRight className="w-[18px] h-[18px]" strokeWidth={1.5} />
                 </Link>
                 <Link
-                  href="/world-cup"
+                  href="/ncaa/outlook"
                   className="inline-flex items-center gap-2 bg-transparent hover:border-brand2 border border-[#2f3d59] text-white font-display font-semibold text-[16px] tracking-[0.04em] uppercase rounded-lg px-6 py-3.5 transition-colors"
                 >
-                  World Cup ratings
+                  NCAA roster outlook
                   <ArrowRight className="w-[18px] h-[18px]" strokeWidth={1.5} />
                 </Link>
               </div>
@@ -97,7 +85,7 @@ export default async function HomePage() {
               <div className="flex items-center justify-between px-4 py-3.5">
                 <div className="flex flex-col gap-0.5">
                   <span className="font-display font-semibold text-[15px] tracking-[0.1em] uppercase text-white">
-                    NCAA · MACFAX ADJUSTED RATINGS
+                    NCAA · 2026–27 ADJUSTED RATINGS
                   </span>
                   <span className="font-mono text-[11px] tracking-[0.06em] text-ink-fg">
                     Top teams by adjusted efficiency margin
@@ -105,7 +93,7 @@ export default async function HomePage() {
                 </div>
                 <span className="font-mono text-[11px] tracking-[0.08em] uppercase text-brand2 flex items-center gap-1.5">
                   <span className="w-[7px] h-[7px] rounded-full bg-brand2" />
-                  Live
+                  {ncaaTop5.length > 0 ? 'Current season' : 'Preseason'}
                 </span>
               </div>
 
@@ -137,7 +125,7 @@ export default async function HomePage() {
                   </Link>
                 ))
               ) : (
-                <div className="px-4 py-6 text-ink-fg2 text-sm text-center">Rankings loading…</div>
+                <div className="px-4 py-6 text-ink-fg2 text-sm text-center">2026–27 rankings will appear once games are played and ratings are computed.</div>
               )}
 
               <div className="px-4 py-3">
@@ -158,12 +146,12 @@ export default async function HomePage() {
         <div className="max-w-[1240px] mx-auto px-8">
           <div className="flex items-end justify-between gap-6 mb-[30px]">
             <div>
-              <p className="kicker-sport text-brand mb-2">NCAA · NBA · WORLD CUP 2026</p>
+              <p className="kicker-sport text-brand mb-2">NCAA · NBA</p>
               <h2 className="head-sport text-text-primary">Pick your sport</h2>
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-[22px]">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-[22px]">
             {/* NCAA */}
             <LeagueCard
               title="College Basketball"
@@ -196,23 +184,7 @@ export default async function HomePage() {
               }))}
             />
 
-            {/* World Cup */}
-            <LeagueCard
-              title="World Cup 2026"
-              sub="48 teams · group stage + knockout"
-              feats={['Elo Ratings', 'Group Stage', 'Power Rankings']}
-              href="/world-cup"
-              btnLabel="Enter World Cup"
-              icon={<SoccerBallIcon className="w-16 h-16 shrink-0" />}
-              format="elo"
-              teams={wcTop3.map(t => ({
-                id: t.name,
-                name: t.name,
-                logoUrl: '',
-                em: t.elo_rating,
-                emoji: t.flag_emoji,
-              }))}
-            />
+
           </div>
         </div>
       </section>
@@ -275,12 +247,6 @@ function BasketballIcon({ className }: { className?: string }) {
   );
 }
 
-function SoccerBallIcon({ className }: { className?: string }) {
-  return (
-    <img src="/world-cup-icon.jpg" alt="" aria-hidden="true" className={`object-contain ${className}`} />
-  );
-}
-
 // ── League card component ─────────────────────────────────────────────────────
 
 function LeagueCard({
@@ -290,7 +256,6 @@ function LeagueCard({
   href,
   btnLabel,
   icon,
-  format = 'em',
   teams,
 }: {
   title: string;
@@ -299,7 +264,6 @@ function LeagueCard({
   href: string;
   btnLabel: string;
   icon: React.ReactNode;
-  format?: 'em' | 'elo';
   teams: { id: string; name: string; logoUrl: string; em: number; emoji?: string }[];
 }) {
   return (
@@ -347,9 +311,7 @@ function LeagueCard({
             )}
             <span className="font-semibold text-[14px]">{tm.name}</span>
             <span className="font-mono font-bold text-[14px] text-brand">
-              {format === 'elo'
-                ? Math.round(tm.em).toString()
-                : `${tm.em > 0 ? '+' : ''}${tm.em.toFixed(2)}`}
+              {`${tm.em > 0 ? '+' : ''}${tm.em.toFixed(2)}`}
             </span>
           </div>
         ))}
