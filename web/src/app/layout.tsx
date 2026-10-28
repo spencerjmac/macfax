@@ -25,9 +25,9 @@ const oswald = Oswald({
 });
 
 export const metadata: Metadata = {
-  title: 'macfax | College Basketball Analytics',
-  description: 'College basketball analytics: efficiency, four factors, matchup forecasts, and visualizations.',
-  keywords: ['college basketball', 'analytics', 'statistics', 'efficiency', 'NCAA', 'macfax'],
+  title: 'macfax | NCAA & NBA Basketball Analytics',
+  description: 'NCAA and NBA basketball analytics: efficiency, four factors, player value, matchup forecasts, and visualizations.',
+  keywords: ['college basketball', 'analytics', 'statistics', 'efficiency', 'NCAA', 'NBA', 'macfax'],
   icons: {
     icon: '/brand/macfax-logo-v4.png',
     shortcut: '/brand/macfax-logo-v4.png',
