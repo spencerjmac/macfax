@@ -233,7 +233,15 @@ class RankingsSerializer(serializers.Serializer):
     net_100 = serializers.FloatField(source="adj_em")
 
     def get_conference(self, obj):
-        """Get conference - try multiple sources"""
+        """Use season-aware affiliations before historical stored conference data."""
+        from ncaa.conf_utils import get_season_conference
+
+        # The stored 2025-26 map is NOT valid for the re-aligned 2026-27 season.
+        if obj.season.year >= 2027:
+            current = get_season_conference(obj.team.slug, obj.season.year)
+            if current != "Unknown":
+                return current
+
         # Try TeamSeasonMetrics first (might have been set from past scrapers)
         # Use cached metrics if available (set in view with prefetch_related)
         try:
