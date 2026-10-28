@@ -68,10 +68,10 @@ NCAAA Stats API / NBA API
 
 Run the entire pipeline:
 ```bash
-python manage.py update_ncaa_all --season 2026
+python manage.py update_ncaa_all --season 2027
 ```
 
-See **[docs/DATA_PIPELINE.md](docs/DATA_PIPELINE.md)** for the full management command reference.
+See **[docs/DATA_PIPELINE.md](docs/DATA_PIPELINE.md)** for the full management command reference. For the 2026–27 production refresh, follow **[docs/SEASON_ROLLOVER_2027.md](docs/SEASON_ROLLOVER_2027.md)**.
 
 ---
 
