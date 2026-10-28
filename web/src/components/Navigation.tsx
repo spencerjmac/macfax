@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
@@ -32,22 +33,12 @@ const NAV_ITEMS: NavSection[] = [
       { label: 'Team Outlooks', href: '/nba/teams' },
       { label: 'Matchup Tool', href: '/nba/matchup' },
       { label: 'Player Value', href: '/nba/player-value' },
-      { label: '2026 Draft', href: '/nba/prospects' },
       { label: 'Compare', href: '/nba/compare' },
       { label: 'Visualizations', href: '/nba/viz' },
       { label: 'Model Health', href: '/nba/model-health' },
     ],
   },
-  {
-    label: 'World Cup',
-    href: '/world-cup',
-    items: [
-      { label: 'Elo Rankings', href: '/world-cup' },
-      { label: 'Matchup', href: '/world-cup/matchup' },
-      { label: 'Group Odds', href: '/world-cup/groups' },
-      { label: 'Efficiency Landscape', href: '/world-cup/efficiency-landscape' },
-    ],
-  },
+
 ];
 
 function isSectionActive(pathname: string | null, section: NavSection): boolean {
@@ -62,6 +53,7 @@ function isSubItemActive(pathname: string | null, item: NavLink): boolean {
 
 export default function Navigation() {
   const pathname = usePathname();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
     <nav className="bg-bg text-textOnDark sticky top-0 z-50 border-b-4 border-brand">
@@ -160,13 +152,38 @@ export default function Navigation() {
             </Link>
           </div>
 
-          {/* Mobile menu button (placeholder) */}
-          <button className="md:hidden p-2">
+          {/* Mobile navigation */}
+          <button
+            type="button"
+            className="md:hidden p-2"
+            aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+            aria-controls="mobile-navigation"
+            aria-expanded={mobileMenuOpen}
+            onClick={() => setMobileMenuOpen(open => !open)}
+          >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
         </div>
+        {mobileMenuOpen && (
+          <div id="mobile-navigation" className="md:hidden pb-5 space-y-4">
+            {NAV_ITEMS.map(section => (
+              <div key={section.href}>
+                <Link href={section.href} onClick={() => setMobileMenuOpen(false)} className="block font-bold text-brand2 py-2">{section.label}</Link>
+                <div className="grid grid-cols-2 gap-2">
+                  {section.items.map(item => (
+                    <Link key={item.href} href={item.href} onClick={() => setMobileMenuOpen(false)} className="text-sm text-gray-200 py-1">{item.label}</Link>
+                  ))}
+                </div>
+              </div>
+            ))}
+            <div className="flex gap-6 border-t border-gray-700 pt-4">
+              <Link href="/methodology" onClick={() => setMobileMenuOpen(false)} className="text-sm">Methodology</Link>
+              <Link href="/about" onClick={() => setMobileMenuOpen(false)} className="text-sm">About</Link>
+            </div>
+          </div>
+        )}
       </div>
     </nav>
   );
