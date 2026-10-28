@@ -21,6 +21,7 @@ from django.core.management.base import BaseCommand
 from django.db.models import Count
 from ncaa.models import TeamSeasonRatings, TeamGameStats, Season
 import math
+from ncaa.seasons import resolve_season_year
 
 
 class Command(BaseCommand):
@@ -28,10 +29,8 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            '--season',
-            type=int,
-            default=2026,
-            help='Season year to compute SOS for (default: 2026)'
+            '--season', type=int, default=None,
+            help='Season year to compute SOS for (default: the season in play)',
         )
         parser.add_argument(
             '--pre_tournament',
@@ -43,7 +42,7 @@ class Command(BaseCommand):
         from ncaa.models import PipelineConfig
         cfg = PipelineConfig.get_config()
 
-        season_year = options['season']
+        season_year = resolve_season_year(options['season'])
 
         try:
             season = Season.objects.get(year=season_year)

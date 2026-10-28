@@ -44,11 +44,22 @@ from .serializers import (
 
 
 class NBASeasonViewSet(viewsets.ReadOnlyModelViewSet):
-    """GET /api/nba/seasons/"""
+    """
+    GET /api/nba/seasons/
 
-    queryset = NBASeason.objects.all()
+    Lists seasons that have games (plus the current one). Empty future rows
+    exist as outlook targets (e.g. 2028) and must not appear in season pickers;
+    pass ?all=true to include them.
+    """
+
     serializer_class = NBASeasonSerializer
     pagination_class = None
+
+    def get_queryset(self):
+        qs = NBASeason.objects.all()
+        if self.request.query_params.get("all") != "true":
+            qs = qs.filter(Q(is_current=True) | Q(games__isnull=False)).distinct()
+        return qs
 
 
 class NBATeamViewSet(viewsets.ReadOnlyModelViewSet):

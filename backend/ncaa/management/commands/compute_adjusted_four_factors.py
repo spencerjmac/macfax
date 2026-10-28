@@ -34,6 +34,7 @@ from ncaa.models import (
     Season, Team, TeamGameStats, TeamSeasonMetrics,
     TeamSeasonRatings, NationalAverages
 )
+from ncaa.seasons import resolve_season_year
 
 KEYS = [
     'adj_efg', 'adj_tov', 'adj_orb', 'adj_ftr',
@@ -46,10 +47,8 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            '--season',
-            type=int,
-            required=True,
-            help='Season year (e.g., 2026)'
+            '--season', type=int, default=None,
+            help='Season year (e.g., 2026) (default: the season in play)',
         )
         parser.add_argument(
             '--iterations',
@@ -79,7 +78,7 @@ class Command(BaseCommand):
         from ncaa.models import PipelineConfig
         cfg = PipelineConfig.get_config()
 
-        season_year = options['season']
+        season_year = resolve_season_year(options['season'])
         max_iterations = options['iterations'] or cfg.adj_ff_iterations
         convergence_threshold = options['convergence'] or cfg.adj_ff_convergence
         shrinkage_k = options['shrinkage']  # None = dynamic (computed below)

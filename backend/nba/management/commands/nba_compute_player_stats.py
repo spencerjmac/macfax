@@ -21,6 +21,7 @@ from nba.models import (
     NBAPlayerGameStats,
     NBAPlayerSeasonStats,
 )
+from nba.seasons import resolve_season_year
 
 logger = logging.getLogger(__name__)
 
@@ -37,8 +38,8 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            "--season", type=int, required=True,
-            help="Ending season year (e.g., 2026)",
+            "--season", type=int, default=None,
+            help="Ending season year (e.g., 2026) (default: the season in play)",
         )
         parser.add_argument(
             "--season-type", default="regular", choices=["regular", "playoffs"],
@@ -46,7 +47,7 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        season_year: int = options["season"]
+        season_year: int = resolve_season_year(options["season"])
         season_type: str = options["season_type"]
 
         try:

@@ -22,7 +22,8 @@ echo "========================================================"
 echo "========================================================"
 echo "NBA BPR chain (current season)"
 echo "========================================================"
-NBA_SEASON=${NBA_SEASON:-2026}
+# Default to the season in play (2027 for 2026-27), same rule as the daily job
+NBA_SEASON=${NBA_SEASON:-$(uv run python -c "from config.season_calendar import season_in_play; print(season_in_play())")}
 uv run python manage.py nba_compute_baseline_rapm --season $NBA_SEASON
 uv run python manage.py nba_compute_box_bpr --season $NBA_SEASON
 uv run python manage.py nba_compute_final_bpr --season $NBA_SEASON

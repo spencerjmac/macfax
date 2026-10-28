@@ -22,6 +22,7 @@ import logging
 from django.core.management.base import BaseCommand, CommandError
 
 from ncaa.analytics.player_value.minutes.service import run_minutes_pipeline
+from ncaa.seasons import resolve_season_year
 
 logger = logging.getLogger(__name__)
 
@@ -34,10 +35,8 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            "--season",
-            type=int,
-            required=True,
-            help="From‑season year whose projections to process (e.g. 2026).",
+            "--season", type=int, default=None,
+            help="From‑season year whose projections to process (e.g. 2026). (default: the season in play)",
         )
         parser.add_argument(
             "--validate",
@@ -47,7 +46,7 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        season_year  = options["season"]
+        season_year  = resolve_season_year(options["season"])
         do_validate  = options["validate"]
 
         logging.basicConfig(level=logging.INFO)

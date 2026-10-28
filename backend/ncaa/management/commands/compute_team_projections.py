@@ -14,6 +14,7 @@ from ncaa.analytics.player_value.team_projection.service import (
     get_top_teams,
     run_team_projection_pipeline,
 )
+from ncaa.seasons import resolve_season_year
 
 
 class Command(BaseCommand):
@@ -21,10 +22,8 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            "--season",
-            type=int,
-            required=True,
-            help="Source season year (e.g. 2026 uses Phase 1-4 data from the 2025-26 season)",
+            "--season", type=int, default=None,
+            help="Source season year (e.g. 2026 uses Phase 1-4 data from the 2025-26 season) (default: the season in play)",
         )
         parser.add_argument(
             "--validate",
@@ -40,7 +39,7 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        season_year = options["season"]
+        season_year = resolve_season_year(options["season"])
         dry_run = options["dry_run"]
         validate = options["validate"]
 

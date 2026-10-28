@@ -28,6 +28,7 @@ from ncaa.models import (
     ScoringEvent,
     TeamSeasonMetrics,
 )
+from ncaa.seasons import resolve_season_year
 
 logger = logging.getLogger(__name__)
 
@@ -37,10 +38,8 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            "--season",
-            type=int,
-            required=True,
-            help="Season year (ending year, e.g., 2026)",
+            "--season", type=int, default=None,
+            help="Season year (ending year, e.g., 2026) (default: the season in play)",
         )
         parser.add_argument(
             "--teams", nargs="+", help="Specific team slugs to process (default: all)"
@@ -52,7 +51,7 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        season_year = options["season"]
+        season_year = resolve_season_year(options["season"])
         team_slugs = options.get("teams")
         is_pre_tournament = options["pre_tournament"]
 

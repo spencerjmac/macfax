@@ -65,7 +65,7 @@ import numpy as np
 from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 
-from nba.analytics.lebron_utils import check_all_lebron_files
+from nba.analytics.lebron_utils import check_all_lebron_files, lebron_csv_path
 from nba.analytics.rapm import (
     build_design_matrix,
     build_nba_observations,
@@ -73,6 +73,7 @@ from nba.analytics.rapm import (
     _solve_augmented,
 )
 from nba.models import NBAPlayerSeasonStats
+from nba.seasons import resolve_season_year
 
 logger = logging.getLogger(__name__)
 
@@ -172,7 +173,7 @@ def _load_lebron_priors(season_year: int, nba_ids: list[int]) -> dict[int, tuple
     except ImportError:
         return {}
 
-    csv_path = SCRIPT_DIR / "data" / "nba" / f"lebron-data-{season_year}.csv"
+    csv_path = lebron_csv_path(season_year)
     if not csv_path.exists():
         return {}
 
@@ -290,7 +291,10 @@ class Command(BaseCommand):
     help = "Compute final BPR (prior-informed RAPM) with minutes-stratified λ"
 
     def add_arguments(self, parser):
-        parser.add_argument("--season", type=int, required=True)
+        parser.add_argument(
+            "--season", type=int, default=None,
+            help='Season ending year (default: the season in play, e.g. 2027 for 2026-27)',
+        )
         parser.add_argument(
             "--lambda-val", type=float, default=DEFAULT_LAMBDA,
             help=f"Ridge regularization λ for single run (default {DEFAULT_LAMBDA})",
@@ -331,7 +335,7 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        season_year: int = options["season"]
+        season_year: int = resolve_season_year(options["season"])
         lambda_val: float = options["lambda_val"]
         rapm_window: int = options["rapm_window"]
         dry_run: bool = options["dry_run"]

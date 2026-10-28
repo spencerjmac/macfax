@@ -50,6 +50,7 @@ from django.db import transaction
 from ncaa.analytics.player_value.ffi.pipeline import run_ffi_pipeline, MIN_POSS_FFI
 from ncaa.analytics.player_value.ffi.rapm import FFI_RAPM_LAMBDA_DEFAULT
 from ncaa.models import PlayerSeasonStats, Season
+from ncaa.seasons import resolve_season_year
 
 logger = logging.getLogger(__name__)
 
@@ -69,8 +70,8 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            "--season", type=int, required=True,
-            help="Target season year (e.g., 2026)",
+            "--season", type=int, default=None,
+            help="Target season year (e.g., 2026) (default: the season in play)",
         )
         parser.add_argument(
             "--rapm-years", type=int, nargs="+", default=None,
@@ -93,7 +94,7 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        season_year: int = options["season"]
+        season_year: int = resolve_season_year(options["season"])
         rapm_years: list[int] | None = options["rapm_years"]
         lambda_val_opt: float | None = options["lambda_val"]
         no_auto_tune: bool = options["no_auto_tune"]

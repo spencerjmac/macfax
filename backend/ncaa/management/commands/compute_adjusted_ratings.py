@@ -25,6 +25,7 @@ from ncaa.models import (
     TeamSeasonRatings,
     NationalAverages,
 )
+from ncaa.seasons import resolve_season_year
 
 logger = logging.getLogger(__name__)
 
@@ -34,10 +35,8 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            "--season",
-            type=int,
-            required=True,
-            help="Season year (ending year, e.g., 2026 for 2025-26 season)",
+            "--season", type=int, default=None,
+            help="Season year (ending year, e.g., 2026 for 2025-26 season) (default: the season in play)",
         )
         parser.add_argument(
             "--iterations",
@@ -128,7 +127,7 @@ class Command(BaseCommand):
 
         cfg = PipelineConfig.get_config()
 
-        season_year = options["season"]
+        season_year = resolve_season_year(options["season"])
         max_iterations = options["iterations"] or cfg.adj_ratings_iterations
         convergence_threshold = options["convergence"] or cfg.adj_ratings_convergence
         shrinkage_k = options[

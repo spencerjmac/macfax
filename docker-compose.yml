@@ -54,6 +54,35 @@ services:
       - "127.0.0.1:7001:7001"
     command: ["sh", "-c", "python manage.py migrate && python manage.py collectstatic --noinput && python manage.py import_logos && python manage.py nba_sync_teams && gunicorn config.asgi:application -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:7001 --workers 2 --timeout 600 --access-logfile - --error-logfile - --log-level debug"]
 
+  # Runs `update_daily` once a day (NBA/NCAA, each only while in season).
+  # Same image and env as the backend; does not migrate or serve traffic.
+  # Logs: docker compose logs -f scheduler
+  scheduler:
+    hostname: macfax_scheduler
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    env_file:
+      - .env.docker
+    environment:
+      REDIS_URL: "redis://redis:6379/1"
+      RUNNING_IN_DOCKER: "1"
+      # Daily run time, HH:MM UTC (10:00 UTC = 06:00 ET, after West Coast finals)
+      DAILY_UPDATE_AT: "10:00"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    networks:
+      web:
+        aliases:
+          - macfax_scheduler
+    restart: unless-stopped
+    command: ["python", "manage.py", "run_scheduler"]
+
   web:
     hostname: macfax_web
     build:

@@ -29,6 +29,7 @@ import time
 from django.core.management.base import BaseCommand, CommandError
 
 from nba.models import NBASeason, NBAPlayerSeasonStats
+from nba.seasons import resolve_season_year
 
 logger = logging.getLogger(__name__)
 
@@ -52,8 +53,8 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            "--season", type=int, required=True,
-            help="Ending season year (e.g., 2026)",
+            "--season", type=int, default=None,
+            help="Ending season year (e.g., 2026) (default: the season in play)",
         )
         parser.add_argument(
             "--sleep", type=float, default=1.2,
@@ -87,7 +88,7 @@ class Command(BaseCommand):
     # ── Main ──────────────────────────────────────────────────────────────────
 
     def handle(self, *args, **options):
-        season_year: int = options["season"]
+        season_year: int = resolve_season_year(options["season"])
         sleep: float = options["sleep"]
         dry_run: bool = options["dry_run"]
 

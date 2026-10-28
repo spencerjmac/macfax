@@ -1,6 +1,15 @@
 from datetime import datetime
 from pathlib import Path
 
+# Project root holding data/nba (backend/nba/analytics/ -> 3 levels up; "/" inside the container)
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+
+
+def lebron_csv_path(season_year: int) -> Path:
+    """Where the BBall Index LEBRON file for a season lives (manual download)."""
+    return PROJECT_ROOT / "data" / "nba" / f"lebron-data-{season_year}.csv"
+
+
 NBA_SEASON_START_MONTH = 10   # October
 NBA_SEASON_END_MONTH   = 6    # June (covers playoffs)
 STALE_THRESHOLD_DAYS   = 14   # warn if this old during active season

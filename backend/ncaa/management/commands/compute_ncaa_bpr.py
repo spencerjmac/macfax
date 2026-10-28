@@ -22,6 +22,7 @@ Run order:
 import logging
 
 from django.core.management.base import BaseCommand, CommandError
+from ncaa.seasons import resolve_season_year
 
 logger = logging.getLogger(__name__)
 
@@ -31,10 +32,8 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            "--season",
-            type=int,
-            required=True,
-            help="Season year (e.g. 2026 for the 2025-26 season).",
+            "--season", type=int, default=None,
+            help="Season year (e.g. 2026 for the 2025-26 season). (default: the season in play)",
         )
         parser.add_argument(
             "--skip-box-bpr",
@@ -121,7 +120,7 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        season_year = options["season"]
+        season_year = resolve_season_year(options["season"])
         validate_only = options["validate_only"]
 
         if validate_only:

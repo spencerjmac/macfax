@@ -41,8 +41,14 @@ import sys
 from django.core.management.base import BaseCommand
 from django.core.management import call_command
 from django.utils import timezone
+from nba.analytics.lebron_utils import lebron_csv_path
+from nba.models import NBAGame, NBAPlayerSeasonStats
+from nba.seasons import activate_latest_season, resolve_season_year
 
 TOTAL_STEPS = 11
+
+# nba_compute_box_bpr trains on RAPM targets and refuses to run with fewer than this many players
+MIN_RAPM_TARGETS = 20
 
 
 class Command(BaseCommand):
@@ -50,7 +56,8 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            "--season", type=int, required=True, help="Season ending year (e.g. 2026)"
+            "--season", type=int, default=None,
+            help="Season ending year (e.g. 2026) (default: the season in play)",
         )
         parser.add_argument(
             "--skip-ingest",
@@ -82,7 +89,7 @@ class Command(BaseCommand):
     # ──────────────────────────────────────────────────────────────────────────
 
     def handle(self, *args, **options):
-        season_year = options["season"]
+        season_year = resolve_season_year(options["season"])
         skip_ingest = options["skip_ingest"]
         workers = max(1, int(options.get("workers", 1)))
         with_pbp = options.get("with_pbp", False)
@@ -155,14 +162,16 @@ class Command(BaseCommand):
             steps,
             label=f"[5/{TOTAL_STEPS}]",
         )
-        self._run_step(
+        self._run_unless(
+            self._skip_reason_box_bpr(season_year),
             "NBA compute box BPR",
             "nba_compute_box_bpr",
             {"season": season_year},
             steps,
             label=f"[6/{TOTAL_STEPS}]",
         )
-        self._run_step(
+        self._run_unless(
+            self._skip_reason_final_bpr(season_year),
             "NBA compute final BPR",
             "nba_compute_final_bpr",
             {"season": season_year},
@@ -176,7 +185,9 @@ class Command(BaseCommand):
             steps,
             label=f"[8/{TOTAL_STEPS}]",
         )
-        self._run_step(
+        playoffs_skip = self._skip_reason_playoffs(season_year)
+        self._run_unless(
+            playoffs_skip,
             "NBA compute ratings (Playoffs)",
             "nba_compute_ratings",
             {"season": season_year, "season_type": "playoffs"},
@@ -184,7 +195,8 @@ class Command(BaseCommand):
             fatal=False,
             label=f"[9/{TOTAL_STEPS}]",
         )
-        self._run_step(
+        self._run_unless(
+            playoffs_skip,
             "NBA compute player stats (Playoffs)",
             "nba_compute_player_stats",
             {"season": season_year, "season_type": "playoffs"},
@@ -239,6 +251,9 @@ class Command(BaseCommand):
                 label="[PBP-5/5]",
             )
 
+        # Show the new season once it has a final regular-season game
+        self._activate_latest_season(steps)
+
         # Summary
         end_time = timezone.now()
         duration = (end_time - start_time).total_seconds()
@@ -247,6 +262,63 @@ class Command(BaseCommand):
 
         if failed:
             sys.exit(1)
+
+    # ──────────────────────────────────────────────────────────────────────────
+    # Prerequisite checks: a step whose input doesn't exist yet is skipped with a
+    # reason in the summary instead of failing (and failing the whole daily run).
+    # ──────────────────────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _skip_reason_playoffs(season_year: int) -> str | None:
+        if NBAGame.objects.filter(season__year=season_year, season_type="playoffs").exists():
+            return None
+        return f"no playoff games for {season_year} yet"
+
+    @staticmethod
+    def _skip_reason_box_bpr(season_year: int) -> str | None:
+        n = NBAPlayerSeasonStats.objects.filter(
+            season__year=season_year,
+            baseline_obpr__isnull=False,
+            baseline_dbpr__isnull=False,
+        ).count()
+        if n >= MIN_RAPM_TARGETS:
+            return None
+        return (
+            f"no RAPM targets for {season_year} ({n} players, need {MIN_RAPM_TARGETS}); "
+            "run update_nba_all --with-pbp"
+        )
+
+    @staticmethod
+    def _skip_reason_final_bpr(season_year: int) -> str | None:
+        path = lebron_csv_path(season_year)
+        if path.exists():
+            return None
+        return f"missing LEBRON prior {path.name}"
+
+    def _run_unless(self, skip_reason, name, cmd, kwargs, steps, **run_kwargs):
+        """Run a step, or record it as skipped with the reason when a prerequisite is missing."""
+        if skip_reason:
+            label = run_kwargs.get("label", "")
+            self.stdout.write(self.style.WARNING(f"[SKIP] {label} {name}: {skip_reason}\n"))
+            steps.append((name, True, f"Skipped: {skip_reason}"))
+            return
+        self._run_step(name, cmd, kwargs, steps, **run_kwargs)
+
+    def _activate_latest_season(self, steps):
+        name = "Activate latest season"
+        try:
+            flip = activate_latest_season()
+        except Exception as e:
+            steps.append((name, False, str(e)))
+            self.stderr.write(self.style.ERROR(f"[FAIL] {name}: {e}\n"))
+            return
+        if flip:
+            old, new = flip
+            note = f"is_current: {old or 'none'} -> {new}"
+            self.stdout.write(self.style.SUCCESS(f"[SEASON] {note}\n"))
+        else:
+            note = "no change"
+        steps.append((name, True, note))
 
     # ──────────────────────────────────────────────────────────────────────────
     # Setup (pre-flight, idempotent)
@@ -292,9 +364,10 @@ class Command(BaseCommand):
 
         self.stdout.write("\nStep Summary:")
         for step_name, success, note in steps:
-            if success:
-                tag = "[SKIP]" if note == "Skipped" else "[OK]  "
-                self.stdout.write(self.style.SUCCESS(f"  {tag} {step_name}"))
+            if success and note and note.startswith("Skipped"):
+                self.stdout.write(self.style.WARNING(f"  [SKIP] {step_name} -- {note.removeprefix('Skipped').lstrip(': ')}"))
+            elif success:
+                self.stdout.write(self.style.SUCCESS(f"  [OK]   {step_name}"))
             else:
                 self.stdout.write(self.style.ERROR(f"  [FAIL] {step_name}: {note}"))
 

@@ -27,6 +27,7 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 
 from ncaa.models import Game, Player, PlayerGameStats, Team, TeamExternalId
+from ncaa.seasons import resolve_season_year
 
 logger = logging.getLogger(__name__)
 
@@ -36,10 +37,8 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            "--season",
-            type=int,
-            default=2025,
-            help="Season year (ending year, e.g. 2025 for 2024-25)",
+            "--season", type=int, default=None,
+            help="Season year (ending year, e.g. 2025 for 2024-25) (default: the season in play)",
         )
         parser.add_argument(
             "--workers",
@@ -71,7 +70,7 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        season_year = options["season"]
+        season_year = resolve_season_year(options["season"])
         workers = options["workers"]
         sleep_secs = options["sleep"]
         skip_done = options["skip_done"]

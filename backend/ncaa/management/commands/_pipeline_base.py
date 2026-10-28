@@ -22,7 +22,10 @@ class BasePipelineCommand(BaseCommand):
             year=season_year,
             defaults={
                 "display_name": f"{season_year - 1}-{str(season_year)[2:]}",
-                "is_current": True,
+                # Never born current: a backfill or a not-yet-started season must not
+                # steal the flag. ncaa.seasons.activate_latest_season() flips it once
+                # the season has a final game.
+                "is_current": False,
             },
         )
         verb = "Created" if created else "Using existing"
@@ -71,6 +74,25 @@ class BasePipelineCommand(BaseCommand):
             if fatal:
                 self._print_summary(timezone.now(), timezone.now(), 0.0, steps)
                 sys.exit(1)
+
+    def _activate_latest_season(self, steps: list):
+        """Move is_current to the newest season with a final game (non-fatal)."""
+        from ncaa.seasons import activate_latest_season
+
+        name = "Activate latest season"
+        try:
+            flip = activate_latest_season()
+        except Exception as e:
+            steps.append((name, False, str(e)))
+            self.stderr.write(self.style.ERROR(f"[FAIL] {name}: {e}\n"))
+            return
+        if flip:
+            old, new = flip
+            note = f"is_current: {old or 'none'} -> {new}"
+            self.stdout.write(self.style.SUCCESS(f"[SEASON] {note}\n"))
+        else:
+            note = "no change"
+        steps.append((name, True, note))
 
     def _skip_step(self, name: str, steps: list, reason: str = "Skipped"):
         steps.append((name, True, reason))

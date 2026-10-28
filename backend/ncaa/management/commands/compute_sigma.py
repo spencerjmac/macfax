@@ -13,6 +13,7 @@ from django.core.management.base import BaseCommand
 
 from api.matchup_engine import forecast_game
 from ncaa.models import Game, NationalAverages, Season, TeamSeasonRatings
+from ncaa.seasons import resolve_season_year
 
 
 class Command(BaseCommand):
@@ -20,17 +21,15 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            '--season',
-            type=int,
-            default=2026,
-            help='Season year (default: 2026)'
+            '--season', type=int, default=None,
+            help='Season year (default: the season in play)',
         )
 
     def handle(self, *args, **options):
         from ncaa.models import PipelineConfig
         cfg = PipelineConfig.get_config()
 
-        season_year = options['season']
+        season_year = resolve_season_year(options['season'])
 
         self.stdout.write(f'\n{"="*80}')
         self.stdout.write(f'COMPUTING PREDICTION SIGMA (Error Standard Deviation)')

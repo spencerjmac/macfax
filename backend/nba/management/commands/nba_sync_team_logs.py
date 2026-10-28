@@ -22,6 +22,7 @@ from django.db import transaction
 
 from nba.models import NBASeason, NBATeam, NBAGame, NBAPlayer, NBAPlayerGameStats
 from nba.providers.nba_api_provider import NBAApiProvider
+from nba.seasons import resolve_season_year
 
 logger = logging.getLogger(__name__)
 
@@ -57,8 +58,10 @@ class Command(BaseCommand):
     help = "Sync per-player box scores via BoxScoreTraditionalV3 for a season."
 
     def add_arguments(self, parser):
-        parser.add_argument("--season", type=int, required=True,
-                            help="Ending season year (e.g., 2026)")
+        parser.add_argument(
+            "--season", type=int, default=None,
+            help="Ending season year (e.g., 2026) (default: the season in play)",
+        )
         parser.add_argument("--limit", type=int, default=None,
                             help="Cap number of games to process (for testing)")
         parser.add_argument("--workers", type=int, default=1,
@@ -75,7 +78,7 @@ class Command(BaseCommand):
                                  "(use to backfill newly added fields)")
 
     def handle(self, *args, **options):
-        season_year: int = options["season"]
+        season_year: int = resolve_season_year(options["season"])
         limit = options["limit"]
         workers: int = max(1, options["workers"])
         sleep: float = options["sleep"]

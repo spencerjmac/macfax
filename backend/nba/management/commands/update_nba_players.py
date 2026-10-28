@@ -28,6 +28,7 @@ from django.core.management.base import CommandError
 from django.utils import timezone
 
 from ncaa.management.commands._pipeline_base import BasePipelineCommand
+from nba.seasons import resolve_season_year
 
 TOTAL_STEPS = 6
 
@@ -36,7 +37,10 @@ class Command(BasePipelineCommand):
     help = "Update all NBA player data for a season (ingest + compute stats + advanced)."
 
     def add_arguments(self, parser):
-        parser.add_argument("--season", type=int, required=True)
+        parser.add_argument(
+            "--season", type=int, default=None,
+            help='Season ending year (default: the season in play, e.g. 2027 for 2026-27)',
+        )
         parser.add_argument(
             "--skip-ingest",
             action="store_true",
@@ -51,7 +55,7 @@ class Command(BasePipelineCommand):
 
     def handle(self, *args, **options):
         start_time = timezone.now()
-        season_year = options["season"]
+        season_year = resolve_season_year(options["season"])
         skip_ingest = options["skip_ingest"]
         workers = int(options.get("workers", 1))
 

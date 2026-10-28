@@ -37,6 +37,7 @@ from nba.analytics.box_bpr import (
 )
 from nba.analytics.career_stats import build_career_stats_map
 from nba.models import NBAPlayer, NBAPlayerSeasonStats
+from nba.seasons import resolve_season_year
 
 logger = logging.getLogger(__name__)
 
@@ -96,7 +97,8 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            "--season", type=int, required=True, help="Season ending year (e.g. 2026)"
+            "--season", type=int, default=None,
+            help="Season ending year (e.g. 2026) (default: the season in play)",
         )
         parser.add_argument(
             "--dry-run",
@@ -115,7 +117,7 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        season_year: int = options["season"]
+        season_year: int = resolve_season_year(options["season"])
         dry_run: bool = options["dry_run"]
         use_oof: bool = options["oof"]
         validate: bool = options.get("validate", False)

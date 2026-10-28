@@ -40,6 +40,7 @@ from ncaa.models import (
     Game, NationalAverages, PlayerGameStint, PlayerSeasonStats,
     Season, TeamSeasonRatings,
 )
+from ncaa.seasons import resolve_season_year
 
 logger = logging.getLogger(__name__)
 
@@ -153,8 +154,8 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            "--season", type=int, required=True,
-            help="Ending season year (e.g., 2026)",
+            "--season", type=int, default=None,
+            help="Ending season year (e.g., 2026) (default: the season in play)",
         )
         parser.add_argument(
             "--min-secs", type=int, default=120,
@@ -162,7 +163,7 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        season_year: int = options["season"]
+        season_year: int = resolve_season_year(options["season"])
         min_secs: int = options["min_secs"]
 
         try:

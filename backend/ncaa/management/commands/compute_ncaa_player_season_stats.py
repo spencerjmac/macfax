@@ -11,6 +11,7 @@ from django.db.models import Sum, Count, F, FloatField, ExpressionWrapper, Q
 from django.db import transaction
 
 from ncaa.models import Game, Player, PlayerGameStats, PlayerSeasonStats, Season, Team, TeamGameStats
+from ncaa.seasons import resolve_season_year
 
 
 class Command(BaseCommand):
@@ -18,14 +19,12 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            "--season",
-            type=int,
-            default=2025,
-            help="Season year (ending year, e.g. 2025 for 2024-25)",
+            "--season", type=int, default=None,
+            help="Season year (ending year, e.g. 2025 for 2024-25) (default: the season in play)",
         )
 
     def handle(self, *args, **options):
-        season_year = options["season"]
+        season_year = resolve_season_year(options["season"])
 
         try:
             season = Season.objects.get(year=season_year)

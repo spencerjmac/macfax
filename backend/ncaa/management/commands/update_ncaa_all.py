@@ -26,13 +26,17 @@ from django.utils import timezone
 
 from ncaa.management.commands._pipeline_base import BasePipelineCommand
 from ncaa.models import PipelineConfig
+from ncaa.seasons import resolve_season_year
 
 
 class Command(BasePipelineCommand):
     help = "Run the complete Macfax data pipeline (NCAA teams + players, NBA teams + players)."
 
     def add_arguments(self, parser):
-        parser.add_argument("--season", type=int, required=True)
+        parser.add_argument(
+            "--season", type=int, default=None,
+            help='Season ending year (default: the season in play, e.g. 2027 for 2026-27)',
+        )
         parser.add_argument(
             "--skip-ingest",
             action="store_true",
@@ -102,7 +106,7 @@ class Command(BasePipelineCommand):
         )
 
     def handle(self, *args, **options):
-        season_year     = options["season"]
+        season_year     = resolve_season_year(options["season"])
         skip_ingest     = options["skip_ingest"]
         skip_player     = options["skip_player"]
         skip_nba        = options["skip_nba"]

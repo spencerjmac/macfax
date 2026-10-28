@@ -12,6 +12,7 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 
 from ncaa.models import Season, Team, TeamSeasonRatings
+from ncaa.seasons import resolve_season_year
 
 
 class Command(BaseCommand):
@@ -19,10 +20,8 @@ class Command(BaseCommand):
     
     def add_arguments(self, parser):
         parser.add_argument(
-            '--season',
-            type=int,
-            required=True,
-            help='Season year (e.g., 2026)'
+            '--season', type=int, default=None,
+            help='Season year (e.g., 2026) (default: the season in play)',
         )
     
     def find_team(self, ncaa_school_name):
@@ -48,7 +47,7 @@ class Command(BaseCommand):
         return None
     
     def handle(self, *args, **options):
-        season_year = options['season']
+        season_year = resolve_season_year(options['season'])
         
         try:
             season = Season.objects.get(year=season_year)

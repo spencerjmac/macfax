@@ -140,19 +140,21 @@ docker compose up -d
 
 ### Data updates (daily)
 
+A `scheduler` service in `docker-compose.yml` runs `update_daily` once a day at
+`DAILY_UPDATE_AT` (UTC, default `10:00`). It updates the NBA (Oct 1 – Jun 30) and
+NCAA (Nov 1 – Apr 15) only while they are in season, ingests the season in play,
+and moves the site to the new season after its first final game. Nothing needs
+editing at season rollover.
+
 ```bash
-docker compose exec backend python manage.py update_ncaa_all --season 2026
+docker compose logs -f scheduler                                # watch runs
+docker compose exec backend python manage.py update_daily --dry-run   # show gates, run nothing
+docker compose exec backend python manage.py update_daily       # run now
+docker compose exec backend python manage.py update_daily --force-ncaa --skip-nba
 ```
 
-Set this up as a cron job for automatic updates:
-```bash
-crontab -e
-```
-```cron
-0 6 * * * docker compose -f /opt/macfax/docker-compose.yml exec -T backend python manage.py update_ncaa_all --season 2026
-```
-
----
+If you previously installed a host cron for `update_ncaa_all`, remove it when the
+scheduler is running or the job will run twice.
 
 ## Environment Variables Reference
 

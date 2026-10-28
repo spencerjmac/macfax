@@ -24,6 +24,7 @@ from django.db import transaction
 
 from nba.models import NBASeason, NBATeam, NBAGame, NBATeamGameStats
 from nba.providers.nba_api_provider import NBAApiProvider
+from nba.seasons import resolve_season_year
 
 logger = logging.getLogger(__name__)
 
@@ -33,8 +34,8 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            "--season", type=int, required=True,
-            help="Ending season year (e.g., 2026 for the 2025-26 season)",
+            "--season", type=int, default=None,
+            help="Ending season year (e.g., 2026 for the 2025-26 season) (default: the season in play)",
         )
         parser.add_argument(
             "--season-type", default="Regular Season",
@@ -47,7 +48,7 @@ class Command(BaseCommand):
         parser.add_argument("--dry-run", action="store_true")
 
     def handle(self, *args, **options):
-        season_year: int = options["season"]
+        season_year: int = resolve_season_year(options["season"])
         season_type_str: str = options["season_type"]
         dry_run: bool = options["dry_run"]
 
@@ -56,7 +57,9 @@ class Command(BaseCommand):
             year=season_year,
             defaults={
                 "display_name": f"{season_year - 1}-{str(season_year)[2:]}",
-                "is_current": True,
+                # Never born current; nba.seasons.activate_latest_season() flips it
+                # once the season has a final regular-season game.
+                "is_current": False,
             },
         )
         if created:

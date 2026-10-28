@@ -23,6 +23,7 @@ from django.utils import timezone
 from ncaa.models import Season, Team, Game, TeamGameStats, ScoringEvent, TeamExternalId
 from ncaa.utils.team_mapping import TeamMapper
 from ncaa.utils.ncaa_api import NCAAAPIClient, ESPNAPIClient, NCAAAPIError
+from ncaa.seasons import resolve_season_year
 
 logger = logging.getLogger(__name__)
 
@@ -92,10 +93,8 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            "--season",
-            type=int,
-            required=True,
-            help="Season year (ending year, e.g., 2026 for 2025-26 season)",
+            "--season", type=int, default=None,
+            help="Season year (ending year, e.g., 2026 for 2025-26 season) (default: the season in play)",
         )
         parser.add_argument(
             "--start", type=str, help="Start date (YYYY-MM-DD). Default: season start"
@@ -135,7 +134,7 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        season_year = options["season"]
+        season_year = resolve_season_year(options["season"])
         refresh = options["refresh"]
         dry_run = options["dry_run"]
         rebuild_mappings = options["rebuild_mappings"]
@@ -143,7 +142,6 @@ class Command(BaseCommand):
         workers = max(1, int(options.get("workers", 1)))
 
         create_season = options.get("create_season", False)
-        current_year = date.today().year
 
         # Get or create season
         try:
@@ -152,13 +150,12 @@ class Command(BaseCommand):
             if create_season:
                 prev_year = season_year - 1
                 display_name = f"{prev_year}-{str(season_year)[2:]}"
-                is_current = (season_year == current_year) or (
-                    season_year == current_year + 1 and date.today().month >= 10
-                )
+                # Never born current; ncaa.seasons.activate_latest_season() flips it
+                # once the season has a final game.
                 season = Season.objects.create(
                     year=season_year,
                     display_name=display_name,
-                    is_current=is_current,
+                    is_current=False,
                 )
                 self.stdout.write(
                     self.style.SUCCESS(f"Created season: {display_name}")

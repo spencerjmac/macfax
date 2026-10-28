@@ -12,6 +12,7 @@ from django.core.management.base import BaseCommand
 from ncaa.models import Season, TeamGameStats, NationalAverages
 import statistics
 from collections import defaultdict
+from ncaa.seasons import resolve_season_year
 
 
 class Command(BaseCommand):
@@ -19,14 +20,12 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            '--season',
-            type=int,
-            required=True,
-            help='Season year (e.g., 2026 for 2025-26 season)'
+            '--season', type=int, default=None,
+            help='Season year (e.g., 2026 for 2025-26 season) (default: the season in play)',
         )
 
     def handle(self, *args, **options):
-        season_year = options['season']
+        season_year = resolve_season_year(options['season'])
         
         # Get season
         try:
