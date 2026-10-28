@@ -2,22 +2,24 @@
 Seed the Conference table and assign each TeamSeasonMetrics to a conference.
 
 Conferences are created from a static D1 list. Each team's conference is looked up
-using the same slug->code mapping as the rankings API (RankingsSerializer.get_conference).
+using the season-aware NCAA slug-to-conference mapping.
 Run this after you have TeamSeasonMetrics (e.g. after compute_team_metrics).
 
 Usage:
     python manage.py seed_conferences --season 2026
     python manage.py seed_conferences --season 2026 --dry-run
+    python manage.py seed_conferences --season 2027
 """
 
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
 from ncaa.models import Conference, Season, TeamSeasonMetrics
+from ncaa.conf_utils import get_season_conference
 
 
-# D1 conferences (code, full name) for 2025-26
-# Codes here MUST match the keys returned by RankingsSerializer.get_conference (conf_map)
+# D1 conferences (code, full name) for 2025-26.
+# Old codes remain in the DB for historical seasons.
 CONFERENCES = [
     ("ACC", "Atlantic Coast Conference"),
     ("AE", "America East"),
@@ -52,6 +54,14 @@ CONFERENCES = [
     ("WCC", "West Coast Conference"),
 ]
 
+# New 2026-27 leagues and renamed leagues. Do not rename MAAC or WAC globally,
+# because older season records must retain their historical conference.
+CONFERENCES_2027 = [
+    ("P12", "Pac-12 Conference"),
+    ("UAC", "United Athletic Conference"),
+    ("Metro", "Metro Conference"),
+]
+
 
 class Command(BaseCommand):
     help = "Seed Conference table and set TeamSeasonMetrics.conference from slug mapping"
@@ -79,13 +89,13 @@ class Command(BaseCommand):
             self.stderr.write(self.style.ERROR(f"Season {season_year} not found."))
             return
 
-        # Use the same conference lookup as the rankings API
-        from api.serializers import RankingsSerializer
-
-        serializer = RankingsSerializer()
+        active_conferences = (
+            [c for c in CONFERENCES if c[0] not in {"WAC", "MAAC"}] + CONFERENCES_2027
+            if season_year >= 2027 else CONFERENCES
+        )
 
         if dry_run:
-            self.stdout.write(f"[DRY RUN] Would seed {len(CONFERENCES)} conferences")
+            self.stdout.write(f"[DRY RUN] Would seed {len(active_conferences)} conferences")
             metrics_count = TeamSeasonMetrics.objects.filter(season=season).count()
             self.stdout.write(
                 f"[DRY RUN] Would assign conference for {metrics_count} TeamSeasonMetrics"
@@ -95,7 +105,7 @@ class Command(BaseCommand):
         with transaction.atomic():
             # 1. Seed Conference table
             created_conf = 0
-            for code, name in CONFERENCES:
+            for code, name in active_conferences:
                 _, created = Conference.objects.get_or_create(
                     code=code, defaults={"name": name}
                 )
@@ -111,14 +121,15 @@ class Command(BaseCommand):
             )
             updated = 0
             for metrics in metrics_qs:
-                # Build a minimal object so serializer.get_conference works (uses slug -> code)
-                class _Rating:
-                    pass
-
-                r = _Rating()
-                r.team = metrics.team
-                r.season = metrics.season
-                code = serializer.get_conference(r)
+                code = get_season_conference(metrics.team.slug, season_year)
+                if code == "Unknown":
+                    # Preserve a source-provided affiliation rather than guess.
+                    if metrics.conference_id:
+                        continue
+                    self.stderr.write(
+                        f"Unmapped conference: {metrics.team.slug} ({season_year}); skipped"
+                    )
+                    continue
                 try:
                     conf = Conference.objects.get(code=code)
                 except Conference.DoesNotExist:

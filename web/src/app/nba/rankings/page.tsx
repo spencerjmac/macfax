@@ -19,7 +19,7 @@ interface NBAPageProps {
 
 export default async function NBARankingsPage({ searchParams }: NBAPageProps) {
   const sp = await searchParams;
-  const seasonYear = sp.season ? parseInt(sp.season, 10) : undefined;
+  const seasonYear = sp.season ? parseInt(sp.season, 10) : 2027;
   const activeTab = sp.tab === 'players' ? 'players' : 'teams';
   const seasonType = sp.season_type === 'playoffs' ? 'playoffs' : 'regular';
 
@@ -33,9 +33,9 @@ export default async function NBARankingsPage({ searchParams }: NBAPageProps) {
 
   const currentSeason = seasonYear
     ? seasons.find((s) => s.year === seasonYear) ?? null
-    : seasons.find((s) => s.is_current) ?? seasons[0] ?? null;
+    : seasons.find((s) => s.year === 2027) ?? null;
 
-  const seasonDisplay = currentSeason?.display_name;
+  const seasonDisplay = currentSeason?.display_name ?? `${seasonYear - 1}-${String(seasonYear).slice(2)}`;
   const seasonParam = seasonYear ? `&season=${seasonYear}` : '';
   const seasonTypeParam = seasonType === 'playoffs' ? `&season_type=playoffs` : '';
 
@@ -44,7 +44,7 @@ export default async function NBARankingsPage({ searchParams }: NBAPageProps) {
       {/* Page header */}
       <div className="bg-surface border-b border-ui-border">
         <div className="max-w-[1240px] mx-auto px-8 py-10 pb-[34px]">
-          <p className="kicker-sport text-brand mb-[9px]">NBA · {currentSeason?.display_name ?? 'Current season'}</p>
+          <p className="kicker-sport text-brand mb-[9px]">NBA · {seasonDisplay}</p>
           <h1 className="font-display font-bold text-[clamp(32px,4vw,48px)] leading-none uppercase tracking-[0.005em] m-0 mb-[14px]">
             NBA Rankings
           </h1>
@@ -90,19 +90,15 @@ export default async function NBARankingsPage({ searchParams }: NBAPageProps) {
           <BarChart3 className="w-12 h-12 mx-auto mb-4 text-brand/30" strokeWidth={1} />
           <p className="font-medium text-text-primary mb-2">No rankings data yet</p>
           <p className="text-sm text-text-muted max-w-md mx-auto">
-            Run the following management commands to populate rankings:
+            Rankings for {seasonDisplay} are not available yet. They will appear once this season’s game data and ratings are processed.
           </p>
-          <div className="mt-4 flex flex-col items-center gap-2 text-sm font-mono">
-            <code className="bg-gray-100 px-3 py-1 rounded">python manage.py nba_sync_teams</code>
-            <code className="bg-gray-100 px-3 py-1 rounded">python manage.py nba_sync_games --season 2026</code>
-            <code className="bg-gray-100 px-3 py-1 rounded">python manage.py nba_compute_ratings --season 2026</code>
-          </div>
+
         </div>
       ) : activeTab === 'teams' ? (
         <NBARankingsTable
           data={rankings}
           seasons={seasons}
-          selectedSeason={currentSeason?.year}
+          selectedSeason={seasonYear}
           selectedSeasonType={seasonType}
         />
       ) : (
@@ -112,12 +108,9 @@ export default async function NBARankingsPage({ searchParams }: NBAPageProps) {
             <Users className="w-12 h-12 mx-auto mb-4 text-brand/30" strokeWidth={1} />
             <p className="font-medium text-text-primary mb-2">No player stats yet</p>
             <p className="text-sm text-text-muted max-w-md mx-auto">
-              Run the NBA ingestion pipeline first:
+              Player stats for {seasonDisplay} are not available yet.
             </p>
-            <div className="mt-4 flex flex-col items-center gap-2 text-sm font-mono">
-              <code className="bg-gray-100 px-3 py-1 rounded">python manage.py nba_sync_team_logs --season 2026</code>
-              <code className="bg-gray-100 px-3 py-1 rounded">python manage.py nba_compute_player_stats --season 2026</code>
-            </div>
+
           </div>
         ) : (
           <NBAPlayerRankingsTable data={players} seasonDisplay={seasonDisplay} seasonType={seasonType} />

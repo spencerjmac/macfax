@@ -25,7 +25,7 @@ export default function EfficiencyLandscapePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   // Filters
-  const [season, setSeason] = useState(2026);
+  const [season, setSeason] = useState(2027);
   const [conferenceFilter, setConferenceFilter] = useState('ALL');
   const [topN, setTopN] = useState(365);
   const [debouncedTopN, setDebouncedTopN] = useState(365);
@@ -33,7 +33,7 @@ export default function EfficiencyLandscapePage() {
   // Load conferences only once on mount
   useEffect(() => {
     loadConferences();
-  }, []);
+  }, [season]);
   
   // Debounce topN input
   useEffect(() => {
@@ -67,7 +67,7 @@ export default function EfficiencyLandscapePage() {
 
   async function loadConferences() {
     try {
-      const confs = await api.getConferences();
+      const confs = await api.getConferences(season);
       setConferences(confs);
     } catch (err) {
       console.error('Failed to load conferences:', err);

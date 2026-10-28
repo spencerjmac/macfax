@@ -18,7 +18,7 @@ interface Props {
 
 export default async function NBACrystalBallPage({ searchParams }: Props) {
   const sp = await searchParams;
-  const seasonYear = sp.season ? parseInt(sp.season, 10) : undefined;
+  const seasonYear = sp.season ? parseInt(sp.season, 10) : 2027;
 
   const [data, seasons] = await Promise.all([
     api.getNBACrystalBall({ season: seasonYear }).catch(() => null),
@@ -35,7 +35,7 @@ export default async function NBACrystalBallPage({ searchParams }: Props) {
       <div className="bg-surface border-b border-ui-border">
         <div className="max-w-[1240px] mx-auto px-8 py-10 pb-[34px]">
           <p className="kicker-sport text-brand mb-[9px]">
-            <Link href="/nba/viz" className="hover:underline">NBA · Visualizations</Link> · {data?.season_display ?? currentSeason?.display_name ?? 'Current season'}
+            <Link href="/nba/viz" className="hover:underline">NBA · Visualizations</Link> · {data?.season_display ?? currentSeason?.display_name ?? '2026-27'}
           </p>
           <h1 className="font-display font-bold text-[clamp(32px,4vw,48px)] leading-none uppercase tracking-[0.005em] m-0 mb-[14px]">
             Crystal Ball
@@ -46,7 +46,7 @@ export default async function NBACrystalBallPage({ searchParams }: Props) {
             </p>
             <span className="font-mono text-[12px] text-muted-2 inline-flex items-center gap-[7px] px-[10px] py-[5px] bg-ui-surface border border-ui-border rounded-md">
               <span className="w-1.5 h-1.5 rounded-full bg-brand2" />
-              Updated daily
+              {data ? 'Current-season data' : 'Awaiting ratings'}
             </span>
           </div>
         </div>
@@ -58,7 +58,7 @@ export default async function NBACrystalBallPage({ searchParams }: Props) {
         ) : (
           <div className="text-center py-20 bg-ui-card border border-ui-border rounded-lg">
             <p className="text-text-muted">
-              No rankings data available. Run <code className="bg-gray-100 px-1 rounded text-xs">nba_compute_ratings --season {seasonYear ?? 2026}</code>
+              No 2026–27 ratings are available yet. Data will appear when the ratings pipeline has finished.
             </p>
           </div>
         )}

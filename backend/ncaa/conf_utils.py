@@ -20,6 +20,58 @@ Two classification functions with different granularity:
       Returns 'mid_major' for all remaining non-power conferences.
 """
 
+# 2026–27 league realignment: keep historical 2025–26 affiliations intact.
+# The season argument is the END year (2027 = 2026–27).
+# Sources: Pac-12 official 2026 launch; CBS Sports 2026-27 realignment roundup.
+SEASON_2027_CONFERENCE_OVERRIDES: dict[str, str] = {
+    # Re-formed Pac-12 (nine basketball members)
+    **{slug: "P12" for slug in (
+        "boise-state", "boise-st", "colorado-state", "colorado-st",
+        "fresno-state", "fresno-st", "gonzaga", "san-diego-state",
+        "san-diego-st", "sdsu", "texas-state", "texas-st",
+        "utah-state", "utah-st", "oregon-state", "oregon-st",
+        "washington-state", "washington-st",
+    )},
+    # Mountain West arrivals
+    "hawaii": "MWC", "uc-davis": "MWC", "utep": "MWC",
+    # West Coast and Sun Belt
+    "denver": "WCC", "louisiana-tech": "SB",
+    # Big West
+    "cal-baptist": "BW", "california-baptist": "BW",
+    "sacramento-state": "BW", "sacramento-st": "BW", "utah-valley": "BW",
+    # Big Sky
+    "southern-utah": "BSky", "utah-tech": "BSky",
+    # Horizon, Southern
+    "northern-illinois": "Horz", "tennessee-tech": "SC",
+    # Former ASUN/OVC arrivals to the renamed UAC
+    "austin-peay": "UAC", "central-arkansas": "UAC",
+    "eastern-kentucky": "UAC", "north-alabama": "UAC",
+    "west-georgia": "UAC", "little-rock": "UAC",
+    # New D1 member
+    "west-florida": "ASun",
+}
+
+
+def get_season_conference(team_slug: str, season_year: int) -> str:
+    """Season-aware NCAA conference code; 2026 and earlier remain historical.
+
+    Accepts the ending season year, e.g. 2027 = 2026–27.
+    Returns 'Unknown' for an unmapped slug rather than guessing a league.
+    """
+    slug = team_slug.lower()
+    prior = CONF_MAP.get(slug, "Unknown")
+    if season_year < 2027:
+        return prior
+    if slug in SEASON_2027_CONFERENCE_OVERRIDES:
+        return SEASON_2027_CONFERENCE_OVERRIDES[slug]
+    # 2026–27 renames. Retain old codes for historical rows.
+    if prior == "WAC":
+        return "UAC"
+    if prior == "MAAC":
+        return "Metro"
+    return prior
+
+
 # --------------------------------------------------------------------------- #
 # Canonical slug → conference code mapping (2025-26 season)
 # --------------------------------------------------------------------------- #

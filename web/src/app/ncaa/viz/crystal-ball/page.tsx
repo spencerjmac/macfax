@@ -186,7 +186,7 @@ export default function CrystalBallPage() {
   const [data, setData] = useState<CrystalBallData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [season, setSeason] = useState(2026);
+  const [season, setSeason] = useState(2027);
   const [tournamentFilter, setTournamentFilter] = useState<'all' | 'tournament'>('all');
   const [search, setSearch] = useState('');
 

@@ -79,13 +79,32 @@ class SeasonViewSet(viewsets.ReadOnlyModelViewSet):
 
 class ConferenceViewSet(viewsets.ReadOnlyModelViewSet):
     """
-    GET /api/conferences
-    Returns list of all conferences
+    GET /api/conferences/?season=2027
+    Return leagues active for the requested season (default: current).
+    Historical conference codes remain in the database but are not presented
+    as current when a league was renamed or dissolved.
     """
 
-    queryset = Conference.objects.all()
     serializer_class = ConferenceSerializer
-    pagination_class = None  # Disable pagination for conferences
+    pagination_class = None
+
+    def get_queryset(self):
+        from ncaa.conf_utils import get_season_conference
+
+        year = self.request.query_params.get("season")
+        if year:
+            season = get_object_or_404(Season, year=year)
+        else:
+            season = Season.objects.filter(is_current=True).first()
+        if season is None:
+            return Conference.objects.none()
+
+        codes = {
+            get_season_conference(slug, season.year)
+            for slug in Team.objects.filter(is_d1=True).values_list("slug", flat=True)
+        }
+        codes.discard("Unknown")
+        return Conference.objects.filter(code__in=codes)
 
 
 @method_decorator(cache_page(60 * 5), name="list")  # Cache for 5 minutes
