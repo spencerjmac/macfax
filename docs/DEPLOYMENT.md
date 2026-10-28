@@ -1,3 +1,5 @@
+> **Season rollover:** Before changing cron or deploying 2026–27, follow [the 2027 season rollover checklist](SEASON_ROLLOVER_2027.md). NCAA games begin November 2, 2026; the NBA pipeline can run now.
+
 # Deployment Guide
 
 This project is deployed as a Docker Compose stack on a Linux server at **macfax.usu.edu**.
@@ -77,7 +79,7 @@ docker compose exec backend python manage.py seed_conferences
 docker compose exec backend python manage.py import_logos
 
 # Run the full data pipeline (first run takes 5–15 minutes)
-docker compose exec backend python manage.py update_ncaa_all --season 2026
+docker compose exec backend python manage.py update_ncaa_all --season 2027
 ```
 
 ---
@@ -141,7 +143,7 @@ docker compose up -d
 ### Data updates (daily)
 
 ```bash
-docker compose exec backend python manage.py update_ncaa_all --season 2026
+docker compose exec backend python manage.py update_ncaa_all --season 2027
 ```
 
 Set this up as a cron job for automatic updates:
@@ -149,7 +151,7 @@ Set this up as a cron job for automatic updates:
 crontab -e
 ```
 ```cron
-0 6 * * * docker compose -f /opt/macfax/docker-compose.yml exec -T backend python manage.py update_ncaa_all --season 2026
+0 6 * * * docker compose -f /opt/macfax/docker-compose.yml exec -T backend python manage.py update_ncaa_all --season 2027
 ```
 
 ---
