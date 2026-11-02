@@ -9,12 +9,16 @@ Invariants pinned here:
 """
 
 from datetime import date
+from unittest import mock
 
 from django.test import TestCase
 
 from ncaa.management.commands._pipeline_base import BasePipelineCommand
 from ncaa.models import Game, Season, Team
+from ncaa import seasons as ncaa_seasons
 from ncaa.seasons import (
+    season_is_underway,
+    teams_with_final_games,
     NoSeasonError,
     activate_latest_season,
     get_current_season,
@@ -62,12 +66,27 @@ class NCAASeasonTests(TestCase):
         self.assertIsNone(activate_latest_season())
         self.assertTrue(Season.objects.get(year=2026).is_current)
 
-    def test_first_final_game_flips_and_is_idempotent(self):
+    def test_one_early_game_does_not_flip_the_season(self):
+        # Nov 1, 2026: Notre Dame at Villanova, a day before the 183-game opening slate
         self.game(2027, "g1")
-        old, new = activate_latest_season()
-        self.assertEqual((old, new), (self.s2026, self.s2027))
-        self.assertEqual(Season.objects.filter(is_current=True).count(), 1)
-        self.assertTrue(Season.objects.get(year=2027).is_current)
+        self.assertEqual(teams_with_final_games(2027), 2)
+        self.assertIsNone(activate_latest_season())
+        self.assertTrue(Season.objects.get(year=2026).is_current)
+        self.assertFalse(season_is_underway(2027))
+
+    def test_flips_once_enough_teams_have_played_and_is_idempotent(self):
+        self.game(2027, "g1")
+        with mock.patch.object(ncaa_seasons, "MIN_TEAMS_PLAYED", 2):
+            old, new = activate_latest_season()
+            self.assertEqual((old, new), (self.s2026, self.s2027))
+            self.assertEqual(Season.objects.filter(is_current=True).count(), 1)
+            self.assertTrue(Season.objects.get(year=2027).is_current)
+            self.assertIsNone(activate_latest_season())
+
+    def test_the_threshold_counts_distinct_teams_not_games(self):
+        for i in range(5):   # five games between the same two teams: still 2 teams
+            self.game(2027, f"rep{i}")
+        self.assertEqual(teams_with_final_games(2027), 2)
         self.assertIsNone(activate_latest_season())
 
     def test_never_moves_backward(self):
@@ -75,12 +94,14 @@ class NCAASeasonTests(TestCase):
         self.s2027.is_current = True
         self.s2027.save()
         self.game(2026, "old", day=date(2026, 3, 1))
-        self.assertIsNone(activate_latest_season())
+        with mock.patch.object(ncaa_seasons, "MIN_TEAMS_PLAYED", 2):
+            self.assertIsNone(activate_latest_season())
         self.assertTrue(Season.objects.get(year=2027).is_current)
 
     def test_final_games_without_a_season_row_do_not_flip(self):
         self.game(2028, "future")
-        self.assertIsNone(activate_latest_season())
+        with mock.patch.object(ncaa_seasons, "MIN_TEAMS_PLAYED", 2):
+            self.assertIsNone(activate_latest_season())
 
     def test_has_recent_final_games(self):
         self.game(2027, "g1", day=date(2026, 11, 3))

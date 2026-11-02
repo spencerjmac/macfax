@@ -27,6 +27,9 @@ from ncaa.seasons import resolve_season_year
 
 logger = logging.getLogger(__name__)
 
+# Scoreboard statuses with no box score to fetch yet
+NO_BOXSCORE_STATUSES = frozenset({"scheduled", "canceled", "postponed"})
+
 
 def _init_worker():
     """Run once per worker process: ensure Django is set up (spawn) and do not reuse parent DB connection."""
@@ -225,6 +228,13 @@ class Command(BaseCommand):
         # Step 3: Summary
         self._print_summary(stats)
 
+        # One failed date is normal (the API answers 403 for a day with no games). Every date
+        # failing is an outage or a block: say so, so the daily run reports it instead of "success".
+        if stats["dates_processed"] and stats["date_errors"] == stats["dates_processed"]:
+            raise CommandError(
+                f"NCAA API failed for all {stats['date_errors']} dates in {start_date}..{end_date}; nothing ingested"
+            )
+
     def _parse_date(self, date_str: Optional[str]) -> Optional[date]:
         """Parse date string to date object"""
         if not date_str:
@@ -280,6 +290,7 @@ class Command(BaseCommand):
             "team_stats_created": 0,
             "scoring_events_created": 0,
             "errors": 0,
+            "date_errors": 0,
             "jobs_queued": 0,
         }
 
@@ -412,6 +423,7 @@ class Command(BaseCommand):
 
             except NCAAAPIError as e:
                 logger.error(f"NCAA API error for {current_date}: {e}")
+                stats["date_errors"] += 1
                 self.stdout.write(
                     self.style.WARNING(f"    ⚠ NCAA API error, skipping date")
                 )
@@ -487,57 +499,64 @@ class Command(BaseCommand):
                 "scoring_events": 0,
             }
 
-        # Fetch full game details (box scores)
-        try:
-            game_details = api_client.get_game_details(game_id)
-            # Merge carefully - preserve scores from scoreboard, add stats from details
-            full_game_data = {**game_data}
-            if "home" in game_details and "stats" in game_details["home"]:
-                full_game_data["home"]["stats"] = game_details["home"]["stats"]
-            if "away" in game_details and "stats" in game_details["away"]:
-                full_game_data["away"]["stats"] = game_details["away"]["stats"]
-            if "scoringPlays" in game_details:
-                full_game_data["scoringPlays"] = game_details["scoringPlays"]
-        except (TimeoutError, ConnectionError) as e:
-            # Network/timeout errors - log and continue with scoreboard data only
-            logger.warning(f"Timeout fetching details for game {game_id}: {e}")
-            self.stdout.write(
-                self.style.WARNING(
-                    f"      ⏱ Timeout for game {game_id}, using scoreboard data only"
+        # Fetch full game details (box scores) -- only for games that have been played.
+        # A scheduled game has no box score: the API answers 428 and the client retries each such
+        # request for about a minute. The daily window includes today, whose games have not been
+        # played when the job runs, so fetching them cost ~1 minute per game (150+ games = hours).
+        # The scoreboard row alone is enough to create/update the scheduled game.
+        if game_data.get("status") in NO_BOXSCORE_STATUSES:
+            full_game_data = game_data
+        else:
+            try:
+                game_details = api_client.get_game_details(game_id)
+                # Merge carefully - preserve scores from scoreboard, add stats from details
+                full_game_data = {**game_data}
+                if "home" in game_details and "stats" in game_details["home"]:
+                    full_game_data["home"]["stats"] = game_details["home"]["stats"]
+                if "away" in game_details and "stats" in game_details["away"]:
+                    full_game_data["away"]["stats"] = game_details["away"]["stats"]
+                if "scoringPlays" in game_details:
+                    full_game_data["scoringPlays"] = game_details["scoringPlays"]
+            except (TimeoutError, ConnectionError) as e:
+                # Network/timeout errors - log and continue with scoreboard data only
+                logger.warning(f"Timeout fetching details for game {game_id}: {e}")
+                self.stdout.write(
+                    self.style.WARNING(
+                        f"      ⏱ Timeout for game {game_id}, using scoreboard data only"
+                    )
                 )
-            )
-            full_game_data = game_data
-        except requests.exceptions.Timeout as e:
-            # Explicit timeout from requests library
-            logger.warning(f"Requests timeout for game {game_id}: {e}")
-            self.stdout.write(
-                self.style.WARNING(
-                    f"      ⏱ Timeout for game {game_id}, using scoreboard data only"
+                full_game_data = game_data
+            except requests.exceptions.Timeout as e:
+                # Explicit timeout from requests library
+                logger.warning(f"Requests timeout for game {game_id}: {e}")
+                self.stdout.write(
+                    self.style.WARNING(
+                        f"      ⏱ Timeout for game {game_id}, using scoreboard data only"
+                    )
                 )
-            )
-            full_game_data = game_data
-        except requests.exceptions.RequestException as e:
-            # Other requests errors
-            logger.warning(f"Request error for game {game_id}: {e}")
-            self.stdout.write(
-                self.style.WARNING(
-                    f"      ⚠ Network error for game {game_id}, using scoreboard data only"
+                full_game_data = game_data
+            except requests.exceptions.RequestException as e:
+                # Other requests errors
+                logger.warning(f"Request error for game {game_id}: {e}")
+                self.stdout.write(
+                    self.style.WARNING(
+                        f"      ⚠ Network error for game {game_id}, using scoreboard data only"
+                    )
                 )
-            )
-            full_game_data = game_data
-        except NCAAAPIError as e:
-            # NCAA API specific errors (data not available, etc.)
-            logger.warning(f"NCAA API error for game {game_id}: {e}")
-            self.stdout.write(
-                self.style.WARNING(
-                    f"      ⚠ Data unavailable for game {game_id}, using scoreboard data only"
+                full_game_data = game_data
+            except NCAAAPIError as e:
+                # NCAA API specific errors (data not available, etc.)
+                logger.warning(f"NCAA API error for game {game_id}: {e}")
+                self.stdout.write(
+                    self.style.WARNING(
+                        f"      ⚠ Data unavailable for game {game_id}, using scoreboard data only"
+                    )
                 )
-            )
-            full_game_data = game_data
-        except Exception as e:
-            # If details unavailable for any other reason, store what we have from scoreboard
-            logger.warning(f"Could not fetch details for game {game_id}: {e}")
-            full_game_data = game_data
+                full_game_data = game_data
+            except Exception as e:
+                # If details unavailable for any other reason, store what we have from scoreboard
+                logger.warning(f"Could not fetch details for game {game_id}: {e}")
+                full_game_data = game_data
 
         # Parse game metadata
         game_obj = self._upsert_game(

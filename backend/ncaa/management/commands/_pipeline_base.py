@@ -139,9 +139,10 @@ class BasePipelineCommand(BaseCommand):
 
     @staticmethod
     def _season_has_final_games(season_year: int) -> bool:
-        from ncaa.models import Game
+        """True once enough of the field has played to rate the season (see MIN_TEAMS_PLAYED)."""
+        from ncaa.seasons import season_is_underway
 
-        return Game.objects.filter(season_year=season_year, status="final").exists()
+        return season_is_underway(season_year)
 
     def _finish_without_games(self, title: str, season_year: int, steps: list, start_time):
         """
@@ -150,11 +151,16 @@ class BasePipelineCommand(BaseCommand):
         season would write all-zero ratings rows and list a game-less season in the
         season picker, so nothing is computed and the run does not fail.
         """
-        note = f"Skipped: no final {season_year} games yet"
+        from ncaa.seasons import MIN_TEAMS_PLAYED, teams_with_final_games
+
+        played = teams_with_final_games(season_year)
+        note = f"Skipped: too early for {season_year} -- {played} teams have played (need {MIN_TEAMS_PLAYED})"
         self.stdout.write(self.style.WARNING(f"[SKIP] {note} -- nothing to compute\n"))
         steps.append((title, True, note))
         end_time = timezone.now()
         self._print_summary(start_time, end_time, (end_time - start_time).total_seconds(), steps, title=title)
+        if any(not s[1] for s in steps):
+            sys.exit(1)   # e.g. the ingest step failed: don't let "too early" mask it
 
     def _activate_latest_season(self, steps: list):
         """Move is_current to the newest season with a final game (non-fatal)."""

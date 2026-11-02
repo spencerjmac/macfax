@@ -161,10 +161,15 @@ class NCAAAPIClient:
             logger.error(f"Unexpected error for {url}: {e}")
             raise NCAAAPIError(f"Unexpected error: {e}")
 
+    # reraise=True: after the last attempt raise the original NCAAAPIError. Without it tenacity
+    # raises RetryError, which ingest_gamelogs' per-date `except NCAAAPIError` does not catch, so one
+    # bad date (the API answers 403 for a day with no games, e.g. Oct 31 or Dec 25) aborted every
+    # date after it in the run.
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=10),
         retry=retry_if_exception_type(NCAAAPIError),
+        reraise=True,
     )
     def get_scoreboard(
         self,

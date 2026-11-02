@@ -1,5 +1,5 @@
 """
-NCAA pipelines before the first game of a season.
+NCAA pipelines before the season is really underway.
 
 The daily NCAA gate opens Nov 1 but the first tip-off is Nov 2. A run in between
 must not compute on an empty season: it wrote 365 all-zero ratings rows, which put a
@@ -53,12 +53,12 @@ class EmptySeasonTests(TestCase):
     def test_teams_pipeline_computes_nothing_without_games(self):
         called, out = run("update_ncaa_teams", 2027)
         self.assertEqual(set(called) - SETUP, set())
-        self.assertIn("no final 2027 games yet", out)
+        self.assertIn("too early for 2027", out)
 
     def test_players_pipeline_computes_nothing_without_games(self):
         called, out = run("update_ncaa_players", 2027)
         self.assertEqual(set(called) - SETUP, set())
-        self.assertIn("no final 2027 games yet", out)
+        self.assertIn("too early for 2027", out)
 
     def test_scheduled_games_do_not_count(self):
         Game.objects.create(
@@ -68,17 +68,27 @@ class EmptySeasonTests(TestCase):
         called, _ = run("update_ncaa_teams", 2027)
         self.assertEqual(set(called) - SETUP, set())
 
-    def test_season_with_a_final_game_runs_the_pipeline_with_conference_seeding(self):
+    def test_one_early_game_is_not_enough(self):
+        # Nov 1, 2026: one real D1 game the day before the opening slate
         self.add_final_game(2027)
         called, out = run("update_ncaa_teams", 2027)
+        self.assertEqual(set(called) - SETUP, set())
+        self.assertIn("2 teams have played (need 150)", out)
+
+    def test_season_with_enough_teams_runs_the_pipeline_with_conference_seeding(self):
+        self.add_final_game(2027)
+        with mock.patch("ncaa.seasons.MIN_TEAMS_PLAYED", 2):
+            called, out = run("update_ncaa_teams", 2027)
         self.assertIn("compute_team_metrics", called)
         self.assertLess(called.index("compute_team_metrics"), called.index("seed_conferences"))
         self.assertLess(called.index("seed_conferences"), called.index("compute_adjusted_ratings"))
-        self.assertNotIn("no final", out)
+        self.assertNotIn("too early", out)
 
     def test_historical_season_is_unaffected(self):
+        # a real past season has hundreds of teams; stand-in: lower the bar to this fixture's 2
         self.add_final_game(2026)
-        called, _ = run("update_ncaa_teams", 2026)
+        with mock.patch("ncaa.seasons.MIN_TEAMS_PLAYED", 2):
+            called, _ = run("update_ncaa_teams", 2026)
         self.assertIn("compute_adjusted_ratings", called)
 
 

@@ -11,8 +11,6 @@ season has a final game, so rollover needs no manual flag edit.
 
 from datetime import date, timedelta
 
-from django.db.models import Max
-
 from config.season_calendar import NCAA_WINDOW, in_window, season_in_play
 from ncaa.models import Game, Season
 
@@ -24,6 +22,9 @@ __all__ = [
     "resolve_season_year",
     "add_season_argument",
     "activate_latest_season",
+    "season_is_underway",
+    "teams_with_final_games",
+    "MIN_TEAMS_PLAYED",
     "selection_sunday_for",
     "has_recent_final_games",
     "in_season_window",
@@ -77,17 +78,41 @@ def selection_sunday_for(season_year: int) -> date:
     return final_four_saturday - timedelta(days=20)
 
 
+# A season counts as underway once this many distinct teams have played a final game. One early
+# game (Nov 1, 2026: Notre Dame at Villanova, a day before the 183-game opening slate) must not
+# make the site show a season where 363 of 365 teams are unrated. The opening day brings ~300.
+MIN_TEAMS_PLAYED = 150
+
+
+def teams_with_final_games(season_year: int) -> int:
+    """Distinct teams that have played a final game in the season."""
+    finals = Game.objects.filter(season_year=season_year, status="final")
+    teams = set(finals.values_list("home_team_id", flat=True)) | set(finals.values_list("away_team_id", flat=True))
+    return len(teams)
+
+
+def season_is_underway(season_year: int) -> bool:
+    return teams_with_final_games(season_year) >= MIN_TEAMS_PLAYED
+
+
 def activate_latest_season() -> tuple[Season | None, Season] | None:
     """
-    Make the newest season with a final game the displayed one.
+    Make the newest season that is underway the displayed one.
 
-    Returns ``(old_current, new_current)`` when the flag moved, else None. Never
-    moves backward and never flips to a season without final games. Idempotent.
+    Underway = at least MIN_TEAMS_PLAYED teams have a final game. Returns
+    ``(old_current, new_current)`` when the flag moved, else None. Never moves backward
+    and never flips to a season that has barely started. Idempotent.
     """
-    latest_year = Game.objects.filter(status="final").aggregate(y=Max("season_year"))["y"]
-    if latest_year is None:
-        return None
-    latest = Season.objects.filter(year=latest_year).first()
+    candidate_years = (
+        Game.objects.filter(status="final").values_list("season_year", flat=True).distinct().order_by("-season_year")
+    )
+    latest = None
+    for year in candidate_years:
+        if not season_is_underway(year):
+            continue
+        latest = Season.objects.filter(year=year).first()
+        if latest is not None:
+            break
     if latest is None:
         return None
 
