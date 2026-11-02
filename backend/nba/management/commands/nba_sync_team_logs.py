@@ -54,6 +54,34 @@ def _fetch_game(game, sleep: float):
         return game, exc
 
 
+MAX_NAME_LOOKUPS = 40   # per-run cap on by-id name lookups (one NBA.com call each)
+
+
+class PlayerNotFound(LookupError):
+    """NBA.com has no record for this player id (as opposed to a transient network failure)."""
+
+
+def _lookup_player_name(player_id: int) -> str | None:
+    """
+    Full name for an NBA.com player id (CommonPlayerInfo also covers retired players).
+
+    Returns None on a transient failure (retry next run); raises PlayerNotFound when
+    NBA.com has no record, so the caller can stop asking.
+    """
+    from nba_api.stats.endpoints import commonplayerinfo
+
+    try:
+        df = commonplayerinfo.CommonPlayerInfo(player_id=player_id, timeout=20).get_data_frames()[0]
+    except KeyError as exc:   # response has no result set for this id
+        raise PlayerNotFound(player_id) from exc
+    except Exception as exc:  # noqa: BLE001 -- timeouts, throttling, 5xx: try again later
+        logger.warning("Name lookup failed for player_id=%s: %s", player_id, exc)
+        return None
+    if df.empty:
+        raise PlayerNotFound(player_id)
+    return str(df.loc[0, "DISPLAY_FIRST_LAST"]).strip() or None
+
+
 class Command(BaseCommand):
     help = "Sync per-player box scores via BoxScoreTraditionalV3 for a season."
 
@@ -118,6 +146,7 @@ class Command(BaseCommand):
 
         if total == 0:
             self.stdout.write(self.style.SUCCESS("Nothing to do."))
+            self._backfill_names(season_year, dry_run)
             return
 
         team_map: dict = {t.nba_team_id: t for t in NBATeam.objects.all()}
@@ -211,22 +240,44 @@ class Command(BaseCommand):
             self.stdout.write(
                 self.style.WARNING(f"  {errors} games failed — re-run to retry")
             )
+        self._backfill_names(season_year, dry_run)
 
-        # ── Backfill player names ─────────────────────────────────────────────
+    def _backfill_names(self, season_year: int, dry_run: bool) -> None:
+        """Replace "Player #id" stubs with real names. Runs even on days with no new games."""
         stubs = NBAPlayer.objects.filter(name__startswith="Player #")
-        if stubs.exists() and not dry_run:
-            self.stdout.write(f"\nBackfilling names for {stubs.count()} players...")
-            provider = NBAApiProvider()
-            try:
-                all_players = provider.get_all_players(season_year, is_only_current_season=False)
-                name_map = {p.player_id: p.name for p in all_players}
-                updated = 0
-                for player in stubs:
-                    real_name = name_map.get(player.player_id)
-                    if real_name:
-                        player.name = real_name
-                        player.save(update_fields=["name"])
-                        updated += 1
-                self.stdout.write(self.style.SUCCESS(f"  Names updated: {updated}"))
-            except Exception as exc:  # noqa: BLE001
-                self.stdout.write(self.style.WARNING(f"  Name backfill failed: {exc}"))
+        if not stubs.exists() or dry_run:
+            return
+        self.stdout.write(f"\nBackfilling names for {stubs.count()} players...")
+        provider = NBAApiProvider()
+        try:
+            all_players = provider.get_all_players(season_year, is_only_current_season=False)
+            name_map = {p.player_id: p.name for p in all_players}
+            updated = 0
+            for player in stubs:
+                real_name = name_map.get(player.player_id)
+                if real_name:
+                    player.name = real_name
+                    player.save(update_fields=["name"])
+                    updated += 1
+            # The list above only knows current/recent players; look the rest up by id.
+            remaining = [p for p in NBAPlayer.objects.filter(name__startswith="Player #")][:MAX_NAME_LOOKUPS]
+            unknown = 0
+            for player in remaining:
+                try:
+                    real_name = _lookup_player_name(player.player_id)
+                except PlayerNotFound:
+                    # NBA.com has no record: mark once so we stop asking about them every run
+                    player.name = f"Unknown Player #{player.player_id}"
+                    player.save(update_fields=["name"])
+                    unknown += 1
+                    time.sleep(0.6)
+                    continue
+                if real_name:
+                    player.name = real_name
+                    player.save(update_fields=["name"])
+                    updated += 1
+                time.sleep(0.6)
+            note = f" ({unknown} not on NBA.com, marked Unknown)" if unknown else ""
+            self.stdout.write(self.style.SUCCESS(f"  Names updated: {updated}{note}"))
+        except Exception as exc:  # noqa: BLE001
+            self.stdout.write(self.style.WARNING(f"  Name backfill failed: {exc}"))

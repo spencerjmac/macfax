@@ -91,6 +91,11 @@ class Command(BaseCommand):
         team_map: dict[int | None, NBATeam | None] = {None: None}
 
         for row in rows:
+            # The box score also lists players who sat out (no minutes). Counting those as
+            # games played inflated GP and deflated every per-game average (Curry 24.3 vs
+            # NBA.com's 29.2 PPG), and created all-zero rows for players who never played.
+            if not row.seconds_played:
+                continue
             pid = row.player_id
             tid = row.team_id if row.team else None
             groups[(pid, tid)].append(row)
@@ -99,6 +104,7 @@ class Command(BaseCommand):
                 team_map[tid] = row.team
 
         written = 0
+        produced: set[tuple[int, int | None]] = set()
         with transaction.atomic():
             for (pid, tid), game_rows in groups.items():
                 player = player_map[pid]
@@ -154,6 +160,17 @@ class Command(BaseCommand):
                     },
                 )
                 written += 1
+                produced.add((pid, tid))
+
+            # Drop rows left over from the old logic (players with no minutes at all).
+            stale_ids = [
+                s.id
+                for s in NBAPlayerSeasonStats.objects.filter(season=season, season_type=season_type)
+                if (s.player_id, s.team_id) not in produced
+            ]
+            if stale_ids:
+                NBAPlayerSeasonStats.objects.filter(id__in=stale_ids).delete()
+                self.stdout.write(f"Removed {len(stale_ids)} player rows with no minutes played.")
 
         self.stdout.write(
             self.style.SUCCESS(

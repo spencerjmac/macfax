@@ -37,10 +37,13 @@ Usage
 """
 
 import sys
+from datetime import date
 
 from django.core.management.base import BaseCommand
 from django.core.management import call_command
 from django.utils import timezone
+
+from config.season_calendar import season_in_play
 from nba.analytics.lebron_utils import lebron_csv_path
 from nba.models import NBAGame, NBAPlayerSeasonStats
 from nba.seasons import activate_latest_season, resolve_season_year
@@ -115,7 +118,8 @@ class Command(BaseCommand):
         # Step 1 — NBA game log ingest (Regular Season + PlayIn + Playoffs)
         if not skip_ingest:
             for season_type in ["Regular Season", "PlayIn", "Playoffs"]:
-                self._run_step(
+                self._run_unless(
+                    None if season_type == "Regular Season" else self._skip_reason_postseason(season_year, season_type),
                     f"NBA sync games ({season_type})",
                     "nba_sync_games",
                     {"season": season_year, "season_type": season_type},
@@ -267,6 +271,14 @@ class Command(BaseCommand):
     # Prerequisite checks: a step whose input doesn't exist yet is skipped with a
     # reason in the summary instead of failing (and failing the whole daily run).
     # ──────────────────────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _skip_reason_postseason(season_year: int, season_type: str, today: date | None = None) -> str | None:
+        """Play-in and playoff games can't exist while the season in play is still in its Oct-Mar stretch."""
+        today = today or date.today()
+        if season_year == season_in_play(today) and today.month in (10, 11, 12, 1, 2, 3):
+            return f"{season_type} games can't exist before April"
+        return None
 
     @staticmethod
     def _skip_reason_playoffs(season_year: int) -> str | None:

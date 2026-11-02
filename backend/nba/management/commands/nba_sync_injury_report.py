@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import logging
 import re
+import time
 import urllib.request
 from datetime import date, datetime, timezone
 from typing import Optional
@@ -61,16 +62,17 @@ def _map_status(raw: str) -> str:
     return _STATUS_MAP.get(key, "out")  # default OUT for unknown statuses
 
 
-def _fetch_espn() -> list[dict]:
-    """
-    Fetch ESPN injury endpoint, return raw list of team-level dicts.
-    Raises urllib.error.URLError / ValueError on failure.
-    """
+ESPN_TIMEOUT_SECONDS = 30
+ESPN_ATTEMPTS = 3
+ESPN_BACKOFF_SECONDS = 3   # waits 3s, then 6s, between attempts
+
+
+def _fetch_espn_once() -> list[dict]:
     req = urllib.request.Request(
         ESPN_URL,
         headers={"User-Agent": "macfax-cbb-analytics/2.0"},
     )
-    with urllib.request.urlopen(req, timeout=15) as resp:
+    with urllib.request.urlopen(req, timeout=ESPN_TIMEOUT_SECONDS) as resp:
         import json
         data = json.loads(resp.read().decode("utf-8"))
 
@@ -78,6 +80,26 @@ def _fetch_espn() -> list[dict]:
         raise ValueError(f"ESPN API returned non-success status: {data.get('status')}")
 
     return data.get("injuries", [])
+
+
+def _fetch_espn() -> list[dict]:
+    """
+    Fetch ESPN injury endpoint, return raw list of team-level dicts.
+
+    A slow or flaky response (read timeout, connection reset, 5xx, bad JSON) is
+    retried a couple of times with backoff -- one timeout used to fail the whole
+    daily NBA run. Raises the last error if every attempt fails.
+    """
+    last_exc: Exception | None = None
+    for attempt in range(1, ESPN_ATTEMPTS + 1):
+        try:
+            return _fetch_espn_once()
+        except (OSError, ValueError) as exc:   # URLError / timeouts are OSError; bad JSON is ValueError
+            last_exc = exc
+            _log.warning("ESPN injury fetch attempt %d/%d failed: %s", attempt, ESPN_ATTEMPTS, exc)
+            if attempt < ESPN_ATTEMPTS:
+                time.sleep(ESPN_BACKOFF_SECONDS * attempt)
+    raise last_exc  # type: ignore[misc]
 
 
 def _parse_report_timestamp(date_str: Optional[str]) -> Optional[datetime]:
