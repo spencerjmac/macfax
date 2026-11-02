@@ -245,3 +245,34 @@ backend/ncaa/data/conferences/<season>.csv      # 2027.csv = the 2026-27 season
    A team that left D1 can stay listed there: ratings code filters on `is_d1`, so removing it would change
    that team's past seasons the next time they are recomputed.
 4. `python manage.py seed_conferences --season <year> --dry-run` reports file teams missing from the DB and D1 teams missing from the file.
+
+---
+
+## NCAA season calendar: what runs by itself
+
+The compose `scheduler` service runs `update_daily` at 10:00 UTC. For NCAA that means
+`update_ncaa_teams --days 3` then `update_ncaa_players`, every day from Nov 1 to Apr 15 (and for
+14 days after the last final game). Nothing is computed for a season until its first game is final.
+
+| When | What happens automatically |
+|---|---|
+| Nov 1 - first tip | Gate opens; pipeline stops cleanly ("no final games yet") |
+| First final game | Games, ratings, four factors, SOR/SOS/WAB, NET, conferences, player stats, PBP stints, BPR, projections; the site flips to the new season |
+| Every day | Same pipeline on the last 3 days of games, then recomputes the season |
+| Day after Selection Sunday (computed: 2027 = Mar 14) | One-time pre-tournament snapshot (ratings frozen at Selection Sunday) |
+| Daily through the tournament | Tournament seeds refreshed from Wikipedia (best effort, never fails the run) |
+| Apr 15 | Gate closes (still runs while games were final in the last 14 days) |
+
+**Still manual (needs a human or a data file)**
+
+| Task | When | How |
+|---|---|---|
+| Champion / runner-up / Final Four | April | Add the season to `TOURNAMENT_RESULTS` in `commands/backfill_tournament.py`, then run it |
+| First-year coach flags | Offseason | `set_coach_flags --season N` |
+| Recruiting profiles | Offseason | `import_recruiting` (CSV) |
+| New conference membership | Summer | New file in `ncaa/data/conferences/` (see above) |
+| AP poll | Optional | `load_ap_poll` reads a hand-supplied Week 6 CSV; there is no weekly feed |
+| Player market values | Only when Roster Outlook returns | `compute_market_values` |
+
+**Healing a gap.** `--days 3` only refetches the last 3 days. After an outage longer than that,
+run `update_ncaa_all --skip-nba` (no `--days`) to re-ingest the season from Nov 1.

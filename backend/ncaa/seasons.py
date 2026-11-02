@@ -24,6 +24,7 @@ __all__ = [
     "resolve_season_year",
     "add_season_argument",
     "activate_latest_season",
+    "selection_sunday_for",
     "has_recent_final_games",
     "in_season_window",
 ]
@@ -61,6 +62,19 @@ def add_season_argument(parser, help: str | None = None) -> None:
         default=None,
         help=help or "Season ending year (default: the season in play, e.g. 2027 for 2026-27)",
     )
+
+
+def selection_sunday_for(season_year: int) -> date:
+    """
+    Selection Sunday of the season ending in `season_year`.
+
+    The Final Four is played on the first Saturday on or after March 31, and Selection
+    Sunday is 20 days earlier (2027 -> Sunday, March 14). This reproduces the stored date
+    for every season in the database (22 of 22); the Season row can still be edited.
+    """
+    final_four_saturday = date(season_year, 3, 31)
+    final_four_saturday += timedelta(days=(5 - final_four_saturday.weekday()) % 7)
+    return final_four_saturday - timedelta(days=20)
 
 
 def activate_latest_season() -> tuple[Season | None, Season] | None:

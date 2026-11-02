@@ -15,7 +15,7 @@ import requests
 import pandas as pd
 from io import StringIO
 from django.core.management.base import BaseCommand, CommandError
-from ncaa.models import Season, TeamSeasonRatings
+from ncaa.models import Season, Team, TeamSeasonRatings
 from ncaa.utils.team_mapping import TeamMapper
 
 
@@ -197,6 +197,23 @@ def clean_school_2005_2013(school):
 class Command(BaseCommand):
     help = "Backfill historical NCAA Tournament seeds and finish"
 
+    @staticmethod
+    def _resolve_team(mapper, as_written, cleaned):
+        """
+        Wikipedia school name -> Team.
+
+        Try our canonical name exactly as Wikipedia writes it first ("St. John's", "NC State",
+        "South Florida", "Northern Iowa", "Queens", "Prairie View A&M" -- the NCAA-style
+        mapper below knows none of these, and its " State" -> " St." rewrite breaks "NC State",
+        which left 6 of 68 teams unseeded every year). Then the NCAA-style mapper.
+        """
+        for name in (as_written, cleaned):
+            team = Team.objects.filter(name__iexact=name, is_d1=True).first()
+            if team:
+                return team
+        team, _conf, _override = mapper.find_team(cleaned, min_confidence=0.85)
+        return team
+
     def add_arguments(self, parser):
         parser.add_argument(
             "--season",
@@ -260,6 +277,7 @@ class Command(BaseCommand):
                     for _, row in t.iterrows():
                         seed_raw = row.get('Seed')
                         school = str(row.get('School')).strip()
+                        school_as_written = school.replace('*', '').strip()
 
                         if pd.isna(seed_raw) or not school or school == 'nan':
                             continue
@@ -283,8 +301,8 @@ class Command(BaseCommand):
                             if school == "Miami (Florida)": school = "Miami (FL)"
                             if 'Loyola' in school and 'Chicago' in school: school = 'Loyola Chicago'
 
-                        team, conf, is_override = mapper.find_team(school, min_confidence=0.85)
-                        
+                        team = self._resolve_team(mapper, school_as_written, school)
+
                         if team:
                             qs = TeamSeasonRatings.all_objects.filter(season=season, team=team)
                             if qs.exists():

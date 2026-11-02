@@ -222,6 +222,9 @@ class Command(BasePipelineCommand):
             label=f"[14/{TOTAL_STEPS}]",
         )
 
+        # March: pre-tournament snapshot + tournament seeds (no-op before Selection Sunday)
+        self._run_tournament_steps(season_year, steps)
+
         # Show the new season once it has a final game (ratings exist by now)
         self._activate_latest_season(steps)
 
