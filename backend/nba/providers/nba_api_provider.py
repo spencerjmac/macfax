@@ -13,10 +13,11 @@ Resilience notes (based on nba_api release history):
   - All endpoint calls go through _call_with_retry() for uniform handling.
 """
 
+import gzip
 import json
 import logging
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -36,12 +37,22 @@ logger = logging.getLogger(__name__)
 # Raw PlayByPlayV3 / GameRotation responses, one file per game and endpoint
 # (gitignored). Project-root data/nba in a checkout, /data/nba in Docker.
 PBP_CACHE_DIR = Path(__file__).resolve().parents[3] / "data" / "nba" / "pbp_cache"
-GAME_FETCH_TRIES = 8              # these endpoints' HTTP 500s are often transient
+ROTATION_FETCH_TRIES = 8          # GameRotation's HTTP 500s are often transient
 GAME_FETCH_MAX_BACKOFF = 30.0     # seconds
+FAILED_RECORD_TTL = timedelta(hours=24)   # some 500s last hours; retry after this
 
 
 class FetchSkipped(RuntimeError):
-    """An earlier run already gave up on this game's endpoint; not retried."""
+    """A run within FAILED_RECORD_TTL already gave up on this game's endpoint."""
+
+
+def _failed_within_ttl(record: str) -> bool:
+    """True if a .failed record's failed_at is younger than FAILED_RECORD_TTL."""
+    try:
+        failed_at = datetime.fromisoformat(json.loads(record)["failed_at"])
+    except (ValueError, KeyError, TypeError):
+        return False   # unreadable record: try again
+    return datetime.now(timezone.utc) - failed_at < FAILED_RECORD_TTL
 
 
 try:
@@ -125,32 +136,40 @@ class NBAApiProvider(NBADataProvider):
                     time.sleep(backoff)
         raise RuntimeError(f"nba_api call failed after {self.max_retries} attempts") from last_exc
 
-    def _fetch_game_endpoint(self, endpoint_cls, game_id: str):
+    def _fetch_game_endpoint(self, endpoint_cls, game_id: str, tries: int):
         """
         One game's nba_api endpoint object with its data sets loaded.
 
-        Reads the raw response from the cache when the file exists. Otherwise
-        calls NBA.com up to GAME_FETCH_TRIES times with exponential backoff and
-        caches the raw response. When every try fails, <game_id>_<endpoint>.failed
-        records when, and later calls raise FetchSkipped instead of trying again
-        (delete the file to retry).
+        Reads the raw response from the cache when <game_id>_<endpoint>.json.gz
+        (or an older plain .json) exists. Otherwise calls NBA.com up to `tries`
+        times with exponential backoff and caches the raw response gzipped.
+        When every try fails, <game_id>_<endpoint>.failed records when; calls
+        within FAILED_RECORD_TTL of that raise FetchSkipped, later calls try
+        NBA.com again.
         """
         from nba_api.stats.library.http import NBAStatsResponse
 
         name = f"{game_id}_{endpoint_cls.endpoint}"
-        cached = self.cache_dir / f"{name}.json" if self.cache_dir else None
+        cached = self.cache_dir / f"{name}.json.gz" if self.cache_dir else None
+        plain = self.cache_dir / f"{name}.json" if self.cache_dir else None
         failed = self.cache_dir / f"{name}.failed" if self.cache_dir else None
 
-        if cached and cached.exists():
-            ep = endpoint_cls(game_id=game_id, timeout=self.timeout, get_request=False)
-            ep.nba_response = NBAStatsResponse(response=cached.read_text(), status_code=200, url=None)
-            ep.load_response()
-            return ep
+        for path in (cached, plain):
+            if path and path.exists():
+                with (gzip.open if path is cached else open)(path, "rt", encoding="utf-8") as f:
+                    response = f.read()
+                ep = endpoint_cls(game_id=game_id, timeout=self.timeout, get_request=False)
+                ep.nba_response = NBAStatsResponse(response=response, status_code=200, url=None)
+                ep.load_response()
+                return ep
         if failed and failed.exists():
-            raise FetchSkipped(f"{name}: gave up earlier {failed.read_text().strip()}")
+            record = failed.read_text().strip()
+            if _failed_within_ttl(record):
+                raise FetchSkipped(f"{name}: gave up earlier {record}")
+            logger.info("%s: failure record is over %s old, trying NBA.com again", name, FAILED_RECORD_TTL)
 
         last_exc: Optional[Exception] = None
-        for attempt in range(1, GAME_FETCH_TRIES + 1):
+        for attempt in range(1, tries + 1):
             try:
                 time.sleep(self.sleep_seconds)
                 # Requests and loads; an empty HTTP 500 body raises while loading.
@@ -158,24 +177,26 @@ class NBAApiProvider(NBADataProvider):
                 break
             except Exception as exc:  # noqa: BLE001
                 last_exc = exc
-                logger.warning("%s failed (try %d/%d): %s", name, attempt, GAME_FETCH_TRIES, exc)
-                if attempt < GAME_FETCH_TRIES:
+                logger.warning("%s failed (try %d/%d): %s", name, attempt, tries, exc)
+                if attempt < tries:
                     time.sleep(min(GAME_FETCH_MAX_BACKOFF, 2.0 ** attempt))
         else:
             if failed:
                 self.cache_dir.mkdir(parents=True, exist_ok=True)
                 failed.write_text(json.dumps({
                     "failed_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-                    "tries": GAME_FETCH_TRIES,
+                    "tries": tries,
                     "error": str(last_exc)[:300],
                 }))
-            raise RuntimeError(f"{name} failed after {GAME_FETCH_TRIES} tries") from last_exc
+            raise RuntimeError(f"{name} failed after {tries} tries") from last_exc
 
         if cached:
             self.cache_dir.mkdir(parents=True, exist_ok=True)
-            tmp = cached.with_suffix(".tmp")
-            tmp.write_text(ep.nba_response.get_response())
+            tmp = cached.with_name(cached.name + ".tmp")
+            with gzip.open(tmp, "wt", encoding="utf-8") as f:
+                f.write(ep.nba_response.get_response())
             tmp.replace(cached)
+            failed.unlink(missing_ok=True)
         return ep
 
     @staticmethod
@@ -456,7 +477,8 @@ class NBAApiProvider(NBADataProvider):
         from nba_api.stats.endpoints.playbyplayv3 import PlayByPlayV3
         from .base import RawPlayEvent
 
-        df = self._fetch_game_endpoint(PlayByPlayV3, game_id).play_by_play.get_data_frame()
+        df = self._fetch_game_endpoint(PlayByPlayV3, game_id, tries=self.max_retries) \
+               .play_by_play.get_data_frame()
 
         if df is None or df.empty:
             logger.warning("PlayByPlayV3 returned empty for game %s", game_id)
@@ -510,7 +532,7 @@ class NBAApiProvider(NBADataProvider):
         from nba_api.stats.endpoints.gamerotation import GameRotation
         from .base import RawRotationStint
 
-        ep = self._fetch_game_endpoint(GameRotation, game_id)
+        ep = self._fetch_game_endpoint(GameRotation, game_id, tries=ROTATION_FETCH_TRIES)
 
         results: list[RawRotationStint] = []
         for data_set in (ep.away_team, ep.home_team):
