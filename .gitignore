@@ -80,6 +80,9 @@ macfax.dump
 
 # MPS scrape caches and backups
 mps/data/supplement_cache/
+
+# Raw NBA.com play-by-play / rotation responses (nba_api provider cache)
+data/nba/pbp_cache/
 mps/data/*.bak
 
 # MPS generated/intermediate data (large, regenerable)

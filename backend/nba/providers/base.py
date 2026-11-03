@@ -181,6 +181,22 @@ class RawPlayEvent:
 
 
 @dataclass
+class RawRotationStint:
+    """
+    One continuous on-court interval for one player, from GameRotation.
+
+    Times are tenths of a second from tip-off (7200 = end of Q1; each
+    overtime adds 3000).
+    """
+    game_id:     str
+    team_id:     int
+    person_id:   int
+    player_name: str
+    in_time:     float      # IN_TIME_REAL
+    out_time:    float      # OUT_TIME_REAL
+
+
+@dataclass
 class ProviderHealthResult:
     """Result of a provider health check on a single endpoint family."""
 
@@ -258,6 +274,14 @@ class NBADataProvider(ABC):
 
         Events are returned in chronological order (ascending orderNumber).
         Returns empty list if game has no PBP data available.
+        """
+
+    @abstractmethod
+    def get_game_rotation(self, game_id: str) -> list[RawRotationStint]:
+        """
+        Every player's on-court intervals for a single game via GameRotation.
+
+        Returns empty list if NBA.com has no rotation for the game.
         """
 
     @abstractmethod

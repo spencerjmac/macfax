@@ -13,8 +13,11 @@ Resilience notes (based on nba_api release history):
   - All endpoint calls go through _call_with_retry() for uniform handling.
 """
 
+import json
 import logging
 import time
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Optional
 
 from .base import (
@@ -29,6 +32,17 @@ from .base import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Raw PlayByPlayV3 / GameRotation responses, one file per game and endpoint
+# (gitignored). Project-root data/nba in a checkout, /data/nba in Docker.
+PBP_CACHE_DIR = Path(__file__).resolve().parents[3] / "data" / "nba" / "pbp_cache"
+GAME_FETCH_TRIES = 8              # these endpoints' HTTP 500s are often transient
+GAME_FETCH_MAX_BACKOFF = 30.0     # seconds
+
+
+class FetchSkipped(RuntimeError):
+    """An earlier run already gave up on this game's endpoint; not retried."""
+
 
 try:
     import nba_api  # noqa: F401
@@ -74,6 +88,7 @@ class NBAApiProvider(NBADataProvider):
         sleep_seconds: Minimum sleep between API calls (rate-limit buffer).
         max_retries: Retry attempts on transient failures.
         timeout: Request timeout in seconds.
+        cache_dir: Raw play-by-play / rotation response cache (None disables).
     """
 
     def __init__(
@@ -81,10 +96,12 @@ class NBAApiProvider(NBADataProvider):
         sleep_seconds: float = 0.6,
         max_retries: int = 3,
         timeout: int = 30,
+        cache_dir: "Path | None" = PBP_CACHE_DIR,
     ):
         self.sleep_seconds = sleep_seconds
         self.max_retries = max_retries
         self.timeout = timeout
+        self.cache_dir = cache_dir
         if not NBA_API_AVAILABLE:
             raise RuntimeError("nba_api is not installed. Run: pip install nba-api")
 
@@ -107,6 +124,59 @@ class NBAApiProvider(NBADataProvider):
                     logger.info("Backing off %.1fs before retry...", backoff)
                     time.sleep(backoff)
         raise RuntimeError(f"nba_api call failed after {self.max_retries} attempts") from last_exc
+
+    def _fetch_game_endpoint(self, endpoint_cls, game_id: str):
+        """
+        One game's nba_api endpoint object with its data sets loaded.
+
+        Reads the raw response from the cache when the file exists. Otherwise
+        calls NBA.com up to GAME_FETCH_TRIES times with exponential backoff and
+        caches the raw response. When every try fails, <game_id>_<endpoint>.failed
+        records when, and later calls raise FetchSkipped instead of trying again
+        (delete the file to retry).
+        """
+        from nba_api.stats.library.http import NBAStatsResponse
+
+        name = f"{game_id}_{endpoint_cls.endpoint}"
+        cached = self.cache_dir / f"{name}.json" if self.cache_dir else None
+        failed = self.cache_dir / f"{name}.failed" if self.cache_dir else None
+
+        if cached and cached.exists():
+            ep = endpoint_cls(game_id=game_id, timeout=self.timeout, get_request=False)
+            ep.nba_response = NBAStatsResponse(response=cached.read_text(), status_code=200, url=None)
+            ep.load_response()
+            return ep
+        if failed and failed.exists():
+            raise FetchSkipped(f"{name}: gave up earlier {failed.read_text().strip()}")
+
+        last_exc: Optional[Exception] = None
+        for attempt in range(1, GAME_FETCH_TRIES + 1):
+            try:
+                time.sleep(self.sleep_seconds)
+                # Requests and loads; an empty HTTP 500 body raises while loading.
+                ep = endpoint_cls(game_id=game_id, timeout=self.timeout)
+                break
+            except Exception as exc:  # noqa: BLE001
+                last_exc = exc
+                logger.warning("%s failed (try %d/%d): %s", name, attempt, GAME_FETCH_TRIES, exc)
+                if attempt < GAME_FETCH_TRIES:
+                    time.sleep(min(GAME_FETCH_MAX_BACKOFF, 2.0 ** attempt))
+        else:
+            if failed:
+                self.cache_dir.mkdir(parents=True, exist_ok=True)
+                failed.write_text(json.dumps({
+                    "failed_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                    "tries": GAME_FETCH_TRIES,
+                    "error": str(last_exc)[:300],
+                }))
+            raise RuntimeError(f"{name} failed after {GAME_FETCH_TRIES} tries") from last_exc
+
+        if cached:
+            self.cache_dir.mkdir(parents=True, exist_ok=True)
+            tmp = cached.with_suffix(".tmp")
+            tmp.write_text(ep.nba_response.get_response())
+            tmp.replace(cached)
+        return ep
 
     @staticmethod
     def _safe_int(value) -> Optional[int]:
@@ -386,11 +456,7 @@ class NBAApiProvider(NBADataProvider):
         from nba_api.stats.endpoints.playbyplayv3 import PlayByPlayV3
         from .base import RawPlayEvent
 
-        def _call():
-            return PlayByPlayV3(game_id=game_id, timeout=self.timeout) \
-                   .play_by_play.get_data_frame()
-
-        df = self._call_with_retry(_call)
+        df = self._fetch_game_endpoint(PlayByPlayV3, game_id).play_by_play.get_data_frame()
 
         if df is None or df.empty:
             logger.warning("PlayByPlayV3 returned empty for game %s", game_id)
@@ -431,6 +497,37 @@ class NBAApiProvider(NBADataProvider):
                 logger.warning("Could not parse PBP row for game %s: %s", game_id, exc)
 
         results.sort(key=lambda e: e.order_number)
+        return results
+
+    # ── get_game_rotation ─────────────────────────────────────────────────────
+
+    def get_game_rotation(self, game_id: str) -> "list[RawRotationStint]":
+        """
+        Every player's on-court intervals for one game via GameRotation.
+
+        IN_TIME_REAL / OUT_TIME_REAL are tenths of a second from tip-off.
+        """
+        from nba_api.stats.endpoints.gamerotation import GameRotation
+        from .base import RawRotationStint
+
+        ep = self._fetch_game_endpoint(GameRotation, game_id)
+
+        results: list[RawRotationStint] = []
+        for data_set in (ep.away_team, ep.home_team):
+            table = data_set.get_dict()
+            for raw in table["data"]:
+                row = dict(zip(table["headers"], raw))
+                if row.get("IN_TIME_REAL") is None or row.get("OUT_TIME_REAL") is None:
+                    logger.warning("GameRotation row without times for game %s: %s", game_id, row)
+                    continue
+                results.append(RawRotationStint(
+                    game_id=str(row.get("GAME_ID") or game_id),
+                    team_id=self._safe_int(row.get("TEAM_ID")),
+                    person_id=self._safe_int(row.get("PERSON_ID")),
+                    player_name=f"{row.get('PLAYER_FIRST') or ''} {row.get('PLAYER_LAST') or ''}".strip(),
+                    in_time=float(row["IN_TIME_REAL"]),
+                    out_time=float(row["OUT_TIME_REAL"]),
+                ))
         return results
 
     # ── health_check ──────────────────────────────────────────────────────────
