@@ -1,0 +1,165 @@
+{
+ "game_id": "0022500304",
+ "home_team_id": 1610612755,
+ "away_team_id": 1610612737,
+ "home_score": 134,
+ "away_score": 142,
+ "players": [
+  {
+   "player_id": 200768,
+   "team_id": 1610612755,
+   "seconds": 0,
+   "plus_minus": 0
+  },
+  {
+   "player_id": 201569,
+   "team_id": 1610612755,
+   "seconds": 0,
+   "plus_minus": 0
+  },
+  {
+   "player_id": 202331,
+   "team_id": 1610612755,
+   "seconds": 1682,
+   "plus_minus": 1
+  },
+  {
+   "player_id": 203083,
+   "team_id": 1610612755,
+   "seconds": 359,
+   "plus_minus": 1
+  },
+  {
+   "player_id": 203954,
+   "team_id": 1610612755,
+   "seconds": 1800,
+   "plus_minus": -11
+  },
+  {
+   "player_id": 204001,
+   "team_id": 1610612737,
+   "seconds": 0,
+   "plus_minus": 0
+  },
+  {
+   "player_id": 1628379,
+   "team_id": 1610612737,
+   "seconds": 910,
+   "plus_minus": -7
+  },
+  {
+   "player_id": 1629638,
+   "team_id": 1610612737,
+   "seconds": 2661,
+   "plus_minus": 19
+  },
+  {
+   "player_id": 1629656,
+   "team_id": 1610612755,
+   "seconds": 2802,
+   "plus_minus": 2
+  },
+  {
+   "player_id": 1630168,
+   "team_id": 1610612737,
+   "seconds": 2841,
+   "plus_minus": 9
+  },
+  {
+   "player_id": 1630178,
+   "team_id": 1610612755,
+   "seconds": 3138,
+   "plus_minus": -8
+  },
+  {
+   "player_id": 1630249,
+   "team_id": 1610612737,
+   "seconds": 1579,
+   "plus_minus": 13
+  },
+  {
+   "player_id": 1630552,
+   "team_id": 1610612737,
+   "seconds": 2707,
+   "plus_minus": -3
+  },
+  {
+   "player_id": 1630700,
+   "team_id": 1610612737,
+   "seconds": 2653,
+   "plus_minus": -4
+  },
+  {
+   "player_id": 1630811,
+   "team_id": 1610612737,
+   "seconds": 842,
+   "plus_minus": 7
+  },
+  {
+   "player_id": 1631133,
+   "team_id": 1610612755,
+   "seconds": 0,
+   "plus_minus": 0
+  },
+  {
+   "player_id": 1631216,
+   "team_id": 1610612737,
+   "seconds": 0,
+   "plus_minus": 0
+  },
+  {
+   "player_id": 1631230,
+   "team_id": 1610612755,
+   "seconds": 2700,
+   "plus_minus": 3
+  },
+  {
+   "player_id": 1631243,
+   "team_id": 1610612737,
+   "seconds": 1388,
+   "plus_minus": 12
+  },
+  {
+   "player_id": 1641737,
+   "team_id": 1610612755,
+   "seconds": 1321,
+   "plus_minus": 2
+  },
+  {
+   "player_id": 1641780,
+   "team_id": 1610612755,
+   "seconds": 0,
+   "plus_minus": 0
+  },
+  {
+   "player_id": 1642258,
+   "team_id": 1610612737,
+   "seconds": 1790,
+   "plus_minus": -3
+  },
+  {
+   "player_id": 1642272,
+   "team_id": 1610612755,
+   "seconds": 1710,
+   "plus_minus": -18
+  },
+  {
+   "player_id": 1642348,
+   "team_id": 1610612755,
+   "seconds": 603,
+   "plus_minus": -9
+  },
+  {
+   "player_id": 1642845,
+   "team_id": 1610612755,
+   "seconds": 1285,
+   "plus_minus": -3
+  },
+  {
+   "player_id": 1642854,
+   "team_id": 1610612737,
+   "seconds": 29,
+   "plus_minus": -3
+  }
+ ]
+}

@@ -518,7 +518,7 @@ class NBAApiProvider(NBADataProvider):
             except Exception as exc:  # noqa: BLE001
                 logger.warning("Could not parse PBP row for game %s: %s", game_id, exc)
 
-        results.sort(key=lambda e: e.order_number)
+        # NBA.com's response order is the event order (V3 has no orderNumber).
         return results
 
     # ── get_game_rotation ─────────────────────────────────────────────────────
