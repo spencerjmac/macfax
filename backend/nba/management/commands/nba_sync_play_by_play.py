@@ -382,10 +382,11 @@ def _parse_game(
     while i < len(events):
         ev = events[i]
 
-        # Update running score from events that have score data
-        if ev.score_home is not None:
+        # Update running score from events that have score data. The score never
+        # goes down: some seasons' responses carry 0 on non-scoring events.
+        if ev.score_home is not None and ev.score_home >= current_score_home:
             current_score_home = ev.score_home
-        if ev.score_away is not None:
+        if ev.score_away is not None and ev.score_away >= current_score_away:
             current_score_away = ev.score_away
 
         # ── Period transition ─────────────────────────────────────────────────
