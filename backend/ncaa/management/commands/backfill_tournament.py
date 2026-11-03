@@ -128,9 +128,10 @@ TOURNAMENT_RESULTS = {
 }
 
 
-# Wikipedia's 2005-2013 tournament pages use full/old school names that don't
-# match the abbreviated NCAA.com naming convention used by
-# mappings/ncaa_team_name_mappings.yml. Map those directly to the NCAA.com key.
+# Wikipedia's tournament pages use full/old school names that don't match the
+# abbreviated NCAA.com naming convention used by mappings/ncaa_team_name_mappings.yml.
+# Map those directly to the NCAA.com key. Applied to every season (the name is
+# historical: it started out covering only the 2005-2013 page format).
 WIKI_SCHOOL_OVERRIDES_2005_2013 = {
     'Southern Illinois': 'Southern Ill.',
     'UW-Milwaukee': 'Milwaukee',
@@ -172,11 +173,13 @@ WIKI_SCHOOL_OVERRIDES_2005_2013 = {
     'Miami': 'Miami (FL)',
     'Middle Tennessee': 'Middle Tenn.',
     'North Carolina A&T': 'N.C. A&T',
+    'Western Michigan': 'Western Mich.',
+    'LIU Brooklyn': 'LIU',
 }
 
 
 def clean_school_2005_2013(school):
-    """Normalize a 2005-2013 Wikipedia school name to an NCAA.com mapping key."""
+    """Normalize a Wikipedia school name (any season) to an NCAA.com mapping key."""
     school = school.replace('–', '-')  # en dash -> hyphen
     school = re.sub(r'\(vacated\)', '', school)
     school = re.sub(r'\[\d+\]', '', school)
@@ -282,24 +285,16 @@ class Command(BaseCommand):
                         if pd.isna(seed_raw) or not school or school == 'nan':
                             continue
 
-                        # Clean up seed (e.g. "11*" or "11a")
-                        try:
-                            seed_str = ''.join(c for c in str(seed_raw) if c.isdigit())
-                            seed = int(seed_str)
-                        except ValueError:
+                        # Clean up seed (e.g. "#1", "11*", "11a", or a float 11.0 when pandas
+                        # parses the column as numeric -- keep only the first integer,
+                        # so 1.0 is seed 1, not 10).
+                        seed_match = re.search(r'(\d+)', str(seed_raw))
+                        if not seed_match:
                             continue
+                        seed = int(seed_match.group(1))
 
-                        # Apply overrides
-                        if is_multiindex:
-                            school = clean_school_2005_2013(school)
-                        else:
-                            school = school.replace('*', '').strip()
-                            school = school.replace(' State', ' St.')
-                            if school == 'UNC': school = 'North Carolina'
-                            if school == 'USC': school = 'Southern California'
-                            if school == "Saint Mary's": school = "Saint Mary's (CA)"
-                            if school == "Miami (Florida)": school = "Miami (FL)"
-                            if 'Loyola' in school and 'Chicago' in school: school = 'Loyola Chicago'
+                        # Apply overrides (same Wikipedia-name cleanup for every season)
+                        school = clean_school_2005_2013(school)
 
                         team = self._resolve_team(mapper, school_as_written, school)
 
@@ -323,7 +318,7 @@ class Command(BaseCommand):
                         if ' State' in team_name and team_name != 'NC State':
                             team_name = team_name.replace(' State', ' St.')
                         
-                        team, _, _ = mapper.find_team(team_name, min_confidence=0.85)
+                        team = self._resolve_team(mapper, team_name, team_name)
                         if team:
                             qs = TeamSeasonRatings.all_objects.filter(season=season, team=team)
                             if qs.exists():
