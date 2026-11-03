@@ -6,6 +6,7 @@ final score).
 """
 
 from types import SimpleNamespace
+from unittest import mock
 
 from django.test import SimpleTestCase
 
@@ -41,9 +42,10 @@ class _Events:
         ))
 
 
-class RunningScoreNeverDecreasesTests(SimpleTestCase):
+class PbpGameFixture:
+    """Two six-man rosters, NBA id → pk maps, and a stand-in game. Mix into a SimpleTestCase."""
+
     def setUp(self):
-        # Five players a side on court the whole game except one home swap.
         self.player_pk_map = {
             _player_id(side, n): _pk(side, n)
             for side in ("home", "away") for n in range(1, 7)
@@ -57,6 +59,24 @@ class RunningScoreNeverDecreasesTests(SimpleTestCase):
             home_team=SimpleNamespace(nba_team_id=HOME_TEAM_ID),
             away_team=SimpleNamespace(nba_team_id=AWAY_TEAM_ID),
         )
+        self.roster = {
+            HOME_TEAM_PK: {_pk("home", n) for n in range(1, 7)},
+            AWAY_TEAM_PK: {_pk("away", n) for n in range(1, 7)},
+        }
+        # The roster name lookup reads NBAPlayer; serve it from this fixture instead.
+        patcher = mock.patch(
+            "nba.management.commands.nba_sync_play_by_play._build_roster_name_lookup",
+            side_effect=lambda pks: {k: v for k, v in self.name_to_pk.items() if v in pks},
+        )
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def parse(self, events):
+        return _parse_game(self.game, events, self.player_pk_map, self.team_pk_map,
+                           self.name_to_pk, self.roster)
+
+
+class RunningScoreNeverDecreasesTests(PbpGameFixture, SimpleTestCase):
 
     def _events_with_zero_score_mid_game(self) -> list[RawPlayEvent]:
         e = _Events()
@@ -89,10 +109,7 @@ class RunningScoreNeverDecreasesTests(SimpleTestCase):
         return [home[k] for k in sorted(home, reverse=True)]
 
     def test_zero_score_on_non_scoring_event_does_not_inflate_stint_points(self):
-        stints, quality_flag, msg, failed = _parse_game(
-            self.game, self._events_with_zero_score_mid_game(),
-            self.player_pk_map, self.team_pk_map, self.name_to_pk, {},
-        )
+        stints, quality_flag, msg, failed = self.parse(self._events_with_zero_score_mid_game())
 
         self.assertFalse(quality_flag, msg)
         self.assertEqual(failed, [])

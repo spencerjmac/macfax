@@ -222,6 +222,17 @@ def _parse_game(
     home_name_to_pk = _build_roster_name_lookup(home_pks)
     away_name_to_pk = _build_roster_name_lookup(away_pks)
 
+    # ── Only this game's teams and rosters count ──────────────────────────────
+    # Events tagged with any other team id are dropped (instant replays carry
+    # team 0). Untagged events (period markers) are game-level and kept.
+    events = [ev for ev in events if ev.team_id is None or ev.team_id in (home_team_id, away_team_id)]
+    roster_pks = home_pks | away_pks
+
+    def _roster_pk(person_id: "int | None") -> "int | None":
+        """NBAPlayer.pk for a person on this game's two rosters; None for anyone else."""
+        pk = player_pk_map.get(person_id) if person_id else None
+        return pk if pk in roster_pks else None
+
     def _lookup_for_team(name: str, is_home: bool) -> "int | None":
         # Primary: team-constrained (correct player for this game's roster)
         pk = _lookup_name(name, home_name_to_pk if is_home else away_name_to_pk)
@@ -251,7 +262,7 @@ def _parse_game(
 
         if ev.action_type == "substitution":
             # personId = OUTGOING player; parse incoming from description
-            outgoing_pk = player_pk_map.get(ev.person_id) if ev.person_id else None
+            outgoing_pk = _roster_pk(ev.person_id)
             incoming_name = _parse_sub_incoming(ev.description)
             incoming_pk = _lookup_for_team(incoming_name, is_home)
 
@@ -262,7 +273,7 @@ def _parse_game(
             elif incoming_name:
                 failed_lookups.append(f"P1:{incoming_name}")
         elif ev.person_id is not None:
-            pk = player_pk_map.get(ev.person_id)
+            pk = _roster_pk(ev.person_id)
             if pk is not None and pk not in subbed_in:
                 starters.add(pk)
 
@@ -446,7 +457,7 @@ def _parse_game(
                     break
                 is_home2 = (ev2.team_id == home_team_id)
 
-                outgoing_pk = player_pk_map.get(ev2.person_id) if ev2.person_id else None
+                outgoing_pk = _roster_pk(ev2.person_id)
 
                 incoming_name = _parse_sub_incoming(ev2.description)
                 incoming_pk = _lookup_for_team(incoming_name, is_home2)
