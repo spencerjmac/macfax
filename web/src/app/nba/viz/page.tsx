@@ -46,66 +46,32 @@ function ThumbLuck() {
   );
 }
 
-function ThumbBPR() {
-  return (
-    <svg viewBox="0 0 200 130" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
-      <line x1="24" y1="108" x2="184" y2="108" stroke="#3a4760" strokeWidth="1.2" />
-      <line x1="24" y1="20" x2="24" y2="108" stroke="#3a4760" strokeWidth="1.2" />
-      {/* depth cluster */}
-      {[[64,86],[80,90],[96,82],[112,94],[128,84],[78,98],[110,80]].map((p, i) => dot(p[0], p[1], 3.5, false, 'bp'+i))}
-      {/* star player — large highlighted dot, far upper-right */}
-      <circle cx={156} cy={36} r="11" fill="var(--brand)" opacity="0.2" />
-      {dot(156, 36, 7, true, 'bpstar')}
-    </svg>
-  );
-}
-
-function ThumbFourFactors() {
-  const bars: [number, number, boolean][] = [
-    [40, 70, true],
-    [76, 50, true],
-    [112, 84, false],
-    [148, 38, true],
-  ];
-  return (
-    <svg viewBox="0 0 200 130" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
-      <line x1="24" y1="108" x2="184" y2="108" stroke="#3a4760" strokeWidth="1.2" />
-      {bars.map(([x, h, hl], i) => (
-        <rect key={'ff'+i} x={x} y={108 - h} width={24} height={h} rx="3"
-          fill={hl ? 'var(--brand)' : '#5b6a86'} opacity={hl ? 0.85 : 0.45} />
-      ))}
-    </svg>
-  );
-}
-
-function ThumbMomentum() {
-  return (
-    <svg viewBox="0 0 200 130" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
-      <line x1="24" y1="64" x2="184" y2="64" stroke="#3a4760" strokeWidth="1.2" strokeDasharray="3 3" />
-      <path d="M30 80 L60 70 L90 85 L120 50 L150 58 L178 28" fill="none" stroke="var(--brand)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      {[[30,80],[60,70],[90,85],[120,50],[150,58],[178,28]].map((p, i) => dot(p[0], p[1], 3.5, i === 5, 'mo'+i))}
-    </svg>
-  );
-}
-
 const THUMB_MAP: Record<string, () => React.ReactElement> = {
   crystal: ThumbCrystalBall,
   luck: ThumbLuck,
-  bpr: ThumbBPR,
-  fourfactors: ThumbFourFactors,
-  momentum: ThumbMomentum,
 };
 
 // ── Feature hero art — Efficiency Landscape scatter w/ tier lines ─────────────
 
 function FeatureArt() {
+  // Mirrors the real chart: x = Adj Off (right is better), y = Adj Def with the
+  // axis reversed (top is better), so Net = Off - Def grows toward the top-right
+  // and each tier line (constant Net) runs parallel, upper-left to lower-right.
+  // In these coords a line is x - y = k; plot area is x 46..420, y 20..280.
+  // Champion k=230, Contender k=170, Playoff k=90. Highlighted dots are the
+  // teams above the Champion line (x - y > 230).
   const dots: [number, number, boolean][] = [
-    [108, 53, false], [149, 64, false], [191, 80, false], [233, 53, true],
-    [253, 96, false], [274, 117, false], [295, 64, true], [295, 139, false],
-    [316, 107, false], [316, 171, false], [337, 117, false], [337, 193, false],
-    [358, 150, false], [358, 215, false], [378, 182, false], [378, 236, false],
-    [129, 107, false], [129, 193, false], [171, 150, false], [212, 193, false],
-    [212, 236, false], [274, 215, false], [87, 193, false], [87, 236, false],
+    // champion zone
+    [300, 52, true], [330, 60, true], [372, 95, true],
+    // contender band
+    [250, 62, false], [280, 80, false], [340, 140, false], [380, 170, false],
+    // playoff band
+    [150, 40, false], [180, 60, false], [220, 95, false], [260, 150, false],
+    [300, 170, false], [320, 190, false], [350, 210, false],
+    // below the playoff line
+    [100, 90, false], [110, 60, false], [120, 110, false], [160, 140, false],
+    [200, 170, false], [240, 200, false], [280, 230, false], [90, 150, false],
+    [140, 200, false], [190, 230, false],
   ];
 
   return (
@@ -118,10 +84,10 @@ function FeatureArt() {
       ))}
       <line x1={46} x2={420} y1={280} y2={280} stroke="#3a4760" strokeWidth="1.25" />
       <line x1={46} x2={46} y1={20} y2={280} stroke="#3a4760" strokeWidth="1.25" />
-      {/* tier diagonals — champion (solid), contender (dashed), playoff (grey dashed) */}
-      <line x1={120} y1={280} x2={420} y2={40} stroke="var(--brand)" strokeWidth="2" />
-      <line x1={60} y1={280} x2={420} y2={100} stroke="#30A2DA" strokeWidth="1.5" strokeDasharray="6 6" opacity="0.8" />
-      <line x1={46} y1={230} x2={340} y2={20} stroke="#999" strokeWidth="1.5" strokeDasharray="6 6" opacity="0.7" />
+      {/* tier lines — parallel, champion (solid) nearest the top-right corner */}
+      <line x1={250} y1={20} x2={420} y2={190} stroke="var(--brand)" strokeWidth="2" />
+      <line x1={190} y1={20} x2={420} y2={250} stroke="#30A2DA" strokeWidth="1.5" strokeDasharray="6 6" opacity="0.8" />
+      <line x1={110} y1={20} x2={370} y2={280} stroke="#999" strokeWidth="1.5" strokeDasharray="6 6" opacity="0.7" />
       {dots.map(([cx, cy, hl], i) => (
         hl
           ? <circle key={i} cx={cx} cy={cy} r="5" fill="var(--brand)" opacity="0.9" />
@@ -154,30 +120,6 @@ const ARTICLES = [
     stand: 'Net rating vs. wins above expected — which teams are over- or under-performing their point differential.',
     date: 'Updated daily',
   },
-  {
-    thumb: 'bpr',
-    cat: 'Players',
-    status: 'soon' as const,
-    title: 'BPR Landscape',
-    stand: 'Star power vs. depth — plot every roster by its best player and the strength of the next seven.',
-    date: 'Coming soon',
-  },
-  {
-    thumb: 'fourfactors',
-    cat: 'Efficiency',
-    status: 'soon' as const,
-    title: 'Four Factors Profile',
-    stand: 'Shooting, turnovers, rebounding, and free throws — see which factors are driving each team’s rating.',
-    date: 'Coming soon',
-  },
-  {
-    thumb: 'momentum',
-    cat: 'Form',
-    status: 'soon' as const,
-    title: 'Form & Momentum',
-    stand: 'Rolling 10-game net rating trends — who’s heating up and who’s cooling off.',
-    date: 'Coming soon',
-  },
 ];
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -196,7 +138,7 @@ export default function NBAVizPage() {
             <p className="text-[15px] text-muted m-0">Charts that tell a story beyond the box score</p>
             <span className="font-mono text-[12px] text-muted-2 inline-flex items-center gap-[7px] px-[10px] py-[5px] bg-ui-surface border border-ui-border rounded-md">
               <span className="w-1.5 h-1.5 rounded-full bg-brand2" />
-              3 live · 3 coming soon
+              3 live
             </span>
           </div>
         </div>
@@ -242,7 +184,7 @@ export default function NBAVizPage() {
         </Link>
 
         {/* Article grid */}
-        <div className="grid grid-cols-3 gap-[22px]">
+        <div className="grid grid-cols-2 gap-[22px]">
           {ARTICLES.map((a) => {
             const Thumb = THUMB_MAP[a.thumb];
             const isLive = a.status === 'live';

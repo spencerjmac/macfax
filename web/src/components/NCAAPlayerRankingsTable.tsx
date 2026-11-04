@@ -17,6 +17,7 @@ import clsx from 'clsx';
 import HeaderWithTooltip from './HeaderWithTooltip';
 import MetricDefinitionsCard, { type MetricDefinition } from './MetricDefinitionsCard';
 import { computeRanks, heatStyleFromPercentile } from '@macfax/core/lib/rankingUtils';
+import { AUTO_THRESHOLD, autoNcaaMinMinutes } from '@macfax/core/lib/playerThresholds';
 import {
   PLAYER_TRADITIONAL_METRICS,
   NCAA_IMPACT_METRICS,
@@ -135,10 +136,15 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
     () => seasons.map((x) => x.year).filter((yr) => yr >= PLAYER_FIRST_SEASON).sort((a, b) => a - b),
     [seasons],
   );
-  const [activeTab, setActiveTab] = useState<TabId>('impact');
-  const [sorting, setSorting] = useState<SortingState>([{ id: 'bpr', desc: true }]);
+  // Early in a season BPR isn't computed yet; open on Traditional so the table isn't empty
+  const hasBpr = useMemo(() => data.some((p) => p.bpr != null), [data]);
+  const [activeTab, setActiveTab] = useState<TabId>(hasBpr ? 'impact' : 'traditional');
+  const [sorting, setSorting] = useState<SortingState>([hasBpr ? { id: 'bpr', desc: true } : { id: 'pts', desc: true }]);
   const [globalFilter, setGlobalFilter] = useState('');
-  const [minMinutes, setMinMinutes] = useState(200);
+  // Default "Auto" scales with games played (see playerThresholds.ts)
+  const [minMinutesChoice, setMinMinutesChoice] = useState<number>(AUTO_THRESHOLD);
+  const autoMinMinutes = useMemo(() => autoNcaaMinMinutes(data), [data]);
+  const minMinutes = minMinutesChoice === AUTO_THRESHOLD ? autoMinMinutes : minMinutesChoice;
   const [conferenceFilter, setConferenceFilter] = useState('all');
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: PAGE_SIZE });
   const [tradOptional, setTradOptional] = useState<Set<string>>(() => {
@@ -168,6 +174,12 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
     ]);
     setPagination((p) => ({ ...p, pageIndex: 0 }));
   };
+
+  // Switching to a season with no BPR yet: leave the (empty) Impact tab
+  useEffect(() => {
+    if (!hasBpr && activeTab === 'impact') switchTab('traditional');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasBpr]);
 
   // ── Conference list ───────────────────────────────────────────────────────
   const conferences = useMemo(() => {
@@ -616,15 +628,16 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
         </div>
         <div>
           <select
-            value={minMinutes}
+            value={minMinutesChoice}
             onChange={(e) => {
-              setMinMinutes(Number(e.target.value));
+              setMinMinutesChoice(Number(e.target.value));
               setPagination((p) => ({ ...p, pageIndex: 0 }));
             }}
             className="px-3 py-2 bg-ui-surface border border-ui-border rounded-lg text-sm
                        focus:outline-none focus:ring-2 focus:ring-brand/50"
           >
-            {[50, 100, 200, 300, 400, 600].map((n) => (
+            <option value={AUTO_THRESHOLD}>Auto · min {autoMinMinutes} min</option>
+            {[10, 25, 50, 100, 200, 300, 400, 600].map((n) => (
               <option key={n} value={n}>
                 Min {n} min
               </option>
