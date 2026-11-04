@@ -15,6 +15,7 @@ from rest_framework import status
 from django.shortcuts import get_object_or_404
 
 from ncaa.models import Season, TeamSeasonRatings, TeamSeasonMetrics
+from .viz_snapshot import use_pre_tournament_rows
 from .trapezoid_views import compute_trapezoid_boundaries, is_inside_trapezoid, trapezoid_margin
 from .serializers import RankingsSerializer
 from .checklist_utils import _item
@@ -435,16 +436,19 @@ class CrystalBallView(APIView):
                     status=status.HTTP_404_NOT_FOUND,
                 )
 
+        # Selection Sunday snapshot if the season has one, else live full-season rows
+        is_pre = use_pre_tournament_rows(season)
+
         # All D1 rated teams — used for stable season context
         all_qs = (
             TeamSeasonRatings.all_objects
-            .filter(season=season, team__is_d1=True, games_played__gt=0, is_pre_tournament=True)
+            .filter(season=season, team__is_d1=True, games_played__gt=0, is_pre_tournament=is_pre)
             .select_related("team")
         )
 
         # Build metrics lookup for shooting pct checks (needed by _build_season_context
         # for fg3_pct/ft_pct means+stds, and by individual checks below)
-        metrics_qs = TeamSeasonMetrics.all_objects.filter(season=season, is_pre_tournament=True)
+        metrics_qs = TeamSeasonMetrics.all_objects.filter(season=season, is_pre_tournament=is_pre)
         metrics_map = {m.team_id: m for m in metrics_qs}
 
         ctx = _build_season_context(all_qs, metrics_map)

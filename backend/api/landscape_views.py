@@ -13,6 +13,7 @@ from rest_framework import status
 from django.shortcuts import get_object_or_404
 
 from ncaa.models import Season, TeamSeasonRatings
+from .viz_snapshot import use_pre_tournament_rows
 
 
 # Default tier deltas (can be made configurable later)
@@ -79,13 +80,16 @@ class EfficiencyLandscapeView(APIView):
                     status=status.HTTP_404_NOT_FOUND
                 )
         
+        # Selection Sunday snapshot if the season has one, else live full-season rows
+        is_pre = use_pre_tournament_rows(season)
+
         # Build base queryset - use our computed ratings from TeamSeasonRatings
         # CRITICAL: Only include D1 teams
         queryset = TeamSeasonRatings.all_objects.filter(
             season=season,
             team__is_d1=True,  # Only D1 teams
             games_played__gt=0,  # Exclude stubs (teams not D1 in this season)
-            is_pre_tournament=True,
+            is_pre_tournament=is_pre,
         ).select_related('team')
         
         # Order by Adj EM descending

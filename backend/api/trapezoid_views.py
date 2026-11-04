@@ -12,6 +12,7 @@ from rest_framework import status
 from django.shortcuts import get_object_or_404
 
 from ncaa.models import Season, TeamSeasonRatings, TeamSeasonStats
+from .viz_snapshot import use_pre_tournament_rows
 from .trapezoid_config import (
     Q_BOT_EM, Q_X_LEFT_TOP, Q_X_RIGHT_TOP,
     Q_X_LEFT_BOT, Q_X_RIGHT_BOT,
@@ -241,13 +242,16 @@ class TrapezoidView(APIView):
                     status=status.HTTP_404_NOT_FOUND
                 )
         
+        # Selection Sunday snapshot if the season has one, else live full-season rows
+        is_pre = use_pre_tournament_rows(season)
+
         # Build queryset for ALL teams (for trapezoid boundary calculation)
         # CRITICAL: Only include D1 teams
         all_teams_queryset = TeamSeasonRatings.all_objects.filter(
             season=season,
             team__is_d1=True,  # Only D1 teams
             games_played__gt=0,  # Exclude stubs (teams not D1 in this season)
-            is_pre_tournament=True,
+            is_pre_tournament=is_pre,
         ).values('adj_tempo', 'adj_em')
         
         # Extract tempo and em values from ALL teams for trapezoid boundaries
@@ -274,7 +278,7 @@ class TrapezoidView(APIView):
             season=season,
             team__is_d1=True,  # Only D1 teams
             games_played__gt=0,  # Exclude stubs (teams not D1 in this season)
-            is_pre_tournament=True,
+            is_pre_tournament=is_pre,
         ).select_related('team').order_by('-adj_em')
         
         # Use the same serializer to get conference data (it has comprehensive mapping)
