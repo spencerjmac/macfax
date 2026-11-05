@@ -153,6 +153,21 @@ def _lookup_name(name: str, name_to_pk: dict[str, int]) -> "int | None":
     return pk
 
 
+def _lookup_initial(prefix: str, surname: str, name_to_pk: dict[str, int]) -> "int | None":
+    """
+    'J. Williams' → the one player in a roster lookup whose first name starts
+    with J and whose surname is Williams; None when no one or several match.
+    """
+    matches = set()
+    for key, pk in name_to_pk.items():
+        first, _, rest = key.partition(" ")
+        if rest and first.startswith(prefix) and surname in (
+            rest, re.sub(r"\b(jr\.?|sr\.?|ii|iii|iv)$", "", rest).strip(),
+        ):
+            matches.add(pk)
+    return matches.pop() if len(matches) == 1 else None
+
+
 def _is_offensive_rebound(description: str) -> bool:
     """
     PlayByPlayV3 rebound subType is always 'unknown'.
@@ -365,14 +380,61 @@ def _parse_game(
         return pk if pk in roster_pks else None
 
     def _lookup_for_team(name: str, is_home: bool) -> "int | None":
-        # Primary: team-constrained (correct player for this game's roster)
-        pk = _lookup_name(name, home_name_to_pk if is_home else away_name_to_pk)
-        if pk is not None:
-            return pk
-        # Fallback: global lookup for players missing from game_roster (brief DNP
-        # appearances with no box score row). Cross-era collision risk is low for
-        # fringe players; prefer this over None which guarantees lineup failure.
-        return _lookup_name(name, name_to_pk)
+        # This game's roster only: a name no one on it matches is a missed
+        # lookup, never a namesake from elsewhere in the database.
+        team_map = home_name_to_pk if is_home else away_name_to_pk
+        initial = re.fullmatch(r"([a-z]+)\.\s+(.+)", name)
+        if initial:
+            return _lookup_initial(initial.group(1), initial.group(2), team_map)
+        return _lookup_name(name, team_map)
+
+    def _period_starters(
+        period: int, prev_home: "set[int] | None", prev_away: "set[int] | None",
+    ) -> tuple[list[int], list[int]]:
+        """
+        Each side's five at the start of a period, from that period's events:
+        a player whose first appearance is an event, or being subbed OUT,
+        started it. Short of five: fill from the previous period's final five,
+        skipping anyone subbed IN this period. More than five: the five with
+        the earliest events (logged).
+        """
+        order: dict[bool, list[int]] = {True: [], False: []}
+        subbed_in: dict[bool, set[int]] = {True: set(), False: set()}
+        for ev in events:
+            if ev.period != period or ev.team_id is None or ev.action_type == "period":
+                continue
+            is_home = ev.team_id == home_team_id
+            if ev.action_type == "substitution":
+                # personId = OUTGOING player; parse incoming from description
+                first_seen = _roster_pk(ev.person_id)
+                incoming_name = _parse_sub_incoming(ev.description)
+                incoming_pk = _lookup_for_team(incoming_name, is_home)
+                if incoming_pk is None and incoming_name:
+                    failed_lookups.append(f"P{period}:{incoming_name}")
+            else:
+                first_seen, incoming_pk = _roster_pk(ev.person_id), None
+            if first_seen is not None and first_seen not in subbed_in[is_home] \
+                    and first_seen not in order[is_home]:
+                order[is_home].append(first_seen)
+            if incoming_pk is not None:
+                subbed_in[is_home].add(incoming_pk)
+
+        fives = []
+        for is_home, prev in ((True, prev_home), (False, prev_away)):
+            five = order[is_home]
+            if len(five) > 5:
+                logger.info(
+                    "game %s P%d %s: %d players start the period by events, keeping the 5 earliest",
+                    game.game_id, period, "home" if is_home else "away", len(five),
+                )
+                five = five[:5]
+            for pk in sorted(prev or ()):
+                if len(five) >= 5:
+                    break
+                if pk not in five and pk not in subbed_in[is_home]:
+                    five.append(pk)
+            fives.append(five)
+        return fives[0], fives[1]
 
     # ── Lineups from NBA.com rotation data when it is usable ──────────────────
     rot, rot_changes, rot_note = (None, [], "")
@@ -382,39 +444,8 @@ def _parse_game(
     if rot is not None:
         on_court_home, on_court_away = rot.at(0)
     else:
-        # ── Pass 1: reconstruct starting lineup from period 1 events ─────────────
-
-        home_starters: set[int] = set()   # NBAPlayer.pk
-        away_starters: set[int] = set()
-        home_subbed_in: set[int] = set()
-        away_subbed_in: set[int] = set()
-
-        for ev in events:
-            if ev.period != 1:
-                break
-            tid = ev.team_id
-            if tid is None:
-                continue
-            is_home = (tid == home_team_id)
-            subbed_in = home_subbed_in if is_home else away_subbed_in
-            starters  = home_starters  if is_home else away_starters
-
-            if ev.action_type == "substitution":
-                # personId = OUTGOING player; parse incoming from description
-                outgoing_pk = _roster_pk(ev.person_id)
-                incoming_name = _parse_sub_incoming(ev.description)
-                incoming_pk = _lookup_for_team(incoming_name, is_home)
-
-                if outgoing_pk and outgoing_pk not in subbed_in:
-                    starters.add(outgoing_pk)
-                if incoming_pk:
-                    subbed_in.add(incoming_pk)
-                elif incoming_name:
-                    failed_lookups.append(f"P1:{incoming_name}")
-            elif ev.person_id is not None:
-                pk = _roster_pk(ev.person_id)
-                if pk is not None and pk not in subbed_in:
-                    starters.add(pk)
+        # ── Pass 1: starting lineup from period 1 events ─────────────────────────
+        home_starters, away_starters = _period_starters(1, None, None)
 
         if len(home_starters) < 5 or len(away_starters) < 5:
             return [], False, (
@@ -422,8 +453,8 @@ def _parse_game(
                 f"(home={len(home_starters)}, away={len(away_starters)})"
             ), []
 
-        on_court_home: set[int] = set(list(home_starters)[:5])
-        on_court_away: set[int] = set(list(away_starters)[:5])
+        on_court_home: set[int] = set(home_starters)
+        on_court_away: set[int] = set(away_starters)
 
     # ── Pass 2: process all events ────────────────────────────────────────────
 
@@ -597,6 +628,14 @@ def _parse_game(
                     on_court_home.update(home)
                     on_court_away.clear()
                     on_court_away.update(away)
+                elif current_period > 1:
+                    # Lineups change at the break: read this period's starters
+                    # from its own events, the last five filling any gap.
+                    home, away = _period_starters(current_period, set(on_court_home), set(on_court_away))
+                    on_court_home.clear()
+                    on_court_home.update(home)
+                    on_court_away.clear()
+                    on_court_away.update(away)
                 _reopen_for_next_period(current_period)
             i += 1
             continue
@@ -717,6 +756,8 @@ def _parse_game(
                         incoming_pk in court if incoming_pk is not None else "n/a",
                         ev2.description,
                     )
+                    if incoming_pk is None:
+                        failed_lookups.append(incoming_name or f"PARSE_FAIL:{ev2.description[:50]!r}")
                     j += 1
                     continue
 
