@@ -170,3 +170,22 @@ class CachedGameFetchTests(SimpleTestCase):
         with self.assertRaises(RuntimeError):
             self._provider().get_play_by_play(GAME_ID)
         self.assertEqual(endpoint.requests, PBP_TRIES)
+
+    def test_rotation_tries_is_per_call(self):
+        endpoint = self._patch_rotation(failures=5)
+
+        with self.assertRaises(RuntimeError):
+            self._provider().get_game_rotation(GAME_ID, tries=3)
+
+        self.assertEqual(endpoint.requests, 3)
+        self.assertEqual(json.loads((self.cache_dir / f"{GAME_ID}_gamerotation.failed").read_text())["tries"], 3)
+
+    def test_retry_failed_tries_again_despite_a_recent_failure(self):
+        endpoint = self._patch_rotation(failures=0)
+        self._write_failure(age=timedelta(hours=1))
+
+        rotation = self._provider().get_game_rotation(GAME_ID, retry_failed=True)
+
+        self.assertEqual(endpoint.requests, 1)
+        self.assertEqual(len(rotation), 2)
+        self.assertFalse((self.cache_dir / f"{GAME_ID}_gamerotation.failed").exists())

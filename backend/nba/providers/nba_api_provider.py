@@ -136,7 +136,7 @@ class NBAApiProvider(NBADataProvider):
                     time.sleep(backoff)
         raise RuntimeError(f"nba_api call failed after {self.max_retries} attempts") from last_exc
 
-    def _fetch_game_endpoint(self, endpoint_cls, game_id: str, tries: int):
+    def _fetch_game_endpoint(self, endpoint_cls, game_id: str, tries: int, retry_failed: bool = False):
         """
         One game's nba_api endpoint object with its data sets loaded.
 
@@ -145,7 +145,7 @@ class NBAApiProvider(NBADataProvider):
         times with exponential backoff and caches the raw response gzipped.
         When every try fails, <game_id>_<endpoint>.failed records when; calls
         within FAILED_RECORD_TTL of that raise FetchSkipped, later calls try
-        NBA.com again.
+        NBA.com again; retry_failed=True tries again regardless.
         """
         from nba_api.stats.library.http import NBAStatsResponse
 
@@ -164,9 +164,9 @@ class NBAApiProvider(NBADataProvider):
                 return ep
         if failed and failed.exists():
             record = failed.read_text().strip()
-            if _failed_within_ttl(record):
+            if not retry_failed and _failed_within_ttl(record):
                 raise FetchSkipped(f"{name}: gave up earlier {record}")
-            logger.info("%s: failure record is over %s old, trying NBA.com again", name, FAILED_RECORD_TTL)
+            logger.info("%s: trying NBA.com again after an earlier failure %s", name, record)
 
         last_exc: Optional[Exception] = None
         for attempt in range(1, tries + 1):
@@ -523,16 +523,19 @@ class NBAApiProvider(NBADataProvider):
 
     # ── get_game_rotation ─────────────────────────────────────────────────────
 
-    def get_game_rotation(self, game_id: str) -> "list[RawRotationStint]":
+    def get_game_rotation(
+        self, game_id: str, tries: int = ROTATION_FETCH_TRIES, retry_failed: bool = False,
+    ) -> "list[RawRotationStint]":
         """
-        Every player's on-court intervals for one game via GameRotation.
+        Every player's on-court intervals for one game via GameRotation, with
+        up to `tries` NBA.com attempts; retry_failed ignores a recent failure.
 
         IN_TIME_REAL / OUT_TIME_REAL are tenths of a second from tip-off.
         """
         from nba_api.stats.endpoints.gamerotation import GameRotation
         from .base import RawRotationStint
 
-        ep = self._fetch_game_endpoint(GameRotation, game_id, tries=ROTATION_FETCH_TRIES)
+        ep = self._fetch_game_endpoint(GameRotation, game_id, tries=tries, retry_failed=retry_failed)
 
         results: list[RawRotationStint] = []
         for data_set in (ep.away_team, ep.home_team):

@@ -877,6 +877,15 @@ class Command(BaseCommand):
         parser.add_argument("--force", action="store_true", help="Reprocess games already marked pbp_synced")
         parser.add_argument("--dry-run", action="store_true", help="Parse but do not write to database")
         parser.add_argument("--limit", type=int, help="Process at most N games (for testing)")
+        parser.add_argument(
+            "--rotation-tries", type=int, default=3,
+            help="NBA.com tries for each game's rotation data (default 3, so an outage can't stall a daily run)",
+        )
+        parser.add_argument(
+            "--retry-rotation", action="store_true",
+            help="Games whose lineups came from the parser: try rotation again and, if it returns, "
+                 "delete the game's stints and rebuild them from rotation",
+        )
 
     def handle(self, *args, **options):
         season_year = options["season"]
@@ -886,8 +895,14 @@ class Command(BaseCommand):
         force = options["force"]
         dry_run = options["dry_run"]
         limit = options.get("limit")
+        rotation_tries = max(1, options["rotation_tries"])
+        retry_rotation = options["retry_rotation"]
+        if retry_rotation and force:
+            raise CommandError("--retry-rotation and --force can't be combined")
 
         self.stdout.write(f"\n[PBP SYNC] Season {season_year}")
+        if retry_rotation:
+            self.stdout.write("[RETRY ROTATION] Games with parser lineups only")
         if dry_run:
             self.stdout.write("[DRY RUN] No writes")
 
@@ -913,7 +928,9 @@ class Command(BaseCommand):
 
         if game_id_filter:
             qs = qs.filter(game_id=game_id_filter)
-        elif not force:
+        if retry_rotation:
+            qs = qs.filter(lineup_source="parser")
+        elif not game_id_filter and not force:
             qs = qs.exclude(pbp_synced=True)
 
         if force and not game_id_filter:
@@ -969,7 +986,9 @@ class Command(BaseCommand):
                 logger.warning("PBP fetch failed for %s: %s", game.game_id, exc)
                 return game.game_id, [], None
             try:
-                rotation = provider.get_game_rotation(game.game_id)
+                rotation = provider.get_game_rotation(
+                    game.game_id, tries=rotation_tries, retry_failed=retry_rotation,
+                )
             except Exception as exc:  # noqa: BLE001 -- lineups then come from play-by-play
                 logger.info("No rotation for %s: %s", game.game_id, exc)
                 rotation = None
@@ -1001,6 +1020,14 @@ class Command(BaseCommand):
                 if rewinds:
                     clock_rewind_games += 1
                     msg += f", clock went up {rewinds}x"
+
+                if retry_rotation and lineup_source != "rotation":
+                    self.stdout.write(
+                        f"  [{done}/{total}] [SKIP] {game_id_str}: still no usable rotation, "
+                        f"parser stints kept ({msg})"
+                    )
+                    skipped += 1
+                    continue
 
                 if not stints:
                     self.stdout.write(f"  [{done}/{total}] [SKIP] {game_id_str}: {msg}")
@@ -1056,6 +1083,9 @@ class Command(BaseCommand):
                     ))
 
                 with transaction.atomic():
+                    if retry_rotation:
+                        # Rebuild from rotation: the parser's stints go entirely.
+                        NBAPlayerGameStint.objects.filter(game=game).delete()
                     NBAPlayerGameStint.objects.bulk_create(
                         stint_objs,
                         update_conflicts=True,
@@ -1084,7 +1114,7 @@ class Command(BaseCommand):
                     if failed_names:
                         sample = ", ".join(repr(n) for n in failed_names[:8])
                         self.stdout.write(self.style.WARNING(f"            missed names: {sample}"))
-                elif done % 25 == 0 or done == total:
+                elif retry_rotation or done % 25 == 0 or done == total:
                     self.stdout.write(f"  [{done}/{total}] {game_id_str}: {msg}")
 
         self.stdout.write(

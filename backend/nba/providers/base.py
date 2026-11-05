@@ -277,9 +277,12 @@ class NBADataProvider(ABC):
         """
 
     @abstractmethod
-    def get_game_rotation(self, game_id: str) -> list[RawRotationStint]:
+    def get_game_rotation(
+        self, game_id: str, tries: int = 8, retry_failed: bool = False,
+    ) -> list[RawRotationStint]:
         """
         Every player's on-court intervals for a single game via GameRotation.
+        tries: NBA.com attempts; retry_failed: try even if a recent attempt gave up.
 
         Returns empty list if NBA.com has no rotation for the game.
         """
