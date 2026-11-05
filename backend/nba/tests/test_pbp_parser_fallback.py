@@ -135,7 +135,7 @@ class ParserFallbackTests(PbpGameFixture, SimpleTestCase):
         stints, _, msg, failed = self.parse(e.events)
 
         self.assertNotIn(namesake_pk, {s["player_pk"] for s in stints})
-        self.assertIn("carter", failed)
+        self.assertEqual(failed, ["carter"])     # logged once
         self.assertIn("missed sub lookups", msg)
         # The unresolved sub is skipped: home1 plays on.
         self.assertEqual(_seconds(stints)[(_pk("home", 1), 1)], 720)

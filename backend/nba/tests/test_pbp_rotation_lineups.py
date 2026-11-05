@@ -50,7 +50,7 @@ class RotationLineupsOnCachedGameTests(SimpleTestCase):
 
     def test_stints_match_the_box_score(self):
         stints, quality_flag, msg, _ = _parse_game(
-            self.game, self.events, self.player_pk_map, self.team_pk_map, {}, self.roster, self.rotation,
+            self.game, self.events, self.player_pk_map, self.team_pk_map, self.roster, self.rotation,
         )
 
         self.assertIn("lineups=rotation", msg)

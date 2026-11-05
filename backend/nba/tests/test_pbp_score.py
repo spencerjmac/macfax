@@ -72,8 +72,7 @@ class PbpGameFixture:
         self.addCleanup(patcher.stop)
 
     def parse(self, events):
-        return _parse_game(self.game, events, self.player_pk_map, self.team_pk_map,
-                           self.name_to_pk, self.roster)
+        return _parse_game(self.game, events, self.player_pk_map, self.team_pk_map, self.roster)
 
 
 class RunningScoreNeverDecreasesTests(PbpGameFixture, SimpleTestCase):

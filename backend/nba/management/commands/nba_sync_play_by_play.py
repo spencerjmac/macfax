@@ -330,7 +330,6 @@ def _parse_game(
     events: list[RawPlayEvent],
     player_pk_map: dict[int, int],        # NBA.com player_id → NBAPlayer.pk
     team_pk_map: dict[int, int],          # NBA.com team_id → NBATeam.pk
-    name_to_pk: dict[str, int],           # normalized name → NBAPlayer.pk (global)
     game_roster: "dict[int, set[int]]",   # team.pk → set of NBAPlayer.pk for THIS game
     rotation: "list | None" = None,       # GameRotation rows (RawRotationStint)
 ) -> tuple[list[dict], bool, str, list[str]]:
@@ -348,7 +347,11 @@ def _parse_game(
     if not events:
         return [], False, "no events", []
 
-    failed_lookups: list[str] = []  # names that could not be resolved
+    failed_lookups: list[str] = []  # names that could not be resolved, each once
+
+    def _missed(name: str) -> None:
+        if name not in failed_lookups:
+            failed_lookups.append(name)
 
     home_team_id = game.home_team.nba_team_id
     away_team_id = game.away_team.nba_team_id
@@ -409,8 +412,8 @@ def _parse_game(
                 first_seen = _roster_pk(ev.person_id)
                 incoming_name = _parse_sub_incoming(ev.description)
                 incoming_pk = _lookup_for_team(incoming_name, is_home)
-                if incoming_pk is None and incoming_name:
-                    failed_lookups.append(f"P{period}:{incoming_name}")
+                if incoming_pk is None:
+                    _missed(incoming_name or f"PARSE_FAIL:{ev.description[:50]!r}")
             else:
                 first_seen, incoming_pk = _roster_pk(ev.person_id), None
             if first_seen is not None and first_seen not in subbed_in[is_home] \
@@ -578,6 +581,28 @@ def _parse_game(
     rot_unmatched = 0       # substitution rows rotation could not place
     rot_forced = 0          # rotation changes applied without (all) their rows
 
+    def _change_lineup(home: set[int], away: set[int], first: int, after: int, clock: int) -> None:
+        """
+        Put the fives after a run of substitution rows (events[first:after]) on
+        court. Free throws for a foul listed before the run belong to the
+        lineup on court at the foul: when the run's second has such a foul,
+        hold the change until after its last free throw.
+        """
+        nonlocal deferred
+        key = (events[first].period, events[first].clock_secs)
+        k = first - 1
+        while k >= 0 and (events[k].period, events[k].clock_secs) == key and events[k].action_type != "foul":
+            k -= 1
+        foul_before = k >= 0 and (events[k].period, events[k].clock_secs) == key
+        last_ft = max((k for k in range(after, len(events))
+                       if (events[k].period, events[k].clock_secs) == key
+                       and events[k].action_type == "free throw"), default=None) if foul_before else None
+        if last_ft is None:
+            deferred = None
+            _set_lineup(home, away, key[0], clock)
+        else:
+            deferred = (last_ft + 1, home, away, key[0], clock)
+
     # Open initial stints at Q1 start
     for pk in on_court_home:
         _open_stint(pk, True, 1, QUARTER_SECS)
@@ -590,7 +615,7 @@ def _parse_game(
     while i < len(events):
         ev = events[i]
 
-        # ── Rotation: a change held back for free throws takes effect here ────
+        # ── A lineup change held back for free throws takes effect here ───────
         if deferred is not None and i >= deferred[0]:
             _set_lineup(*deferred[1:])
             deferred = None
@@ -695,21 +720,7 @@ def _parse_game(
                 court.add(pick)
                 changed = True
             if changed:
-                # Free throws for a foul listed before this run belong to the
-                # lineup on court at the foul: when this second has such a foul,
-                # hold the change until after its last free throw.
-                k = i - 1
-                while k >= 0 and (events[k].period, events[k].clock_secs) == key and events[k].action_type != "foul":
-                    k -= 1
-                foul_before = k >= 0 and (events[k].period, events[k].clock_secs) == key
-                last_ft = max((k for k in range(j, len(events))
-                               if (events[k].period, events[k].clock_secs) == key
-                               and events[k].action_type == "free throw"), default=None) if foul_before else None
-                boundary = _rotation_boundary_clock(ch.t_after)
-                if last_ft is None:
-                    _set_lineup(home, away, ev.period, boundary)
-                else:
-                    deferred = (last_ft + 1, home, away, ev.period, boundary)
+                _change_lineup(home, away, i, j, _rotation_boundary_clock(ch.t_after))
             i = j
             continue
 
@@ -724,11 +735,15 @@ def _parse_game(
             ins_away:  list[int] = []
 
             # Collect all subs at this clock value (within 1 sec).
-            # on_court_home/away are not modified during collection, so checking
+            # The pre-batch fives are not modified during collection, so checking
             # them here reflects the pre-batch state — used to guard against
             # NBA.com PBP data errors where the incoming player is already on court
             # (e.g. "SUB: Davis FOR Ajinca" when Davis is already playing).
             # Skipping the entire event preserves 5v5 lineup integrity.
+            # A change still waiting on free throws is the pre-batch state.
+            before_home, before_away = (
+                (deferred[1], deferred[2]) if deferred is not None else (on_court_home, on_court_away)
+            )
             j = i
             while j < len(events) and events[j].action_type == "substitution":
                 ev2 = events[j]
@@ -741,7 +756,7 @@ def _parse_game(
                 incoming_name = _parse_sub_incoming(ev2.description)
                 incoming_pk = _lookup_for_team(incoming_name, is_home2)
 
-                court = on_court_home if is_home2 else on_court_away
+                court = before_home if is_home2 else before_away
                 # Only process clean swaps: outgoing IS on court, incoming is NOT.
                 # Any deviation corrupts the 5-player invariant — skip the whole event.
                 if not (outgoing_pk is not None and outgoing_pk in court
@@ -757,54 +772,21 @@ def _parse_game(
                         ev2.description,
                     )
                     if incoming_pk is None:
-                        failed_lookups.append(incoming_name or f"PARSE_FAIL:{ev2.description[:50]!r}")
+                        _missed(incoming_name or f"PARSE_FAIL:{ev2.description[:50]!r}")
                     j += 1
                     continue
 
-                if outgoing_pk:
-                    (outs_home if is_home2 else outs_away).append(outgoing_pk)
-                if incoming_pk:
-                    (ins_home if is_home2 else ins_away).append(incoming_pk)
-                elif incoming_name:
-                    failed_lookups.append(incoming_name)
-                    logger.debug(
-                        "sub lookup miss game=%s clock=%s name=%r home_keys=%d away_keys=%d",
-                        game.game_id, ev2.clock_secs, incoming_name,
-                        len(home_name_to_pk), len(away_name_to_pk),
-                    )
-                else:
-                    failed_lookups.append(f"PARSE_FAIL:{ev2.description[:50]!r}")
-                    logger.debug(
-                        "sub desc parse failed game=%s clock=%s desc=%r",
-                        game.game_id, ev2.clock_secs, ev2.description,
-                    )
-
+                (outs_home if is_home2 else outs_away).append(outgoing_pk)
+                (ins_home if is_home2 else ins_away).append(incoming_pk)
                 j += 1
 
-            # Close ALL active stints at this clock (not just the subs).
-            # This ensures all 10 players in each lineup share identical
-            # clock_start/clock_end, so the RAPM solver can group them by
-            # (game_pk, period, clock_start, clock_end) into 5v5 observations.
-            for pk in list(active_stints.keys()):
-                st = _close_stint(pk, batch_clock)
-                if st:
-                    completed_stints.append(st)
-
-            for pk in outs_home:
-                on_court_home.discard(pk)
-            for pk in outs_away:
-                on_court_away.discard(pk)
-            for pk in ins_home:
-                on_court_home.add(pk)
-            for pk in ins_away:
-                on_court_away.add(pk)
-
-            # Re-open stints for ALL players now on court at the new clock
-            window[0] += 1
-            for pk in on_court_home:
-                _open_stint(pk, True, batch_period, batch_clock)
-            for pk in on_court_away:
-                _open_stint(pk, False, batch_period, batch_clock)
+            # Close ALL active stints at this clock (not just the subs) and
+            # reopen for the new fives, so all 10 players in each lineup share
+            # identical clock_start/clock_end and the RAPM solver can group them
+            # by (game_pk, period, clock_start, clock_end) into 5v5 observations.
+            home = (set(before_home) - set(outs_home)) | set(ins_home)
+            away = (set(before_away) - set(outs_away)) | set(ins_away)
+            _change_lineup(home, away, i, j, batch_clock)
 
             i = j
             continue
@@ -944,8 +926,7 @@ class Command(BaseCommand):
             t.nba_team_id: t.pk
             for t in NBATeam.objects.only("pk", "nba_team_id")
         }
-        name_to_pk = _build_name_lookup(player_pk_map)
-        self.stdout.write(f"  {len(player_pk_map)} players, {len(team_pk_map)} teams, {len(name_to_pk)} name keys")
+        self.stdout.write(f"  {len(player_pk_map)} players, {len(team_pk_map)} teams")
 
         # ── Select games to process ───────────────────────────────────────────
         qs = NBAGame.objects.filter(
@@ -1039,7 +1020,7 @@ class Command(BaseCommand):
                     continue
 
                 done = processed + skipped + 1
-                stints, quality_flag, msg, failed_names = _parse_game(game, events, player_pk_map, team_pk_map, name_to_pk, game_id_to_roster.get(game_id_str, {}), rotation)
+                stints, quality_flag, msg, failed_names = _parse_game(game, events, player_pk_map, team_pk_map, game_id_to_roster.get(game_id_str, {}), rotation)
                 rewinds = _clock_rewinds(events)
                 if rewinds:
                     clock_rewind_games += 1
