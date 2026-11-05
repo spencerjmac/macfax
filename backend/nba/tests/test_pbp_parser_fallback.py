@@ -78,11 +78,12 @@ class ParserFallbackTests(PbpGameFixture, SimpleTestCase):
             e.touch(2, 500, "away", n)
         e.end(2)
 
-        stints, quality_flag, msg, failed = self.parse(e.events)
+        stints, quality_flag, msg, failed, source = self.parse(e.events)
 
         self.assertFalse(quality_flag, msg)
         self.assertIn("0 dropped", msg)
         self.assertEqual(failed, [])
+        self.assertEqual(source, "parser")
         secs = _seconds(stints)
         # home3 had no Q2 event before being subbed out; home4 and home5 had
         # none at all: all three come from Q1's last five. home1 was subbed IN
@@ -112,7 +113,7 @@ class ParserFallbackTests(PbpGameFixture, SimpleTestCase):
         e.sub(1, 600, "home", 2, "SUB: K. Williams FOR home2")
         e.end(1)
 
-        stints, quality_flag, msg, failed = self.parse(e.events)
+        stints, quality_flag, msg, failed, source = self.parse(e.events)
 
         self.assertFalse(quality_flag, msg)
         self.assertIn("0 dropped", msg)
@@ -135,7 +136,7 @@ class ParserFallbackTests(PbpGameFixture, SimpleTestCase):
         e.sub(1, 600, "home", 1, "SUB: Carter FOR home1")
         e.end(1)
 
-        stints, _, msg, failed = self.parse(e.events)
+        stints, _, msg, failed, _ = self.parse(e.events)
 
         self.assertNotIn(namesake_pk, {s["player_pk"] for s in stints})
         self.assertEqual(failed, ["carter"])     # logged once
@@ -161,7 +162,7 @@ class ParserFallbackTests(PbpGameFixture, SimpleTestCase):
               description="home2 Free Throw 2 of 2 (2 PTS)", score=(2, 0))
         e.end(1)
 
-        stints, quality_flag, msg, failed = self.parse(e.events)
+        stints, quality_flag, msg, failed, source = self.parse(e.events)
 
         self.assertFalse(quality_flag, msg)
         self.assertIn(" 0 dropped", msg)

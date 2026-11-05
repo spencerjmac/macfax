@@ -108,7 +108,7 @@ class RunningScoreNeverDecreasesTests(PbpGameFixture, SimpleTestCase):
         return [home[k] for k in sorted(home, reverse=True)]
 
     def test_zero_score_on_non_scoring_event_does_not_inflate_stint_points(self):
-        stints, quality_flag, msg, failed = self.parse(self._events_with_zero_score_mid_game())
+        stints, quality_flag, msg, failed, _ = self.parse(self._events_with_zero_score_mid_game())
 
         self.assertFalse(quality_flag, msg)
         self.assertEqual(failed, [])

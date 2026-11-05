@@ -109,7 +109,7 @@ def build_nba_observations(
                 "game__home_team__nba_team_id",
                 "game__away_team__nba_team_id",
                 "team__nba_team_id",
-                "stint_index",
+                "stint_index", "window_index",
                 "period", "clock_start_secs", "clock_end_secs",
                 "pts_scored", "pts_allowed",
                 "team_fgm", "team_fga", "team_fg3m", "team_fta", "team_tov", "team_oreb", "team_dreb",
@@ -141,10 +141,16 @@ def build_nba_observations(
                     "away_team_id": g.away_team.nba_team_id,
                 }
 
-        # Group stints by (game_pk, period, clock_start, clock_end)
+        # Group stints by (game_pk, period, window_index) when the sync stored a
+        # lineup window: several changes inside one clock second leave
+        # zero-length windows with identical clocks. Older rows have no window
+        # and group by (game_pk, period, clock_start, clock_end).
         lineup_groups: dict[tuple, list] = defaultdict(list)
         for s in stints:
-            key = (s.game_id, s.period, s.clock_start_secs, s.clock_end_secs)
+            if s.window_index is not None:
+                key = (s.game_id, s.period, s.window_index)
+            else:
+                key = (s.game_id, s.period, s.clock_start_secs, s.clock_end_secs)
             lineup_groups[key].append(s)
 
         year_obs = 0

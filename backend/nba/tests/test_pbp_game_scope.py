@@ -32,7 +32,7 @@ class GameScopeTests(PbpGameFixture, SimpleTestCase):
               shot_result="Made", score=(0, 2), description="away1 Layup (2 PTS)")
         e.add(0, "period", sub_type="end")
 
-        stints, quality_flag, msg, _ = self.parse(e.events)
+        stints, quality_flag, msg, _, _ = self.parse(e.events)
 
         self.assertFalse(quality_flag, msg)
         on_court = {s["player_pk"] for s in stints if s["team_pk"] == AWAY_TEAM_PK}

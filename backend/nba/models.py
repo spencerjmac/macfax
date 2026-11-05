@@ -153,6 +153,11 @@ class NBAGame(models.Model):
         default=False, db_index=True,
         help_text="True when > 5% of stints fail 10-player validation — excluded from RAPM",
     )
+    lineup_source = models.CharField(
+        max_length=10, null=True, blank=True,
+        choices=[("rotation", "NBA.com rotation data"), ("parser", "Play-by-play parser")],
+        help_text="Where nba_sync_play_by_play took this game's lineups from; null before it ran",
+    )
 
     # AI-generated insights (cached after first generation)
     game_insights = models.TextField(null=True, blank=True)
@@ -335,6 +340,10 @@ class NBAPlayerGameStint(models.Model):
     pts_scored       = models.IntegerField(default=0, help_text="Team pts scored while on court")
     pts_allowed      = models.IntegerField(default=0, help_text="Opp pts scored while on court")
     plus_minus       = models.IntegerField(default=0)
+    window_index     = models.IntegerField(
+        null=True, blank=True,
+        help_text="Lineup window within the game: the ten stints of one 5v5 lineup share it",
+    )
 
     # ── Team box events while on court ────────────────────────────────────────
     team_fgm  = models.SmallIntegerField(default=0)

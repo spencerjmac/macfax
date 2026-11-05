@@ -76,8 +76,8 @@ def _normalize_name(name: str) -> str:
 def _build_roster_name_lookup(player_pks: set[int]) -> dict[str, int]:
     """
     Build name → pk for a specific game roster (~13 players per team).
-    Unlike the global lookup, this OVERWRITES on collision — at team scope
-    there are no cross-era collisions, so last-writer wins is fine.
+    OVERWRITES on collision: at team scope there are no cross-era
+    collisions, so last-writer wins is fine.
     Unicode-normalized so accented names match ASCII PBP descriptions.
     """
     from nba.models import NBAPlayer
@@ -316,11 +316,12 @@ def _parse_game(
     play-by-play substitutions.
 
     Returns:
-        (stints_list, quality_flag, message)
+        (stints_list, quality_flag, message, failed_lookups, lineup_source)
         quality_flag = True if > 5% of stints fail 10-player check.
+        lineup_source = "rotation" or "parser"; None when no stints were built.
     """
     if not events:
-        return [], False, "no events", []
+        return [], False, "no events", [], None
 
     failed_lookups: list[str] = []  # names that could not be resolved, each once
 
@@ -336,7 +337,7 @@ def _parse_game(
     # ── Team-constrained name lookup (eliminates cross-era "Williams" ambiguity) ─
     # Build fresh from each team's actual game roster (~13 players) so common
     # last names (James, Smith, Thompson) map to the correct current-game player,
-    # not a historical namesake from a different era in the global lookup.
+    # never a namesake elsewhere in the database.
     home_pks = game_roster.get(home_team_pk, set())
     away_pks = game_roster.get(away_team_pk, set())
     home_name_to_pk = _build_roster_name_lookup(home_pks)
@@ -429,7 +430,7 @@ def _parse_game(
             return [], False, (
                 f"could not reconstruct starting lineup "
                 f"(home={len(home_starters)}, away={len(away_starters)})"
-            ), []
+            ), [], None
 
         on_court_home: set[int] = set(home_starters)
         on_court_away: set[int] = set(away_starters)
@@ -860,7 +861,7 @@ def _parse_game(
     if quality_flag:
         msg += f" [QUALITY FLAG] bad:{','.join(bad_group_samples)}"
 
-    return valid_stints, quality_flag, msg, failed_lookups
+    return valid_stints, quality_flag, msg, failed_lookups, ("rotation" if rot is not None else "parser")
 
 
 # ── Management command ────────────────────────────────────────────────────────
@@ -995,7 +996,7 @@ class Command(BaseCommand):
                     continue
 
                 done = processed + skipped + 1
-                stints, quality_flag, msg, failed_names = _parse_game(game, events, player_pk_map, team_pk_map, game_id_to_roster.get(game_id_str, {}), rotation)
+                stints, quality_flag, msg, failed_names, lineup_source = _parse_game(game, events, player_pk_map, team_pk_map, game_id_to_roster.get(game_id_str, {}), rotation)
                 rewinds = _clock_rewinds(events)
                 if rewinds:
                     clock_rewind_games += 1
@@ -1043,6 +1044,7 @@ class Command(BaseCommand):
                         pts_scored=s["pts_scored"],
                         pts_allowed=s["pts_allowed"],
                         plus_minus=s["plus_minus"],
+                        window_index=s["window"],
                         team_fgm=s["team_fgm"], team_fga=s["team_fga"],
                         team_fg3m=s["team_fg3m"], team_fta=s["team_fta"],
                         team_tov=s["team_tov"], team_oreb=s["team_oreb"],
@@ -1060,7 +1062,7 @@ class Command(BaseCommand):
                         unique_fields=["player", "game", "stint_index"],
                         update_fields=[
                             "team", "period", "clock_start_secs", "clock_end_secs",
-                            "secs_on", "pts_scored", "pts_allowed", "plus_minus",
+                            "secs_on", "pts_scored", "pts_allowed", "plus_minus", "window_index",
                             "team_fgm", "team_fga", "team_fg3m", "team_fta",
                             "team_tov", "team_oreb", "team_dreb",
                             "opp_fgm", "opp_fga", "opp_fg3m", "opp_fta",
@@ -1071,6 +1073,7 @@ class Command(BaseCommand):
                         pbp_synced=True,
                         pbp_synced_at=timezone.now(),
                         pbp_quality_flag=quality_flag,
+                        lineup_source=lineup_source,
                     )
 
                 processed += 1
