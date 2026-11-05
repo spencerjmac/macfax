@@ -4,6 +4,9 @@ rotation data. Each period's starters come from that period's events (the
 parser used to carry the last five across the break); "J. Williams" resolves
 by initial among this game's roster only; and a name no one on either roster
 matches is a missed lookup, never a namesake from elsewhere in the database.
+
+P.3d: free throws listed after a substitution run, but awarded for a foul
+listed earlier in the same second, belong to the five on court at the foul.
 """
 
 from collections import defaultdict
@@ -23,13 +26,13 @@ class _PeriodEvents:
         self.events: list[RawPlayEvent] = []
 
     def add(self, period, clock, action_type, team_id=None, person_id=None, sub_type="",
-            description=""):
+            description="", score=(None, None)):
         n = len(self.events) + 1
         self.events.append(RawPlayEvent(
             game_id="0029900001", action_number=n, clock_secs=clock, period=period,
             team_id=team_id, person_id=person_id, action_type=action_type,
             sub_type=sub_type, shot_result=None, is_field_goal=False,
-            score_home=None, score_away=None, points_total=0,
+            score_home=score[0], score_away=score[1], points_total=0,
             description=description, order_number=n,
         ))
 
@@ -141,3 +144,38 @@ class ParserFallbackTests(PbpGameFixture, SimpleTestCase):
         self.assertEqual(_seconds(stints)[(_pk("home", 1), 1)], 720)
         self.assertEqual({s["player_pk"] for s in stints if s["team_pk"] == AWAY_TEAM_PK},
                          {_pk("away", n) for n in range(1, 6)})
+
+    def test_free_throws_credit_the_five_on_court_at_the_foul(self):
+        e = _PeriodEvents()
+        e.start(1)
+        for side in ("home", "away"):
+            for n in range(1, 6):
+                e.touch(1, 700, side, n)
+        # All in one second: foul, a sub run, FT 1, another sub run, FT 2.
+        e.touch(1, 300, "away", 1)
+        e.sub(1, 300, "home", 1, "SUB: home6 FOR home1")
+        e.add(1, 300, "free throw", HOME_TEAM_ID, _player_id("home", 2),
+              description="home2 Free Throw 1 of 2 (1 PTS)", score=(1, 0))
+        e.sub(1, 300, "away", 2, "SUB: away6 FOR away2")
+        e.add(1, 300, "free throw", HOME_TEAM_ID, _player_id("home", 2),
+              description="home2 Free Throw 2 of 2 (2 PTS)", score=(2, 0))
+        e.end(1)
+
+        stints, quality_flag, msg, failed = self.parse(e.events)
+
+        self.assertFalse(quality_flag, msg)
+        self.assertIn(" 0 dropped", msg)
+        self.assertEqual(failed, [])
+        plus_minus, secs = defaultdict(int), _seconds(stints)
+        for s in stints:
+            plus_minus[s["player_pk"]] += s["plus_minus"]
+        for n in range(1, 6):
+            self.assertEqual(plus_minus[_pk("home", n)], 2, f"home{n}")
+            self.assertEqual(plus_minus[_pk("away", n)], -2, f"away{n}")
+        self.assertEqual(plus_minus[_pk("home", 6)], 0)
+        self.assertEqual(plus_minus[_pk("away", 6)], 0)
+        # Both sub runs still take effect at 300.
+        self.assertEqual(secs[(_pk("home", 1), 1)], 420)
+        self.assertEqual(secs[(_pk("home", 6), 1)], 300)
+        self.assertEqual(secs[(_pk("away", 2), 1)], 420)
+        self.assertEqual(secs[(_pk("away", 6), 1)], 300)

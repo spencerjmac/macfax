@@ -73,31 +73,6 @@ def _normalize_name(name: str) -> str:
     return nfkd.encode("ascii", "ignore").decode("ascii").lower().strip()
 
 
-def _build_name_lookup(player_pk_map: dict[int, int]) -> dict[str, int]:
-    """
-    Build normalized name → NBAPlayer.pk lookup for PlayByPlayV3 description parsing.
-    Entries: full name lower, last-name(s) lower, base last name (no Jr./II/III/IV).
-    Later entries win on key collision (arbitrary but consistent).
-    """
-    from nba.models import NBAPlayer
-    name_to_pk: dict[str, int] = {}
-    for player in NBAPlayer.objects.filter(
-        player_id__in=player_pk_map.keys()
-    ).only("pk", "player_id", "name"):
-        pk = player_pk_map[player.player_id]
-        norm = _normalize_name(player.name)
-        name_to_pk[norm] = pk
-
-        parts = norm.split()
-        if len(parts) > 1:
-            last = " ".join(parts[1:])          # "smith jr.", "van vleet"
-            base = re.sub(r"\b(jr\.?|sr\.?|ii|iii|iv)\b", "", last).strip()
-            for key in (last, base, parts[-1]):
-                if key and key not in name_to_pk:
-                    name_to_pk[key] = pk
-    return name_to_pk
-
-
 def _build_roster_name_lookup(player_pks: set[int]) -> dict[str, int]:
     """
     Build name → pk for a specific game roster (~13 players per team).
