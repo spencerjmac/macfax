@@ -130,7 +130,7 @@ class Command(BaseCommand):
 
         # ── 1. Load season stats ───────────────────────────────────────────────
         stats_qs = NBAPlayerSeasonStats.objects.filter(
-            season__year=season_year
+            season__year=season_year, season_type="regular",
         ).select_related("player", "team", "season")
 
         stats_values = list(
