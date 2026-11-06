@@ -14,6 +14,8 @@ from django.test import SimpleTestCase
 
 from nba.management.commands.compute_nba_team_outlooks import (
     Command,
+    MIN_COMPETITIVE_POOL,
+    TOTAL_SHARES,
     ROOKIE_PRIOR_OBPR,
     ROOKIE_PRIOR_DBPR,
     ROOKIE_EFF_MPG_BIN_EFFECTS,
@@ -124,7 +126,7 @@ class PinnedAllocationTests(SimpleTestCase):
         self.assertIsNotNone(rookie["demand"])          # competed, not pinned
         self.assertNotIn("pinned_share", rookie)
         self.assertLess(rookie["minutes_share"], 27.9 / 20.0)  # demand-swamped
-        self.assertAlmostEqual(sum(s["minutes_share"] for s in slots), 5.0, places=4)
+        self.assertAlmostEqual(sum(s["minutes_share"] for s in slots), TOTAL_SHARES, places=4)
 
     def test_pinned_share_equals_prior_over_20(self):
         slots = [_vet(f"V{i}", 2.0) for i in range(8)] + [_pinned_rookie("R1", 27.9)]
@@ -137,17 +139,20 @@ class PinnedAllocationTests(SimpleTestCase):
         slots = [_vet(f"V{i}", 2.0) for i in range(8)] + [_pinned_rookie("R1", 27.9)]
         self.cmd._allocate_minutes(slots)
         vet_total = sum(s["minutes_share"] for s in slots if not s.get("is_rookie_prior"))
-        self.assertAlmostEqual(vet_total, 5.0 - 27.9 / 20.0, places=4)
-        self.assertAlmostEqual(sum(s["minutes_share"] for s in slots), 5.0, places=4)
+        self.assertAlmostEqual(vet_total, TOTAL_SHARES - 27.9 / 20.0, places=4)
+        self.assertAlmostEqual(sum(s["minutes_share"] for s in slots), TOTAL_SHARES, places=4)
 
     def test_rookie_stack_scales_down_to_preserve_competitive_pool(self):
-        # 3 lottery rookies pin 3×1.395 = 4.185 → must scale so vets keep 2.5
+        # 5 lottery rookies pin 5×1.395 = 6.975 of 12 shares, leaving 5.025 —
+        # below MIN_COMPETITIVE_POOL (6) → pinned scale so vets keep exactly 6
+        self.assertEqual(MIN_COMPETITIVE_POOL, TOTAL_SHARES / 2)
         slots = [_vet(f"V{i}", 1.0) for i in range(6)] + [
-            _pinned_rookie(f"R{i}", 27.9) for i in range(3)
+            _pinned_rookie(f"R{i}", 27.9) for i in range(5)
         ]
+        self.assertGreater(5 * 27.9 / 20.0, MIN_COMPETITIVE_POOL)
         self.cmd._allocate_minutes(slots)
         pinned_total = sum(s["minutes_share"] for s in slots if s.get("is_rookie_prior"))
         vet_total = sum(s["minutes_share"] for s in slots if not s.get("is_rookie_prior"))
-        self.assertAlmostEqual(pinned_total, 2.5, places=4)
-        self.assertAlmostEqual(vet_total, 2.5, places=4)
-        self.assertAlmostEqual(sum(s["minutes_share"] for s in slots), 5.0, places=4)
+        self.assertAlmostEqual(vet_total, 6.0, places=6)
+        self.assertAlmostEqual(pinned_total, TOTAL_SHARES - 6.0, places=6)
+        self.assertAlmostEqual(sum(s["minutes_share"] for s in slots), TOTAL_SHARES, places=4)

@@ -171,6 +171,9 @@ TOTAL_SHARES = 12.0            # 240 NBA player-minutes / 48-min game ÷ 20-MPG/
                                # (was 5.0 = NCAA 200/40 — the lone wrong-convention
                                # constant; every other uses 20-MPG/share, e.g.
                                # MINUTES_CEIL 1.80 = 36 MPG, rookie pin /20)
+MIN_COMPETITIVE_POOL = TOTAL_SHARES / 2   # rookie-stacked guard: pinned rookies
+                               # are scaled down so at least half the pool (6 of
+                               # 12 shares) stays competitive for veterans
 KEEP_ROTATION = 10             # non-rookie slots kept before minutes allocation
                                # (+ ALL rookies). Trims ~22-man projected rosters
                                # to a real rotation so Σ(prior_mpg/20) doesn't
@@ -1179,8 +1182,8 @@ class Command(BaseCommand):
         remaining_pool = TOTAL_SHARES - pinned_total
 
         # Guard: a rookie-stacked roster could starve the veteran pool. Keep at
-        # least 2.5 shares (half the team) competitive by scaling pinned down.
-        MIN_COMPETITIVE_POOL = 2.5
+        # least MIN_COMPETITIVE_POOL (half the pool) competitive by scaling
+        # pinned down.
         if competitive and remaining_pool < MIN_COMPETITIVE_POOL and pinned_total > 0:
             scale = (TOTAL_SHARES - MIN_COMPETITIVE_POOL) / pinned_total
             logger.warning(
@@ -1252,7 +1255,7 @@ class Command(BaseCommand):
         pinned_total = sum(s["pinned_share"] for s in pinned)
         remaining_pool = TOTAL_SHARES - pinned_total
 
-        MIN_COMPETITIVE_POOL = 2.5
+        # Same rookie-stacked guard as _allocate_minutes (MIN_COMPETITIVE_POOL).
         if competitive and remaining_pool < MIN_COMPETITIVE_POOL and pinned_total > 0:
             scale = (TOTAL_SHARES - MIN_COMPETITIVE_POOL) / pinned_total
             logger.warning(
