@@ -115,12 +115,19 @@ class Command(BaseCommand):
             action="store_true",
             help="Compute without writing to DB; run validation checks and save comparison CSV",
         )
+        parser.add_argument(
+            "--career-floor",
+            type=int,
+            default=2016,
+            help="Oldest season (ending year) in the career-stabilized stats window (default 2016)",
+        )
 
     def handle(self, *args, **options):
         season_year: int = resolve_season_year(options["season"])
         dry_run: bool = options["dry_run"]
         use_oof: bool = options["oof"]
         validate: bool = options.get("validate", False)
+        career_floor: int = options.get("career_floor", 2016)
         if validate:
             dry_run = True   # --validate implies no DB writes
 
@@ -170,7 +177,7 @@ class Command(BaseCommand):
         self.stdout.write("Building career-stabilized stats map...")
         career_stats_map = build_career_stats_map(
             target_season_year=season_year,
-            min_season_year=2016,
+            min_season_year=career_floor,
         )
         self.stdout.write(f"  Career map: {len(career_stats_map)} players")
 
