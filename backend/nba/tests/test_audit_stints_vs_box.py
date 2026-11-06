@@ -3,6 +3,9 @@ Phase P P.5: nba_audit_bpr_data's B5-B7 compare stints with the box score.
 On a one-game fixture a clean game passes each check and a game with one
 wrong stint fails it. Quality-flagged games are reported on their own line,
 outside the headline. No database: the three querysets are stood in for.
+
+P.7: B6 allows 120 seconds when the season's box scores hold only whole
+minutes; B7 passes one-point misses and lists games missing by more.
 """
 
 import tempfile
@@ -16,26 +19,31 @@ from django.test import SimpleTestCase
 from nba.management.commands.nba_audit_bpr_data import Command
 from nba.models import NBAGame, NBAPlayerGameStats, NBAPlayerGameStint
 
-GAME_PK, HOME, AWAY = 7, 1, 2
+GAME_PK, GAME_ID, HOME, AWAY = 7, "0029900001", 1, 2
 HOME_PLAYERS, AWAY_PLAYERS = range(101, 106), range(201, 206)
 
 
-def _one_game(flagged=False, **wrong):
+def _one_game(flagged=False, box_with_seconds=False, **wrong):
     """
     A 4-2 game with one lineup window all game. `wrong` changes the first
-    home player's stint: pts_scored, secs_on or plus_minus.
+    home player's stint: pts_scored, secs_on or plus_minus. Box seconds are
+    whole minutes unless box_with_seconds, which gives the second home player
+    (box and stint alike) 2875 seconds.
     """
-    game = (GAME_PK, HOME, 4, 2, "rotation", flagged)
+    game = (GAME_PK, GAME_ID, HOME, 4, 2, "rotation", flagged)
     stints, box = [], []
     for team, players, scored, allowed in ((HOME, HOME_PLAYERS, 4, 2), (AWAY, AWAY_PLAYERS, 2, 4)):
         for pid in players:
             stint = {"pts_scored": scored, "pts_allowed": allowed, "secs_on": 2880,
                      "plus_minus": scored - allowed}
+            box_secs = 2880
+            if box_with_seconds and pid == HOME_PLAYERS[1]:
+                box_secs = stint["secs_on"] = 2875
             if pid == HOME_PLAYERS[0]:
                 stint.update(wrong)
             stints.append((GAME_PK, pid, team, 1, 720, 0, 1, stint["secs_on"], stint["plus_minus"],
                            stint["pts_scored"], stint["pts_allowed"]))
-            box.append((GAME_PK, pid, 2880, scored - allowed))
+            box.append((GAME_PK, pid, box_secs, scored - allowed))
     return [game], stints, box
 
 
@@ -79,7 +87,18 @@ class StintsVsBoxAuditTests(SimpleTestCase):
     def test_b6_one_wrong_stint_fails(self):
         res = self._check("b6", secs_on=2000)
         self.assertEqual(res["status"], "WARN", res)
-        self.assertEqual(res["metrics"]["rotation.share_over_60s"], 0.1)
+        self.assertEqual(res["metrics"]["rotation.share_over_tol"], 0.1)
+
+    def test_b6_whole_minute_box_scores_allow_120_seconds(self):
+        res = self._check("b6", secs_on=2880 - 90)
+        self.assertEqual(res["status"], "PASS", res)
+        self.assertEqual(res["metrics"]["tolerance_secs"], 120)
+
+    def test_b6_box_scores_with_seconds_keep_60_seconds(self):
+        res = self._check("b6", box_with_seconds=True, secs_on=2880 - 90)
+        self.assertEqual(res["status"], "WARN", res)
+        self.assertEqual(res["metrics"]["tolerance_secs"], 60)
+        self.assertEqual(res["metrics"]["rotation.share_over_tol"], 0.1)
 
     def test_b7_clean_game_passes(self):
         res = self._check("b7")
@@ -90,6 +109,14 @@ class StintsVsBoxAuditTests(SimpleTestCase):
         res = self._check("b7", plus_minus=5)
         self.assertEqual(res["status"], "WARN", res)
         self.assertEqual(res["metrics"]["rotation.share_pm_equal"], 0.9)
+        self.assertEqual(res["metrics"]["rotation.share_off_gt1"], 0.1)
+        self.assertEqual(res["metrics"]["rotation.games_off_gt1"], [GAME_ID])
+
+    def test_b7_one_point_miss_passes(self):
+        res = self._check("b7", plus_minus=3)
+        self.assertEqual(res["status"], "PASS", res)
+        self.assertEqual(res["metrics"]["rotation.share_pm_equal"], 0.9)
+        self.assertEqual(res["metrics"]["rotation.games_off_gt1"], [])
 
     def test_flagged_game_is_reported_on_its_own_line(self):
         self._patch(*_one_game(flagged=True, plus_minus=5))

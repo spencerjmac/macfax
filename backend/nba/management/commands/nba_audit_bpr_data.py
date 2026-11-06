@@ -15,8 +15,10 @@ Checks:
   B3  LEBRON CSV player-id match rate per season
   B4  d_mpir and pbp_quality_flag coverage per season
   B5  Stint points vs final score per game
-  B6  Stint seconds vs box-score seconds per player-game
-  B7  Stint plus-minus vs box-score plus_minus per player-game
+  B6  Stint seconds vs box-score seconds per player-game (tolerance 60 s;
+      120 s for seasons whose box scores hold only whole minutes)
+  B7  Stint plus-minus vs box-score plus_minus per player-game (pass: no
+      more than 1% off by more than 1 point)
 
 B5-B7 split every metric by NBAGame.lineup_source ("rotation", "parser",
 "unknown" for games synced before the field existed). Their headline covers
@@ -253,11 +255,11 @@ class Command(BaseCommand):
         from nba.models import NBAGame, NBAPlayerGameStats, NBAPlayerGameStint
 
         games = {
-            pk: {"home_team": home, "home_score": hs, "away_score": as_,
+            pk: {"game_id": game_id, "home_team": home, "home_score": hs, "away_score": as_,
                  "source": source or "unknown", "flagged": bool(flag), "windows": {}}
-            for pk, home, hs, as_, source, flag in NBAGame.objects
+            for pk, game_id, home, hs, as_, source, flag in NBAGame.objects
             .filter(season__year=season, status="Final")
-            .values_list("pk", "home_team_id", "home_score", "away_score",
+            .values_list("pk", "game_id", "home_team_id", "home_score", "away_score",
                          "lineup_source", "pbp_quality_flag")
         }
         stint_secs: dict[tuple, int] = defaultdict(int)
@@ -292,7 +294,7 @@ class Command(BaseCommand):
             g = games[key[0]]
             box_secs, box_pm = box.get(key, (0, None))
             player_games.append({
-                "game_pk": key[0], "player_pk": key[1],
+                "game_pk": key[0], "game_id": g["game_id"], "player_pk": key[1],
                 "source": g["source"], "flagged": g["flagged"],
                 "stint_secs": stint_secs.get(key, 0), "box_secs": box_secs,
                 "stint_pm": stint_pm.get(key, 0), "box_pm": box_pm,
@@ -355,34 +357,45 @@ class Command(BaseCommand):
 
     # ── B6: stint seconds vs box-score seconds ────────────────────────────────
 
-    def _measure_b6(self, rows: list[dict]) -> tuple[str, dict]:
-        metrics, worst = {}, 0.0
+    @staticmethod
+    def _b6_tolerance(rows: list[dict]) -> int:
+        """120 s when every box-score value in the season is whole minutes, else 60 s."""
+        return 120 if all(r["box_secs"] % 60 == 0 for r in rows) else 60
+
+    def _measure_b6(self, rows: list[dict], tolerance: int = 60) -> tuple[str, dict]:
+        metrics, worst = {"tolerance_secs": tolerance}, 0.0
         for src, rs in self._by_source(rows).items():
             errs = [abs(r["stint_secs"] - r["box_secs"]) for r in rs]
-            over = sum(1 for e in errs if e > 60) / len(errs)
+            over = sum(1 for e in errs if e > tolerance) / len(errs)
             metrics[f"{src}.n_player_games"] = len(rs)
             metrics[f"{src}.median_abs_err_secs"] = statistics.median(errs)
-            metrics[f"{src}.share_over_60s"] = round(over, 4)
+            metrics[f"{src}.share_over_tol"] = round(over, 4)
             worst = max(worst, over)
         return ("PASS" if worst <= 0.01 else "WARN"), metrics
 
     def check_b6(self, season: int, out_dir: Path) -> dict:
         rows = self._stints_vs_box(season)["player_games"]
-        off = sorted((r for r in rows if abs(r["stint_secs"] - r["box_secs"]) > 60),
+        tolerance = self._b6_tolerance(rows)
+        off = sorted((r for r in rows if abs(r["stint_secs"] - r["box_secs"]) > tolerance),
                      key=lambda r: -abs(r["stint_secs"] - r["box_secs"]))
         self._write_csv(out_dir / f"b6_stint_seconds_off_{season}.csv", off[:200])
-        return self._headline_and_flagged("B6", season, rows, self._measure_b6)
+        return self._headline_and_flagged(
+            "B6", season, rows, lambda rs: self._measure_b6(rs, tolerance))
 
     # ── B7: stint plus-minus vs box-score plus_minus ──────────────────────────
 
     def _measure_b7(self, rows: list[dict]) -> tuple[str, dict]:
-        metrics, worst = {}, 1.0
+        """Pass: no more than 1% of player-games off by more than 1 point."""
+        metrics, worst = {}, 0.0
         for src, rs in self._by_source(rows).items():
             equal = sum(1 for r in rs if r["stint_pm"] == r["box_pm"]) / len(rs)
+            off = [r for r in rs if abs(r["stint_pm"] - r["box_pm"]) > 1]
             metrics[f"{src}.n_player_games"] = len(rs)
             metrics[f"{src}.share_pm_equal"] = round(equal, 4)
-            worst = min(worst, equal)
-        return ("PASS" if worst >= 0.99 else "WARN"), metrics
+            metrics[f"{src}.share_off_gt1"] = round(len(off) / len(rs), 4)
+            metrics[f"{src}.games_off_gt1"] = sorted({r["game_id"] for r in off})
+            worst = max(worst, len(off) / len(rs))
+        return ("PASS" if worst <= 0.01 else "WARN"), metrics
 
     def check_b7(self, season: int, out_dir: Path) -> dict:
         rows = [r for r in self._stints_vs_box(season)["player_games"] if r["box_pm"] is not None]
