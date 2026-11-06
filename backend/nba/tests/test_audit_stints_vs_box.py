@@ -130,3 +130,15 @@ class StintsVsBoxAuditTests(SimpleTestCase):
         self.assertIn("no unflagged games", headline)
         self.assertIn("quality-flagged games: 1  WARN", flagged)
         self.assertIn("rotation.share_pm_equal=0.9", flagged)
+
+    def test_console_shows_games_off_gt1_as_count_and_first_10(self):
+        ids = [f"00299000{n:02d}" for n in range(1, 13)]
+        line = Command._console_metric("rotation.games_off_gt1", ids)
+        self.assertEqual(line, f"rotation.games_off_gt1=12 [{', '.join(ids[:10])}, ...]")
+        self.assertEqual(Command._console_metric("rotation.games_off_gt1", []), "rotation.games_off_gt1=0 []")
+
+    def test_b7_writes_every_game_off_by_more_than_1_to_csv(self):
+        self._check("b7", plus_minus=5)
+        rows = (self.out_dir / "b7_games_off_gt1_2026.csv").read_text().splitlines()
+        self.assertEqual(rows, ["game_id,source,flagged,n_player_games_off_gt1,max_miss",
+                                f"{GAME_ID},rotation,False,1,3"])

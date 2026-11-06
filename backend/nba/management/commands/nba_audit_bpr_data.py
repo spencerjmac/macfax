@@ -73,14 +73,14 @@ class Command(BaseCommand):
                 results.append(res)
                 self.stdout.write(
                     f"  {season}: {res['status']}  "
-                    + "  ".join(f"{k}={v}" for k, v in res["metrics"].items())
+                    + "  ".join(self._console_metric(k, v) for k, v in res["metrics"].items())
                 )
                 flagged = res.get("flagged")
                 if flagged is not None:
                     self.stdout.write(
                         f"  {season} quality-flagged games: {flagged['n_games']}"
                         + (f"  {flagged['status']}  " + "  ".join(
-                            f"{k}={v}" for k, v in flagged["metrics"].items())
+                            self._console_metric(k, v) for k, v in flagged["metrics"].items())
                            if flagged["n_games"] else "")
                     )
 
@@ -88,6 +88,14 @@ class Command(BaseCommand):
         with open(summary_path, "w") as f:
             json.dump(results, f, indent=2, default=str)
         self.stdout.write(self.style.SUCCESS(f"\nSummary written to {summary_path}"))
+
+    @staticmethod
+    def _console_metric(key: str, value) -> str:
+        """key=value; a games_off_gt1 list prints as its count plus the first 10 ids."""
+        if key.endswith("games_off_gt1") and isinstance(value, list):
+            more = ", ..." if len(value) > 10 else ""
+            return f"{key}={len(value)} [{', '.join(value[:10])}{more}]"
+        return f"{key}={value}"
 
     @staticmethod
     def _write_csv(path: Path, rows: list[dict]) -> None:
@@ -402,4 +410,15 @@ class Command(BaseCommand):
         off = sorted((r for r in rows if r["stint_pm"] != r["box_pm"]),
                      key=lambda r: -abs(r["stint_pm"] - r["box_pm"]))
         self._write_csv(out_dir / f"b7_stint_plus_minus_off_{season}.csv", off[:200])
+        # Every game with a miss larger than 1 point (games_off_gt1 in full).
+        by_game: dict[str, list[dict]] = defaultdict(list)
+        for r in rows:
+            if abs(r["stint_pm"] - r["box_pm"]) > 1:
+                by_game[r["game_id"]].append(r)
+        self._write_csv(out_dir / f"b7_games_off_gt1_{season}.csv", [
+            {"game_id": gid, "source": rs[0]["source"], "flagged": rs[0]["flagged"],
+             "n_player_games_off_gt1": len(rs),
+             "max_miss": max(abs(r["stint_pm"] - r["box_pm"]) for r in rs)}
+            for gid, rs in sorted(by_game.items())
+        ])
         return self._headline_and_flagged("B7", season, rows, self._measure_b7)
