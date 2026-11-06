@@ -18,6 +18,7 @@ import clsx from 'clsx';
 import HeaderWithTooltip from './HeaderWithTooltip';
 import { computeRanks, heatStyleFromPercentile } from '@macfax/core/lib/rankingUtils';
 import { getBPRTier, fmtSigned } from '@macfax/core/lib/bprTiers';
+import { AUTO_THRESHOLD, autoNbaMinPoss } from '@macfax/core/lib/playerThresholds';
 import {
   PLAYER_TRADITIONAL_METRICS,
   NBA_ADVANCED_METRICS,
@@ -80,7 +81,10 @@ export default function NBAPlayerRankingsTable({ data, seasonDisplay, seasonType
   const [activeTab, setActiveTab] = useState<TabId>('traditional');
   const [sorting, setSorting] = useState<SortingState>([{ id: 'pts', desc: true }]);
   const [globalFilter, setGlobalFilter] = useState('');
-  const [minPoss, setMinPoss] = useState(500);
+  // Default "Auto" scales with games played (see playerThresholds.ts)
+  const [minPossChoice, setMinPossChoice] = useState<number>(AUTO_THRESHOLD);
+  const autoMinPoss = useMemo(() => autoNbaMinPoss(data), [data]);
+  const minPoss = minPossChoice === AUTO_THRESHOLD ? autoMinPoss : minPossChoice;
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: PAGE_SIZE });
 
   const [optionalCols, setOptionalCols] = useState<Set<string>>(() => {
@@ -472,15 +476,16 @@ export default function NBAPlayerRankingsTable({ data, seasonDisplay, seasonType
         {!isPlayoffs && (
           <div>
             <select
-              value={minPoss}
+              value={minPossChoice}
               onChange={(e) => {
-                setMinPoss(Number(e.target.value));
+                setMinPossChoice(Number(e.target.value));
                 setPagination((p) => ({ ...p, pageIndex: 0 }));
               }}
               className="px-3 py-2 bg-ui-surface border border-ui-border rounded-lg text-sm
                          focus:outline-none focus:ring-2 focus:ring-brand/50"
             >
-              {[100, 250, 500, 750, 1000, 1500, 2000].map((n) => (
+              <option value={AUTO_THRESHOLD}>Auto · min {autoMinPoss} poss</option>
+              {[50, 100, 250, 500, 750, 1000, 1500, 2000].map((n) => (
                 <option key={n} value={n}>Min {n} poss</option>
               ))}
             </select>

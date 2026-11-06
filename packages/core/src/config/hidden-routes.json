@@ -4,6 +4,7 @@
     { "path": "/ncaa/outlook",     "redirectTo": "/ncaa",     "label": "NCAA Roster Outlook",  "reason": "Offseason projections; accuracy not proven yet" },
     { "path": "/ncaa/viz/bracket", "redirectTo": "/ncaa/viz", "label": "Bracket Simulator",    "reason": "Bracket is not out until Selection Sunday" },
     { "path": "/ncaa/viz/kill-shot", "redirectTo": "/ncaa/viz", "label": "Kill Shot Analysis", "reason": "Not built yet" },
+    { "path": "/ncaa/viz/builder", "redirectTo": "/ncaa/viz", "label": "Viz Builder",        "reason": "Rough; not useful enough yet" },
     { "path": "/validation",       "redirectTo": "/ncaa",     "label": "Model Accuracy",       "reason": "Not ready for the public site" },
     { "path": "/nba/teams",        "redirectTo": "/nba",      "label": "NBA Team Outlooks",    "reason": "Preseason preview; season has started" },
     { "path": "/nba/prospects",    "redirectTo": "/nba",      "label": "NBA Draft Big Board",  "reason": "2026 draft is over" },

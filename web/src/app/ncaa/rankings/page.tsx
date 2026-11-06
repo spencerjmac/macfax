@@ -30,7 +30,7 @@ export default async function RankingsPage({ searchParams }: RankingsPageProps) 
     getAllSeasons(),
     getMetadata(seasonYear, isPreTournament),
     activeTab === 'players'
-      ? api.getLeaguePlayers({ season: seasonYear, ordering: '-pts', min_gp: 5 }).catch(() => [])
+      ? api.getLeaguePlayers({ season: seasonYear, ordering: '-pts', min_gp: 1 }).catch(() => [])
       : Promise.resolve([]),
   ]);
 

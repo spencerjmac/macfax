@@ -24,6 +24,7 @@ from rest_framework import status
 from django.shortcuts import get_object_or_404
 
 from ncaa.models import Season, TeamSeasonRatings, TeamSeasonMetrics, NationalAverages
+from .viz_snapshot import use_pre_tournament_rows
 from .serializers import RankingsSerializer
 from .bracket_engine import build_bracket_from_ratings, compute_p_sweet16
 
@@ -242,6 +243,9 @@ class CinderellaView(APIView):
                 return Response({'error': 'No current season found'},
                                 status=status.HTTP_404_NOT_FOUND)
 
+        # Selection Sunday snapshot if the season has one, else live full-season rows
+        is_pre = use_pre_tournament_rows(season)
+
         # National averages (needed for P(Sweet 16) computation)
         try:
             nat = NationalAverages.objects.get(season=season)
@@ -253,7 +257,7 @@ class CinderellaView(APIView):
 
         all_ratings = list(
             TeamSeasonRatings.all_objects
-            .filter(season=season, team__is_d1=True, games_played__gt=0, is_pre_tournament=True)
+            .filter(season=season, team__is_d1=True, games_played__gt=0, is_pre_tournament=is_pre)
             .select_related('team')
         )
         if not all_ratings:
@@ -262,7 +266,7 @@ class CinderellaView(APIView):
 
         metrics_map = {
             m.team_id: m
-            for m in TeamSeasonMetrics.all_objects.filter(season=season, is_pre_tournament=True)
+            for m in TeamSeasonMetrics.all_objects.filter(season=season, is_pre_tournament=is_pre)
         }
 
         ctx           = _build_context(all_ratings, metrics_map)
