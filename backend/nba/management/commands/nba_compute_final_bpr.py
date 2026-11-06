@@ -348,7 +348,10 @@ class Command(BaseCommand):
         lebron_lambda_scale: float = options.get("lebron_lambda_scale", LEBRON_LAMBDA_SCALE)
 
         # ── LEBRON freshness gate ─────────────────────────────────────────────
-        for _result in check_all_lebron_files(str(LEBRON_DATA_DIR), season_year):
+        # Only when LEBRON feeds the prior or the lambda: with all three
+        # weights at 0 a missing CSV doesn't matter.
+        lebron_used = lebron_prior_w > 0 or lebron_prior_def_w > 0 or lebron_lambda_scale > 0
+        for _result in (check_all_lebron_files(str(LEBRON_DATA_DIR), season_year) if lebron_used else []):
             _label = f"lebron-data-{_result['year']}.csv"
             if _result["status"] == "error":
                 raise CommandError(
@@ -368,6 +371,8 @@ class Command(BaseCommand):
                 )
             else:
                 logger.info("LEBRON data OK: %s (%.1f days old)", _label, _result["age_days"])
+        if not lebron_used:
+            self.stdout.write("  LEBRON weights all 0: freshness gate skipped")
 
         if sweep:
             self._run_sweep(season_year, rapm_window, within_season_half_life, cross_season_decay, lebron_prior_w)
