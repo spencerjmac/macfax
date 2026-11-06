@@ -150,7 +150,7 @@ class Command(BaseCommand):
         # ── Step 4: iterate over existing NBAPlayerSeasonStats rows ──────────
         qs = (
             NBAPlayerSeasonStats.objects
-            .filter(season=season)
+            .filter(season=season, season_type="regular")
             .select_related("player", "team")
         )
         total = qs.count()
