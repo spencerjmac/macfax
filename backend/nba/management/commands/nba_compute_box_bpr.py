@@ -92,6 +92,53 @@ def _load_lebron_targets(season_year: int, player_pks: list[int]) -> dict[int, t
     return result
 
 
+# Per-game stats: sum(stat x gp) / total gp across a traded player's rows.
+_PER_GAME_FIELDS = ("pts", "ast", "stl", "blk", "tov",
+                    "oreb_pg", "dreb_pg", "fga_pg", "fg3a_pg", "fta_pg")
+# Rate stats: GP-weighted over the rows that have them (as career_stats).
+_RATE_FIELDS = ("efg_pct", "ts_pct", "usg_pct", "ast_pct", "oreb_pct", "dreb_pct",
+                "ast_to", "stl_pct", "blk_pct", "tov_pct")
+
+
+def _merge_player_rows(stats_values: list[dict]) -> tuple[list[dict], int]:
+    """
+    One row per player: a traded player has one regular-season row per team.
+    Rules follow career_stats._consolidate_traded_rows: on_court_poss = max,
+    rate stats GP-weighted; per-game stats = sum(stat x gp) / total gp;
+    team_id = the team with the most minutes. Player-level fields (on-court
+    ratings, MPIR, RAPM baselines) are the same on every row and are kept
+    from the first. Keeps the order of each player's first row.
+    Returns (rows, number of players merged).
+    """
+    by_player: dict[int, list[dict]] = {}
+    for row in stats_values:
+        by_player.setdefault(row["player_id"], []).append(row)
+
+    merged, n_merged = [], 0
+    for rows in by_player.values():
+        if len(rows) == 1:
+            merged.append(rows[0])
+            continue
+        n_merged += 1
+        gp_total = sum(r["gp"] or 0 for r in rows)
+        minutes = [(r["mpg"] or 0.0) * (r["gp"] or 0) for r in rows]
+        out = dict(rows[0])
+        out["team_id"] = rows[max(range(len(rows)), key=minutes.__getitem__)]["team_id"]
+        out["gp"] = gp_total
+        out["mpg"] = sum(minutes) / gp_total if gp_total > 0 else 0.0
+        out["on_court_poss"] = max((r["on_court_poss"] or 0.0) for r in rows)
+        for f in _PER_GAME_FIELDS:
+            vals = [r[f] for r in rows if r.get(f) is not None]
+            out[f] = (sum((r.get(f) or 0.0) * (r["gp"] or 0) for r in rows) / gp_total
+                      if vals and gp_total > 0 else None)
+        for f in _RATE_FIELDS:
+            vals = [(r[f], r["gp"] or 0) for r in rows if r.get(f) is not None]
+            gp_with = sum(g for _, g in vals)
+            out[f] = sum(v * g for v, g in vals) / gp_with if vals and gp_with > 0 else None
+        merged.append(out)
+    return merged, n_merged
+
+
 class Command(BaseCommand):
     help = "Compute NBA Box BPR (box_obpr, box_dbpr, box_bpr) for a season"
 
@@ -167,6 +214,10 @@ class Command(BaseCommand):
         if not stats_values:
             raise CommandError(f"No stats found for season {season_year}. Run nba_compute_player_stats first.")
 
+        # Traded players have one row per team: merge into one row per player.
+        stats_values, n_merged = _merge_player_rows(stats_values)
+        self.stdout.write(f"  Merged rows for {n_merged} traded players → {len(stats_values)} players")
+
         # ── 2. Build lookup maps ───────────────────────────────────────────────
         self.stdout.write("Computing opponent quality and team adj_em maps...")
         opp_quality_map = compute_opp_quality_map(season_year)
@@ -182,6 +233,11 @@ class Command(BaseCommand):
         self.stdout.write(f"  Career map: {len(career_stats_map)} players")
 
         # ── 3. Build target maps — prefer RAPM (team-quality-adjusted) ──────────
+        n_players = len({p["player_id"] for p in stats_values})
+        if n_players != len(stats_values):
+            raise CommandError(
+                f"Expected one row per player, got {len(stats_values)} rows for {n_players} players"
+            )
         target_obpr: dict[int, float] = {}
         target_dbpr: dict[int, float] = {}
         rapm_off_pids: set[int] = set()
@@ -320,6 +376,7 @@ class Command(BaseCommand):
                 self._run_validation(predictions, stats_values, artifacts, old_box_bpr, season_year)
             return
 
+        # Each player's prediction goes to all of their rows (one per team).
         updated = 0
         skipped = 0
         for stat_row in stats_qs:
