@@ -20,6 +20,11 @@ Checks:
   B7  Stint plus-minus vs box-score plus_minus per player-game (pass: no
       more than 1% off by more than 1 point)
 
+--season-type picks the sector (default regular: games with
+counts_toward_regular_season=True, season stats with season_type="regular");
+playoffs / play_in skip B3 and report only B4's flagged-game count, and put
+the type in output filenames.
+
 B5-B7 split every metric by NBAGame.lineup_source ("rotation", "parser",
 "unknown" for games synced before the field existed). Their headline covers
 the games RAPM uses (pbp_quality_flag False); quality-flagged games get their
@@ -48,12 +53,19 @@ class Command(BaseCommand):
         parser.add_argument("--check", type=str, default=None)
         parser.add_argument("--out-dir", type=str,
                             default="backtest_output/bpr_audit")
+        parser.add_argument(
+            "--season-type", choices=["regular", "playoffs", "play_in"], default="regular",
+            help="Sector to audit (default regular: games counting toward the regular season)",
+        )
 
     def handle(self, *args, **opts):
         seasons = sorted(opts["seasons"])
         checks = [opts["check"].upper()] if opts["check"] else ALL_CHECKS
         out_dir = Path(opts["out_dir"])
         out_dir.mkdir(parents=True, exist_ok=True)
+        self.season_type = opts.get("season_type", "regular")
+        if self.season_type != "regular":
+            self.stdout.write(f"[SEASON TYPE] {self.season_type}")
 
         results: list[dict] = []
         for check in checks:
@@ -84,10 +96,25 @@ class Command(BaseCommand):
                            if flagged["n_games"] else "")
                     )
 
-        summary_path = out_dir / "nba_audit_summary.json"
+        summary_path = out_dir / f"nba_audit_summary{self._type_suffix()}.json"
         with open(summary_path, "w") as f:
             json.dump(results, f, indent=2, default=str)
         self.stdout.write(self.style.SUCCESS(f"\nSummary written to {summary_path}"))
+
+    # ── Season type (sector) ──────────────────────────────────────────────────
+
+    def _sector(self) -> str:
+        return getattr(self, "season_type", "regular")
+
+    def _games(self, prefix: str = "") -> dict:
+        """Game filter for the sector; prefix "game__" for stint / box-score rows."""
+        if self._sector() == "regular":
+            return {f"{prefix}counts_toward_regular_season": True}
+        return {f"{prefix}season_type": self._sector()}
+
+    def _type_suffix(self) -> str:
+        """Filename suffix: "" for regular (today's names), else "_<type>"."""
+        return "" if self._sector() == "regular" else f"_{self._sector()}"
 
     @staticmethod
     def _console_metric(key: str, value) -> str:
@@ -112,7 +139,7 @@ class Command(BaseCommand):
         from nba.models import NBAPlayerGameStint
 
         qs = (NBAPlayerGameStint.objects
-              .filter(game__season__year=season)
+              .filter(game__season__year=season, **self._games("game__"))
               .values_list("player_id", "game_id", "period",
                            "clock_start_secs", "clock_end_secs", "secs_on"))
 
@@ -148,7 +175,7 @@ class Command(BaseCommand):
                                          "stint_b": f"{s2}-{e2}",
                                          "overlap_secs": ov})
 
-        self._write_csv(out_dir / f"b1_nba_overlaps_{season}.csv", examples)
+        self._write_csv(out_dir / f"b1_nba_overlaps_{season}{self._type_suffix()}.csv", examples)
         frac = overlap_secs / total_secs if total_secs else 0.0
         n_total = len(seen) + n_exact
         status = "PASS" if (n_exact == 0 and frac < 0.001) else "FAIL"
@@ -163,7 +190,7 @@ class Command(BaseCommand):
 
         team_by_pg: dict[int, set] = defaultdict(set)
         for pid, tid in (NBAPlayerGameStats.objects
-                         .filter(game__season__year=season)
+                         .filter(game__season__year=season, **self._games("game__"))
                          .values_list("player_id", "team_id")):
             team_by_pg[pid].add(tid)
         multi = {pid for pid, tids in team_by_pg.items() if len(tids) > 1}
@@ -173,7 +200,7 @@ class Command(BaseCommand):
         # vs a single TOT-style row — either is fine, zero rows is not.
         pss_counts: dict[int, int] = defaultdict(int)
         for pid in (NBAPlayerSeasonStats.objects
-                    .filter(season__year=season, player_id__in=list(multi))
+                    .filter(season__year=season, season_type=self._sector(), player_id__in=list(multi))
                     .values_list("player_id", flat=True)):
             pss_counts[pid] += 1
         n_missing = sum(1 for pid in multi if pss_counts.get(pid, 0) == 0)
@@ -186,6 +213,9 @@ class Command(BaseCommand):
     # ── B3: LEBRON id match rate ──────────────────────────────────────────────
 
     def check_b3(self, season: int, out_dir: Path) -> dict:
+        if self._sector() != "regular":
+            return {"check": "B3", "season": season, "status": "SKIP",
+                    "metrics": {"note": f"no {self._sector()} LEBRON"}}
         import csv as _csv
         from pathlib import Path as _P
         from nba.models import NBAPlayerSeasonStats
@@ -208,7 +238,7 @@ class Command(BaseCommand):
 
         db_ids = set(
             NBAPlayerSeasonStats.objects
-            .filter(season__year=season, mpg__gte=12.0, gp__gte=20)
+            .filter(season__year=season, season_type="regular", mpg__gte=12.0, gp__gte=20)
             .values_list("player__player_id", flat=True)
         )
         if not db_ids:
@@ -218,7 +248,7 @@ class Command(BaseCommand):
         rate = len(matched) / len(db_ids)
         missing = sorted(db_ids - lebron_ids)
         rows = [{"nba_player_id": pid} for pid in missing[:100]]
-        self._write_csv(out_dir / f"b3_lebron_unmatched_{season}.csv", rows)
+        self._write_csv(out_dir / f"b3_lebron_unmatched_{season}{self._type_suffix()}.csv", rows)
         return {"check": "B3", "season": season,
                 "status": "PASS" if rate >= 0.90 else "WARN",
                 "metrics": {"n_qualified_db": len(db_ids),
@@ -230,14 +260,19 @@ class Command(BaseCommand):
     def check_b4(self, season: int, out_dir: Path) -> dict:
         from nba.models import NBAPlayerSeasonStats, NBAGame
 
-        qual = NBAPlayerSeasonStats.objects.filter(
-            season__year=season, mpg__gte=12.0, gp__gte=20)
-        n_qual = qual.count()
-        n_dmpir = qual.filter(d_mpir__isnull=False).count()
-
-        games = NBAGame.objects.filter(season__year=season, status="Final")
+        games = NBAGame.objects.filter(season__year=season, status="Final", **self._games())
         n_games = games.count()
         n_flagged = games.filter(pbp_quality_flag=True).count()
+        if self._sector() != "regular":
+            # The gp>=20 / d_mpir qualifier doesn't fit playoffs: flagged games only.
+            return {"check": "B4", "season": season, "status": "INFO",
+                    "metrics": {"n_final_games": n_games, "n_pbp_flagged": n_flagged,
+                                "pbp_flagged_frac": round(n_flagged / n_games, 4) if n_games else None}}
+
+        qual = NBAPlayerSeasonStats.objects.filter(
+            season__year=season, season_type="regular", mpg__gte=12.0, gp__gte=20)
+        n_qual = qual.count()
+        n_dmpir = qual.filter(d_mpir__isnull=False).count()
         cov = n_dmpir / n_qual if n_qual else 0.0
         return {"check": "B4", "season": season,
                 "status": "PASS" if cov >= 0.90 else "WARN",
@@ -258,15 +293,16 @@ class Command(BaseCommand):
         else (period, clock_start, clock_end), as in build_nba_observations.
         """
         cache = self.__dict__.setdefault("_stints_vs_box_cache", {})
-        if season in cache:
-            return cache[season]
+        season_key = (season, self._sector())
+        if season_key in cache:
+            return cache[season_key]
         from nba.models import NBAGame, NBAPlayerGameStats, NBAPlayerGameStint
 
         games = {
             pk: {"game_id": game_id, "home_team": home, "home_score": hs, "away_score": as_,
                  "source": source or "unknown", "flagged": bool(flag), "windows": {}}
             for pk, game_id, home, hs, as_, source, flag in NBAGame.objects
-            .filter(season__year=season, status="Final")
+            .filter(season__year=season, status="Final", **self._games())
             .values_list("pk", "game_id", "home_team_id", "home_score", "away_score",
                          "lineup_source", "pbp_quality_flag")
         }
@@ -274,7 +310,7 @@ class Command(BaseCommand):
         stint_pm: dict[tuple, int] = defaultdict(int)
         synced: set[int] = set()
         for gid, pid, tid, period, cs, ce, win, secs, pm, scored, allowed in (
-            NBAPlayerGameStint.objects.filter(game__season__year=season)
+            NBAPlayerGameStint.objects.filter(game__season__year=season, **self._games("game__"))
             .values_list("game_id", "player_id", "team_id", "period", "clock_start_secs",
                          "clock_end_secs", "window_index", "secs_on", "plus_minus",
                          "pts_scored", "pts_allowed")
@@ -293,7 +329,8 @@ class Command(BaseCommand):
 
         box: dict[tuple, tuple] = {}
         for gid, pid, secs, pm in (NBAPlayerGameStats.objects
-                                   .filter(game__season__year=season, game_id__in=synced)
+                                   .filter(game__season__year=season, game_id__in=synced,
+                                           **self._games("game__"))
                                    .values_list("game_id", "player_id", "seconds_played", "plus_minus")):
             box[(gid, pid)] = (secs or 0, pm)
 
@@ -307,9 +344,9 @@ class Command(BaseCommand):
                 "stint_secs": stint_secs.get(key, 0), "box_secs": box_secs,
                 "stint_pm": stint_pm.get(key, 0), "box_pm": box_pm,
             })
-        cache[season] = {"games": {pk: g for pk, g in games.items() if pk in synced},
-                         "player_games": player_games}
-        return cache[season]
+        cache[season_key] = {"games": {pk: g for pk, g in games.items() if pk in synced},
+                             "player_games": player_games}
+        return cache[season_key]
 
     @staticmethod
     def _by_source(rows: list[dict]) -> dict[str, list[dict]]:
@@ -360,7 +397,7 @@ class Command(BaseCommand):
                          "stint_away": away, "final_away": g["away_score"],
                          "off_by": max(abs(home - g["home_score"]), abs(away - g["away_score"]))})
         off = sorted((r for r in rows if r["off_by"] > 2), key=lambda r: -r["off_by"])
-        self._write_csv(out_dir / f"b5_stint_points_off_{season}.csv", off[:200])
+        self._write_csv(out_dir / f"b5_stint_points_off_{season}{self._type_suffix()}.csv", off[:200])
         return self._headline_and_flagged("B5", season, rows, self._measure_b5)
 
     # ── B6: stint seconds vs box-score seconds ────────────────────────────────
@@ -386,7 +423,7 @@ class Command(BaseCommand):
         tolerance = self._b6_tolerance(rows)
         off = sorted((r for r in rows if abs(r["stint_secs"] - r["box_secs"]) > tolerance),
                      key=lambda r: -abs(r["stint_secs"] - r["box_secs"]))
-        self._write_csv(out_dir / f"b6_stint_seconds_off_{season}.csv", off[:200])
+        self._write_csv(out_dir / f"b6_stint_seconds_off_{season}{self._type_suffix()}.csv", off[:200])
         return self._headline_and_flagged(
             "B6", season, rows, lambda rs: self._measure_b6(rs, tolerance))
 
@@ -409,13 +446,13 @@ class Command(BaseCommand):
         rows = [r for r in self._stints_vs_box(season)["player_games"] if r["box_pm"] is not None]
         off = sorted((r for r in rows if r["stint_pm"] != r["box_pm"]),
                      key=lambda r: -abs(r["stint_pm"] - r["box_pm"]))
-        self._write_csv(out_dir / f"b7_stint_plus_minus_off_{season}.csv", off[:200])
+        self._write_csv(out_dir / f"b7_stint_plus_minus_off_{season}{self._type_suffix()}.csv", off[:200])
         # Every game with a miss larger than 1 point (games_off_gt1 in full).
         by_game: dict[str, list[dict]] = defaultdict(list)
         for r in rows:
             if abs(r["stint_pm"] - r["box_pm"]) > 1:
                 by_game[r["game_id"]].append(r)
-        self._write_csv(out_dir / f"b7_games_off_gt1_{season}.csv", [
+        self._write_csv(out_dir / f"b7_games_off_gt1_{season}{self._type_suffix()}.csv", [
             {"game_id": gid, "source": rs[0]["source"], "flagged": rs[0]["flagged"],
              "n_player_games_off_gt1": len(rs),
              "max_miss": max(abs(r["stint_pm"] - r["box_pm"]) for r in rs)}
