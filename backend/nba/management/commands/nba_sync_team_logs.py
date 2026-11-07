@@ -22,7 +22,7 @@ from django.db import transaction
 
 from nba.models import NBASeason, NBATeam, NBAGame, NBAPlayer, NBAPlayerGameStats
 from nba.providers.nba_api_provider import NBAApiProvider
-from nba.seasons import resolve_season_year
+from nba.seasons import resolve_season_year, season_in_play
 
 logger = logging.getLogger(__name__)
 
@@ -150,6 +150,10 @@ class Command(BaseCommand):
             return
 
         team_map: dict = {t.nba_team_id: t for t in NBATeam.objects.all()}
+        # A player's current team and active flag describe today: only the
+        # season in play may set them. Older seasons leave existing players
+        # alone, and players first seen there start inactive with no team.
+        in_play = season_year == season_in_play()
 
         # ── Phase 1: fetch all box scores in parallel ─────────────────────────
         self.stdout.write(f"  Fetching {total} box scores with {workers} worker(s)...")
@@ -196,10 +200,16 @@ class Command(BaseCommand):
             with transaction.atomic():
                 for ps in player_scores:
                     team = team_map.get(ps.team_id)
-                    player, created = NBAPlayer.objects.update_or_create(
-                        player_id=ps.player_id,
-                        defaults={"current_team": team, "is_active": True},
-                    )
+                    if in_play:
+                        player, created = NBAPlayer.objects.update_or_create(
+                            player_id=ps.player_id,
+                            defaults={"current_team": team, "is_active": True},
+                        )
+                    else:
+                        player, created = NBAPlayer.objects.get_or_create(
+                            player_id=ps.player_id,
+                            defaults={"current_team": None, "is_active": False},
+                        )
                     if created or not player.name:
                         player.name = f"Player #{ps.player_id}"
                         player.save(update_fields=["name"])
