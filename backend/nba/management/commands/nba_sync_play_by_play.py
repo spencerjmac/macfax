@@ -882,6 +882,11 @@ class Command(BaseCommand):
             help="NBA.com tries for each game's rotation data (default 3, so an outage can't stall a daily run)",
         )
         parser.add_argument(
+            "--season-type", choices=["regular", "playoffs", "play_in"], default="regular",
+            help="Games to sync: regular (default; games counting toward the regular season), "
+                 "playoffs or play_in (Final games of that season_type)",
+        )
+        parser.add_argument(
             "--retry-rotation", action="store_true",
             help="Games whose lineups came from the parser: try rotation again and, if it returns, "
                  "delete the game's stints and rebuild them from rotation",
@@ -897,10 +902,18 @@ class Command(BaseCommand):
         limit = options.get("limit")
         rotation_tries = max(1, options["rotation_tries"])
         retry_rotation = options["retry_rotation"]
+        season_type = options.get("season_type", "regular")
+        # regular keeps the original selection; playoffs / play_in select by season_type.
+        type_filter = (
+            {"counts_toward_regular_season": True} if season_type == "regular"
+            else {"season_type": season_type}
+        )
         if retry_rotation and force:
             raise CommandError("--retry-rotation and --force can't be combined")
 
         self.stdout.write(f"\n[PBP SYNC] Season {season_year}")
+        if season_type != "regular":
+            self.stdout.write(f"[SEASON TYPE] {season_type}")
         if retry_rotation:
             self.stdout.write("[RETRY ROTATION] Games with parser lineups only")
         if dry_run:
@@ -923,7 +936,7 @@ class Command(BaseCommand):
         qs = NBAGame.objects.filter(
             season__year=season_year,
             status="Final",
-            counts_toward_regular_season=True,
+            **type_filter,
         ).select_related("home_team", "away_team", "season").order_by("date")
 
         if game_id_filter:
@@ -934,11 +947,17 @@ class Command(BaseCommand):
             qs = qs.exclude(pbp_synced=True)
 
         if force and not game_id_filter:
-            self.stdout.write("[FORCE] Clearing pbp_synced on all season games...")
-            NBAGame.objects.filter(season__year=season_year).update(
-                pbp_synced=False, pbp_synced_at=None, pbp_quality_flag=False
+            # regular: clears every season game, as before; playoffs / play_in:
+            # only games of that type, so the regular season's sync state stays.
+            cleared = NBAGame.objects.filter(season__year=season_year)
+            if season_type != "regular":
+                cleared = cleared.filter(season_type=season_type)
+            self.stdout.write(
+                "[FORCE] Clearing pbp_synced on all season games..." if season_type == "regular"
+                else f"[FORCE] Clearing pbp_synced on {season_type} games..."
             )
-            qs = qs.filter(season__year=season_year, status="Final", counts_toward_regular_season=True)
+            cleared.update(pbp_synced=False, pbp_synced_at=None, pbp_quality_flag=False)
+            qs = qs.filter(season__year=season_year, status="Final", **type_filter)
 
         pending = list(qs)
         if limit:
