@@ -21,6 +21,10 @@ Usage:
     python manage.py nba_sync_player_advanced --season 2026
     python manage.py nba_sync_player_advanced --season 2026 --sleep 1.5
     python manage.py nba_sync_player_advanced --season 2026 --dry-run
+    python manage.py nba_sync_player_advanced --season 2025 --season-type playoffs
+
+--season-type picks the NBA.com season type ("Regular Season" or "Playoffs")
+and the NBAPlayerSeasonStats rows updated (season_type regular or playoffs).
 """
 
 import logging
@@ -64,22 +68,30 @@ class Command(BaseCommand):
             "--dry-run", action="store_true",
             help="Fetch data and show what would be updated, but do not write.",
         )
+        parser.add_argument(
+            "--season-type", choices=["regular", "playoffs"], default="regular",
+            help="regular (default): NBA.com Regular Season into regular rows; "
+                 "playoffs: NBA.com Playoffs into playoff rows.",
+        )
 
     # ── Fetch helpers ─────────────────────────────────────────────────────────
 
-    def _fetch(self, measure: str, per_mode: str, season: str, sleep: float):
-        """Call LeagueDashPlayerStats and return a DataFrame."""
+    def _fetch(self, measure: str, per_mode: str, season: str, sleep: float,
+               season_type_all_star: str = "Regular Season"):
+        """Call LeagueDashPlayerStats for one season type and return a DataFrame."""
         from nba_api.stats.endpoints import leaguedashplayerstats  # type: ignore[import]
 
         self.stdout.write(
             f"  Fetching LeagueDashPlayerStats "
-            f"measure={measure} per_mode={per_mode} season={season} …"
+            f"measure={measure} per_mode={per_mode} season={season} "
+            f"type={season_type_all_star} …"
         )
         time.sleep(sleep)
         df = leaguedashplayerstats.LeagueDashPlayerStats(
             season=season,
             measure_type_detailed_defense=measure,
             per_mode_detailed=per_mode,
+            season_type_all_star=season_type_all_star,
             timeout=45,
         ).get_data_frames()[0]
         self.stdout.write(f"    → {len(df)} rows returned")
@@ -91,6 +103,8 @@ class Command(BaseCommand):
         season_year: int = resolve_season_year(options["season"])
         sleep: float = options["sleep"]
         dry_run: bool = options["dry_run"]
+        season_type: str = options.get("season_type", "regular")
+        nba_season_type = {"regular": "Regular Season", "playoffs": "Playoffs"}[season_type]
 
         try:
             season = NBASeason.objects.get(year=season_year)
@@ -101,14 +115,14 @@ class Command(BaseCommand):
 
         season_s = _season_str(season_year)
         self.stdout.write(
-            f"Syncing advanced player stats for {season.display_name} "
+            f"Syncing advanced player stats for {season.display_name} ({nba_season_type}) "
             + ("[DRY RUN] " if dry_run else "")
         )
 
         # ── Step 1: load all three NBA.com datasets ───────────────────────────
-        df_adv = self._fetch("Advanced", "PerGame", season_s, sleep)
-        df_base = self._fetch("Base", "PerGame", season_s, sleep)
-        df_def = self._fetch("Defense", "PerGame", season_s, sleep)
+        df_adv = self._fetch("Advanced", "PerGame", season_s, sleep, nba_season_type)
+        df_base = self._fetch("Base", "PerGame", season_s, sleep, nba_season_type)
+        df_def = self._fetch("Defense", "PerGame", season_s, sleep, nba_season_type)
 
         # ── Step 2: build lookup dicts keyed by (player_id, team_id) ─────────
         adv_map: dict[tuple[int, int], dict] = {}
@@ -150,7 +164,7 @@ class Command(BaseCommand):
         # ── Step 4: iterate over existing NBAPlayerSeasonStats rows ──────────
         qs = (
             NBAPlayerSeasonStats.objects
-            .filter(season=season, season_type="regular")
+            .filter(season=season, season_type=season_type)
             .select_related("player", "team")
         )
         total = qs.count()
