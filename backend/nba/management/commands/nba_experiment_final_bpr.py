@@ -253,7 +253,7 @@ class Command(BaseCommand):
 
         out: dict[int, dict[int, float]] = {}
         for r in NBATeamSeasonRatings.objects.filter(
-            season__year__in=seasons, adj_net__isnull=False,
+            season__year__in=seasons, season_type="regular", adj_net__isnull=False,
         ).values("season__year", "team_id", "adj_net"):
             out.setdefault(r["season__year"], {})[r["team_id"]] = float(r["adj_net"])
         return out

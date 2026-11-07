@@ -220,7 +220,7 @@ class Command(BaseCommand):
         # Target season wins
         target_ratings = {
             r.team_id: r
-            for r in NBATeamSeasonRatings.objects.filter(season__year=target_year)
+            for r in NBATeamSeasonRatings.objects.filter(season__year=target_year, season_type="regular")
             .select_related("team")
         }
 

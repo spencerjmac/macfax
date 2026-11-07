@@ -111,7 +111,7 @@ class Command(BaseCommand):
 
         ratings = {
             r.team_id: r
-            for r in NBATeamSeasonRatings.objects.filter(season=season)
+            for r in NBATeamSeasonRatings.objects.filter(season=season, season_type="regular")
         }
 
         self.stdout.write(

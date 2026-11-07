@@ -112,6 +112,7 @@ def compute_opp_quality_map(season_year: int) -> dict[int, float]:
         r.team_id: r.adj_net
         for r in NBATeamSeasonRatings.objects.filter(
             season__year=season_year,
+            season_type="regular",
             adj_net__isnull=False,
         ).only("team_id", "adj_net")
     }
@@ -148,6 +149,7 @@ def compute_team_adj_em_map(season_year: int) -> dict[int, float]:
         r.team_id: r.adj_net
         for r in NBATeamSeasonRatings.objects.filter(
             season__year=season_year,
+            season_type="regular",
             adj_net__isnull=False,
         ).only("team_id", "adj_net")
     }
