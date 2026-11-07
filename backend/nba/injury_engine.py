@@ -89,7 +89,7 @@ def compute_nba_injury_adjustment(
     if not reports.exists():
         return {"adj_off_delta": 0.0, "adj_def_delta": 0.0, "players": []}
 
-    # Build player-stats lookup (current-season BPR + mpg).
+    # Build player-stats lookup (current-season BPR + mpg), regular-season rows only.
     # Sort nulls first so that if a player has two entries (e.g. traded mid-season),
     # the non-null BPR row overwrites the null one in the dict comprehension.
     from django.db.models import F
@@ -98,6 +98,7 @@ def compute_nba_injury_adjustment(
         player_id__in=player_ids,
         team=team,
         season=season,
+        season_type="regular",
     ).order_by(F("obpr").asc(nulls_first=True)).values("player_id", "obpr", "dbpr", "mpg")
     stats_map = {s["player_id"]: s for s in stats_qs}
 

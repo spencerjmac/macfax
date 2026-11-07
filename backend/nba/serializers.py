@@ -115,7 +115,7 @@ class NBAPlayerSeasonStatsSerializer(serializers.ModelSerializer):
         model = NBAPlayerSeasonStats
         fields = [
             "id", "player", "player_id", "player_name",
-            "team", "team_name", "team_slug", "season", "season_display",
+            "team", "team_name", "team_slug", "season", "season_display", "season_type",
             # Traditional box score
             "gp", "mpg",
             "pts", "reb", "ast", "stl", "blk", "tov", "plus_minus",

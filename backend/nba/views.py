@@ -244,9 +244,10 @@ class NBAModelCalibrationView(APIView):
 
 class NBATeamRosterView(APIView):
     """
-    GET /api/nba/team/<slug>/players/?season=YYYY
+    GET /api/nba/team/<slug>/players/?season=YYYY&season_type=regular|playoffs
 
-    Returns season-averaged stats for all players on a team.
+    Returns season-averaged stats for all players on a team, for one season
+    type (default regular), so each player appears once per team.
     Ordered by pts descending (scorers first).
     """
 
@@ -270,9 +271,14 @@ class NBATeamRosterView(APIView):
             if season is None:
                 return Response({"detail": "No seasons available."}, status=status.HTTP_404_NOT_FOUND)
 
+        season_type = request.query_params.get("season_type", "regular")
+        if season_type not in ("regular", "playoffs"):
+            return Response({"detail": "season_type must be regular or playoffs."},
+                            status=status.HTTP_400_BAD_REQUEST)
+
         players = (
             NBAPlayerSeasonStats.objects
-            .filter(team=team, season=season)
+            .filter(team=team, season=season, season_type=season_type)
             .select_related("player", "team", "season")
             .order_by("-pts")
         )
