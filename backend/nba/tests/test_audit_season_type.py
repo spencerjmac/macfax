@@ -36,7 +36,8 @@ class AuditSeasonTypeTests(TestCase):
         players = [(NBAPlayer.objects.create(player_id=100 + n, name=f"Home {n}"), home) for n in range(5)]
         players += [(NBAPlayer.objects.create(player_id=200 + n, name=f"Away {n}"), away) for n in range(5)]
 
-        # Regular: stints match the box score. Playoffs: every plus-minus off by 3.
+        # Regular: stints match the box score. Playoffs: every stint plus-minus off
+        # by 3 (the box stays consistent, so B7 judges the game).
         for game_id, season_type, counts, pm_off in (
             ("0022500001", "regular", True, 0),
             ("0042500001", "playoffs", False, 3),
@@ -52,11 +53,11 @@ class AuditSeasonTypeTests(TestCase):
                 NBAPlayerGameStint.objects.create(
                     player=player, game=game, team=team, stint_index=0, period=1,
                     clock_start_secs=720, clock_end_secs=0, secs_on=2880,
-                    pts_scored=scored, pts_allowed=allowed, plus_minus=scored - allowed,
+                    pts_scored=scored, pts_allowed=allowed, plus_minus=scored - allowed + pm_off,
                     window_index=1)
                 NBAPlayerGameStats.objects.create(
                     game=game, player=player, team=team, seconds_played=2880,
-                    plus_minus=scored - allowed + pm_off)
+                    plus_minus=scored - allowed)
 
     def setUp(self):
         tmp = tempfile.TemporaryDirectory()

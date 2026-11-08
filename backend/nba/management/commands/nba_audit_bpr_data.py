@@ -18,7 +18,9 @@ Checks:
   B6  Stint seconds vs box-score seconds per player-game (tolerance 60 s;
       120 s for seasons whose box scores hold only whole minutes)
   B7  Stint plus-minus vs box-score plus_minus per player-game (pass: no
-      more than 1% off by more than 1 point)
+      more than 1% off by more than 1 point). Judges only games whose box
+      plus-minus adds up (each team's total within 2 of 5 x its final
+      margin); games whose box doesn't are listed on their own line and CSV.
 
 --season-type picks the sector (default regular: games with
 counts_toward_regular_season=True, season stats with season_type="regular");
@@ -43,6 +45,10 @@ from django.core.management.base import BaseCommand
 
 ALL_CHECKS = ["B1", "B2", "B3", "B4", "B5", "B6", "B7"]
 LINEUP_SOURCES = ("rotation", "parser", "unknown")
+# Five players are on the floor for every point, so a team's box plus-minus
+# totals 5 x its final margin. A game whose box misses that by more than this
+# can't judge our stints (NBA.com box defects, 57 games in 2017-18).
+BOX_PM_TOLERANCE = 2
 
 
 class Command(BaseCommand):
@@ -94,6 +100,14 @@ class Command(BaseCommand):
                         + (f"  {flagged['status']}  " + "  ".join(
                             self._console_metric(k, v) for k, v in flagged["metrics"].items())
                            if flagged["n_games"] else "")
+                    )
+                box_off = res.get("box_pm_inconsistent")
+                if box_off is not None:
+                    ids = box_off["games"]
+                    more = ", ..." if len(ids) > 10 else ""
+                    self.stdout.write(
+                        f"  {season} games whose box plus-minus doesn't add up (left out): "
+                        f"{box_off['n_games']} [{', '.join(ids[:10])}{more}]"
                     )
 
         summary_path = out_dir / f"nba_audit_summary{self._type_suffix()}.json"
@@ -290,8 +304,8 @@ class Command(BaseCommand):
         """
         Per season, loaded once for B5-B7: each synced game's final score,
         lineup source and quality flag, its stints' points per lineup window,
-        and per player-game stint seconds and plus-minus next to the box
-        score's. A window is (period, window_index) when the sync stored one,
+        each team's box plus-minus total, and per player-game stint seconds
+        and plus-minus next to the box score's. A window is (period, window_index) when the sync stored one,
         else (period, clock_start, clock_end), as in build_nba_observations.
         """
         cache = self.__dict__.setdefault("_stints_vs_box_cache", {})
@@ -330,11 +344,27 @@ class Command(BaseCommand):
                 g["windows"][key] = (scored, allowed) if home else (allowed, scored)
 
         box: dict[tuple, tuple] = {}
-        for gid, pid, secs, pm in (NBAPlayerGameStats.objects
-                                   .filter(game__season__year=season, game_id__in=synced,
-                                           **self._games("game__"))
-                                   .values_list("game_id", "player_id", "seconds_played", "plus_minus")):
+        box_pm_home: dict[int, int] = defaultdict(int)
+        box_pm_away: dict[int, int] = defaultdict(int)
+        for gid, pid, tid, secs, pm in (NBAPlayerGameStats.objects
+                                        .filter(game__season__year=season, game_id__in=synced,
+                                                **self._games("game__"))
+                                        .values_list("game_id", "player_id", "team_id",
+                                                     "seconds_played", "plus_minus")):
             box[(gid, pid)] = (secs or 0, pm)
+            if pm is not None and gid in games:
+                totals = box_pm_home if tid == games[gid]["home_team"] else box_pm_away
+                totals[gid] += pm
+        for gid in synced:
+            g = games[gid]
+            g["box_pm_home"], g["box_pm_away"] = box_pm_home.get(gid), box_pm_away.get(gid)
+            # Unjudgeable (no score, no box plus-minus) counts as adding up.
+            g["box_pm_ok"] = True
+            if g["home_score"] is not None and g["away_score"] is not None and (
+                    gid in box_pm_home or gid in box_pm_away):
+                want = 5 * (g["home_score"] - g["away_score"])
+                g["box_pm_ok"] = (abs(box_pm_home.get(gid, 0) - want) <= BOX_PM_TOLERANCE
+                                  and abs(box_pm_away.get(gid, 0) + want) <= BOX_PM_TOLERANCE)
 
         player_games = []
         for key in set(stint_secs) | {k for k, (secs, _) in box.items() if secs > 0}:
@@ -445,7 +475,23 @@ class Command(BaseCommand):
         return ("PASS" if worst <= 0.01 else "WARN"), metrics
 
     def check_b7(self, season: int, out_dir: Path) -> dict:
-        rows = [r for r in self._stints_vs_box(season)["player_games"] if r["box_pm"] is not None]
+        data = self._stints_vs_box(season)
+        all_rows = [r for r in data["player_games"] if r["box_pm"] is not None]
+        # Games whose box plus-minus doesn't add up are left out and listed.
+        rows = [r for r in all_rows if data["games"][r["game_pk"]]["box_pm_ok"]]
+        bad_box = sorted((g for g in data["games"].values() if not g["box_pm_ok"]),
+                         key=lambda g: g["game_id"])
+        n_off_by_game: dict[str, int] = defaultdict(int)
+        for r in all_rows:
+            if abs(r["stint_pm"] - r["box_pm"]) > 1:
+                n_off_by_game[r["game_id"]] += 1
+        self._write_csv(out_dir / f"b7_box_pm_inconsistent_{season}{self._type_suffix()}.csv", [
+            {"game_id": g["game_id"], "source": g["source"], "flagged": g["flagged"],
+             "home_margin": g["home_score"] - g["away_score"],
+             "home_box_pm_total": g["box_pm_home"] or 0, "away_box_pm_total": g["box_pm_away"] or 0,
+             "n_player_games_off_gt1": n_off_by_game.get(g["game_id"], 0)}
+            for g in bad_box
+        ])
         off = sorted((r for r in rows if r["stint_pm"] != r["box_pm"]),
                      key=lambda r: -abs(r["stint_pm"] - r["box_pm"]))
         self._write_csv(out_dir / f"b7_stint_plus_minus_off_{season}{self._type_suffix()}.csv", off[:200])
@@ -460,4 +506,7 @@ class Command(BaseCommand):
              "max_miss": max(abs(r["stint_pm"] - r["box_pm"]) for r in rs)}
             for gid, rs in sorted(by_game.items())
         ])
-        return self._headline_and_flagged("B7", season, rows, self._measure_b7)
+        res = self._headline_and_flagged("B7", season, rows, self._measure_b7)
+        res["box_pm_inconsistent"] = {"n_games": len(bad_box),
+                                      "games": [g["game_id"] for g in bad_box]}
+        return res

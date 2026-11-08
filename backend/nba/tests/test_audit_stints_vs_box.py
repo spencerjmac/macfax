@@ -6,6 +6,9 @@ outside the headline. No database: the three querysets are stood in for.
 
 P.7: B6 allows 120 seconds when the season's box scores hold only whole
 minutes; B7 passes one-point misses and lists games missing by more.
+
+H.0f: B7 leaves out games whose box plus-minus doesn't add up (a team's
+total more than 2 off 5 x its final margin) and lists them on their own.
 """
 
 import tempfile
@@ -23,14 +26,16 @@ GAME_PK, GAME_ID, HOME, AWAY = 7, "0029900001", 1, 2
 HOME_PLAYERS, AWAY_PLAYERS = range(101, 106), range(201, 206)
 
 
-def _one_game(flagged=False, box_with_seconds=False, **wrong):
+def _one_game(flagged=False, box_with_seconds=False, box_pm_off=0, game_pk=GAME_PK,
+              game_id=GAME_ID, **wrong):
     """
     A 4-2 game with one lineup window all game. `wrong` changes the first
     home player's stint: pts_scored, secs_on or plus_minus. Box seconds are
     whole minutes unless box_with_seconds, which gives the second home player
-    (box and stint alike) 2875 seconds.
+    (box and stint alike) 2875 seconds. box_pm_off adds to the first home
+    player's box plus-minus only.
     """
-    game = (GAME_PK, GAME_ID, HOME, 4, 2, "rotation", flagged)
+    game = (game_pk, game_id, HOME, 4, 2, "rotation", flagged)
     stints, box = [], []
     for team, players, scored, allowed in ((HOME, HOME_PLAYERS, 4, 2), (AWAY, AWAY_PLAYERS, 2, 4)):
         for pid in players:
@@ -41,9 +46,10 @@ def _one_game(flagged=False, box_with_seconds=False, **wrong):
                 box_secs = stint["secs_on"] = 2875
             if pid == HOME_PLAYERS[0]:
                 stint.update(wrong)
-            stints.append((GAME_PK, pid, team, 1, 720, 0, 1, stint["secs_on"], stint["plus_minus"],
+            stints.append((game_pk, pid, team, 1, 720, 0, 1, stint["secs_on"], stint["plus_minus"],
                            stint["pts_scored"], stint["pts_allowed"]))
-            box.append((GAME_PK, pid, box_secs, scored - allowed))
+            box_pm = scored - allowed + (box_pm_off if pid == HOME_PLAYERS[0] else 0)
+            box.append((game_pk, pid, team, box_secs, box_pm))
     return [game], stints, box
 
 
@@ -142,3 +148,41 @@ class StintsVsBoxAuditTests(SimpleTestCase):
         rows = (self.out_dir / "b7_games_off_gt1_2026.csv").read_text().splitlines()
         self.assertEqual(rows, ["game_id,source,flagged,n_player_games_off_gt1,max_miss",
                                 f"{GAME_ID},rotation,False,1,3"])
+
+    def test_b7_clean_box_lists_no_inconsistent_games(self):
+        res = self._check("b7")
+        self.assertEqual(res["box_pm_inconsistent"], {"n_games": 0, "games": []})
+        self.assertFalse((self.out_dir / "b7_box_pm_inconsistent_2026.csv").exists())
+
+    def test_b7_box_off_by_2_still_adds_up(self):
+        res = self._check("b7", box_pm_off=2)
+        self.assertEqual(res["box_pm_inconsistent"]["n_games"], 0)
+        self.assertEqual(res["metrics"]["rotation.n_player_games"], 10)
+
+    def test_b7_leaves_out_and_lists_a_game_whose_box_does_not_add_up(self):
+        # Game A: our stints match a box that doesn't add up (home total 10+8, want 10).
+        # Game B: clean. Only B is judged; A is listed with its miss count.
+        a_games, a_stints, a_box = _one_game(box_pm_off=8)
+        b_games, b_stints, b_box = _one_game(game_pk=8, game_id="0029900002")
+        self._patch(a_games + b_games, a_stints + b_stints, a_box + b_box)
+        res = Command().check_b7(2026, self.out_dir)
+
+        self.assertEqual(res["status"], "PASS", res)
+        self.assertEqual(res["metrics"]["rotation.n_player_games"], 10)
+        self.assertEqual(res["metrics"]["rotation.games_off_gt1"], [])
+        self.assertEqual(res["box_pm_inconsistent"], {"n_games": 1, "games": [GAME_ID]})
+        rows = (self.out_dir / "b7_box_pm_inconsistent_2026.csv").read_text().splitlines()
+        self.assertEqual(rows, ["game_id,source,flagged,home_margin,home_box_pm_total,"
+                                "away_box_pm_total,n_player_games_off_gt1",
+                                f"{GAME_ID},rotation,False,2,18,-10,1"])
+        self.assertFalse((self.out_dir / "b7_games_off_gt1_2026.csv").exists())
+
+    def test_console_reports_games_whose_box_does_not_add_up(self):
+        self._patch(*_one_game(box_pm_off=8))
+        out = StringIO()
+        call_command("nba_audit_bpr_data", "--seasons", "2026", "--check", "B7",
+                     "--out-dir", str(self.out_dir), stdout=out)
+        lines = out.getvalue().splitlines()
+        self.assertIn(f"  2026 games whose box plus-minus doesn't add up (left out): 1 [{GAME_ID}]", lines)
+        headline = next(line for line in lines if line.startswith("  2026: "))
+        self.assertIn("no stints", headline)
