@@ -26,6 +26,7 @@ import re
 from pathlib import Path
 
 from django.core.management.base import BaseCommand, CommandError
+from django.db import transaction
 from django.utils import timezone
 
 from nba.analytics.box_bpr import (
@@ -377,24 +378,29 @@ class Command(BaseCommand):
             return
 
         # Each player's prediction goes to all of their rows (one per team).
+        # First clear the season's box values, so afterwards only this run's
+        # players hold them (a player not predicted now keeps no old value).
         updated = 0
         skipped = 0
-        for stat_row in stats_qs:
-            pid = stat_row.player_id
-            if pid not in predictions:
-                skipped += 1
-                continue
-            pred = predictions[pid]
-            stat_row.box_obpr = pred["box_obpr"]
-            stat_row.box_dbpr = pred["box_dbpr"]
-            stat_row.box_bpr = round(pred["box_obpr"] + pred["box_dbpr"], 3)
-            stat_row.nba_archetype = pred["archetype"]
-            stat_row.bpr_last_updated = now
-            stat_row.save(update_fields=[
-                "box_obpr", "box_dbpr", "box_bpr",
-                "nba_archetype", "bpr_last_updated",
-            ])
-            updated += 1
+        with transaction.atomic():
+            cleared = stats_qs.update(box_obpr=None, box_dbpr=None, box_bpr=None)
+            for stat_row in stats_qs:
+                pid = stat_row.player_id
+                if pid not in predictions:
+                    skipped += 1
+                    continue
+                pred = predictions[pid]
+                stat_row.box_obpr = pred["box_obpr"]
+                stat_row.box_dbpr = pred["box_dbpr"]
+                stat_row.box_bpr = round(pred["box_obpr"] + pred["box_dbpr"], 3)
+                stat_row.nba_archetype = pred["archetype"]
+                stat_row.bpr_last_updated = now
+                stat_row.save(update_fields=[
+                    "box_obpr", "box_dbpr", "box_bpr",
+                    "nba_archetype", "bpr_last_updated",
+                ])
+                updated += 1
+        self.stdout.write(f"  Cleared box values on {cleared} regular rows before writing")
 
         self.stdout.write(
             self.style.SUCCESS(

@@ -141,14 +141,16 @@ class Command(BaseCommand):
         qs = (NBAPlayerGameStint.objects
               .filter(game__season__year=season, **self._games("game__"))
               .values_list("player_id", "game_id", "period",
-                           "clock_start_secs", "clock_end_secs", "secs_on"))
+                           "clock_start_secs", "clock_end_secs", "secs_on", "window_index"))
 
         seen: set = set()
         n_exact = 0
         by_pg: dict[tuple, list] = defaultdict(list)
         total_secs = 0
-        for pid, gid, period, cs, ce, secs in qs.iterator(chunk_size=50000):
-            key = (pid, gid, period, cs, ce)
+        for pid, gid, period, cs, ce, secs, win in qs.iterator(chunk_size=50000):
+            # Stored lineup windows tell apart zero-length stints in the same
+            # second; rows synced before window_index existed keep the clock key.
+            key = (pid, gid, period, cs, ce) if win is None else (pid, gid, period, cs, ce, win)
             if key in seen:
                 n_exact += 1
             else:

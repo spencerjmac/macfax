@@ -18,6 +18,7 @@ Usage:
 import logging
 
 from django.core.management.base import BaseCommand, CommandError
+from django.db import transaction
 from django.utils import timezone
 
 from nba.analytics.rapm import build_nba_observations, fit_baseline_rapm
@@ -174,17 +175,22 @@ class Command(BaseCommand):
         updated = 0
         skipped = 0
 
-        for stat_row in stats_qs:
-            nba_player_id = stat_row.player.player_id
-            if nba_player_id not in target_obpr:
-                skipped += 1
-                continue
-            stat_row.baseline_obpr = round(target_obpr[nba_player_id], 4)
-            stat_row.baseline_dbpr = round(target_dbpr.get(nba_player_id, 0.0), 4)
-            stat_row.off_poss = round(off_poss_map.get(nba_player_id, 0.0), 1)
-            stat_row.def_poss = round(def_poss_map.get(nba_player_id, 0.0), 1)
-            stat_row.save(update_fields=["baseline_obpr", "baseline_dbpr", "off_poss", "def_poss"])
-            updated += 1
+        # Clear the season's baseline values first, so afterwards only this
+        # run's players hold them.
+        with transaction.atomic():
+            cleared = stats_qs.update(baseline_obpr=None, baseline_dbpr=None, off_poss=None, def_poss=None)
+            for stat_row in stats_qs:
+                nba_player_id = stat_row.player.player_id
+                if nba_player_id not in target_obpr:
+                    skipped += 1
+                    continue
+                stat_row.baseline_obpr = round(target_obpr[nba_player_id], 4)
+                stat_row.baseline_dbpr = round(target_dbpr.get(nba_player_id, 0.0), 4)
+                stat_row.off_poss = round(off_poss_map.get(nba_player_id, 0.0), 1)
+                stat_row.def_poss = round(def_poss_map.get(nba_player_id, 0.0), 1)
+                stat_row.save(update_fields=["baseline_obpr", "baseline_dbpr", "off_poss", "def_poss"])
+                updated += 1
+        self.stdout.write(f"  Cleared baseline values on {cleared} regular rows before writing")
 
         self.stdout.write(
             self.style.SUCCESS(
