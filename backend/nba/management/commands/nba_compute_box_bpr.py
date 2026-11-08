@@ -378,12 +378,13 @@ class Command(BaseCommand):
             return
 
         # Each player's prediction goes to all of their rows (one per team).
-        # First clear the season's box values, so afterwards only this run's
-        # players hold them (a player not predicted now keeps no old value).
+        # First clear the season's box values and archetypes, so afterwards
+        # only this run's players hold them (a player not predicted now keeps
+        # no old value).
         updated = 0
         skipped = 0
         with transaction.atomic():
-            cleared = stats_qs.update(box_obpr=None, box_dbpr=None, box_bpr=None)
+            cleared = stats_qs.update(box_obpr=None, box_dbpr=None, box_bpr=None, nba_archetype=None)
             for stat_row in stats_qs:
                 pid = stat_row.player_id
                 if pid not in predictions:

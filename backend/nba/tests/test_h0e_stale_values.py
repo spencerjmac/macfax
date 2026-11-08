@@ -7,7 +7,8 @@ H.0e: two fixes found in H.2026.
 2. nba_compute_box_bpr and nba_compute_baseline_rapm clear their fields on
    the season's regular rows before writing, so afterwards only the players
    this run produced hold values. Other seasons and playoff rows are left
-   alone; bpr_last_updated is not touched by the clear.
+   alone; bpr_last_updated is not touched by the clear. Box BPR also clears
+   nba_archetype (H.2026 finish).
 
 Real test database; model fitting and NBA-wide inputs are stood in for.
 """
@@ -134,7 +135,10 @@ class BoxBprClearsStaleValuesTests(_Fixture):
 
         self.stale.refresh_from_db()
         self.assertEqual((self.stale.box_obpr, self.stale.box_dbpr, self.stale.box_bpr), (None, None, None))
+        self.assertIsNone(self.stale.nba_archetype)
         self.assertEqual(self.stale.bpr_last_updated, OLD_STAMP)       # left alone
+        self.assertEqual(NBAPlayerSeasonStats.objects.filter(
+            season=self.s2026, season_type="regular", nba_archetype__isnull=False).count(), 31)
         self.assertEqual(NBAPlayerSeasonStats.objects.filter(
             season=self.s2026, season_type="regular", box_bpr__isnull=False).count(), 31)
         self.assertEqual(NBAPlayerSeasonStats.objects.get(player=self.predicted[0], season=self.s2026).box_bpr, 1.25)
@@ -150,7 +154,7 @@ class BoxBprClearsStaleValuesTests(_Fixture):
         call_command("nba_compute_box_bpr", "--season", "2026", "--dry-run", stdout=StringIO())
 
         self.stale.refresh_from_db()
-        self.assertEqual(self.stale.box_bpr, 3.0)
+        self.assertEqual((self.stale.box_bpr, self.stale.nba_archetype), (3.0, "scorer"))
 
 
 class BaselineRapmClearsStaleValuesTests(_Fixture):
