@@ -24,10 +24,19 @@ Notes:
   - Same-season LEBRON in the prior is legitimate for forward evaluation
     (all inputs predate the target season).
 
+Native chain (--native-chain, Phase 2): solves seasons --chain-start S up to
+the last source season in order, in memory. Each season's prior is
+native_prior(stored box_obpr / box_dbpr, the previous season's chain result,
+--w-box, --rho), offense and defense separately; season S has no previous
+result, so its prior is box only. Lambda is minutes tiers only. No LEBRON file
+is read on this path. Source seasons are evaluated and dumped as in other runs.
+
 Usage:
   python manage.py nba_experiment_final_bpr --source-seasons 2022 2023 2024 2025 \\
       --lebron-prior-w 0.5 --lebron-lambda-scale 0.7 --tier A_conservative \\
       --run-name prior_w_050
+  python manage.py nba_experiment_final_bpr --native-chain --chain-start 2016 \\
+      --source-seasons 2017 2018 --w-box 0.5 --rho 0.8 --run-name native_smoke
 """
 
 from __future__ import annotations
@@ -39,8 +48,9 @@ from pathlib import Path
 
 import numpy as np
 import scipy.stats
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 
+from nba.analytics.native_prior import native_prior
 from nba.analytics.rapm import fit_prior_informed_rapm
 from nba.management.commands.nba_compute_final_bpr import (
     Command as FinalBprCommand,
@@ -77,6 +87,16 @@ class Command(BaseCommand):
                             help="Write per-season variant ratings JSON "
                                  "({nba_id: bpr}) into the run dir — enables "
                                  "YoY stability and independence analysis.")
+        parser.add_argument("--native-chain", action="store_true", default=False,
+                            help="Solve --chain-start up to the last source season in order, "
+                                 "prior = native_prior(stored box, previous chain result); "
+                                 "minutes-tier lambda; no LEBRON")
+        parser.add_argument("--chain-start", type=int, default=None,
+                            help="First chain season S (its prior is box only)")
+        parser.add_argument("--w-box", type=float, default=None,
+                            help="native_prior weight on the box rating")
+        parser.add_argument("--rho", type=float, default=None,
+                            help="native_prior shrink on the previous chain result")
         parser.add_argument("--run-name", type=str, required=True)
         parser.add_argument("--out-dir", type=str,
                             default="backtest_output/bpr_suite/nba")
@@ -96,6 +116,11 @@ class Command(BaseCommand):
         # Borrow the production command's loaders (read-only methods).
         loader = FinalBprCommand()
         loader.stdout, loader.stderr = self.stdout, self.stderr
+
+        if opts.get("native_chain"):
+            rows_out = self._run_native_chain(loader, opts, out_dir)
+            self._write_outputs(out_dir, rows_out, opts)
+            return
 
         rows_out: list[dict] = []
         for src in sorted(opts["source_seasons"]):
@@ -152,64 +177,142 @@ class Command(BaseCommand):
             }
             self.stdout.write(f"  variant ratings: {len(variant)} players")
 
-            # ── forward references from DB (read-only) ────────────────────────
-            if opts.get("dump_ratings"):
-                with open(out_dir / f"ratings_{src}.json", "w") as f:
-                    json.dump({str(p): round(v, 4) for p, v in variant.items()}, f)
-
-            stored = self._load_stored(src)
-            nxt = self._load_stored(tgt)
-            team_ratings = self._load_team_ratings((src, tgt))
-
             row = {"run": opts["run_name"], "source": src, "target": tgt,
                    "prior_w": prior_w, "prior_def_w": prior_def_w,
                    "lambda_scale": lam_scale, "tier": tier,
                    "half_life": whl or 0, "n_variant": len(variant)}
+            rows_out.append(self._evaluate(src, variant, row, opts, out_dir))
 
-            # (a) player-forward: variant(Y) vs baseline RAPM(Y+1) and BPR(Y+1)
-            for label, target_key in (("next_baseline", "baseline"),
-                                      ("next_bpr", "bpr")):
-                for name, ratings in (("variant", variant),
-                                      ("stored", {p: v["bpr"] for p, v in stored.items()
-                                                  if v["bpr"] is not None})):
-                    pairs = [(ratings[p], nxt[p][target_key])
-                             for p in ratings
-                             if p in nxt and nxt[p][target_key] is not None
-                             and nxt[p]["minutes"] >= 1000]
-                    if len(pairs) >= 30:
-                        a, b = zip(*pairs)
-                        r, _ = scipy.stats.pearsonr(a, b)
-                        rho, _ = scipy.stats.spearmanr(a, b)
-                        row[f"{name}_{label}_r"] = round(float(r), 4)
-                        row[f"{name}_{label}_rho"] = round(float(rho), 4)
-                        row[f"{name}_{label}_n"] = len(pairs)
+        self._write_outputs(out_dir, rows_out, opts)
 
-            # (b) team-forward: minutes-weighted aggregate → adj_net(Y+1)
+    # ── native chain (Phase 2) ────────────────────────────────────────────────
+
+    def _run_native_chain(self, loader, opts: dict, out_dir: Path) -> list[dict]:
+        """
+        Seasons chain_start..max(source) in order, in memory. Prior per season:
+        native_prior(box, previous chain result, w_box, rho), O and D separately;
+        lambda from minutes tiers only. Never touches LEBRON.
+        """
+        sources = sorted(opts["source_seasons"])
+        start, w_box, rho = opts.get("chain_start"), opts.get("w_box"), opts.get("rho")
+        if start is None or w_box is None or rho is None:
+            raise CommandError("--native-chain needs --chain-start, --w-box and --rho")
+        if start > sources[0]:
+            raise CommandError(f"--chain-start {start} is after the first source season {sources[0]}")
+        tier = opts["tier"]
+        whl = opts["within_season_half_life"] or None
+        self.stdout.write(f"[NATIVE CHAIN] {start}..{sources[-1]}  w_box={w_box} rho={rho} "
+                          f"tier={tier}  LEBRON: not used")
+
+        rows_out: list[dict] = []
+        prev_o: dict[int, float] = {}
+        prev_d: dict[int, float] = {}
+        for season in range(start, sources[-1] + 1):
+            self.stdout.write(f"\n=== native chain @ {season}"
+                              + (f" → eval {season + 1} ===" if season in sources else " ==="))
+            box_o, box_d, minutes = loader._load_priors(season)
+            prior_o = native_prior(box_o, prev_o, w_box, rho)
+            prior_d = native_prior(box_d, prev_d, w_box, rho)
+            self.stdout.write(f"  prior: {len(prior_o)} players "
+                              f"({len(box_o.keys() & prev_o.keys())} box+prev, "
+                              f"{len(box_o.keys() - prev_o.keys())} box only, "
+                              f"{len(prev_o.keys() - box_o.keys())} prev only)")
+            prev_o, prev_d = self._fit_chain_season(
+                loader, season, prior_o, prior_d, minutes, tier, whl, opts["rapm_window"])
+            if season in sources:
+                variant = {pid: prev_o[pid] + prev_d[pid] for pid in prev_o}
+                self.stdout.write(f"  variant ratings: {len(variant)} players")
+                row = {"run": opts["run_name"], "source": season, "target": season + 1,
+                       "mode": "native_chain", "chain_start": start, "w_box": w_box, "rho": rho,
+                       "tier": tier, "half_life": whl or 0, "n_variant": len(variant)}
+                rows_out.append(self._evaluate(season, variant, row, opts, out_dir))
+        return rows_out
+
+    @staticmethod
+    def _fit_chain_season(loader, season: int, prior_o: dict, prior_d: dict, minutes: dict,
+                          tier: str, whl, window: int) -> tuple[dict, dict]:
+        """One chain season's fit: {nba_id: obpr}, {nba_id: dbpr} for that season."""
+        observations, ps_index, n_ps = loader._load_stints(season, window)
+        keys = sorted(ps_index, key=ps_index.get)
+        lam_arr = _build_lambda_array(keys, minutes, LAMBDA_TIERS[tier])
+        lambda_by_id = {pid: float(lam_arr[i]) for i, (pid, _yr) in enumerate(keys)}
+        result = fit_prior_informed_rapm(
+            observations=observations,
+            player_season_index=ps_index,
+            n_player_seasons=n_ps,
+            prior_obpr=prior_o,
+            prior_dbpr=prior_d,
+            lambda_val=1000.0,
+            lambda_by_nba_id=lambda_by_id,
+            target_season_year=season,
+            cross_season_decay=1.0,
+            within_season_half_life=whl,
+        )
+        obpr = {pid: v for (pid, yr), v in result["obpr"].items() if yr == season}
+        dbpr = {pid: result["dbpr"][(pid, yr)] for (pid, yr) in result["obpr"] if yr == season}
+        return obpr, dbpr
+
+    # ── evaluation and outputs (shared) ───────────────────────────────────────
+
+    def _evaluate(self, src: int, variant: dict[int, float], row: dict,
+                  opts: dict, out_dir: Path) -> dict:
+        """Dump (optional) and forward-evaluate one source season's variant into row."""
+        tgt = src + 1
+        if opts.get("dump_ratings"):
+            with open(out_dir / f"ratings_{src}.json", "w") as f:
+                json.dump({str(p): round(v, 4) for p, v in variant.items()}, f)
+
+        # ── forward references from DB (read-only) ────────────────────────
+        stored = self._load_stored(src)
+        nxt = self._load_stored(tgt)
+        team_ratings = self._load_team_ratings((src, tgt))
+
+        # (a) player-forward: variant(Y) vs baseline RAPM(Y+1) and BPR(Y+1)
+        for label, target_key in (("next_baseline", "baseline"),
+                                  ("next_bpr", "bpr")):
             for name, ratings in (("variant", variant),
                                   ("stored", {p: v["bpr"] for p, v in stored.items()
                                               if v["bpr"] is not None})):
-                m = self._team_forward(ratings, stored, team_ratings, src, tgt)
-                if m:
-                    row[f"{name}_team_r"] = m["r"]
-                    row[f"{name}_team_rmse"] = m["rmse"]
-                    row[f"{name}_team_slope"] = m["slope"]
+                pairs = [(ratings[p], nxt[p][target_key])
+                         for p in ratings
+                         if p in nxt and nxt[p][target_key] is not None
+                         and nxt[p]["minutes"] >= 1000]
+                if len(pairs) >= 30:
+                    a, b = zip(*pairs)
+                    r, _ = scipy.stats.pearsonr(a, b)
+                    rho, _ = scipy.stats.spearmanr(a, b)
+                    row[f"{name}_{label}_r"] = round(float(r), 4)
+                    row[f"{name}_{label}_rho"] = round(float(rho), 4)
+                    row[f"{name}_{label}_n"] = len(pairs)
 
-            # persistence reference
-            pers = [(em_src, em_tgt)
-                    for tid, em_src in team_ratings.get(src, {}).items()
-                    if (em_tgt := team_ratings.get(tgt, {}).get(tid)) is not None]
-            if len(pers) >= 10:
-                a, b = zip(*pers)
-                r, _ = scipy.stats.pearsonr(a, b)
-                rmse = math.sqrt(float(np.mean((np.array(a) - np.array(b)) ** 2)))
-                row["persistence_team_r"] = round(float(r), 4)
-                row["persistence_team_rmse"] = round(rmse, 3)
+        # (b) team-forward: minutes-weighted aggregate → adj_net(Y+1)
+        for name, ratings in (("variant", variant),
+                              ("stored", {p: v["bpr"] for p, v in stored.items()
+                                          if v["bpr"] is not None})):
+            m = self._team_forward(ratings, stored, team_ratings, src, tgt)
+            if m:
+                row[f"{name}_team_r"] = m["r"]
+                row[f"{name}_team_rmse"] = m["rmse"]
+                row[f"{name}_team_slope"] = m["slope"]
 
-            rows_out.append(row)
-            self.stdout.write("  " + "  ".join(
-                f"{k}={v}" for k, v in row.items()
-                if k.endswith(("_r", "_rmse", "_rho")) and v is not None))
+        # persistence reference
+        pers = [(em_src, em_tgt)
+                for tid, em_src in team_ratings.get(src, {}).items()
+                if (em_tgt := team_ratings.get(tgt, {}).get(tid)) is not None]
+        if len(pers) >= 10:
+            a, b = zip(*pers)
+            r, _ = scipy.stats.pearsonr(a, b)
+            rmse = math.sqrt(float(np.mean((np.array(a) - np.array(b)) ** 2)))
+            row["persistence_team_r"] = round(float(r), 4)
+            row["persistence_team_rmse"] = round(rmse, 3)
 
+        self.stdout.write("  " + "  ".join(
+            f"{k}={v}" for k, v in row.items()
+            if k.endswith(("_r", "_rmse", "_rho")) and v is not None))
+
+        return row
+
+    def _write_outputs(self, out_dir: Path, rows_out: list[dict], opts: dict) -> None:
         with open(out_dir / "results.csv", "w", newline="") as f:
             keys = []
             for r in rows_out:
