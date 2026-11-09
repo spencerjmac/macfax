@@ -7,6 +7,9 @@ seasons under variant parameters, then forward-evaluates each variant —
 nothing is written to the database.
 
 Per variant × source season Y:
+  stint_mse_next  variant O/D ratings(Y) predicting season Y+1's stints
+                  (possession-weighted MSE, eval_stints.score), with
+                  stint_mse_next_zero the same score with every rating at 0
   player-forward  variant BPR(Y) vs stored baseline RAPM(Y+1)
                   (pure lineup on-court impact next season) and vs stored
                   final BPR(Y+1) as a secondary reference
@@ -50,6 +53,7 @@ import numpy as np
 import scipy.stats
 from django.core.management.base import BaseCommand, CommandError
 
+from nba.analytics import eval_stints
 from nba.analytics.native_prior import native_prior
 from nba.analytics.rapm import fit_prior_informed_rapm
 from nba.management.commands.nba_compute_final_bpr import (
@@ -171,17 +175,15 @@ class Command(BaseCommand):
                 cross_season_decay=1.0,
                 within_season_half_life=whl,
             )
-            variant = {
-                pid: result["obpr"][(pid, yr)] + result["dbpr"][(pid, yr)]
-                for (pid, yr) in result["obpr"] if yr == src
-            }
-            self.stdout.write(f"  variant ratings: {len(variant)} players")
+            variant_o = {pid: v for (pid, yr), v in result["obpr"].items() if yr == src}
+            variant_d = {pid: result["dbpr"][(pid, yr)] for (pid, yr) in result["obpr"] if yr == src}
+            self.stdout.write(f"  variant ratings: {len(variant_o)} players")
 
             row = {"run": opts["run_name"], "source": src, "target": tgt,
                    "prior_w": prior_w, "prior_def_w": prior_def_w,
                    "lambda_scale": lam_scale, "tier": tier,
-                   "half_life": whl or 0, "n_variant": len(variant)}
-            rows_out.append(self._evaluate(src, variant, row, opts, out_dir))
+                   "half_life": whl or 0, "n_variant": len(variant_o)}
+            rows_out.append(self._evaluate(src, variant_o, variant_d, row, opts, out_dir))
 
         self._write_outputs(out_dir, rows_out, opts)
 
@@ -220,12 +222,11 @@ class Command(BaseCommand):
             prev_o, prev_d = self._fit_chain_season(
                 loader, season, prior_o, prior_d, minutes, tier, whl, opts["rapm_window"])
             if season in sources:
-                variant = {pid: prev_o[pid] + prev_d[pid] for pid in prev_o}
-                self.stdout.write(f"  variant ratings: {len(variant)} players")
+                self.stdout.write(f"  variant ratings: {len(prev_o)} players")
                 row = {"run": opts["run_name"], "source": season, "target": season + 1,
                        "mode": "native_chain", "chain_start": start, "w_box": w_box, "rho": rho,
-                       "tier": tier, "half_life": whl or 0, "n_variant": len(variant)}
-                rows_out.append(self._evaluate(season, variant, row, opts, out_dir))
+                       "tier": tier, "half_life": whl or 0, "n_variant": len(prev_o)}
+                rows_out.append(self._evaluate(season, prev_o, prev_d, row, opts, out_dir))
         return rows_out
 
     @staticmethod
@@ -254,10 +255,18 @@ class Command(BaseCommand):
 
     # ── evaluation and outputs (shared) ───────────────────────────────────────
 
-    def _evaluate(self, src: int, variant: dict[int, float], row: dict,
-                  opts: dict, out_dir: Path) -> dict:
+    def _evaluate(self, src: int, variant_o: dict[int, float], variant_d: dict[int, float],
+                  row: dict, opts: dict, out_dir: Path) -> dict:
         """Dump (optional) and forward-evaluate one source season's variant into row."""
         tgt = src + 1
+        variant = {pid: variant_o[pid] + variant_d.get(pid, 0.0) for pid in variant_o}
+
+        # (0) next-season stints: variant O/D(Y) predicting Y+1's stints
+        sc = eval_stints.score(variant_o, variant_d, tgt)
+        row["stint_mse_next"] = round(sc["mse"], 4) if sc["mse"] is not None else None
+        row["stint_mse_next_zero"] = round(sc["mse_zero"], 4) if sc["mse_zero"] is not None else None
+        row["stint_next_rows"] = sc["n_rows"]
+
         if opts.get("dump_ratings"):
             with open(out_dir / f"ratings_{src}.json", "w") as f:
                 json.dump({str(p): round(v, 4) for p, v in variant.items()}, f)
@@ -308,7 +317,8 @@ class Command(BaseCommand):
 
         self.stdout.write("  " + "  ".join(
             f"{k}={v}" for k, v in row.items()
-            if k.endswith(("_r", "_rmse", "_rho")) and v is not None))
+            if (k.endswith(("_r", "_rmse", "_rho")) or k.startswith("stint_mse_next"))
+            and v is not None))
 
         return row
 

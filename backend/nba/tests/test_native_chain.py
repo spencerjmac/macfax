@@ -74,8 +74,9 @@ class NativeChainTests(SimpleTestCase):
 
         self.evaluated: list[tuple] = []
 
-        def evaluate(_self, src, variant, row, opts, out_dir):
-            self.evaluated.append((src, dict(variant), dict(row)))
+        def evaluate(_self, src, variant_o, variant_d, row, opts, out_dir):
+            variant = {p: variant_o[p] + variant_d[p] for p in variant_o}
+            self.evaluated.append((src, variant, dict(row)))
             return row
 
         for target, new in (
@@ -155,3 +156,31 @@ class NativeChainTests(SimpleTestCase):
             call_command("nba_experiment_final_bpr", "--native-chain", "--chain-start", "2018",
                          "--source-seasons", "2017", "--w-box", "0.5", "--rho", "0.8",
                          "--run-name", "t", "--out-dir", str(self.out_dir), stdout=StringIO())
+
+
+class EvaluateStintScoreTests(SimpleTestCase):
+    """Both modes evaluate through _evaluate, which adds the next-season stint score."""
+
+    def test_evaluate_adds_stint_mse_next_from_o_and_d(self):
+        calls = []
+
+        def fake_score(o, d, season):
+            calls.append((dict(o), dict(d), season))
+            return {"mse": 151.23456, "mse_zero": 160.5, "n_rows": 40, "poss": 800.0,
+                    "league_mean": 110.0, "hca": 1.5}
+
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        with mock.patch(f"{MOD}.eval_stints.score", fake_score), \
+             mock.patch.object(harness.Command, "_load_stored", staticmethod(lambda season: {})), \
+             mock.patch.object(harness.Command, "_load_team_ratings", staticmethod(lambda seasons: {})):
+            cmd = harness.Command()
+            cmd.stdout = StringIO()
+            row = cmd._evaluate(2017, {1: 2.0}, {1: -0.5}, {"run": "t"}, {"dump_ratings": True},
+                                Path(tmp.name))
+
+        self.assertEqual(calls, [({1: 2.0}, {1: -0.5}, 2018)])
+        self.assertEqual((row["stint_mse_next"], row["stint_mse_next_zero"], row["stint_next_rows"]),
+                         (151.2346, 160.5, 40))
+        dumped = (Path(tmp.name) / "ratings_2017.json").read_text()
+        self.assertEqual(dumped, '{"1": 1.5}')
