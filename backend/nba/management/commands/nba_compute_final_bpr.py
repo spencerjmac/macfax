@@ -679,7 +679,10 @@ class Command(BaseCommand):
             if nba_id:
                 prior_obpr[nba_id] = row.box_obpr or 0.0
                 prior_dbpr[nba_id] = row.box_dbpr or 0.0
-                minutes_by_nba_id[nba_id] = (row.mpg or 0.0) * (row.gp or 0)
+                # A traded player has one row per team: his lambda tier needs the
+                # whole season's minutes, not his last team's.
+                minutes_by_nba_id[nba_id] = (minutes_by_nba_id.get(nba_id, 0.0)
+                                             + (row.mpg or 0.0) * (row.gp or 0))
         self.stdout.write(
             f"Box priors loaded: {len(prior_obpr)} players  "
             f"(stars ≥2000 min: {sum(1 for m in minutes_by_nba_id.values() if m >= 2000)})"
