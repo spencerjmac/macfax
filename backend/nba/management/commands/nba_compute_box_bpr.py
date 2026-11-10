@@ -321,8 +321,9 @@ class Command(BaseCommand):
         # Pulls star targets higher (LEBRON rates Jokić/SGA higher than single-season RAPM)
         # Moderates role player inflation (LEBRON less susceptible to lineup-context noise)
         # Only applied when a season-specific metrics CSV exists.
+        # At --lebron-blend-w 0 the LEBRON file is not read at all (native box).
         all_pks = [p["player_id"] for p in stats_values]
-        lebron_map = _load_lebron_targets(season_year, all_pks)
+        lebron_map = _load_lebron_targets(season_year, all_pks) if blend_w > 0 else {}
 
         n_blended = 0
         if lebron_map:
@@ -340,6 +341,8 @@ class Command(BaseCommand):
                 f"  LEBRON blend applied: {n_blended} players "
                 f"({1-blend_w:.0%}×RAPM + {blend_w:.0%}×LEBRON) | no-match: {len(rapm_pids) - n_blended} players (pure RAPM)"
             )
+        elif blend_w <= 0:
+            self.stdout.write("  LEBRON blend: skipped (--lebron-blend-w 0, LEBRON file not read)")
         else:
             self.stdout.write(
                 f"  LEBRON blend: skipped (no metrics CSV for {season_year})"

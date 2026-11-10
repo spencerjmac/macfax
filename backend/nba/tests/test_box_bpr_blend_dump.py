@@ -2,6 +2,8 @@
 Phase 3 task 3.1: nba_compute_box_bpr --lebron-blend-w sets LEBRON's weight in
 the training-target blend (default 0.7, unchanged), and --dump-json PATH writes
 {nba_id: [box_obpr, box_dbpr]} to PATH and skips all database writes.
+Task 3.2: at --lebron-blend-w 0 the LEBRON file is not read at all, so a
+season with no LEBRON CSV runs.
 
 Real test database; model fitting and NBA-wide inputs are stood in for.
 """
@@ -16,12 +18,13 @@ from django.core.management import call_command
 from django.test import TestCase
 
 from nba.management.commands.nba_compute_box_bpr import LEBRON_BLEND_W
+from nba.management.commands.nba_compute_box_bpr import _load_lebron_targets as REAL_LEBRON_LOADER
 from nba.models import NBAPlayer, NBAPlayerSeasonStats, NBASeason
 
 MOD = "nba.management.commands.nba_compute_box_bpr"
 
 
-class BoxBlendAndDumpTests(TestCase):
+class _BoxFixture(TestCase):
 
     @classmethod
     def setUpTestData(cls):
@@ -62,6 +65,9 @@ class BoxBlendAndDumpTests(TestCase):
             patcher.start()
             self.addCleanup(patcher.stop)
 
+
+class BoxBlendAndDumpTests(_BoxFixture):
+
     def _targets(self, *args):
         call_command("nba_compute_box_bpr", "--season", "2026", "--dry-run", *args, stdout=StringIO())
         kw = self.train.call_args.kwargs
@@ -96,3 +102,35 @@ class BoxBlendAndDumpTests(TestCase):
         call_command("nba_compute_box_bpr", "--season", "2026", stdout=StringIO())
         row = NBAPlayerSeasonStats.objects.get(player=self.players[2])
         self.assertEqual((row.box_obpr, row.box_dbpr, row.nba_archetype), (0.2, -0.1, "connector"))
+
+
+
+class NativeBoxSkipsLebronTests(_BoxFixture):
+    """Blend 0 never calls the LEBRON loader; a season with no LEBRON CSV runs."""
+
+    def test_blend_zero_does_not_read_lebron(self):
+        loader = mock.MagicMock(side_effect=AssertionError("LEBRON file read at blend 0"))
+        with mock.patch(f"{MOD}._load_lebron_targets", loader):
+            out = StringIO()
+            call_command("nba_compute_box_bpr", "--season", "2026", "--lebron-blend-w", "0",
+                         "--dry-run", stdout=out)
+        loader.assert_not_called()
+        self.assertIn("LEBRON file not read", out.getvalue())
+        kw = self.train.call_args.kwargs
+        pk = self.players[0].pk
+        self.assertEqual((kw["target_obpr"][pk], kw["target_dbpr"][pk]), (1.0, 0.5))   # pure RAPM
+
+    def test_season_without_lebron_csv_runs_at_blend_zero(self):
+        # Real loader, pointed at a project root with no data/nba/lebron-data-2026.csv.
+        path = self.dir / "box_2026.json"
+        with mock.patch(f"{MOD}._load_lebron_targets", REAL_LEBRON_LOADER), \
+             mock.patch(f"{MOD}.SCRIPT_DIR", self.dir):
+            call_command("nba_compute_box_bpr", "--season", "2026", "--lebron-blend-w", "0",
+                         "--dump-json", str(path), stdout=StringIO())
+        self.assertEqual(len(json.loads(path.read_text())), 31)
+
+    def test_default_blend_still_reads_lebron(self):
+        loader = mock.MagicMock(return_value={})
+        with mock.patch(f"{MOD}._load_lebron_targets", loader):
+            call_command("nba_compute_box_bpr", "--season", "2026", "--dry-run", stdout=StringIO())
+        loader.assert_called_once()

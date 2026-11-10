@@ -41,6 +41,10 @@ Usage:
   python manage.py nba_experiment_final_bpr --native-chain --chain-start 2016 \\
       --source-seasons 2017 2018 --w-box 0.5 --rho 0.8 --run-name native_smoke
 
+--box-json-dir DIR reads each season's box prior from DIR/box_<season>.json
+(nba_compute_box_bpr --dump-json output) instead of stored box values, in both
+modes; minutes for the lambda tiers still come from the database.
+
 --lambda-mult X (default 1) multiplies every lambda by X in both modes: the
 per-player tier lambdas and the 1000 fallback.
 """
@@ -104,6 +108,10 @@ class Command(BaseCommand):
                             help="native_prior weight on the box rating")
         parser.add_argument("--rho", type=float, default=None,
                             help="native_prior shrink on the previous chain result")
+        parser.add_argument("--box-json-dir", type=str, default=None,
+                            help="Read the prior's box part from DIR/box_<season>.json "
+                                 "({nba_id: [box_obpr, box_dbpr]}, as nba_compute_box_bpr "
+                                 "--dump-json writes) instead of stored box values, in both modes")
         parser.add_argument("--lambda-mult", type=float, default=1.0,
                             help="Multiply every lambda (per-player tiers and the 1000 "
                                  "fallback) by this, in both modes")
@@ -139,7 +147,7 @@ class Command(BaseCommand):
             self.stdout.write(f"\n=== variant @ {src} → eval {tgt} ===")
 
             # ── compute variant ratings in memory ────────────────────────────
-            prior_obpr, prior_dbpr, minutes = loader._load_priors(src)
+            prior_obpr, prior_dbpr, minutes = self._load_box_priors(loader, src, opts)
             prior_obpr_box = dict(prior_obpr)   # pre-blend box priors (candidate E anchor)
             prior_dbpr_box = dict(prior_dbpr)
             lebron_map = _load_lebron_priors(src, list(prior_obpr.keys()))
@@ -221,7 +229,7 @@ class Command(BaseCommand):
         for season in range(start, sources[-1] + 1):
             self.stdout.write(f"\n=== native chain @ {season}"
                               + (f" → eval {season + 1} ===" if season in sources else " ==="))
-            box_o, box_d, minutes = loader._load_priors(season)
+            box_o, box_d, minutes = self._load_box_priors(loader, season, opts)
             prior_o = native_prior(box_o, prev_o, w_box, rho)
             prior_d = native_prior(box_d, prev_d, w_box, rho)
             self.stdout.write(f"  prior: {len(prior_o)} players "
@@ -350,6 +358,39 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(f"\nResults → {out_dir}/results.csv"))
 
     # ── helpers ───────────────────────────────────────────────────────────────
+
+    def _load_box_priors(self, loader, season: int, opts: dict) -> tuple[dict, dict, dict]:
+        """
+        (box_o, box_d, minutes) keyed by int nba_id. Stored box values by default;
+        with --box-json-dir, box values from DIR/box_<season>.json and minutes
+        (mpg x gp summed over the season's regular rows) for exactly those players,
+        as _load_priors gives them for the players with stored box values.
+        """
+        box_dir = opts.get("box_json_dir")
+        if not box_dir:
+            return loader._load_priors(season)
+        path = Path(box_dir) / f"box_{season}.json"
+        if not path.exists():
+            raise CommandError(f"--box-json-dir: {path} not found")
+        with open(path) as f:
+            raw = json.load(f)
+        box_o = {int(k): float(v[0]) for k, v in raw.items()}
+        box_d = {int(k): float(v[1]) for k, v in raw.items()}
+        minutes = self._load_minutes(season, list(box_o))
+        self.stdout.write(f"Box priors from {path}: {len(box_o)} players")
+        return box_o, box_d, minutes
+
+    @staticmethod
+    def _load_minutes(season: int, nba_ids: list[int]) -> dict[int, float]:
+        from nba.models import NBAPlayerSeasonStats
+
+        minutes: dict[int, float] = {}
+        for r in NBAPlayerSeasonStats.objects.filter(
+            season__year=season, season_type="regular", player__player_id__in=nba_ids,
+        ).values("player__player_id", "mpg", "gp"):
+            pid = r["player__player_id"]
+            minutes[pid] = minutes.get(pid, 0.0) + (r["mpg"] or 0.0) * (r["gp"] or 0)
+        return minutes
 
     @staticmethod
     def _load_stored(season: int) -> dict[int, dict]:
