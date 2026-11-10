@@ -58,7 +58,7 @@ from nba.analytics.box_bpr import (
 from nba.analytics.career_stats import build_career_stats_map
 from nba.management.commands.nba_compute_box_bpr import _merge_player_rows
 
-ALPHAS = [1.0, 3.0, 10.0, 30.0, 100.0, 300.0, 1000.0]
+ALPHAS = [1.0, 3.0, 10.0, 30.0, 100.0, 300.0, 1000.0, 3000.0, 10000.0, 30000.0]
 HISTORY_START = 2016
 MIN_LOSO_SEASONS = 3
 PLAYER_FOLDS = 5

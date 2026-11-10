@@ -235,3 +235,24 @@ class BoxOnlyFeatureTests(SimpleTestCase):
                          "--out-dir", tmp.name, stdout=StringIO())
         self.assertEqual(seen, ["box_only"])
         self.assertEqual(json.loads((Path(tmp.name) / "alphas.json").read_text())[0]["features"], "box_only")
+
+
+class AlphaGridTests(SimpleTestCase):
+    """Task 3.5c: the alpha grid runs from 1 to 30000."""
+
+    def test_grid(self):
+        self.assertEqual(pooled.ALPHAS, [1.0, 3.0, 10.0, 30.0, 100.0, 300.0, 1000.0, 3000.0, 10000.0, 30000.0])
+
+    def test_alpha_above_1000_can_be_chosen(self):
+        # Pure-noise targets: every alpha predicts about equally badly, so the
+        # one-SE rule takes the largest, now 30000.
+        rng = np.random.default_rng(7)
+        data = {}
+        for s in range(2016, 2020):
+            d = _season_data(s)
+            d["y_off"] = rng.normal(size=len(d["pids"]))
+            d["y_def"] = rng.normal(size=len(d["pids"]))
+            data[s] = d
+        _, info = pooled.fit_season(2019, data, False)
+        self.assertEqual((info["off_alpha"], info["def_alpha"]), (30000.0, 30000.0))
+        self.assertEqual(len(info["off_cv_mean"]), 10)
