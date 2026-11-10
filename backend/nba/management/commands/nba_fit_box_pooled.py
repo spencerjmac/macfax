@@ -11,7 +11,8 @@ season Y is predicted and written to OUT_DIR/box_<Y>.json as
 {nba_id: [box_obpr, box_dbpr]}, the format nba_experiment_final_bpr
 --box-json-dir reads.
 
-Alpha is chosen from ALPHAS separately for offense and defense with the
+Alpha is chosen from ALPHAS up to --alpha-max (default 1000, the grid task 3.5b
+used; up to 30000 is available) separately for offense and defense with the
 one-standard-error rule (the largest alpha whose mean CV error is within one
 standard error of the best mean):
   - 3 or more training seasons: leave-one-season-out CV inside them
@@ -23,6 +24,12 @@ nba_compute_box_bpr does), with alpha from 5-fold CV over players.
 mean over the training rows (weights average 1), in the fits and in the CV
 error. OUT_DIR/alphas.json records each season's plan, alphas and CV errors.
 
+--target window3 trains on pooled RAPM over seasons s-2..s (from --history-start
+on; one column per player, rapm.fit_pooled_player_rapm) as season s's target,
+instead of s's single-season baseline RAPM. Season Y's model still trains on
+seasons before Y only, so nothing from Y enters it (the history-start season
+fits itself, on its own one-season window).
+
 --features box_only drops every feature built from on-court results (NBA.com's
 E_OFF/E_DEF/E_NET ratings: on_court_adj_*, d_mpir and what is derived from
 them) instead of the player's own box score. That includes the three archetype
@@ -33,6 +40,7 @@ Usage:
   python manage.py nba_fit_box_pooled --seasons 2016 2017 2018 --out-dir box_pooled
   python manage.py nba_fit_box_pooled --seasons 2025 --weight-by-poss --out-dir box_pooled_w
   python manage.py nba_fit_box_pooled --seasons 2025 --features box_only --out-dir box_pooled_bo
+  python manage.py nba_fit_box_pooled --seasons 2025 --features box_only --target window3 --out-dir box_w3
 """
 
 from __future__ import annotations
@@ -56,9 +64,13 @@ from nba.analytics.box_bpr import (
     predict_nba_box_bpr,
 )
 from nba.analytics.career_stats import build_career_stats_map
+from nba.analytics.rapm import build_nba_observations, fit_pooled_player_rapm
 from nba.management.commands.nba_compute_box_bpr import _merge_player_rows
 
 ALPHAS = [1.0, 3.0, 10.0, 30.0, 100.0, 300.0, 1000.0, 3000.0, 10000.0, 30000.0]
+DEFAULT_ALPHA_MAX = 1000.0
+TARGETS = ("baseline", "window3")
+WINDOW = 3
 HISTORY_START = 2016
 MIN_LOSO_SEASONS = 3
 PLAYER_FOLDS = 5
@@ -123,6 +135,19 @@ class SelectColumns:
         return self.model.predict(np.asarray(X)[:, self.idx])
 
 
+def alpha_grid(alpha_max: float = DEFAULT_ALPHA_MAX) -> list[float]:
+    """ALPHAS up to alpha_max."""
+    grid = [a for a in ALPHAS if a <= alpha_max]
+    if not grid:
+        raise ValueError(f"--alpha-max {alpha_max} is below the smallest alpha {ALPHAS[0]}")
+    return grid
+
+
+def window_years(season: int, history_start: int = HISTORY_START) -> list[int]:
+    """Seasons s-2..s, not before history_start."""
+    return list(range(max(history_start, season - WINDOW + 1), season + 1))
+
+
 def poss_weights(poss: np.ndarray) -> np.ndarray:
     """on_court_poss divided by its mean, so the weights average 1."""
     poss = np.asarray(poss, dtype=float)
@@ -178,13 +203,15 @@ def fold_labels(method: str, seasons: np.ndarray, players: np.ndarray) -> np.nda
 
 
 def fit_season(season: int, data: dict[int, dict], weight_by_poss: bool,
-               history_start: int = HISTORY_START, alphas: list[float] = ALPHAS,
+               history_start: int = HISTORY_START, alphas: list[float] | None = None,
                features: str = "all") -> tuple[dict, dict]:
     """
     data[s]: {"X_off", "X_def", "y_off", "y_def", "poss", "pids"} training rows of season s
     (full-width feature rows). Returns (artifacts {"off_pipeline", "def_pipeline"}, info for
     alphas.json); the artifacts take full-width rows. Only the seasons plan_training gives are used.
     """
+    if alphas is None:
+        alphas = alpha_grid()
     train, method = plan_training(season, history_start)
     rows = [data[s] for s in train]
     seasons = np.concatenate([np.full(len(r["pids"]), s) for s, r in zip(train, rows)])
@@ -214,7 +241,18 @@ def fit_season(season: int, data: dict[int, dict], weight_by_poss: bool,
 
 # ── database loading (same inputs as nba_compute_box_bpr at blend 0) ──────────
 
-def load_season(season: int, career_floor: int) -> dict:
+def window3_targets(season: int, history_start: int = HISTORY_START) -> dict:
+    """Pooled RAPM over window_years(season): {"obpr", "dbpr"} keyed by NBA.com id, plus "lambda", "years"."""
+    years = window_years(season, history_start)
+    res = fit_pooled_player_rapm(build_nba_observations(season, rapm_years=years))
+    return {"obpr": res["obpr"], "dbpr": res["dbpr"], "lambda": res["lambda"], "years": years}
+
+
+def load_season(season: int, career_floor: int, targets: dict | None = None) -> dict:
+    """
+    One season's inputs and training rows. targets None: baseline RAPM (players with
+    both baseline O and D); else {"obpr", "dbpr"} keyed by NBA.com id (players in both).
+    """
     from nba.models import NBAPlayerSeasonStats
 
     stats = list(NBAPlayerSeasonStats.objects.filter(
@@ -228,14 +266,23 @@ def load_season(season: int, career_floor: int) -> dict:
     feats = extract_nba_box_features(stats, opp, team, career)
 
     by_pid = {p["player_id"]: p for p in stats}
-    pids = [pid for pid in feats
-            if by_pid[pid].get("baseline_obpr") is not None and by_pid[pid].get("baseline_dbpr") is not None]
+    if targets is None:
+        pids = [pid for pid in feats
+                if by_pid[pid].get("baseline_obpr") is not None and by_pid[pid].get("baseline_dbpr") is not None]
+        y_off = [by_pid[p]["baseline_obpr"] for p in pids]
+        y_def = [by_pid[p]["baseline_dbpr"] for p in pids]
+    else:
+        nba = nba_ids_for(feats)
+        pids = [pid for pid in feats
+                if nba.get(pid) in targets["obpr"] and nba.get(pid) in targets["dbpr"]]
+        y_off = [targets["obpr"][nba[p]] for p in pids]
+        y_def = [targets["dbpr"][nba[p]] for p in pids]
     return {
         "inputs": (stats, opp, team, career),
         "X_off": np.array([feats[p]["off"] for p in pids]),
         "X_def": np.array([feats[p]["def"] for p in pids]),
-        "y_off": np.array([by_pid[p]["baseline_obpr"] for p in pids], dtype=float),
-        "y_def": np.array([by_pid[p]["baseline_dbpr"] for p in pids], dtype=float),
+        "y_off": np.array(y_off, dtype=float),
+        "y_def": np.array(y_def, dtype=float),
         "poss": np.array([float(by_pid[p].get("on_court_poss") or 0.0) for p in pids]),
         "pids": pids,
     }
@@ -256,6 +303,10 @@ class Command(BaseCommand):
                             help="Weight rows by on_court_poss / its mean over the training rows")
         parser.add_argument("--features", choices=FEATURE_SETS, default="all",
                             help="box_only drops the features built from on-court results")
+        parser.add_argument("--target", choices=TARGETS, default="baseline",
+                            help="window3: pooled RAPM over seasons s-2..s as season s's target")
+        parser.add_argument("--alpha-max", type=float, default=DEFAULT_ALPHA_MAX,
+                            help=f"Largest alpha in the grid (default {DEFAULT_ALPHA_MAX:g}; up to {ALPHAS[-1]:g})")
         parser.add_argument("--out-dir", type=str, required=True,
                             help="Writes box_<Y>.json per season and alphas.json")
         parser.add_argument("--history-start", type=int, default=HISTORY_START,
@@ -268,12 +319,22 @@ class Command(BaseCommand):
         out_dir.mkdir(parents=True, exist_ok=True)
         weighted = opts["weight_by_poss"]
         start = opts["history_start"]
+        alphas = alpha_grid(opts["alpha_max"])
+        target = opts["target"]
         cache: dict[int, dict] = {}
+        window_info: dict[int, dict] = {}
 
         def get(season):
             if season not in cache:
                 self.stdout.write(f"Loading season {season}...")
-                cache[season] = load_season(season, opts["career_floor"])
+                targets = None
+                if target == "window3":
+                    targets = window3_targets(season, start)
+                    window_info[season] = {"years": targets["years"], "lambda": targets["lambda"],
+                                           "n_players": len(targets["obpr"])}
+                    self.stdout.write(f"  window3 target {targets['years']}: lambda={targets['lambda']:g}, "
+                                      f"{len(targets['obpr'])} players")
+                cache[season] = load_season(season, opts["career_floor"], targets)
             return cache[season]
 
         all_info = []
@@ -282,8 +343,17 @@ class Command(BaseCommand):
                 raise CommandError(f"Season {season} is before --history-start {start}")
             train, _ = plan_training(season, start)
             data = {s: get(s) for s in train}
-            artifacts, info = fit_season(season, data, weighted, start, features=opts["features"])
-            stats, opp, team, career = get(season)["inputs"]
+            artifacts, info = fit_season(season, data, weighted, start, alphas=alphas,
+                                         features=opts["features"])
+            info["target"] = target
+            info["alpha_max"] = alphas[-1]
+            if target == "window3":
+                info["target_windows"] = {str(s): window_info[s] for s in train}
+            # Season Y's own inputs only (features); its targets are never needed.
+            if season in cache:
+                stats, opp, team, career = cache[season]["inputs"]
+            else:
+                stats, opp, team, career = load_season(season, opts["career_floor"])["inputs"]
             preds = predict_nba_box_bpr(stats, opp, team, artifacts, career)
             nba_ids = nba_ids_for(preds)
             out = {str(nba_ids[pk]): [p["box_obpr"], p["box_dbpr"]] for pk, p in preds.items()}
@@ -294,7 +364,7 @@ class Command(BaseCommand):
             all_info.append(info)
             self.stdout.write(
                 f"  {season}: train {train[0]}-{train[-1]} ({info['method']}, n={info['n_train']}"
-                f"{', weighted' if weighted else ''}, features={opts['features']})  off alpha={info['off_alpha']:g}  "
+                f"{', weighted' if weighted else ''}, features={opts['features']}, target={target})  off alpha={info['off_alpha']:g}  "
                 f"def alpha={info['def_alpha']:g}  → {len(out)} players {path}")
 
         with open(out_dir / "alphas.json", "w") as f:

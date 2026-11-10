@@ -101,9 +101,9 @@ class FitSeasonTests(SimpleTestCase):
     def test_alpha_from_grid_and_loso_folds(self):
         _, info = pooled.fit_season(2020, self.data, False)
         self.assertEqual(info["method"], "loso")
-        self.assertIn(info["off_alpha"], pooled.ALPHAS)
-        self.assertIn(info["def_alpha"], pooled.ALPHAS)
-        self.assertEqual(len(info["off_cv_mean"]), len(pooled.ALPHAS))
+        self.assertIn(info["off_alpha"], pooled.alpha_grid())
+        self.assertIn(info["def_alpha"], pooled.alpha_grid())
+        self.assertEqual(len(info["off_cv_mean"]), len(pooled.alpha_grid()))
 
     def test_first_season_fits_itself(self):
         _, info = pooled.fit_season(2016, self.data, False)
@@ -137,7 +137,7 @@ class CommandTests(SimpleTestCase):
         self.out = Path(tmp.name) / "box_pooled"
         self.loaded = []
 
-        def load(season, career_floor):
+        def load(season, career_floor, targets=None):
             self.loaded.append(season)
             return _season_data(season)
 
@@ -227,7 +227,7 @@ class BoxOnlyFeatureTests(SimpleTestCase):
 
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
-        with mock.patch(f"{MOD}.load_season", lambda s, c: _wide_season(s)), \
+        with mock.patch(f"{MOD}.load_season", lambda s, c, t=None: _wide_season(s)), \
              mock.patch(f"{MOD}.predict_nba_box_bpr", lambda *a: {}), \
              mock.patch(f"{MOD}.nba_ids_for", lambda pks: {}), \
              mock.patch(f"{MOD}.fit_season", spy):
@@ -253,6 +253,74 @@ class AlphaGridTests(SimpleTestCase):
             d["y_off"] = rng.normal(size=len(d["pids"]))
             d["y_def"] = rng.normal(size=len(d["pids"]))
             data[s] = d
-        _, info = pooled.fit_season(2019, data, False)
+        _, info = pooled.fit_season(2019, data, False, alphas=pooled.alpha_grid(30000))
         self.assertEqual((info["off_alpha"], info["def_alpha"]), (30000.0, 30000.0))
         self.assertEqual(len(info["off_cv_mean"]), 10)
+        # Default grid (task 3.6): capped at 1000.
+        _, info = pooled.fit_season(2019, data, False)
+        self.assertEqual((info["off_alpha"], info["def_alpha"]), (1000.0, 1000.0))
+        self.assertEqual(len(info["off_cv_mean"]), 7)
+
+
+
+class AlphaMaxAndWindow3Tests(SimpleTestCase):
+    """Task 3.6: --alpha-max (default 1000) and --target window3."""
+
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.out = Path(tmp.name)
+
+    def test_alpha_grid(self):
+        self.assertEqual(pooled.alpha_grid(), [1.0, 3.0, 10.0, 30.0, 100.0, 300.0, 1000.0])
+        self.assertEqual(pooled.alpha_grid(30000), pooled.ALPHAS)
+        self.assertEqual(pooled.alpha_grid(3000)[-1], 3000.0)
+        with self.assertRaises(ValueError):
+            pooled.alpha_grid(0.5)
+
+    def test_window_years(self):
+        self.assertEqual(pooled.window_years(2016), [2016])
+        self.assertEqual(pooled.window_years(2017), [2016, 2017])
+        self.assertEqual(pooled.window_years(2020), [2018, 2019, 2020])
+
+    def _run(self, *args):
+        self.loads, self.windows, self.fits = [], [], []
+
+        def load(season, career_floor, targets=None):
+            self.loads.append((season, targets is not None))
+            return _season_data(season)
+
+        def window(season, start):
+            self.windows.append(season)
+            return {"obpr": {1: 0.0}, "dbpr": {1: 0.0}, "lambda": 500.0, "years": pooled.window_years(season, start)}
+
+        real = pooled.fit_season
+
+        def spy(*a, **k):
+            self.fits.append(k["alphas"])
+            return real(*a, **k)
+
+        with mock.patch(f"{MOD}.load_season", load), mock.patch(f"{MOD}.window3_targets", window), \
+             mock.patch(f"{MOD}.predict_nba_box_bpr", lambda *a: {}), \
+             mock.patch(f"{MOD}.nba_ids_for", lambda pks: {}), mock.patch(f"{MOD}.fit_season", spy):
+            call_command("nba_fit_box_pooled", "--out-dir", str(self.out), *args, stdout=StringIO())
+        return json.loads((self.out / "alphas.json").read_text())
+
+    def test_window3_targets_only_for_training_seasons(self):
+        info = self._run("--seasons", "2019", "--target", "window3")
+        self.assertEqual(self.windows, [2016, 2017, 2018])          # never 2019
+        self.assertIn((2019, False), self.loads)                     # Y's inputs, no target
+        self.assertTrue(all(t for s, t in self.loads if s < 2019))   # training seasons carry targets
+        self.assertEqual(info[0]["target"], "window3")
+        self.assertEqual(info[0]["target_windows"]["2018"]["years"], [2016, 2017, 2018])
+
+    def test_baseline_target_never_fits_windows(self):
+        info = self._run("--seasons", "2019")
+        self.assertEqual(self.windows, [])
+        self.assertEqual(info[0]["target"], "baseline")
+
+    def test_alpha_max_reaches_the_fit(self):
+        self._run("--seasons", "2019")
+        self.assertEqual(self.fits[-1][-1], 1000.0)
+        self._run("--seasons", "2019", "--alpha-max", "30000")
+        self.assertEqual(self.fits[-1], pooled.ALPHAS)

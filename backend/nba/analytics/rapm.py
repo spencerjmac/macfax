@@ -522,6 +522,48 @@ def fit_baseline_rapm(
     }
 
 
+def fit_pooled_player_rapm(
+    observations: list[dict],
+    run_cv: bool = True,
+    lambda_override: Optional[float] = None,
+    within_season_half_life: float | None = None,
+) -> dict:
+    """
+    Baseline RAPM with ONE column per player across every season in observations
+    (fit_baseline_rapm gives one per player-season). Same ridge: global prior 0,
+    intercept and HCA unpenalized, λ by the same 5-fold game CV. No cross-season
+    decay; within-season decay only when within_season_half_life is given.
+
+    Returns {"obpr": {player_id: float}, "dbpr": {player_id: float} (positive = good
+    defense, as fit_baseline_rapm), "intercept", "hca", "lambda", "cv_metrics",
+    "n_players"}.
+    """
+    players = sorted({p for obs in observations for p in obs["home_player_ids"] + obs["away_player_ids"]})
+    col = {p: i for i, p in enumerate(players)}
+    n = len(players)
+    # Every (player, season) key points at the player's one column.
+    index = {(p, obs["season_year"]): col[p]
+             for obs in observations for p in obs["home_player_ids"] + obs["away_player_ids"]}
+
+    X, y, weights = build_design_matrix(observations, index, n,
+                                        within_season_half_life=within_season_half_life)
+    cv_metrics = None
+    if lambda_override is not None:
+        best_lambda = lambda_override
+    elif run_cv:
+        best_lambda, cv_metrics = cross_validate_lambda(observations, X, y, weights, n)
+    else:
+        best_lambda = 500.0
+
+    beta = _solve_augmented(X, y, weights, best_lambda, player_col_slice=(2, 2 + 2 * n))
+    obpr = {p: float(beta[2 + i]) for p, i in col.items()}
+    dbpr = {p: float(-beta[2 + n + i]) for p, i in col.items()}   # sign as fit_baseline_rapm
+    logger.info("Pooled player RAPM: %d players over seasons %s, λ=%.1f", n,
+                sorted({obs["season_year"] for obs in observations}), best_lambda)
+    return {"obpr": obpr, "dbpr": dbpr, "intercept": float(beta[0]), "hca": float(beta[1]),
+            "lambda": best_lambda, "cv_metrics": cv_metrics, "n_players": n}
+
+
 def fit_prior_informed_rapm(
     observations: list[dict],
     player_season_index: dict,
