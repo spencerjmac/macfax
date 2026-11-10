@@ -12,12 +12,14 @@ defender's D rating enters with a minus):
     league_mean + hca_sign * hca + sum(O of the offense) - sum(D of the defense)
 
 hca_sign is +1 on home-offense rows and -1 on away-offense rows. league_mean
-and hca are fitted once per season from the rows alone (possession-weighted
-least squares on the intercept and HCA columns), so every candidate is scored
-against the same baseline. Players missing from the ratings count as 0.
+and hca are fitted per candidate: possession-weighted least squares of
+(target - the candidate's player term) on an intercept and hca_sign, on the
+scored season's rows. A constant added to every O (or every D) rating shifts
+every row's player term by the same amount, so the intercept absorbs it and
+the score is unchanged. Players missing from the ratings count as 0.
 
-score() returns the possession-weighted MSE, and the same MSE with every
-rating at 0 (the baseline alone).
+score() returns the possession-weighted MSE of what remains, and the same MSE
+with every rating at 0 (the intercept and HCA fit on the targets alone).
 """
 
 from __future__ import annotations
@@ -40,7 +42,7 @@ def stint_rows(observations: list[dict]) -> list[tuple[float, float, float, list
 
 
 def _baseline(y: np.ndarray, w: np.ndarray, s: np.ndarray) -> tuple[float, float]:
-    """Possession-weighted least squares of y on [1, hca_sign]: (league_mean, hca)."""
+    """Possession-weighted least squares of y on [1, hca_sign]: (intercept, hca)."""
     X = np.column_stack([np.ones_like(s), s])
     sw = np.sqrt(w)
     beta, *_ = np.linalg.lstsq(X * sw[:, None], y * sw, rcond=None)
@@ -60,7 +62,8 @@ def score(
     (or for tests); loaded when None.
 
     Returns {"mse", "mse_zero", "n_rows", "poss", "league_mean", "hca"};
-    mse values are None when the season has no rows.
+    league_mean and hca are this candidate's fit. mse values are None when the
+    season has no rows.
     """
     if observations is None:
         observations = build_nba_observations(season_year)
@@ -72,17 +75,17 @@ def score(
     y = np.array([r[0] for r in rows])
     w = np.array([r[1] for r in rows])
     s = np.array([r[2] for r in rows])
-    league_mean, hca = _baseline(y, w, s)
 
     players = np.array([
         sum(ratings_o.get(p, 0.0) for p in off) - sum(ratings_d.get(p, 0.0) for p in dfn)
         for _, _, _, off, dfn in rows
     ])
-    base = league_mean + hca * s
+    league_mean, hca = _baseline(y - players, w, s)
+    zero_mean, zero_hca = _baseline(y, w, s)
     total = float(w.sum())
     return {
-        "mse": float((w * (y - base - players) ** 2).sum() / total),
-        "mse_zero": float((w * (y - base) ** 2).sum() / total),
+        "mse": float((w * (y - players - league_mean - hca * s) ** 2).sum() / total),
+        "mse_zero": float((w * (y - zero_mean - zero_hca * s) ** 2).sum() / total),
         "n_rows": len(rows),
         "poss": total,
         "league_mean": league_mean,

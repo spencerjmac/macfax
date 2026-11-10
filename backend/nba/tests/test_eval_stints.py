@@ -1,7 +1,9 @@
 """
 Phase 2 task 2.3: eval_stints.score on a two-stint toy example. Predictions use
 rapm.py's signs, so the score matches rapm.py's own design matrix with the
-same coefficients; league mean and HCA are fitted from the rows alone.
+same coefficients. Task 2.3b: league mean and HCA are fitted per candidate,
+on the targets minus the candidate's player term, so shifting every O or every
+D rating by a constant leaves the score unchanged.
 """
 
 from datetime import date
@@ -54,6 +56,31 @@ class EvalStintsToyTests(SimpleTestCase):
         ys, ws = [120, 90, 110, 90], [10, 10, 20, 20]
         expected = sum(w * (y - p) ** 2 for y, p, w in zip(ys, preds, ws)) / 60
         self.assertAlmostEqual(res["mse"], expected)
+
+    def test_toy_candidate_fit_by_hand(self):
+        # Player terms +6, -2, 0, 0 -> targets minus them: 114, 92, 110, 90 (w 10, 10, 20, 20).
+        # Home rows mean (1140+2200)/30 = 111.33, away rows (920+1800)/30 = 90.67
+        # -> mu 101, hca 10.33; residuals 8/3, -4/3 (home), 4/3, -2/3 (away).
+        res = score({5: 6.0}, {5: 2.0}, 2026, observations=TOY)
+        self.assertAlmostEqual(res["league_mean"], 101.0)
+        self.assertAlmostEqual(res["hca"], 31 / 3)
+        self.assertAlmostEqual(res["mse"], (10 * 64 + 10 * 16 + 20 * 16 + 20 * 4) / 9 / 60)   # 20/9
+        self.assertAlmostEqual(res["mse_zero"], 100 / 9)   # unchanged by the candidate
+
+    def test_constant_shift_of_every_rating_leaves_mse_unchanged(self):
+        ids = range(1, 13)
+        ratings_o = {p: 0.3 * p - 1.0 for p in ids}
+        ratings_d = {p: 0.8 - 0.2 * p for p in ids}
+        base = score(ratings_o, ratings_d, 2026, observations=TOY)
+        shift_o = score({p: v + 3.7 for p, v in ratings_o.items()}, ratings_d, 2026, observations=TOY)
+        shift_d = score(ratings_o, {p: v - 2.4 for p, v in ratings_d.items()}, 2026, observations=TOY)
+        for shifted in (shift_o, shift_d):
+            self.assertAlmostEqual(shifted["mse"], base["mse"])
+            self.assertAlmostEqual(shifted["mse_zero"], base["mse_zero"])
+            self.assertAlmostEqual(shifted["hca"], base["hca"])
+        # Five offense players each +3.7 -> intercept 18.5 lower; five defenders each -2.4 -> 12 lower.
+        self.assertAlmostEqual(shift_o["league_mean"], base["league_mean"] - 18.5)
+        self.assertAlmostEqual(shift_d["league_mean"], base["league_mean"] - 12.0)
 
     def test_matches_rapm_design_matrix_with_same_coefficients(self):
         ratings_o = {1: 1.5, 6: -0.5, 11: 2.0}
