@@ -19,7 +19,14 @@ Usage:
   python manage.py nba_compute_box_bpr --season 2026 --dry-run
   python manage.py nba_compute_box_bpr --season 2026 --oof
   python manage.py nba_compute_box_bpr --season 2026 --validate
+  python manage.py nba_compute_box_bpr --season 2026 --lebron-blend-w 0 --dump-json box_2026.json
+
+--lebron-blend-w sets LEBRON's weight in the training-target blend (default
+LEBRON_BLEND_W). --dump-json PATH writes {nba_id: [box_obpr, box_dbpr]} to PATH
+and skips all database writes.
 """
+
+import json
 
 import logging
 import re
@@ -169,6 +176,19 @@ class Command(BaseCommand):
             default=2016,
             help="Oldest season (ending year) in the career-stabilized stats window (default 2016)",
         )
+        parser.add_argument(
+            "--lebron-blend-w",
+            type=float,
+            default=LEBRON_BLEND_W,
+            help=f"LEBRON's weight in the training-target blend (default {LEBRON_BLEND_W})",
+        )
+        parser.add_argument(
+            "--dump-json",
+            type=str,
+            default=None,
+            metavar="PATH",
+            help="Write {nba_id: [box_obpr, box_dbpr]} to PATH and skip all DB writes",
+        )
 
     def handle(self, *args, **options):
         season_year: int = resolve_season_year(options["season"])
@@ -176,8 +196,12 @@ class Command(BaseCommand):
         use_oof: bool = options["oof"]
         validate: bool = options.get("validate", False)
         career_floor: int = options.get("career_floor", 2016)
+        blend_w: float = options.get("lebron_blend_w", LEBRON_BLEND_W)
+        dump_json: str | None = options.get("dump_json")
         if validate:
             dry_run = True   # --validate implies no DB writes
+        if dump_json:
+            dry_run = True   # --dump-json implies no DB writes
 
         self.stdout.write(f"\n[NBA BOX BPR] Season {season_year}")
         if dry_run:
@@ -306,15 +330,15 @@ class Command(BaseCommand):
                 if pid in lebron_map:
                     o_leb, d_leb = lebron_map[pid]
                     if pid in target_obpr:
-                        target_obpr[pid] = (1 - LEBRON_BLEND_W) * target_obpr[pid] + LEBRON_BLEND_W * o_leb
+                        target_obpr[pid] = (1 - blend_w) * target_obpr[pid] + blend_w * o_leb
                     if pid in target_dbpr:
-                        target_dbpr[pid] = (1 - LEBRON_BLEND_W) * target_dbpr[pid] + LEBRON_BLEND_W * d_leb
+                        target_dbpr[pid] = (1 - blend_w) * target_dbpr[pid] + blend_w * d_leb
                     n_blended += 1
 
         if lebron_map:
             self.stdout.write(
                 f"  LEBRON blend applied: {n_blended} players "
-                f"({1-LEBRON_BLEND_W:.0%}×RAPM + {LEBRON_BLEND_W:.0%}×LEBRON) | no-match: {len(rapm_pids) - n_blended} players (pure RAPM)"
+                f"({1-blend_w:.0%}×RAPM + {blend_w:.0%}×LEBRON) | no-match: {len(rapm_pids) - n_blended} players (pure RAPM)"
             )
         else:
             self.stdout.write(
@@ -371,6 +395,16 @@ class Command(BaseCommand):
         self.stdout.write(f"Box BPR computed for {len(predictions)} players")
 
         # ── 5. Write results ───────────────────────────────────────────────────
+        if dump_json:
+            nba_ids = dict(NBAPlayer.objects.filter(pk__in=predictions.keys())
+                           .values_list("pk", "player_id"))
+            out = {str(nba_ids[pk]): [pred["box_obpr"], pred["box_dbpr"]]
+                   for pk, pred in predictions.items()}
+            Path(dump_json).parent.mkdir(parents=True, exist_ok=True)
+            with open(dump_json, "w") as f:
+                json.dump(out, f)
+            self.stdout.write(f"[DUMP JSON] {len(out)} players → {dump_json} (no DB writes)")
+
         if dry_run:
             self._print_top_players(predictions, stats_values)
             if validate:
