@@ -23,9 +23,16 @@ nba_compute_box_bpr does), with alpha from 5-fold CV over players.
 mean over the training rows (weights average 1), in the fits and in the CV
 error. OUT_DIR/alphas.json records each season's plan, alphas and CV errors.
 
+--features box_only drops every feature built from on-court results (NBA.com's
+E_OFF/E_DEF/E_NET ratings: on_court_adj_*, d_mpir and what is derived from
+them) instead of the player's own box score. That includes the three archetype
+one-hots whose split depends on d_mpir (three_and_d / stretch / connector);
+creator, scorer and interior depend on box inputs only and stay.
+
 Usage:
   python manage.py nba_fit_box_pooled --seasons 2016 2017 2018 --out-dir box_pooled
   python manage.py nba_fit_box_pooled --seasons 2025 --weight-by-poss --out-dir box_pooled_w
+  python manage.py nba_fit_box_pooled --seasons 2025 --features box_only --out-dir box_pooled_bo
 """
 
 from __future__ import annotations
@@ -41,6 +48,8 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
 from nba.analytics.box_bpr import (
+    DEF_FEATURES,
+    OFF_FEATURES,
     compute_opp_quality_map,
     compute_team_adj_em_map,
     extract_nba_box_features,
@@ -53,6 +62,15 @@ ALPHAS = [1.0, 3.0, 10.0, 30.0, 100.0, 300.0, 1000.0]
 HISTORY_START = 2016
 MIN_LOSO_SEASONS = 3
 PLAYER_FOLDS = 5
+
+# Features built from on-court results rather than the player's own box score.
+_D_MPIR_ARCHETYPES = {"arch_three_and_d", "arch_stretch", "arch_connector"}
+ON_COURT_FEATURES = {
+    "off": {"on_off_adj_em_delta", "ortg_vs_team"} | _D_MPIR_ARCHETYPES,
+    "def": {"d_mpir", "on_court_adj_d", "on_off_adj_em_delta", "d_vs_team"} | _D_MPIR_ARCHETYPES,
+}
+FEATURE_NAMES = {"off": OFF_FEATURES, "def": DEF_FEATURES}
+FEATURE_SETS = ("all", "box_only")
 
 # The same per-season fields nba_compute_box_bpr loads.
 STATS_FIELDS = (
@@ -79,6 +97,30 @@ def plan_training(season: int, history_start: int = HISTORY_START) -> tuple[list
         train = [season]
     method = "loso" if len(train) >= MIN_LOSO_SEASONS else "player_5fold"
     return train, method
+
+
+def feature_index(side: str, features: str) -> list[int] | None:
+    """Columns kept for a feature set: None (all) or the indices of the box-only columns."""
+    if features == "all":
+        return None
+    if features != "box_only":
+        raise ValueError(f"unknown feature set {features!r}")
+    drop = ON_COURT_FEATURES[side]
+    missing = drop - set(FEATURE_NAMES[side])
+    if missing:
+        raise ValueError(f"{side} features not found: {sorted(missing)}")
+    return [i for i, name in enumerate(FEATURE_NAMES[side]) if name not in drop]
+
+
+class SelectColumns:
+    """Applies a fitted pipeline to the kept columns of a full-width feature row."""
+
+    def __init__(self, idx: list[int], model: Pipeline):
+        self.idx = idx
+        self.model = model
+
+    def predict(self, X):
+        return self.model.predict(np.asarray(X)[:, self.idx])
 
 
 def poss_weights(poss: np.ndarray) -> np.ndarray:
@@ -136,11 +178,12 @@ def fold_labels(method: str, seasons: np.ndarray, players: np.ndarray) -> np.nda
 
 
 def fit_season(season: int, data: dict[int, dict], weight_by_poss: bool,
-               history_start: int = HISTORY_START, alphas: list[float] = ALPHAS) -> tuple[dict, dict]:
+               history_start: int = HISTORY_START, alphas: list[float] = ALPHAS,
+               features: str = "all") -> tuple[dict, dict]:
     """
-    data[s]: {"X_off", "X_def", "y_off", "y_def", "poss", "pids"} training rows of season s.
-    Returns (artifacts {"off_pipeline", "def_pipeline"}, info for alphas.json).
-    Only the seasons plan_training gives are used.
+    data[s]: {"X_off", "X_def", "y_off", "y_def", "poss", "pids"} training rows of season s
+    (full-width feature rows). Returns (artifacts {"off_pipeline", "def_pipeline"}, info for
+    alphas.json); the artifacts take full-width rows. Only the seasons plan_training gives are used.
     """
     train, method = plan_training(season, history_start)
     rows = [data[s] for s in train]
@@ -149,14 +192,19 @@ def fit_season(season: int, data: dict[int, dict], weight_by_poss: bool,
     w = poss_weights(np.concatenate([r["poss"] for r in rows])) if weight_by_poss else None
     folds = fold_labels(method, seasons, players)
     info = {"season": season, "train_seasons": train, "method": method, "n_train": int(len(players)),
-            "weighted": weight_by_poss}
+            "weighted": weight_by_poss, "features": features}
     artifacts = {}
     for side in ("off", "def"):
         X = np.vstack([r[f"X_{side}"] for r in rows])
         y = np.concatenate([r[f"y_{side}"] for r in rows])
+        idx = feature_index(side, features)
+        if idx is not None:
+            X = X[:, idx]
         errs = cv_fold_errors(X, y, w, folds, alphas)
         alpha, mean, se = one_se_choice(alphas, errs)
-        artifacts[f"{side}_pipeline"] = fit_ridge(X, y, w, alpha)
+        model = fit_ridge(X, y, w, alpha)
+        artifacts[f"{side}_pipeline"] = model if idx is None else SelectColumns(idx, model)
+        info[f"{side}_n_features"] = int(X.shape[1])
         info[f"{side}_alpha"] = alpha
         info[f"{side}_alpha_min_error"] = float(alphas[int(np.argmin(mean))])
         info[f"{side}_cv_mean"] = [round(float(m), 5) for m in mean]
@@ -206,6 +254,8 @@ class Command(BaseCommand):
         parser.add_argument("--seasons", nargs="+", type=int, required=True)
         parser.add_argument("--weight-by-poss", action="store_true",
                             help="Weight rows by on_court_poss / its mean over the training rows")
+        parser.add_argument("--features", choices=FEATURE_SETS, default="all",
+                            help="box_only drops the features built from on-court results")
         parser.add_argument("--out-dir", type=str, required=True,
                             help="Writes box_<Y>.json per season and alphas.json")
         parser.add_argument("--history-start", type=int, default=HISTORY_START,
@@ -232,7 +282,7 @@ class Command(BaseCommand):
                 raise CommandError(f"Season {season} is before --history-start {start}")
             train, _ = plan_training(season, start)
             data = {s: get(s) for s in train}
-            artifacts, info = fit_season(season, data, weighted, start)
+            artifacts, info = fit_season(season, data, weighted, start, features=opts["features"])
             stats, opp, team, career = get(season)["inputs"]
             preds = predict_nba_box_bpr(stats, opp, team, artifacts, career)
             nba_ids = nba_ids_for(preds)
@@ -244,7 +294,7 @@ class Command(BaseCommand):
             all_info.append(info)
             self.stdout.write(
                 f"  {season}: train {train[0]}-{train[-1]} ({info['method']}, n={info['n_train']}"
-                f"{', weighted' if weighted else ''})  off alpha={info['off_alpha']:g}  "
+                f"{', weighted' if weighted else ''}, features={opts['features']})  off alpha={info['off_alpha']:g}  "
                 f"def alpha={info['def_alpha']:g}  → {len(out)} players {path}")
 
         with open(out_dir / "alphas.json", "w") as f:

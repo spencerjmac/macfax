@@ -166,3 +166,72 @@ class CommandTests(SimpleTestCase):
         with self.assertRaises(CommandError):
             call_command("nba_fit_box_pooled", "--seasons", "2015", "--out-dir", str(self.out),
                          stdout=StringIO())
+
+
+def _wide_season(season, n=60):
+    """Full-width feature rows (OFF_FEATURES / DEF_FEATURES columns)."""
+    rng = np.random.default_rng(season)
+    n_off, n_def = len(pooled.OFF_FEATURES), len(pooled.DEF_FEATURES)
+    Xo, Xd = rng.normal(size=(n, n_off)), rng.normal(size=(n, n_def))
+    return {"X_off": Xo, "X_def": Xd, "y_off": Xo[:, 0] + rng.normal(0, 0.3, n),
+            "y_def": Xd[:, 0] + rng.normal(0, 0.3, n), "poss": rng.uniform(500, 5000, n),
+            "pids": [season * 1000 + i for i in range(n)], "inputs": ("stats", "opp", "team", "career")}
+
+
+class BoxOnlyFeatureTests(SimpleTestCase):
+    """Task 3.5b: --features box_only drops the features built from on-court results."""
+
+    def test_dropped_features(self):
+        off = [pooled.OFF_FEATURES[i] for i in pooled.feature_index("off", "box_only")]
+        dfn = [pooled.DEF_FEATURES[i] for i in pooled.feature_index("def", "box_only")]
+        on_court_off = {"on_off_adj_em_delta", "ortg_vs_team"}
+        on_court_def = {"d_mpir", "on_court_adj_d", "on_off_adj_em_delta", "d_vs_team"}
+        d_mpir_arch = {"arch_three_and_d", "arch_stretch", "arch_connector"}
+        self.assertEqual(set(pooled.OFF_FEATURES) - set(off), on_court_off | d_mpir_arch)
+        self.assertEqual(set(pooled.DEF_FEATURES) - set(dfn), on_court_def | d_mpir_arch)
+        for kept in ("pts100", "ts_pct", "usg_pct", "opp_quality", "arch_creator", "arch_interior"):
+            self.assertIn(kept, off)
+        self.assertIsNone(pooled.feature_index("off", "all"))
+
+    def test_box_only_fit_ignores_on_court_columns(self):
+        data = {s: _wide_season(s) for s in range(2016, 2020)}
+        art, info = pooled.fit_season(2019, data, False, features="box_only")
+        self.assertEqual(info["off_n_features"], len(pooled.feature_index("off", "box_only")))
+        self.assertEqual(info["def_n_features"], len(pooled.feature_index("def", "box_only")))
+        # Prediction takes full-width rows; changing a dropped column changes nothing.
+        row_o = np.ones((1, len(pooled.OFF_FEATURES)))
+        row_d = np.ones((1, len(pooled.DEF_FEATURES)))
+        base_o, base_d = art["off_pipeline"].predict(row_o)[0], art["def_pipeline"].predict(row_d)[0]
+        row_o[0, pooled.OFF_FEATURES.index("ortg_vs_team")] = 50.0
+        row_d[0, pooled.DEF_FEATURES.index("d_mpir")] = -50.0
+        self.assertEqual(art["off_pipeline"].predict(row_o)[0], base_o)
+        self.assertEqual(art["def_pipeline"].predict(row_d)[0], base_d)
+
+    def test_default_uses_every_feature(self):
+        data = {s: _wide_season(s) for s in range(2016, 2020)}
+        art, info = pooled.fit_season(2019, data, False)
+        self.assertEqual((info["features"], info["off_n_features"], info["def_n_features"]),
+                         ("all", len(pooled.OFF_FEATURES), len(pooled.DEF_FEATURES)))
+        row = np.ones((1, len(pooled.OFF_FEATURES)))
+        before = art["off_pipeline"].predict(row)[0]
+        row[0, pooled.OFF_FEATURES.index("ortg_vs_team")] = 50.0
+        self.assertNotEqual(art["off_pipeline"].predict(row)[0], before)
+
+    def test_command_passes_feature_set(self):
+        seen = []
+        real = pooled.fit_season
+
+        def spy(*a, **k):
+            seen.append(k.get("features"))
+            return real(*a, **k)
+
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        with mock.patch(f"{MOD}.load_season", lambda s, c: _wide_season(s)), \
+             mock.patch(f"{MOD}.predict_nba_box_bpr", lambda *a: {}), \
+             mock.patch(f"{MOD}.nba_ids_for", lambda pks: {}), \
+             mock.patch(f"{MOD}.fit_season", spy):
+            call_command("nba_fit_box_pooled", "--seasons", "2017", "--features", "box_only",
+                         "--out-dir", tmp.name, stdout=StringIO())
+        self.assertEqual(seen, ["box_only"])
+        self.assertEqual(json.loads((Path(tmp.name) / "alphas.json").read_text())[0]["features"], "box_only")
