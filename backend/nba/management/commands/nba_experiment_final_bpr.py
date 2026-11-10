@@ -40,6 +40,9 @@ Usage:
       --run-name prior_w_050
   python manage.py nba_experiment_final_bpr --native-chain --chain-start 2016 \\
       --source-seasons 2017 2018 --w-box 0.5 --rho 0.8 --run-name native_smoke
+
+--lambda-mult X (default 1) multiplies every lambda by X in both modes: the
+per-player tier lambdas and the 1000 fallback.
 """
 
 from __future__ import annotations
@@ -101,6 +104,9 @@ class Command(BaseCommand):
                             help="native_prior weight on the box rating")
         parser.add_argument("--rho", type=float, default=None,
                             help="native_prior shrink on the previous chain result")
+        parser.add_argument("--lambda-mult", type=float, default=1.0,
+                            help="Multiply every lambda (per-player tiers and the 1000 "
+                                 "fallback) by this, in both modes")
         parser.add_argument("--run-name", type=str, required=True)
         parser.add_argument("--out-dir", type=str,
                             default="backtest_output/bpr_suite/nba")
@@ -116,6 +122,7 @@ class Command(BaseCommand):
         tier = opts["tier"]
         whl = opts["within_season_half_life"] or None
         window = opts["rapm_window"]
+        lam_mult = opts.get("lambda_mult", 1.0)
 
         # Borrow the production command's loaders (read-only methods).
         loader = FinalBprCommand()
@@ -160,6 +167,7 @@ class Command(BaseCommand):
                     keys, minutes, LAMBDA_TIERS[tier],
                     lebron_map=lebron_map if lam_scale > 0 else None,
                     lebron_scale=lam_scale, lebron_cap=LEBRON_LAMBDA_CAP)
+            lam_arr = np.asarray(lam_arr) * lam_mult
             lambda_by_id = {pid: float(lam_arr[i])
                             for i, (pid, _yr) in enumerate(keys)}
 
@@ -169,7 +177,7 @@ class Command(BaseCommand):
                 n_player_seasons=n_ps,
                 prior_obpr=prior_obpr,
                 prior_dbpr=prior_dbpr,
-                lambda_val=1000.0,
+                lambda_val=1000.0 * lam_mult,
                 lambda_by_nba_id=lambda_by_id,
                 target_season_year=src,
                 cross_season_decay=1.0,
@@ -182,7 +190,7 @@ class Command(BaseCommand):
             row = {"run": opts["run_name"], "source": src, "target": tgt,
                    "prior_w": prior_w, "prior_def_w": prior_def_w,
                    "lambda_scale": lam_scale, "tier": tier,
-                   "half_life": whl or 0, "n_variant": len(variant_o)}
+                   "half_life": whl or 0, "lambda_mult": lam_mult, "n_variant": len(variant_o)}
             rows_out.append(self._evaluate(src, variant_o, variant_d, row, opts, out_dir))
 
         self._write_outputs(out_dir, rows_out, opts)
@@ -203,8 +211,9 @@ class Command(BaseCommand):
             raise CommandError(f"--chain-start {start} is after the first source season {sources[0]}")
         tier = opts["tier"]
         whl = opts["within_season_half_life"] or None
+        lam_mult = opts.get("lambda_mult", 1.0)
         self.stdout.write(f"[NATIVE CHAIN] {start}..{sources[-1]}  w_box={w_box} rho={rho} "
-                          f"tier={tier}  LEBRON: not used")
+                          f"tier={tier} lambda_mult={lam_mult}  LEBRON: not used")
 
         rows_out: list[dict] = []
         prev_o: dict[int, float] = {}
@@ -220,22 +229,25 @@ class Command(BaseCommand):
                               f"{len(box_o.keys() - prev_o.keys())} box only, "
                               f"{len(prev_o.keys() - box_o.keys())} prev only)")
             prev_o, prev_d = self._fit_chain_season(
-                loader, season, prior_o, prior_d, minutes, tier, whl, opts["rapm_window"])
+                loader, season, prior_o, prior_d, minutes, tier, whl, opts["rapm_window"],
+                lambda_mult=lam_mult)
             if season in sources:
                 self.stdout.write(f"  variant ratings: {len(prev_o)} players")
                 row = {"run": opts["run_name"], "source": season, "target": season + 1,
                        "mode": "native_chain", "chain_start": start, "w_box": w_box, "rho": rho,
-                       "tier": tier, "half_life": whl or 0, "n_variant": len(prev_o)}
+                       "tier": tier, "half_life": whl or 0, "lambda_mult": lam_mult,
+                       "n_variant": len(prev_o)}
                 rows_out.append(self._evaluate(season, prev_o, prev_d, row, opts, out_dir))
         return rows_out
 
     @staticmethod
     def _fit_chain_season(loader, season: int, prior_o: dict, prior_d: dict, minutes: dict,
-                          tier: str, whl, window: int) -> tuple[dict, dict]:
+                          tier: str, whl, window: int,
+                          lambda_mult: float = 1.0) -> tuple[dict, dict]:
         """One chain season's fit: {nba_id: obpr}, {nba_id: dbpr} for that season."""
         observations, ps_index, n_ps = loader._load_stints(season, window)
         keys = sorted(ps_index, key=ps_index.get)
-        lam_arr = _build_lambda_array(keys, minutes, LAMBDA_TIERS[tier])
+        lam_arr = np.asarray(_build_lambda_array(keys, minutes, LAMBDA_TIERS[tier])) * lambda_mult
         lambda_by_id = {pid: float(lam_arr[i]) for i, (pid, _yr) in enumerate(keys)}
         result = fit_prior_informed_rapm(
             observations=observations,
@@ -243,7 +255,7 @@ class Command(BaseCommand):
             n_player_seasons=n_ps,
             prior_obpr=prior_o,
             prior_dbpr=prior_d,
-            lambda_val=1000.0,
+            lambda_val=1000.0 * lambda_mult,
             lambda_by_nba_id=lambda_by_id,
             target_season_year=season,
             cross_season_decay=1.0,
