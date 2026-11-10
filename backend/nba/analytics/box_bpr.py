@@ -382,9 +382,13 @@ def train_nba_box_bpr(
     target_dbpr: dict[int, float],   # player_id → defensive target (d_mpir or baseline_dbpr)
     rapm_pids: set[int] | None = None,  # when set, only these players enter the training matrices
     career_stats_map: dict[int, dict[str, float]] | None = None,
+    weight_by_poss: bool = False,
 ) -> dict:
     """
     Train offensive and defensive Box BPR models.
+
+    weight_by_poss: pass each player's on_court_poss as sample_weight to both
+    ridge fits (default off: every player weighs the same).
 
     rapm_pids: restrict training to players with RAPM-based targets only.
     Excludes MPIR-only players from the training set (they are predicted
@@ -398,6 +402,7 @@ def train_nba_box_bpr(
 
     off_X, off_y, off_pids = [], [], []
     def_X, def_y, def_pids = [], [], []
+    poss_by_pid = {(p.get("player_id") or p.get("id")): float(p.get("on_court_poss") or 0.0) for p in stats}
 
     for pid, feats in box_features.items():
         if rapm_pids is not None and pid not in rapm_pids:
@@ -442,8 +447,14 @@ def train_nba_box_bpr(
     off_y_arr = np.array(off_y)
     def_y_arr = np.array(def_y)
 
-    off_pipe.fit(off_X_arr, off_y_arr)
-    def_pipe.fit(def_X_arr, def_y_arr)
+    if weight_by_poss:
+        off_pipe.fit(off_X_arr, off_y_arr,
+                     ridge__sample_weight=np.array([poss_by_pid[p] for p in off_pids]))
+        def_pipe.fit(def_X_arr, def_y_arr,
+                     ridge__sample_weight=np.array([poss_by_pid[p] for p in def_pids]))
+    else:
+        off_pipe.fit(off_X_arr, off_y_arr)
+        def_pipe.fit(def_X_arr, def_y_arr)
 
     off_cv_alpha = float(off_pipe.named_steps["ridge"].alpha_)
     def_cv_alpha = float(def_pipe.named_steps["ridge"].alpha_)

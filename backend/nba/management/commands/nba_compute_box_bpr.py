@@ -21,6 +21,7 @@ Usage:
   python manage.py nba_compute_box_bpr --season 2026 --validate
   python manage.py nba_compute_box_bpr --season 2026 --lebron-blend-w 0 --dump-json box_2026.json
 
+--weight-by-poss weights each player by on_court_poss in both ridge fits.
 --lebron-blend-w sets LEBRON's weight in the training-target blend (default
 LEBRON_BLEND_W). --dump-json PATH writes {nba_id: [box_obpr, box_dbpr]} to PATH
 and skips all database writes.
@@ -183,6 +184,11 @@ class Command(BaseCommand):
             help=f"LEBRON's weight in the training-target blend (default {LEBRON_BLEND_W})",
         )
         parser.add_argument(
+            "--weight-by-poss",
+            action="store_true",
+            help="Weight each player by on_court_poss in both ridge fits (default off)",
+        )
+        parser.add_argument(
             "--dump-json",
             type=str,
             default=None,
@@ -198,6 +204,7 @@ class Command(BaseCommand):
         career_floor: int = options.get("career_floor", 2016)
         blend_w: float = options.get("lebron_blend_w", LEBRON_BLEND_W)
         dump_json: str | None = options.get("dump_json")
+        weight_by_poss: bool = options.get("weight_by_poss", False)
         if validate:
             dry_run = True   # --validate implies no DB writes
         if dump_json:
@@ -381,6 +388,7 @@ class Command(BaseCommand):
                 target_dbpr=target_dbpr,
                 rapm_pids=rapm_pids,
                 career_stats_map=career_stats_map,
+                weight_by_poss=weight_by_poss,
             )
             self.stdout.write(
                 f"  off alpha={artifacts['off_cv_alpha']:.2f} (n={artifacts['n_train_off']}), "
