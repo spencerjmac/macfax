@@ -24,9 +24,10 @@ nba_compute_box_bpr does), with alpha from 5-fold CV over players.
 mean over the training rows (weights average 1), in the fits and in the CV
 error. OUT_DIR/alphas.json records each season's plan, alphas and CV errors.
 
---target window3 trains on pooled RAPM over seasons s-2..s (from --history-start
-on; one column per player, rapm.fit_pooled_player_rapm) as season s's target,
-instead of s's single-season baseline RAPM. Season Y's model still trains on
+--target-window K trains on pooled RAPM over seasons s-K+1..s (from
+--history-start on; one column per player, rapm.fit_pooled_player_rapm) as season
+s's target, instead of s's single-season baseline RAPM. --target window3 is an
+alias for --target-window 3. Season Y's model still trains on
 seasons before Y only, so nothing from Y enters it (the history-start season
 fits itself, on its own one-season window).
 
@@ -41,6 +42,7 @@ Usage:
   python manage.py nba_fit_box_pooled --seasons 2025 --weight-by-poss --out-dir box_pooled_w
   python manage.py nba_fit_box_pooled --seasons 2025 --features box_only --out-dir box_pooled_bo
   python manage.py nba_fit_box_pooled --seasons 2025 --features box_only --target window3 --out-dir box_w3
+  python manage.py nba_fit_box_pooled --seasons 2025 --features box_only --target-window 5 --out-dir box_w5
 """
 
 from __future__ import annotations
@@ -143,9 +145,20 @@ def alpha_grid(alpha_max: float = DEFAULT_ALPHA_MAX) -> list[float]:
     return grid
 
 
-def window_years(season: int, history_start: int = HISTORY_START) -> list[int]:
-    """Seasons s-2..s, not before history_start."""
-    return list(range(max(history_start, season - WINDOW + 1), season + 1))
+def window_years(season: int, history_start: int = HISTORY_START, k: int = WINDOW) -> list[int]:
+    """Seasons s-k+1..s, not before history_start."""
+    return list(range(max(history_start, season - k + 1), season + 1))
+
+
+def resolve_window(target: str, target_window: int | None) -> int | None:
+    """Window length K for the training target, or None for single-season baseline RAPM."""
+    if target == "window3":
+        if target_window not in (None, WINDOW):
+            raise CommandError(f"--target window3 conflicts with --target-window {target_window}")
+        return WINDOW
+    if target_window is not None and target_window < 1:
+        raise CommandError("--target-window must be at least 1")
+    return target_window
 
 
 def poss_weights(poss: np.ndarray) -> np.ndarray:
@@ -241,9 +254,9 @@ def fit_season(season: int, data: dict[int, dict], weight_by_poss: bool,
 
 # ── database loading (same inputs as nba_compute_box_bpr at blend 0) ──────────
 
-def window3_targets(season: int, history_start: int = HISTORY_START) -> dict:
-    """Pooled RAPM over window_years(season): {"obpr", "dbpr"} keyed by NBA.com id, plus "lambda", "years"."""
-    years = window_years(season, history_start)
+def window_targets(season: int, history_start: int = HISTORY_START, k: int = WINDOW) -> dict:
+    """Pooled RAPM over window_years(season, k): {"obpr", "dbpr"} keyed by NBA.com id, plus "lambda", "years"."""
+    years = window_years(season, history_start, k)
     res = fit_pooled_player_rapm(build_nba_observations(season, rapm_years=years))
     return {"obpr": res["obpr"], "dbpr": res["dbpr"], "lambda": res["lambda"], "years": years}
 
@@ -304,7 +317,10 @@ class Command(BaseCommand):
         parser.add_argument("--features", choices=FEATURE_SETS, default="all",
                             help="box_only drops the features built from on-court results")
         parser.add_argument("--target", choices=TARGETS, default="baseline",
-                            help="window3: pooled RAPM over seasons s-2..s as season s's target")
+                            help="window3: pooled RAPM over seasons s-2..s as season s's target "
+                                 "(alias for --target-window 3)")
+        parser.add_argument("--target-window", type=int, default=None, metavar="K",
+                            help="Pooled RAPM over seasons s-K+1..s as season s's target")
         parser.add_argument("--alpha-max", type=float, default=DEFAULT_ALPHA_MAX,
                             help=f"Largest alpha in the grid (default {DEFAULT_ALPHA_MAX:g}; up to {ALPHAS[-1]:g})")
         parser.add_argument("--out-dir", type=str, required=True,
@@ -320,7 +336,8 @@ class Command(BaseCommand):
         weighted = opts["weight_by_poss"]
         start = opts["history_start"]
         alphas = alpha_grid(opts["alpha_max"])
-        target = opts["target"]
+        k = resolve_window(opts["target"], opts.get("target_window"))
+        target = "baseline" if k is None else f"window{k}"
         cache: dict[int, dict] = {}
         window_info: dict[int, dict] = {}
 
@@ -328,11 +345,11 @@ class Command(BaseCommand):
             if season not in cache:
                 self.stdout.write(f"Loading season {season}...")
                 targets = None
-                if target == "window3":
-                    targets = window3_targets(season, start)
+                if k is not None:
+                    targets = window_targets(season, start, k)
                     window_info[season] = {"years": targets["years"], "lambda": targets["lambda"],
                                            "n_players": len(targets["obpr"])}
-                    self.stdout.write(f"  window3 target {targets['years']}: lambda={targets['lambda']:g}, "
+                    self.stdout.write(f"  {target} target {targets['years']}: lambda={targets['lambda']:g}, "
                                       f"{len(targets['obpr'])} players")
                 cache[season] = load_season(season, opts["career_floor"], targets)
             return cache[season]
@@ -347,7 +364,7 @@ class Command(BaseCommand):
                                          features=opts["features"])
             info["target"] = target
             info["alpha_max"] = alphas[-1]
-            if target == "window3":
+            if k is not None:
                 info["target_windows"] = {str(s): window_info[s] for s in train}
             # Season Y's own inputs only (features); its targets are never needed.
             if season in cache:

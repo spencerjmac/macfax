@@ -51,6 +51,8 @@ logger = logging.getLogger(__name__)
 # ── Constants ─────────────────────────────────────────────────────────────────
 
 RAPM_LAMBDA_CANDIDATES = [1.0, 5.0, 10.0, 25.0, 50.0, 100.0, 250.0, 500.0, 1000.0]
+# fit_pooled_player_rapm only: multi-season pools chose the top of the grid above (task 3.6b).
+POOLED_RAPM_LAMBDA_CANDIDATES = RAPM_LAMBDA_CANDIDATES + [2500.0, 5000.0, 10000.0]
 RAPM_CV_FOLDS = 5
 MIN_OBS_POSS  = 2.0   # minimum possession count to include a stint observation
 RAPM_TEMPORAL_DECAY = 1.0  # cross-season decay multiplier
@@ -380,10 +382,14 @@ def cross_validate_lambda(
     weights: np.ndarray,
     n_player_seasons: int,
     seed: int = 42,
+    candidates: list[float] | None = None,
 ) -> tuple[float, dict]:
     """
-    5-fold CV on game folds to select λ. Criterion: weighted MSE of offensive efficiency.
+    5-fold CV on game folds to select λ from candidates (default RAPM_LAMBDA_CANDIDATES).
+    Criterion: weighted MSE of offensive efficiency.
     """
+    if candidates is None:
+        candidates = RAPM_LAMBDA_CANDIDATES
     game_ids = sorted({obs["game_id"] for obs in observations})
     rng = random.Random(seed)
     rng.shuffle(game_ids)
@@ -401,7 +407,7 @@ def cross_validate_lambda(
     obs_fold_arr = np.array([f for f, m in zip(obs_fold_full, nonzero_mask) if m])
 
     player_col_slice = (2, 2 + 2 * n_player_seasons)
-    cv_errors: dict[float, list[float]] = {lam: [] for lam in RAPM_LAMBDA_CANDIDATES}
+    cv_errors: dict[float, list[float]] = {lam: [] for lam in candidates}
 
     for fold in range(RAPM_CV_FOLDS):
         train_mask = obs_fold_arr != fold
@@ -413,7 +419,7 @@ def cross_validate_lambda(
         if w_test.sum() == 0:
             continue
 
-        for lam in RAPM_LAMBDA_CANDIDATES:
+        for lam in candidates:
             beta  = _solve_augmented(X_train, y_train, w_train, lam, player_col_slice=player_col_slice)
             y_hat = X_test @ beta
             wmse  = float(np.average((y_test - y_hat) ** 2, weights=w_test))
@@ -424,7 +430,7 @@ def cross_validate_lambda(
 
     logger.info("RAPM CV done. Best λ=%.1f (WMSE=%.4f)", best_lambda, mean_errors[best_lambda])
     return best_lambda, {
-        "lambda_candidates": RAPM_LAMBDA_CANDIDATES,
+        "lambda_candidates": candidates,
         "mean_wmse": mean_errors,
         "best_lambda": best_lambda,
         "n_folds": RAPM_CV_FOLDS,
@@ -531,8 +537,9 @@ def fit_pooled_player_rapm(
     """
     Baseline RAPM with ONE column per player across every season in observations
     (fit_baseline_rapm gives one per player-season). Same ridge: global prior 0,
-    intercept and HCA unpenalized, λ by the same 5-fold game CV. No cross-season
-    decay; within-season decay only when within_season_half_life is given.
+    intercept and HCA unpenalized, λ by the same 5-fold game CV, over
+    POOLED_RAPM_LAMBDA_CANDIDATES (up to 10000). No cross-season decay;
+    within-season decay only when within_season_half_life is given.
 
     Returns {"obpr": {player_id: float}, "dbpr": {player_id: float} (positive = good
     defense, as fit_baseline_rapm), "intercept", "hca", "lambda", "cv_metrics",
@@ -551,7 +558,8 @@ def fit_pooled_player_rapm(
     if lambda_override is not None:
         best_lambda = lambda_override
     elif run_cv:
-        best_lambda, cv_metrics = cross_validate_lambda(observations, X, y, weights, n)
+        best_lambda, cv_metrics = cross_validate_lambda(observations, X, y, weights, n,
+                                                        candidates=POOLED_RAPM_LAMBDA_CANDIDATES)
     else:
         best_lambda = 500.0
 

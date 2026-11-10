@@ -10,6 +10,7 @@ import numpy as np
 from django.test import SimpleTestCase
 
 from nba.analytics.rapm import (
+    POOLED_RAPM_LAMBDA_CANDIDATES,
     RAPM_LAMBDA_CANDIDATES,
     fit_baseline_rapm,
     fit_pooled_player_rapm,
@@ -93,5 +94,16 @@ class PooledPlayerRapmTests(SimpleTestCase):
             home, away = (TEAM_A, TEAM_B) if g % 2 else (TEAM_C, TEAM_B)
             obs.append(_obs(f"g{g}", 2017 + g % 2, home, away, int(rng.integers(8, 14)), int(rng.integers(8, 14))))
         res = fit_pooled_player_rapm(obs)
-        self.assertIn(res["lambda"], RAPM_LAMBDA_CANDIDATES)
+        self.assertIn(res["lambda"], POOLED_RAPM_LAMBDA_CANDIDATES)
         self.assertEqual(res["cv_metrics"]["n_folds"], 5)
+
+    def test_pooled_grid_reaches_10000_and_baseline_grid_is_unchanged(self):
+        self.assertEqual(RAPM_LAMBDA_CANDIDATES, [1.0, 5.0, 10.0, 25.0, 50.0, 100.0, 250.0, 500.0, 1000.0])
+        self.assertEqual(POOLED_RAPM_LAMBDA_CANDIDATES[-3:], [2500.0, 5000.0, 10000.0])
+        obs = [_obs(f"g{g}", 2017 + g % 2, TEAM_A if g % 2 else TEAM_C, TEAM_B, 11, 10) for g in range(20)]
+        pooled = fit_pooled_player_rapm(obs)
+        self.assertEqual(pooled["cv_metrics"]["lambda_candidates"], POOLED_RAPM_LAMBDA_CANDIDATES)
+        index = {(p, s): i for i, (p, s) in enumerate(sorted({(p, o["season_year"]) for o in obs
+                                                               for p in o["home_player_ids"] + o["away_player_ids"]}))}
+        base = fit_baseline_rapm(obs, index, len(index))
+        self.assertEqual(base["cv_metrics"]["lambda_candidates"], RAPM_LAMBDA_CANDIDATES)

@@ -263,13 +263,41 @@ class AlphaGridTests(SimpleTestCase):
 
 
 
-class AlphaMaxAndWindow3Tests(SimpleTestCase):
-    """Task 3.6: --alpha-max (default 1000) and --target window3."""
+class _CommandRunMixin:
+    """Runs the command with loading, window targets, prediction and fitting stood in for."""
 
     def setUp(self):
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
         self.out = Path(tmp.name)
+
+    def _run(self, *args):
+        self.loads, self.windows, self.fits = [], [], []
+
+        def load(season, career_floor, targets=None):
+            self.loads.append((season, targets is not None))
+            return _season_data(season)
+
+        def window(season, start, k):
+            self.windows.append((season, k) if k != 3 else season)
+            return {"obpr": {1: 0.0}, "dbpr": {1: 0.0}, "lambda": 500.0, "years": pooled.window_years(season, start, k)}
+
+        real = pooled.fit_season
+
+        def spy(*a, **k):
+            self.fits.append(k["alphas"])
+            return real(*a, **k)
+
+        with mock.patch(f"{MOD}.load_season", load), mock.patch(f"{MOD}.window_targets", window), \
+             mock.patch(f"{MOD}.predict_nba_box_bpr", lambda *a: {}), \
+             mock.patch(f"{MOD}.nba_ids_for", lambda pks: {}), mock.patch(f"{MOD}.fit_season", spy):
+            call_command("nba_fit_box_pooled", "--out-dir", str(self.out), *args, stdout=StringIO())
+        return json.loads((self.out / "alphas.json").read_text())
+
+
+
+class AlphaMaxAndWindow3Tests(_CommandRunMixin, SimpleTestCase):
+    """Task 3.6: --alpha-max (default 1000) and --target window3."""
 
     def test_alpha_grid(self):
         self.assertEqual(pooled.alpha_grid(), [1.0, 3.0, 10.0, 30.0, 100.0, 300.0, 1000.0])
@@ -282,29 +310,6 @@ class AlphaMaxAndWindow3Tests(SimpleTestCase):
         self.assertEqual(pooled.window_years(2016), [2016])
         self.assertEqual(pooled.window_years(2017), [2016, 2017])
         self.assertEqual(pooled.window_years(2020), [2018, 2019, 2020])
-
-    def _run(self, *args):
-        self.loads, self.windows, self.fits = [], [], []
-
-        def load(season, career_floor, targets=None):
-            self.loads.append((season, targets is not None))
-            return _season_data(season)
-
-        def window(season, start):
-            self.windows.append(season)
-            return {"obpr": {1: 0.0}, "dbpr": {1: 0.0}, "lambda": 500.0, "years": pooled.window_years(season, start)}
-
-        real = pooled.fit_season
-
-        def spy(*a, **k):
-            self.fits.append(k["alphas"])
-            return real(*a, **k)
-
-        with mock.patch(f"{MOD}.load_season", load), mock.patch(f"{MOD}.window3_targets", window), \
-             mock.patch(f"{MOD}.predict_nba_box_bpr", lambda *a: {}), \
-             mock.patch(f"{MOD}.nba_ids_for", lambda pks: {}), mock.patch(f"{MOD}.fit_season", spy):
-            call_command("nba_fit_box_pooled", "--out-dir", str(self.out), *args, stdout=StringIO())
-        return json.loads((self.out / "alphas.json").read_text())
 
     def test_window3_targets_only_for_training_seasons(self):
         info = self._run("--seasons", "2019", "--target", "window3")
@@ -324,3 +329,37 @@ class AlphaMaxAndWindow3Tests(SimpleTestCase):
         self.assertEqual(self.fits[-1][-1], 1000.0)
         self._run("--seasons", "2019", "--alpha-max", "30000")
         self.assertEqual(self.fits[-1], pooled.ALPHAS)
+
+
+
+class TargetWindowTests(_CommandRunMixin, SimpleTestCase):
+    """Task 3.6b: --target-window K; window3 is an alias for K=3."""
+
+    def test_window_years_k(self):
+        self.assertEqual(pooled.window_years(2020, k=2), [2019, 2020])
+        self.assertEqual(pooled.window_years(2020, k=5), [2016, 2017, 2018, 2019, 2020])
+        self.assertEqual(pooled.window_years(2021, k=5), [2017, 2018, 2019, 2020, 2021])
+        self.assertEqual(pooled.window_years(2018, k=1), [2018])
+
+    def test_resolve_window(self):
+        self.assertIsNone(pooled.resolve_window("baseline", None))
+        self.assertEqual(pooled.resolve_window("window3", None), 3)
+        self.assertEqual(pooled.resolve_window("window3", 3), 3)
+        self.assertEqual(pooled.resolve_window("baseline", 5), 5)
+        with self.assertRaises(CommandError):
+            pooled.resolve_window("window3", 4)
+        with self.assertRaises(CommandError):
+            pooled.resolve_window("baseline", 0)
+
+    def test_target_window_k_reaches_targets(self):
+        info = self._run("--seasons", "2019", "--target-window", "5")
+        self.assertEqual(self.windows, [(2016, 5), (2017, 5), (2018, 5)])   # never 2019
+        self.assertEqual(info[0]["target"], "window5")
+        self.assertEqual(info[0]["target_windows"]["2018"]["years"], [2016, 2017, 2018])
+
+    def test_window3_alias_matches_k3(self):
+        a = self._run("--seasons", "2019", "--target", "window3")
+        windows_a = list(self.windows)
+        b = self._run("--seasons", "2019", "--target-window", "3")
+        self.assertEqual(windows_a, self.windows)
+        self.assertEqual(a[0]["target"], b[0]["target"])
