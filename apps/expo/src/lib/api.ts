@@ -177,6 +177,38 @@ export async function fetchTeamGameLog(teamId: string, seasonYear: number): Prom
   return json.game_log ?? [];
 }
 
+const API_FAVORITES_PATH = '/api/favorites/';
+
+/** /api/favorites/ response for GET and POST. team_slugs are newest first. */
+interface FavoritesResponse {
+  device_id: string;
+  team_slugs: string[];
+}
+
+/**
+ * The device's saved My Teams, newest first. The ids are team slugs, the same
+ * value as RankingRow.teamId. An unknown device gets an empty list.
+ */
+export async function fetchFavoriteTeamIds(deviceId: string): Promise<string[]> {
+  const json = await api.getJson<FavoritesResponse>(
+    api.rawUrl(`${API_FAVORITES_PATH}?device_id=${encodeURIComponent(deviceId)}`),
+  );
+  return json.team_slugs ?? [];
+}
+
+/**
+ * Replace the device's whole My Teams list (newest first) and return the list
+ * the server saved. The ids are team slugs, the same value as RankingRow.teamId.
+ * Throws with the server's message on a bad request (unknown slug, more than 50, ...).
+ */
+export async function saveFavoriteTeamIds(deviceId: string, teamIds: string[]): Promise<string[]> {
+  const json = await api.postJson<FavoritesResponse>(api.rawUrl(API_FAVORITES_PATH), {
+    device_id: deviceId,
+    team_slugs: teamIds,
+  });
+  return json.team_slugs ?? [];
+}
+
 /** What the win-probability chart needs from /api/games/<id>/detail/. Small and serializable. */
 export interface WPChartData {
   gameId: number;
