@@ -94,3 +94,34 @@ class LambdaMultTests(SimpleTestCase):
         self.assertEqual(self.fits[0]["lambda_by_nba_id"], {1: HI / 2, 2: LO / 2})
         self.assertEqual(self.fits[1]["lambda_by_nba_id"],
                          {p: lam / 2 for p, lam in TIERS_2017.items()})
+
+
+class LambdaMultNewTests(SimpleTestCase):
+    """Task 4.3: --lambda-mult-new X for players with no previous chain result."""
+
+    # Same stand-ins as LambdaMultTests, without re-running its tests.
+    setUp = LambdaMultTests.setUp
+    _run = LambdaMultTests._run
+    _chain = LambdaMultTests._chain
+    _lebron_mode = LambdaMultTests._lebron_mode
+
+    def test_new_players_get_their_own_multiplier(self):
+        self._chain("--lambda-mult", "8", "--lambda-mult-new", "2")
+        f16, f17 = self.fits
+        # 2016 is the chain start: nobody has a previous chain result.
+        self.assertEqual(f16["lambda_by_nba_id"], {1: HI * 2, 2: LO * 2})
+        # 2017: 1 and 2 have 2016 chain results; 3 is new.
+        self.assertEqual(f17["lambda_by_nba_id"], {1: HI * 8, 2: LO * 8, 3: FRINGE * 2})
+        self.assertEqual(f17["lambda_val"], 8000.0)   # fallback keeps --lambda-mult
+
+    def test_default_equals_lambda_mult(self):
+        self._chain("--lambda-mult", "8")
+        default = [f["lambda_by_nba_id"] for f in self.fits]
+        self.fits.clear()
+        self._chain("--lambda-mult", "8", "--lambda-mult-new", "8")
+        self.assertEqual(default, [f["lambda_by_nba_id"] for f in self.fits])
+
+    def test_lebron_mode_rejects_it(self):
+        from django.core.management.base import CommandError
+        with self.assertRaises(CommandError):
+            self._lebron_mode("--lambda-mult-new", "2")

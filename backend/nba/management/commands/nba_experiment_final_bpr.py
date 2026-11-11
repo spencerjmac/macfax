@@ -51,6 +51,10 @@ before start at that season's newcomer mean from DIR/newcomer_means.json
 (nba_fit_box_pooled --newcomer-means) instead of 0, offense and defense
 separately.
 
+--lambda-mult-new X (native chain; default --lambda-mult): players with no
+previous chain result (box-only prior, or none; every player at the chain start)
+get lambda multiplier X; everyone else keeps --lambda-mult.
+
 --lambda-mult X (default 1) multiplies every lambda by X in both modes: the
 per-player tier lambdas and the 1000 fallback.
 """
@@ -118,6 +122,9 @@ class Command(BaseCommand):
                             help="Read the prior's box part from DIR/box_<season>.json "
                                  "({nba_id: [box_obpr, box_dbpr]}, as nba_compute_box_bpr "
                                  "--dump-json writes) instead of stored box values, in both modes")
+        parser.add_argument("--lambda-mult-new", type=float, default=None,
+                            help="Native chain: lambda multiplier for players with no previous "
+                                 "chain result (default: --lambda-mult)")
         parser.add_argument("--newcomer-prior", action="store_true", default=False,
                             help="Native chain: newcomers (no box prior, no previous chain result, "
                                  "no regular-season minutes the season before) start at the "
@@ -147,6 +154,8 @@ class Command(BaseCommand):
         loader = FinalBprCommand()
         loader.stdout, loader.stderr = self.stdout, self.stderr
 
+        if opts.get("lambda_mult_new") is not None and not opts.get("native_chain"):
+            raise CommandError("--lambda-mult-new applies to the native chain only")
         if opts.get("native_chain"):
             rows_out = self._run_native_chain(loader, opts, out_dir)
             self._write_outputs(out_dir, rows_out, opts)
@@ -231,9 +240,12 @@ class Command(BaseCommand):
         tier = opts["tier"]
         whl = opts["within_season_half_life"] or None
         lam_mult = opts.get("lambda_mult", 1.0)
+        lam_mult_new = opts.get("lambda_mult_new")
+        if lam_mult_new is None:
+            lam_mult_new = lam_mult
         newcomer_means = self._load_newcomer_means(opts) if opts.get("newcomer_prior") else None
         self.stdout.write(f"[NATIVE CHAIN] {start}..{sources[-1]}  w_box={w_box} rho={rho} "
-                          f"tier={tier} lambda_mult={lam_mult}  LEBRON: not used")
+                          f"tier={tier} lambda_mult={lam_mult} lambda_mult_new={lam_mult_new}  LEBRON: not used")
 
         rows_out: list[dict] = []
         prev_o: dict[int, float] = {}
@@ -253,7 +265,8 @@ class Command(BaseCommand):
                 fill = self._newcomer_fill(season, newcomer_means)
             prev_o, prev_d = self._fit_chain_season(
                 loader, season, prior_o, prior_d, minutes, tier, whl, opts["rapm_window"],
-                lambda_mult=lam_mult, newcomer_fill=fill, info=nc_info)
+                lambda_mult=lam_mult, newcomer_fill=fill, info=nc_info,
+                lambda_mult_new=lam_mult_new, prev_ids=set(prev_o))
             if newcomer_means is not None:
                 self.stdout.write(f"  newcomer prior: {nc_info.get('n_newcomers', 0)} players at "
                                   f"O {nc_info.get('newcomer_o', 0.0):+.3f} / D {nc_info.get('newcomer_d', 0.0):+.3f}")
@@ -262,7 +275,7 @@ class Command(BaseCommand):
                 row = {"run": opts["run_name"], "source": season, "target": season + 1,
                        "mode": "native_chain", "chain_start": start, "w_box": w_box, "rho": rho,
                        "tier": tier, "half_life": whl or 0, "lambda_mult": lam_mult,
-                       "n_variant": len(prev_o)}
+                       "lambda_mult_new": lam_mult_new, "n_variant": len(prev_o)}
                 if newcomer_means is not None:
                     row.update({"newcomer_prior": True, **nc_info})
                 rows_out.append(self._evaluate(season, prev_o, prev_d, row, opts, out_dir))
@@ -296,7 +309,8 @@ class Command(BaseCommand):
     def _fit_chain_season(loader, season: int, prior_o: dict, prior_d: dict, minutes: dict,
                           tier: str, whl, window: int,
                           lambda_mult: float = 1.0, newcomer_fill=None,
-                          info: dict | None = None) -> tuple[dict, dict]:
+                          info: dict | None = None, lambda_mult_new: float | None = None,
+                          prev_ids: set | None = None) -> tuple[dict, dict]:
         """
         One chain season's fit: {nba_id: obpr}, {nba_id: dbpr} for that season.
         newcomer_fill: optional callable given the season's players with no prior; the
@@ -314,7 +328,13 @@ class Command(BaseCommand):
                 m_o, m_d = getattr(newcomer_fill, "means", next(iter(fills.values()), (0.0, 0.0)))
                 info.update({"n_newcomers": len(fills), "n_no_prior": len(candidates),
                              "newcomer_o": round(m_o, 4), "newcomer_d": round(m_d, 4)})
-        lam_arr = np.asarray(_build_lambda_array(keys, minutes, LAMBDA_TIERS[tier])) * lambda_mult
+        lam_arr = np.asarray(_build_lambda_array(keys, minutes, LAMBDA_TIERS[tier]), dtype=float)
+        if lambda_mult_new is None or prev_ids is None:
+            lam_arr = lam_arr * lambda_mult
+        else:
+            # Players with a previous chain result keep lambda_mult; the rest get lambda_mult_new.
+            mult = np.array([lambda_mult if pid in prev_ids else lambda_mult_new for pid, _yr in keys])
+            lam_arr = lam_arr * np.concatenate([mult, mult])   # layout: [offense n | defense n]
         lambda_by_id = {pid: float(lam_arr[i]) for i, (pid, _yr) in enumerate(keys)}
         result = fit_prior_informed_rapm(
             observations=observations,
