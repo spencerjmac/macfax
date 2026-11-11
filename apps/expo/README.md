@@ -109,8 +109,12 @@ npx expo export --clear --platform web      # also ios, android
   "My Teams": `toggleFavorite`, `removeFavorite` and `clearFavorites` actions
   over a list of starred team ids. `FavoriteButton` on the team screen
   dispatches; Home's My Teams section and the rankings star read it. Use the
-  typed `useAppDispatch` / `useAppSelector` from `src/store/hooks.ts`. The
-  store is in memory only, so starred teams reset when the app restarts.
+  typed `useAppDispatch` / `useAppSelector` from `src/store/hooks.ts`.
+  Starred teams are kept on the backend, keyed by an anonymous per-install id
+  (`src/lib/deviceId.ts`, not an account): `loadFavorites` fetches them at
+  launch (GET `/api/favorites/`), and a listener in `src/store/index.ts` runs
+  `saveFavorites` 400 ms after each change (POST, which replaces the whole
+  list). My Teams shows the sync status, with Retry when a request fails.
 - `src/charts/` holds chart components, which take data as props.
   `src/charts/experimental/` is unverified on devices.
 - `src/theme/tokens.ts` holds the design tokens, copied by hand from

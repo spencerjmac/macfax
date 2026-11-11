@@ -5,7 +5,14 @@ import { TeamLogo } from '@/src/components/ui/TeamLogo';
 import type { RankingRow } from '@/src/lib/api';
 import { openLink } from '@/src/lib/links';
 import type { AsyncResult } from '@/src/lib/useAsync';
-import { clearFavorites, selectFavoriteIds } from '@/src/store/favoritesSlice';
+import {
+  clearFavorites,
+  loadFavorites,
+  saveFavorites,
+  selectFavoriteIds,
+  selectFavoritesFailedRequest,
+  selectFavoritesSyncStatus,
+} from '@/src/store/favoritesSlice';
 import { useAppDispatch, useAppSelector } from '@/src/store/hooks';
 import { palette } from '@/src/theme/tokens';
 
@@ -36,10 +43,32 @@ function MyTeamRow({ team, first }: { team: RankingRow; first: boolean }) {
   );
 }
 
+/** Small muted line showing whether My Teams is in sync with the backend. Nothing when idle. */
+function SyncStatus() {
+  const dispatch = useAppDispatch();
+  const status = useAppSelector(selectFavoritesSyncStatus);
+  const failedRequest = useAppSelector(selectFavoritesFailedRequest);
+  const className = 'font-sans text-xs text-ink-fg2';
+
+  if (status === 'loading' || status === 'saving') return <Text className={className}>Syncing…</Text>;
+  if (status === 'saved') return <Text className={className}>Saved</Text>;
+  if (status === 'error') {
+    const retry = () => dispatch(failedRequest === 'load' ? loadFavorites() : saveFavorites());
+    return (
+      <Pressable onPress={retry} accessibilityRole="button" accessibilityLabel="Couldn't sync. Retry" hitSlop={8}>
+        <Text className={className}>
+          Couldn&apos;t sync · <Text className="underline">Retry</Text>
+        </Text>
+      </Pressable>
+    );
+  }
+  return null;
+}
+
 /**
  * The Home tab's "My Teams" section. The starred team ids come from the Redux
- * store (set by FavoriteButton on the team screen); the stats come from the
- * current-season rankings the hub already loaded.
+ * store (set by FavoriteButton on the team screen, synced with the backend);
+ * the stats come from the current-season rankings the hub already loaded.
  */
 export function MyTeams({ rankings }: { rankings: AsyncResult<RankingRow[]> }) {
   const dispatch = useAppDispatch();
@@ -57,11 +86,14 @@ export function MyTeams({ rankings }: { rankings: AsyncResult<RankingRow[]> }) {
             My Teams{favoriteIds.length ? ` (${favoriteIds.length})` : ''}
           </Text>
         </View>
-        {favoriteIds.length ? (
-          <Pressable onPress={() => dispatch(clearFavorites())} accessibilityRole="button" hitSlop={8}>
-            <Text className="font-display-semibold text-sm uppercase tracking-wider text-ink-fg2">Clear</Text>
-          </Pressable>
-        ) : null}
+        <View className="flex-row items-center gap-4">
+          <SyncStatus />
+          {favoriteIds.length ? (
+            <Pressable onPress={() => dispatch(clearFavorites())} accessibilityRole="button" hitSlop={8}>
+              <Text className="font-display-semibold text-sm uppercase tracking-wider text-ink-fg2">Clear</Text>
+            </Pressable>
+          ) : null}
+        </View>
       </View>
 
       {favoriteIds.length > 0 && rankings.status !== 'ready' ? null : favoriteIds.length === 0 ? (
