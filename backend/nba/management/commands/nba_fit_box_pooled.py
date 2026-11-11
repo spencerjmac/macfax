@@ -27,7 +27,8 @@ error. OUT_DIR/alphas.json records each season's plan, alphas and CV errors.
 --target-window K trains on pooled RAPM over seasons s-K+1..s (from
 --history-start on; one column per player, rapm.fit_pooled_player_rapm) as season
 s's target, instead of s's single-season baseline RAPM. --target window3 is an
-alias for --target-window 3. Season Y's model still trains on
+alias for --target-window 3. --target-lambda X fixes that pooled RAPM's lambda
+at X instead of choosing it by game CV. Season Y's model still trains on
 seasons before Y only, so nothing from Y enters it (the history-start season
 fits itself, on its own one-season window).
 
@@ -43,6 +44,7 @@ Usage:
   python manage.py nba_fit_box_pooled --seasons 2025 --features box_only --out-dir box_pooled_bo
   python manage.py nba_fit_box_pooled --seasons 2025 --features box_only --target window3 --out-dir box_w3
   python manage.py nba_fit_box_pooled --seasons 2025 --features box_only --target-window 5 --out-dir box_w5
+  python manage.py nba_fit_box_pooled --seasons 2025 --features box_only --target-window 3 --target-lambda 600 --out-dir box_w3_l600
 """
 
 from __future__ import annotations
@@ -254,10 +256,14 @@ def fit_season(season: int, data: dict[int, dict], weight_by_poss: bool,
 
 # ── database loading (same inputs as nba_compute_box_bpr at blend 0) ──────────
 
-def window_targets(season: int, history_start: int = HISTORY_START, k: int = WINDOW) -> dict:
-    """Pooled RAPM over window_years(season, k): {"obpr", "dbpr"} keyed by NBA.com id, plus "lambda", "years"."""
+def window_targets(season: int, history_start: int = HISTORY_START, k: int = WINDOW,
+                   lam: float | None = None) -> dict:
+    """
+    Pooled RAPM over window_years(season, k): {"obpr", "dbpr"} keyed by NBA.com id, plus
+    "lambda", "years". lam fixes the RAPM lambda; None chooses it by game CV.
+    """
     years = window_years(season, history_start, k)
-    res = fit_pooled_player_rapm(build_nba_observations(season, rapm_years=years))
+    res = fit_pooled_player_rapm(build_nba_observations(season, rapm_years=years), lambda_override=lam)
     return {"obpr": res["obpr"], "dbpr": res["dbpr"], "lambda": res["lambda"], "years": years}
 
 
@@ -321,6 +327,8 @@ class Command(BaseCommand):
                                  "(alias for --target-window 3)")
         parser.add_argument("--target-window", type=int, default=None, metavar="K",
                             help="Pooled RAPM over seasons s-K+1..s as season s's target")
+        parser.add_argument("--target-lambda", type=float, default=None, metavar="X",
+                            help="Fix the window target's pooled RAPM lambda at X (default: game CV)")
         parser.add_argument("--alpha-max", type=float, default=DEFAULT_ALPHA_MAX,
                             help=f"Largest alpha in the grid (default {DEFAULT_ALPHA_MAX:g}; up to {ALPHAS[-1]:g})")
         parser.add_argument("--out-dir", type=str, required=True,
@@ -337,6 +345,9 @@ class Command(BaseCommand):
         start = opts["history_start"]
         alphas = alpha_grid(opts["alpha_max"])
         k = resolve_window(opts["target"], opts.get("target_window"))
+        target_lambda = opts.get("target_lambda")
+        if target_lambda is not None and (k is None or target_lambda <= 0):
+            raise CommandError("--target-lambda needs a window target (--target-window K) and a positive value")
         target = "baseline" if k is None else f"window{k}"
         cache: dict[int, dict] = {}
         window_info: dict[int, dict] = {}
@@ -346,7 +357,7 @@ class Command(BaseCommand):
                 self.stdout.write(f"Loading season {season}...")
                 targets = None
                 if k is not None:
-                    targets = window_targets(season, start, k)
+                    targets = window_targets(season, start, k, target_lambda)
                     window_info[season] = {"years": targets["years"], "lambda": targets["lambda"],
                                            "n_players": len(targets["obpr"])}
                     self.stdout.write(f"  {target} target {targets['years']}: lambda={targets['lambda']:g}, "
@@ -363,6 +374,7 @@ class Command(BaseCommand):
             artifacts, info = fit_season(season, data, weighted, start, alphas=alphas,
                                          features=opts["features"])
             info["target"] = target
+            info["target_lambda_fixed"] = target_lambda
             info["alpha_max"] = alphas[-1]
             if k is not None:
                 info["target_windows"] = {str(s): window_info[s] for s in train}

@@ -278,7 +278,8 @@ class _CommandRunMixin:
             self.loads.append((season, targets is not None))
             return _season_data(season)
 
-        def window(season, start, k):
+        def window(season, start, k, lam=None):
+            self.lams = getattr(self, "lams", []) + [lam]
             self.windows.append((season, k) if k != 3 else season)
             return {"obpr": {1: 0.0}, "dbpr": {1: 0.0}, "lambda": 500.0, "years": pooled.window_years(season, start, k)}
 
@@ -363,3 +364,41 @@ class TargetWindowTests(_CommandRunMixin, SimpleTestCase):
         b = self._run("--seasons", "2019", "--target-window", "3")
         self.assertEqual(windows_a, self.windows)
         self.assertEqual(a[0]["target"], b[0]["target"])
+
+
+
+class TargetLambdaTests(_CommandRunMixin, SimpleTestCase):
+    """Task 3.6c: --target-lambda X fixes the window target's pooled RAPM lambda."""
+
+    def test_fixed_lambda_reaches_every_window(self):
+        self.lams = []
+        info = self._run("--seasons", "2019", "--target-window", "3", "--target-lambda", "600")
+        self.assertEqual(self.lams, [600.0, 600.0, 600.0])
+        self.assertEqual(info[0]["target_lambda_fixed"], 600.0)
+
+    def test_default_is_cv(self):
+        self.lams = []
+        info = self._run("--seasons", "2019", "--target-window", "3")
+        self.assertEqual(self.lams, [None, None, None])
+        self.assertIsNone(info[0]["target_lambda_fixed"])
+
+    def test_needs_a_window_target(self):
+        with self.assertRaises(CommandError):
+            self._run("--seasons", "2019", "--target-lambda", "600")
+        with self.assertRaises(CommandError):
+            self._run("--seasons", "2019", "--target-window", "3", "--target-lambda", "0")
+
+    def test_window_targets_passes_lambda_override(self):
+        calls = []
+
+        def fake_fit(obs, lambda_override=None):
+            calls.append(lambda_override)
+            return {"obpr": {}, "dbpr": {}, "lambda": lambda_override or 2500.0}
+
+        with mock.patch(f"{MOD}.build_nba_observations", lambda season, rapm_years: []), \
+             mock.patch(f"{MOD}.fit_pooled_player_rapm", fake_fit):
+            fixed = pooled.window_targets(2020, 2016, 3, 1000.0)
+            cv = pooled.window_targets(2020, 2016, 3)
+        self.assertEqual(calls, [1000.0, None])
+        self.assertEqual((fixed["lambda"], fixed["years"]), (1000.0, [2018, 2019, 2020]))
+        self.assertEqual(cv["lambda"], 2500.0)
