@@ -51,6 +51,13 @@ before start at that season's newcomer mean from DIR/newcomer_means.json
 (nba_fit_box_pooled --newcomer-means) instead of 0, offense and defense
 separately.
 
+--age-mult M (native chain; default 0, off): for season Y, an aging curve is
+fitted on this run's own chain ratings from seasons before Y (nba.analytics.aging:
+each player's change from s-1 to s on a quadratic in his age at s, weighted by
+the smaller of his two seasons' possessions, O and D separately). A returning
+player's previous rating becomes prev + M * curve(age at Y) before native_prior.
+The curves go to OUT/age_curves.json.
+
 --lambda-mult-new X (native chain; default --lambda-mult): players with no
 previous chain result (box-only prior, or none; every player at the chain start)
 get lambda multiplier X; everyone else keeps --lambda-mult.
@@ -70,7 +77,7 @@ import numpy as np
 import scipy.stats
 from django.core.management.base import BaseCommand, CommandError
 
-from nba.analytics import eval_stints
+from nba.analytics import aging, eval_stints
 from nba.analytics.native_prior import native_prior
 from nba.analytics.rapm import fit_prior_informed_rapm
 from nba.management.commands.nba_compute_final_bpr import (
@@ -122,6 +129,10 @@ class Command(BaseCommand):
                             help="Read the prior's box part from DIR/box_<season>.json "
                                  "({nba_id: [box_obpr, box_dbpr]}, as nba_compute_box_bpr "
                                  "--dump-json writes) instead of stored box values, in both modes")
+        parser.add_argument("--age-mult", type=float, default=0.0,
+                            help="Native chain: a returning player's previous rating becomes "
+                                 "prev + M * aging curve(age at Y), the curve fitted on this "
+                                 "run's chain ratings from seasons before Y (default 0, off)")
         parser.add_argument("--lambda-mult-new", type=float, default=None,
                             help="Native chain: lambda multiplier for players with no previous "
                                  "chain result (default: --lambda-mult)")
@@ -244,6 +255,12 @@ class Command(BaseCommand):
         if lam_mult_new is None:
             lam_mult_new = lam_mult
         newcomer_means = self._load_newcomer_means(opts) if opts.get("newcomer_prior") else None
+        age_mult = float(opts.get("age_mult") or 0.0)
+        dobs = self._load_birth_dates() if age_mult else {}
+        hist_o: dict[int, dict] = {}
+        hist_d: dict[int, dict] = {}
+        poss_hist: dict[int, dict] = {}
+        age_curves: dict[str, dict] = {}
         self.stdout.write(f"[NATIVE CHAIN] {start}..{sources[-1]}  w_box={w_box} rho={rho} "
                           f"tier={tier} lambda_mult={lam_mult} lambda_mult_new={lam_mult_new}  LEBRON: not used")
 
@@ -254,19 +271,32 @@ class Command(BaseCommand):
             self.stdout.write(f"\n=== native chain @ {season}"
                               + (f" → eval {season + 1} ===" if season in sources else " ==="))
             box_o, box_d, minutes = self._load_box_priors(loader, season, opts)
-            prior_o = native_prior(box_o, prev_o, w_box, rho)
-            prior_d = native_prior(box_d, prev_d, w_box, rho)
+            mem_o, mem_d = prev_o, prev_d
+            if age_mult:
+                # Curve from this run's chain ratings for seasons up to Y-1 only.
+                curve = self._aging_curve(season, hist_o, hist_d, poss_hist, dobs)
+                age_curves[str(season)] = curve
+                mem_o = {p: v + age_mult * aging.curve_value(curve["o"], aging.age_at(dobs.get(p), season))
+                         for p, v in prev_o.items()}
+                mem_d = {p: v + age_mult * aging.curve_value(curve["d"], aging.age_at(dobs.get(p), season))
+                         for p, v in prev_d.items()}
+                self.stdout.write(f"  aging curve from {curve['n_pairs']} pairs (seasons <= {season - 1}): "
+                                  f"O {curve['o']}  D {curve['d']}")
+            prior_o = native_prior(box_o, mem_o, w_box, rho)
+            prior_d = native_prior(box_d, mem_d, w_box, rho)
             self.stdout.write(f"  prior: {len(prior_o)} players "
                               f"({len(box_o.keys() & prev_o.keys())} box+prev, "
                               f"{len(box_o.keys() - prev_o.keys())} box only, "
                               f"{len(prev_o.keys() - box_o.keys())} prev only)")
-            fill, nc_info = None, {}
+            fill, nc_info, poss_out = None, {}, ({} if age_mult else None)
             if newcomer_means is not None:
                 fill = self._newcomer_fill(season, newcomer_means)
             prev_o, prev_d = self._fit_chain_season(
                 loader, season, prior_o, prior_d, minutes, tier, whl, opts["rapm_window"],
                 lambda_mult=lam_mult, newcomer_fill=fill, info=nc_info,
-                lambda_mult_new=lam_mult_new, prev_ids=set(prev_o))
+                lambda_mult_new=lam_mult_new, prev_ids=set(prev_o), poss_out=poss_out)
+            if age_mult:
+                hist_o[season], hist_d[season], poss_hist[season] = prev_o, prev_d, poss_out
             if newcomer_means is not None:
                 self.stdout.write(f"  newcomer prior: {nc_info.get('n_newcomers', 0)} players at "
                                   f"O {nc_info.get('newcomer_o', 0.0):+.3f} / D {nc_info.get('newcomer_d', 0.0):+.3f}")
@@ -278,8 +308,30 @@ class Command(BaseCommand):
                        "lambda_mult_new": lam_mult_new, "n_variant": len(prev_o)}
                 if newcomer_means is not None:
                     row.update({"newcomer_prior": True, **nc_info})
+                if age_mult:
+                    c = age_curves[str(season)]
+                    row.update({"age_mult": age_mult, "age_pairs": c["n_pairs"],
+                                "age_curve_o": c["o"], "age_curve_d": c["d"]})
                 rows_out.append(self._evaluate(season, prev_o, prev_d, row, opts, out_dir))
+        if age_mult:
+            with open(out_dir / "age_curves.json", "w") as f:
+                json.dump(age_curves, f, indent=2)
         return rows_out
+
+    @staticmethod
+    def _aging_curve(season: int, hist_o: dict, hist_d: dict, poss_hist: dict, dobs: dict) -> dict:
+        """O and D aging curves for season Y from chain history up to Y-1 (None with too few pairs)."""
+        a_o, d_o, w_o = aging.aging_pairs(hist_o, poss_hist, dobs, upto=season - 1)
+        a_d, d_d, w_d = aging.aging_pairs(hist_d, poss_hist, dobs, upto=season - 1)
+        return {"o": aging.fit_aging_curve(a_o, d_o, w_o), "d": aging.fit_aging_curve(a_d, d_d, w_d),
+                "n_pairs": int(len(a_o))}
+
+    @staticmethod
+    def _load_birth_dates() -> dict:
+        from nba.models import NBAPlayer
+
+        return dict(NBAPlayer.objects.filter(date_of_birth__isnull=False)
+                    .values_list("player_id", "date_of_birth"))
 
     def _load_newcomer_means(self, opts: dict) -> dict:
         if not opts.get("native_chain") or not opts.get("box_json_dir"):
@@ -310,7 +362,7 @@ class Command(BaseCommand):
                           tier: str, whl, window: int,
                           lambda_mult: float = 1.0, newcomer_fill=None,
                           info: dict | None = None, lambda_mult_new: float | None = None,
-                          prev_ids: set | None = None) -> tuple[dict, dict]:
+                          prev_ids: set | None = None, poss_out: dict | None = None) -> tuple[dict, dict]:
         """
         One chain season's fit: {nba_id: obpr}, {nba_id: dbpr} for that season.
         newcomer_fill: optional callable given the season's players with no prior; the
@@ -318,6 +370,14 @@ class Command(BaseCommand):
         """
         observations, ps_index, n_ps = loader._load_stints(season, window)
         keys = sorted(ps_index, key=ps_index.get)
+        if poss_out is not None:
+            # On-court possessions per player this season (for the aging-curve weights).
+            for obs in observations:
+                if obs["season_year"] != season:
+                    continue
+                p = (obs["home_poss"] + obs["away_poss"]) / 2.0
+                for pid in obs["home_player_ids"] + obs["away_player_ids"]:
+                    poss_out[pid] = poss_out.get(pid, 0.0) + p
         if newcomer_fill is not None:
             candidates = sorted({pid for pid, yr in keys if yr == season and pid not in prior_o})
             fills = newcomer_fill(candidates)
