@@ -402,3 +402,72 @@ class TargetLambdaTests(_CommandRunMixin, SimpleTestCase):
         self.assertEqual(calls, [1000.0, None])
         self.assertEqual((fixed["lambda"], fixed["years"]), (1000.0, [2018, 2019, 2020]))
         self.assertEqual(cv["lambda"], 2500.0)
+
+
+class NewcomerMeansTests(_CommandRunMixin, SimpleTestCase):
+    """Task 3.7: possession-weighted newcomer means over seasons before Y only."""
+
+    def test_season_possessions(self):
+        obs = [{"season_year": 2018, "home_player_ids": [1, 2], "away_player_ids": [3], "home_poss": 4.0, "away_poss": 6.0},
+               {"season_year": 2018, "home_player_ids": [1], "away_player_ids": [4], "home_poss": 2.0, "away_poss": 2.0},
+               {"season_year": 2017, "home_player_ids": [9], "away_player_ids": [1], "home_poss": 10.0, "away_poss": 10.0}]
+        self.assertEqual(pooled.season_possessions(obs, 2018), {1: 7.0, 2: 5.0, 3: 5.0, 4: 2.0})
+
+    def test_newcomer_stats(self):
+        poss = {1: 100.0, 2: 300.0, 3: 50.0, 4: 80.0, 5: 0.0}
+        targets = {"obpr": {1: -2.0, 2: -1.0, 3: 5.0, 4: 9.0, 5: 9.0}, "dbpr": {1: -1.0, 2: 0.0, 3: 5.0, 4: 9.0, 5: 9.0}}
+        # 3 has a box prediction, 4 had minutes last season, 5 has no possessions.
+        st = pooled.newcomer_stats(poss, box_ids={3}, prev_minute_ids={4}, targets=targets)
+        self.assertEqual((st["n"], st["poss"]), (2, 400.0))
+        self.assertAlmostEqual(st["obpr"], (100 * -2.0 + 300 * -1.0) / 400)
+        self.assertAlmostEqual(st["dbpr"], (100 * -1.0) / 400)
+
+    def test_mean_uses_only_seasons_before_y(self):
+        stats = {2016: {"n": 2, "poss": 100.0, "sum_o": -100.0, "sum_d": -50.0},
+                 2017: {"n": 3, "poss": 300.0, "sum_o": -150.0, "sum_d": 0.0},
+                 2018: {"n": 9, "poss": 9e9, "sum_o": 9e9, "sum_d": 9e9}}
+        first = pooled.newcomer_mean_for(2016, stats)
+        self.assertEqual((first["n"], first["obpr"], first["dbpr"], first["from_seasons"]), (0, 0.0, 0.0, []))
+        y18 = pooled.newcomer_mean_for(2018, stats)
+        self.assertEqual((y18["n"], y18["from_seasons"]), (5, [2016, 2017]))
+        self.assertAlmostEqual(y18["obpr"], -250.0 / 400)
+        self.assertAlmostEqual(y18["dbpr"], -50.0 / 400)
+        with self.assertRaises(ValueError):
+            pooled.newcomer_mean_for(2018, {2016: stats[2016]})
+
+    def _run_nc(self, *args):
+        def load(season, career_floor, targets=None):
+            d = _season_data(season)
+            d["feature_nba_ids"] = {1} if targets is not None else None
+            return d
+
+        def window(season, start, k, lam=None):
+            self.windows.append(season)
+            return {"obpr": {1: 0.0, 2: -1.0 * (season - 2015), 3: -3.0},
+                    "dbpr": {1: 0.0, 2: -0.5, 3: -1.0}, "lambda": lam or 500.0,
+                    "years": pooled.window_years(season, start, k),
+                    "poss_season": {1: 900.0, 2: 100.0, 3: 300.0}}
+
+        self.windows = []
+        with mock.patch(f"{MOD}.load_season", load), mock.patch(f"{MOD}.window_targets", window), \
+             mock.patch(f"{MOD}.prev_minute_ids", lambda season: {3}), \
+             mock.patch(f"{MOD}.predict_nba_box_bpr", lambda *a: {}), \
+             mock.patch(f"{MOD}.nba_ids_for", lambda pks: {}):
+            call_command("nba_fit_box_pooled", "--out-dir", str(self.out), *args, stdout=StringIO())
+
+    def test_command_writes_means_from_earlier_seasons(self):
+        self._run_nc("--seasons", "2016", "2018", "--target-window", "3", "--target-lambda", "300", "--newcomer-means")
+        means = json.loads((self.out / "newcomer_means.json").read_text())
+        self.assertNotIn(2018, self.windows)   # Y's own window is never fitted
+        # Only player 2 is a newcomer each season (1 has a box prediction, 3 had minutes).
+        self.assertEqual(means["2016"]["n"], 0)
+        self.assertEqual(means["2018"]["from_seasons"], [2016, 2017])
+        self.assertAlmostEqual(means["2018"]["obpr"], (-1.0 + -2.0) / 2)   # equal possessions
+        self.assertAlmostEqual(means["2018"]["dbpr"], -0.5)
+        self.assertEqual(means["per_season"]["2017"]["n"], 1)
+
+    def test_default_writes_no_means_and_baseline_target_is_rejected(self):
+        self._run_nc("--seasons", "2018", "--target-window", "3")
+        self.assertFalse((self.out / "newcomer_means.json").exists())
+        with self.assertRaises(CommandError):
+            self._run_nc("--seasons", "2018", "--newcomer-means")

@@ -32,6 +32,14 @@ at X instead of choosing it by game CV. Season Y's model still trains on
 seasons before Y only, so nothing from Y enters it (the history-start season
 fits itself, on its own one-season window).
 
+--newcomer-means (window targets only; default off) also writes
+OUT_DIR/newcomer_means.json: for each season Y, the possession-weighted mean
+window target (offense and defense separately) of players who were newcomers in
+their own season s, over seasons s before Y only. A newcomer in s played in s
+(stints), has no box prediction in s and no regular-season minutes in s-1;
+weights are their on-court possessions in s. nba_experiment_final_bpr
+--newcomer-prior reads it. A season with no earlier seasons gets mean 0.
+
 --features box_only drops every feature built from on-court results (NBA.com's
 E_OFF/E_DEF/E_NET ratings: on_court_adj_*, d_mpir and what is derived from
 them) instead of the player's own box score. That includes the three archetype
@@ -263,8 +271,63 @@ def window_targets(season: int, history_start: int = HISTORY_START, k: int = WIN
     "lambda", "years". lam fixes the RAPM lambda; None chooses it by game CV.
     """
     years = window_years(season, history_start, k)
-    res = fit_pooled_player_rapm(build_nba_observations(season, rapm_years=years), lambda_override=lam)
-    return {"obpr": res["obpr"], "dbpr": res["dbpr"], "lambda": res["lambda"], "years": years}
+    observations = build_nba_observations(season, rapm_years=years)
+    res = fit_pooled_player_rapm(observations, lambda_override=lam)
+    return {"obpr": res["obpr"], "dbpr": res["dbpr"], "lambda": res["lambda"], "years": years,
+            "poss_season": season_possessions(observations, season)}
+
+
+def season_possessions(observations: list[dict], season: int) -> dict[int, float]:
+    """On-court possessions per player in one season: (home_poss + away_poss) / 2 per stint."""
+    poss: dict[int, float] = {}
+    for obs in observations:
+        if obs["season_year"] != season:
+            continue
+        p = (obs["home_poss"] + obs["away_poss"]) / 2.0
+        for pid in obs["home_player_ids"] + obs["away_player_ids"]:
+            poss[pid] = poss.get(pid, 0.0) + p
+    return poss
+
+
+def newcomer_stats(poss_season: dict[int, float], box_ids: set[int], prev_minute_ids: set[int],
+                   targets: dict) -> dict:
+    """
+    One season's newcomers: played (possessions > 0), no box prediction, no minutes the season
+    before, and a target. Returns {"n", "poss", "sum_o", "sum_d", "obpr", "dbpr"} (poss-weighted).
+    """
+    rows = [(p, w) for p, w in poss_season.items()
+            if w > 0 and p not in box_ids and p not in prev_minute_ids
+            and p in targets["obpr"] and p in targets["dbpr"]]
+    W = sum(w for _, w in rows)
+    so = sum(w * targets["obpr"][p] for p, w in rows)
+    sd = sum(w * targets["dbpr"][p] for p, w in rows)
+    return {"n": len(rows), "poss": W, "sum_o": so, "sum_d": sd,
+            "obpr": so / W if W else 0.0, "dbpr": sd / W if W else 0.0}
+
+
+def newcomer_mean_for(season: int, stats_by_season: dict[int, dict], history_start: int = HISTORY_START) -> dict:
+    """Pooled newcomer mean for season Y over seasons history_start..Y-1 only (0 when there are none)."""
+    used = [s for s in range(history_start, season) if s in stats_by_season]
+    missing = [s for s in range(history_start, season) if s not in stats_by_season]
+    if missing:
+        raise ValueError(f"newcomer stats missing for seasons {missing}")
+    W = sum(stats_by_season[s]["poss"] for s in used)
+    so = sum(stats_by_season[s]["sum_o"] for s in used)
+    sd = sum(stats_by_season[s]["sum_d"] for s in used)
+    return {"obpr": so / W if W else 0.0, "dbpr": sd / W if W else 0.0,
+            "n": sum(stats_by_season[s]["n"] for s in used), "poss": W, "from_seasons": used}
+
+
+def prev_minute_ids(season: int) -> set[int]:
+    """NBA.com ids with regular-season minutes in season-1."""
+    from nba.models import NBAPlayerSeasonStats
+
+    out = set()
+    for r in NBAPlayerSeasonStats.objects.filter(season__year=season - 1, season_type="regular").values(
+            "player__player_id", "mpg", "gp"):
+        if (r["mpg"] or 0.0) * (r["gp"] or 0) > 0:
+            out.add(r["player__player_id"])
+    return out
 
 
 def load_season(season: int, career_floor: int, targets: dict | None = None) -> dict:
@@ -292,6 +355,7 @@ def load_season(season: int, career_floor: int, targets: dict | None = None) -> 
         y_def = [by_pid[p]["baseline_dbpr"] for p in pids]
     else:
         nba = nba_ids_for(feats)
+        feature_nba_ids = {nba[p] for p in feats if p in nba}
         pids = [pid for pid in feats
                 if nba.get(pid) in targets["obpr"] and nba.get(pid) in targets["dbpr"]]
         y_off = [targets["obpr"][nba[p]] for p in pids]
@@ -304,6 +368,7 @@ def load_season(season: int, career_floor: int, targets: dict | None = None) -> 
         "y_def": np.array(y_def, dtype=float),
         "poss": np.array([float(by_pid[p].get("on_court_poss") or 0.0) for p in pids]),
         "pids": pids,
+        "feature_nba_ids": feature_nba_ids if targets is not None else None,
     }
 
 
@@ -329,6 +394,8 @@ class Command(BaseCommand):
                             help="Pooled RAPM over seasons s-K+1..s as season s's target")
         parser.add_argument("--target-lambda", type=float, default=None, metavar="X",
                             help="Fix the window target's pooled RAPM lambda at X (default: game CV)")
+        parser.add_argument("--newcomer-means", action="store_true",
+                            help="Also write newcomer_means.json (window targets only)")
         parser.add_argument("--alpha-max", type=float, default=DEFAULT_ALPHA_MAX,
                             help=f"Largest alpha in the grid (default {DEFAULT_ALPHA_MAX:g}; up to {ALPHAS[-1]:g})")
         parser.add_argument("--out-dir", type=str, required=True,
@@ -349,6 +416,10 @@ class Command(BaseCommand):
         if target_lambda is not None and (k is None or target_lambda <= 0):
             raise CommandError("--target-lambda needs a window target (--target-window K) and a positive value")
         target = "baseline" if k is None else f"window{k}"
+        want_newcomers = opts.get("newcomer_means", False)
+        if want_newcomers and k is None:
+            raise CommandError("--newcomer-means needs a window target (--target-window K)")
+        newcomer_by_season: dict[int, dict] = {}
         cache: dict[int, dict] = {}
         window_info: dict[int, dict] = {}
 
@@ -363,6 +434,13 @@ class Command(BaseCommand):
                     self.stdout.write(f"  {target} target {targets['years']}: lambda={targets['lambda']:g}, "
                                       f"{len(targets['obpr'])} players")
                 cache[season] = load_season(season, opts["career_floor"], targets)
+                if want_newcomers:
+                    newcomer_by_season[season] = newcomer_stats(
+                        targets["poss_season"], cache[season]["feature_nba_ids"],
+                        prev_minute_ids(season), targets)
+                    st = newcomer_by_season[season]
+                    self.stdout.write(f"  newcomers {season}: {st['n']} players, {st['poss']:.0f} poss, "
+                                      f"O {st['obpr']:+.3f} D {st['dbpr']:+.3f}")
             return cache[season]
 
         all_info = []
@@ -398,4 +476,16 @@ class Command(BaseCommand):
 
         with open(out_dir / "alphas.json", "w") as f:
             json.dump(all_info, f, indent=2)
+        if want_newcomers:
+            means = {}
+            for season in sorted(opts["seasons"]):
+                for s in range(start, season):   # every earlier season is a training season, so loaded
+                    get(s)
+                means[str(season)] = newcomer_mean_for(season, newcomer_by_season, start)
+            means["per_season"] = {str(s): {k_: round(v, 5) if isinstance(v, float) else v
+                                            for k_, v in st.items()}
+                                   for s, st in sorted(newcomer_by_season.items())}
+            with open(out_dir / "newcomer_means.json", "w") as f:
+                json.dump(means, f, indent=2)
+            self.stdout.write(f"Newcomer means → {out_dir / 'newcomer_means.json'}")
         self.stdout.write(self.style.SUCCESS(f"Done. No DB writes. Alphas → {out_dir / 'alphas.json'}"))

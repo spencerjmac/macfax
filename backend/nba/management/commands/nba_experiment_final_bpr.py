@@ -45,6 +45,12 @@ Usage:
 (nba_compute_box_bpr --dump-json output) instead of stored box values, in both
 modes; minutes for the lambda tiers still come from the database.
 
+--newcomer-prior (native chain, with --box-json-dir; default off): players with
+no box prior, no previous chain result and no regular-season minutes the season
+before start at that season's newcomer mean from DIR/newcomer_means.json
+(nba_fit_box_pooled --newcomer-means) instead of 0, offense and defense
+separately.
+
 --lambda-mult X (default 1) multiplies every lambda by X in both modes: the
 per-player tier lambdas and the 1000 fallback.
 """
@@ -112,6 +118,11 @@ class Command(BaseCommand):
                             help="Read the prior's box part from DIR/box_<season>.json "
                                  "({nba_id: [box_obpr, box_dbpr]}, as nba_compute_box_bpr "
                                  "--dump-json writes) instead of stored box values, in both modes")
+        parser.add_argument("--newcomer-prior", action="store_true", default=False,
+                            help="Native chain: newcomers (no box prior, no previous chain result, "
+                                 "no regular-season minutes the season before) start at the "
+                                 "season's mean from DIR/newcomer_means.json (--box-json-dir) "
+                                 "instead of 0")
         parser.add_argument("--lambda-mult", type=float, default=1.0,
                             help="Multiply every lambda (per-player tiers and the 1000 "
                                  "fallback) by this, in both modes")
@@ -220,6 +231,7 @@ class Command(BaseCommand):
         tier = opts["tier"]
         whl = opts["within_season_half_life"] or None
         lam_mult = opts.get("lambda_mult", 1.0)
+        newcomer_means = self._load_newcomer_means(opts) if opts.get("newcomer_prior") else None
         self.stdout.write(f"[NATIVE CHAIN] {start}..{sources[-1]}  w_box={w_box} rho={rho} "
                           f"tier={tier} lambda_mult={lam_mult}  LEBRON: not used")
 
@@ -236,25 +248,72 @@ class Command(BaseCommand):
                               f"({len(box_o.keys() & prev_o.keys())} box+prev, "
                               f"{len(box_o.keys() - prev_o.keys())} box only, "
                               f"{len(prev_o.keys() - box_o.keys())} prev only)")
+            fill, nc_info = None, {}
+            if newcomer_means is not None:
+                fill = self._newcomer_fill(season, newcomer_means)
             prev_o, prev_d = self._fit_chain_season(
                 loader, season, prior_o, prior_d, minutes, tier, whl, opts["rapm_window"],
-                lambda_mult=lam_mult)
+                lambda_mult=lam_mult, newcomer_fill=fill, info=nc_info)
+            if newcomer_means is not None:
+                self.stdout.write(f"  newcomer prior: {nc_info.get('n_newcomers', 0)} players at "
+                                  f"O {nc_info.get('newcomer_o', 0.0):+.3f} / D {nc_info.get('newcomer_d', 0.0):+.3f}")
             if season in sources:
                 self.stdout.write(f"  variant ratings: {len(prev_o)} players")
                 row = {"run": opts["run_name"], "source": season, "target": season + 1,
                        "mode": "native_chain", "chain_start": start, "w_box": w_box, "rho": rho,
                        "tier": tier, "half_life": whl or 0, "lambda_mult": lam_mult,
                        "n_variant": len(prev_o)}
+                if newcomer_means is not None:
+                    row.update({"newcomer_prior": True, **nc_info})
                 rows_out.append(self._evaluate(season, prev_o, prev_d, row, opts, out_dir))
         return rows_out
+
+    def _load_newcomer_means(self, opts: dict) -> dict:
+        if not opts.get("native_chain") or not opts.get("box_json_dir"):
+            raise CommandError("--newcomer-prior needs --native-chain and --box-json-dir")
+        path = Path(opts["box_json_dir"]) / "newcomer_means.json"
+        if not path.exists():
+            raise CommandError(f"--newcomer-prior: {path} not found "
+                               "(write it with nba_fit_box_pooled --newcomer-means)")
+        with open(path) as f:
+            return json.load(f)
+
+    def _newcomer_fill(self, season: int, means: dict):
+        """Callable: season player ids with no prior -> {nba_id: (o, d)} for those with no Y-1 minutes."""
+        entry = means.get(str(season))
+        if entry is None:
+            raise CommandError(f"--newcomer-prior: no newcomer mean for season {season}")
+        m_o, m_d = float(entry["obpr"]), float(entry["dbpr"])
+
+        def fill(candidates: list[int]) -> dict[int, tuple[float, float]]:
+            prev_minutes = self._load_minutes(season - 1, candidates)
+            return {p: (m_o, m_d) for p in candidates if prev_minutes.get(p, 0.0) <= 0.0}
+
+        fill.means = (m_o, m_d)
+        return fill
 
     @staticmethod
     def _fit_chain_season(loader, season: int, prior_o: dict, prior_d: dict, minutes: dict,
                           tier: str, whl, window: int,
-                          lambda_mult: float = 1.0) -> tuple[dict, dict]:
-        """One chain season's fit: {nba_id: obpr}, {nba_id: dbpr} for that season."""
+                          lambda_mult: float = 1.0, newcomer_fill=None,
+                          info: dict | None = None) -> tuple[dict, dict]:
+        """
+        One chain season's fit: {nba_id: obpr}, {nba_id: dbpr} for that season.
+        newcomer_fill: optional callable given the season's players with no prior; the
+        (o, d) it returns become their prior (otherwise 0). info gets the count and values.
+        """
         observations, ps_index, n_ps = loader._load_stints(season, window)
         keys = sorted(ps_index, key=ps_index.get)
+        if newcomer_fill is not None:
+            candidates = sorted({pid for pid, yr in keys if yr == season and pid not in prior_o})
+            fills = newcomer_fill(candidates)
+            prior_o, prior_d = dict(prior_o), dict(prior_d)
+            for pid, (o, d) in fills.items():
+                prior_o[pid], prior_d[pid] = o, d
+            if info is not None:
+                m_o, m_d = getattr(newcomer_fill, "means", next(iter(fills.values()), (0.0, 0.0)))
+                info.update({"n_newcomers": len(fills), "n_no_prior": len(candidates),
+                             "newcomer_o": round(m_o, 4), "newcomer_d": round(m_d, 4)})
         lam_arr = np.asarray(_build_lambda_array(keys, minutes, LAMBDA_TIERS[tier])) * lambda_mult
         lambda_by_id = {pid: float(lam_arr[i]) for i, (pid, _yr) in enumerate(keys)}
         result = fit_prior_informed_rapm(
