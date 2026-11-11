@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     "nba",
     "validation",
     "world_cup",
+    "favorites",
 ]
 
 MIDDLEWARE = [
@@ -142,6 +143,9 @@ REST_FRAMEWORK = {
     "DEFAULT_PARSER_CLASSES": [
         "rest_framework.parsers.JSONParser",
     ],
+    "DEFAULT_THROTTLE_RATES": {
+        "favorites": "60/min",
+    },
 }
 
 # NCAA API (henrygd/ncaa-api). Use self-hosted in Docker or public demo.
