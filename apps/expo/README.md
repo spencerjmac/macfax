@@ -114,7 +114,10 @@ npx expo export --clear --platform web      # also ios, android
   (`src/lib/deviceId.ts`, not an account): `loadFavorites` fetches them at
   launch (GET `/api/favorites/`), and a listener in `src/store/index.ts` runs
   `saveFavorites` 400 ms after each change (POST, which replaces the whole
-  list). My Teams shows the sync status, with Retry when a request fails.
+  list). Nothing is saved until a load has succeeded: taps made before then
+  (load still running, or failed offline) are recorded in `pendingChanges`
+  and replayed on top of the server's list, which is then saved. My Teams
+  shows the sync status, with Retry when a request fails.
 - `src/charts/` holds chart components, which take data as props.
   `src/charts/experimental/` is unverified on devices.
 - `src/theme/tokens.ts` holds the design tokens, copied by hand from
