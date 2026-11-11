@@ -137,7 +137,7 @@ class CommandTests(SimpleTestCase):
         self.out = Path(tmp.name) / "box_pooled"
         self.loaded = []
 
-        def load(season, career_floor, targets=None):
+        def load(season, career_floor, targets=None, **_):
             self.loaded.append(season)
             return _season_data(season)
 
@@ -227,7 +227,7 @@ class BoxOnlyFeatureTests(SimpleTestCase):
 
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
-        with mock.patch(f"{MOD}.load_season", lambda s, c, t=None: _wide_season(s)), \
+        with mock.patch(f"{MOD}.load_season", lambda s, c, t=None, **_: _wide_season(s)), \
              mock.patch(f"{MOD}.predict_nba_box_bpr", lambda *a: {}), \
              mock.patch(f"{MOD}.nba_ids_for", lambda pks: {}), \
              mock.patch(f"{MOD}.fit_season", spy):
@@ -274,7 +274,7 @@ class _CommandRunMixin:
     def _run(self, *args):
         self.loads, self.windows, self.fits = [], [], []
 
-        def load(season, career_floor, targets=None):
+        def load(season, career_floor, targets=None, **_):
             self.loads.append((season, targets is not None))
             return _season_data(season)
 
@@ -436,7 +436,7 @@ class NewcomerMeansTests(_CommandRunMixin, SimpleTestCase):
             pooled.newcomer_mean_for(2018, {2016: stats[2016]})
 
     def _run_nc(self, *args):
-        def load(season, career_floor, targets=None):
+        def load(season, career_floor, targets=None, **_):
             d = _season_data(season)
             d["feature_nba_ids"] = {1} if targets is not None else None
             return d
@@ -471,3 +471,56 @@ class NewcomerMeansTests(_CommandRunMixin, SimpleTestCase):
         self.assertFalse((self.out / "newcomer_means.json").exists())
         with self.assertRaises(CommandError):
             self._run_nc("--seasons", "2018", "--newcomer-means")
+
+
+
+class TeamFeatureTests(_CommandRunMixin, SimpleTestCase):
+    """Task 3.8: --team-feature {opp_quality, team_adj_net, none}."""
+
+    def test_none_drops_opp_quality_on_both_sides(self):
+        for side, names in (("off", pooled.OFF_FEATURES), ("def", pooled.DEF_FEATURES)):
+            kept = [names[i] for i in pooled.feature_index(side, "box_only", "none")]
+            self.assertNotIn("opp_quality", kept)
+            self.assertEqual(len(kept), len(pooled.feature_index(side, "box_only")) - 1)
+            all_but = [names[i] for i in pooled.feature_index(side, "all", "none")]
+            self.assertEqual(set(names) - set(all_but), {"opp_quality"})
+        self.assertIsNone(pooled.feature_index("off", "all", "opp_quality"))
+        self.assertEqual(pooled.feature_index("off", "box_only", "team_adj_net"),
+                         pooled.feature_index("off", "box_only"))   # same columns, different values
+        with self.assertRaises(ValueError):
+            pooled.feature_index("off", "all", "bogus")
+
+    def test_load_season_puts_team_adj_net_in_the_column(self):
+        calls = []
+        with mock.patch(f"{MOD}.compute_opp_quality_map", lambda y: calls.append("opp") or {"t": 9.0}), \
+             mock.patch(f"{MOD}.compute_team_adj_em_map", lambda y: {"t": 2.5}), \
+             mock.patch(f"{MOD}.build_career_stats_map", lambda **k: {}), \
+             mock.patch(f"{MOD}._merge_player_rows", lambda rows: (rows, 0)), \
+             mock.patch(f"{MOD}.extract_nba_box_features", lambda stats, opp, team, career: {}), \
+             mock.patch("nba.models.NBAPlayerSeasonStats.objects") as objs:
+            objs.filter.return_value.values.return_value = [{"player_id": 1}]
+            own = pooled.load_season(2020, 2016, team_feature="team_adj_net")
+            self.assertEqual(own["inputs"][1], {"t": 2.5})
+            self.assertEqual(calls, [])
+            opp = pooled.load_season(2020, 2016)
+            self.assertEqual(opp["inputs"][1], {"t": 9.0})
+
+    def test_command_passes_team_feature(self):
+        seen_fit, seen_load = [], []
+        real = pooled.fit_season
+
+        def spy(*a, **k):
+            seen_fit.append(k.get("team_feature"))
+            return real(*a, **k)
+
+        def load(season, career_floor, targets=None, team_feature="opp_quality"):
+            seen_load.append(team_feature)
+            return _wide_season(season)
+
+        with mock.patch(f"{MOD}.load_season", load), mock.patch(f"{MOD}.fit_season", spy), \
+             mock.patch(f"{MOD}.predict_nba_box_bpr", lambda *a: {}), mock.patch(f"{MOD}.nba_ids_for", lambda pks: {}):
+            call_command("nba_fit_box_pooled", "--seasons", "2018", "--team-feature", "none",
+                         "--out-dir", str(self.out), stdout=StringIO())
+        self.assertEqual(seen_fit, ["none"])
+        self.assertTrue(seen_load and all(t == "none" for t in seen_load))
+        self.assertEqual(json.loads((self.out / "alphas.json").read_text())[0]["team_feature"], "none")

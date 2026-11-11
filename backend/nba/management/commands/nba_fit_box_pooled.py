@@ -40,6 +40,11 @@ their own season s, over seasons s before Y only. A newcomer in s played in s
 weights are their on-court possessions in s. nba_experiment_final_bpr
 --newcomer-prior reads it. A season with no earlier seasons gets mean 0.
 
+--team-feature {opp_quality,team_adj_net,none} (default opp_quality) sets what
+the opp_quality column holds: the mean opponent adj_net (as today), the
+player's own team's season adj_net, or nothing (the column is dropped, offense
+and defense).
+
 --features box_only drops every feature built from on-court results (NBA.com's
 E_OFF/E_DEF/E_NET ratings: on_court_adj_*, d_mpir and what is derived from
 them) instead of the player's own box score. That includes the three archetype
@@ -95,6 +100,7 @@ ON_COURT_FEATURES = {
 }
 FEATURE_NAMES = {"off": OFF_FEATURES, "def": DEF_FEATURES}
 FEATURE_SETS = ("all", "box_only")
+TEAM_FEATURES = ("opp_quality", "team_adj_net", "none")
 
 # The same per-season fields nba_compute_box_bpr loads.
 STATS_FIELDS = (
@@ -123,13 +129,17 @@ def plan_training(season: int, history_start: int = HISTORY_START) -> tuple[list
     return train, method
 
 
-def feature_index(side: str, features: str) -> list[int] | None:
-    """Columns kept for a feature set: None (all) or the indices of the box-only columns."""
-    if features == "all":
-        return None
-    if features != "box_only":
+def feature_index(side: str, features: str, team_feature: str = "opp_quality") -> list[int] | None:
+    """Columns kept: None (all) or the indices left after the feature set and team feature drops."""
+    if features not in FEATURE_SETS:
         raise ValueError(f"unknown feature set {features!r}")
-    drop = ON_COURT_FEATURES[side]
+    if team_feature not in TEAM_FEATURES:
+        raise ValueError(f"unknown team feature {team_feature!r}")
+    drop = set(ON_COURT_FEATURES[side]) if features == "box_only" else set()
+    if team_feature == "none":
+        drop.add("opp_quality")
+    if not drop:
+        return None
     missing = drop - set(FEATURE_NAMES[side])
     if missing:
         raise ValueError(f"{side} features not found: {sorted(missing)}")
@@ -227,7 +237,7 @@ def fold_labels(method: str, seasons: np.ndarray, players: np.ndarray) -> np.nda
 
 def fit_season(season: int, data: dict[int, dict], weight_by_poss: bool,
                history_start: int = HISTORY_START, alphas: list[float] | None = None,
-               features: str = "all") -> tuple[dict, dict]:
+               features: str = "all", team_feature: str = "opp_quality") -> tuple[dict, dict]:
     """
     data[s]: {"X_off", "X_def", "y_off", "y_def", "poss", "pids"} training rows of season s
     (full-width feature rows). Returns (artifacts {"off_pipeline", "def_pipeline"}, info for
@@ -242,12 +252,12 @@ def fit_season(season: int, data: dict[int, dict], weight_by_poss: bool,
     w = poss_weights(np.concatenate([r["poss"] for r in rows])) if weight_by_poss else None
     folds = fold_labels(method, seasons, players)
     info = {"season": season, "train_seasons": train, "method": method, "n_train": int(len(players)),
-            "weighted": weight_by_poss, "features": features}
+            "weighted": weight_by_poss, "features": features, "team_feature": team_feature}
     artifacts = {}
     for side in ("off", "def"):
         X = np.vstack([r[f"X_{side}"] for r in rows])
         y = np.concatenate([r[f"y_{side}"] for r in rows])
-        idx = feature_index(side, features)
+        idx = feature_index(side, features, team_feature)
         if idx is not None:
             X = X[:, idx]
         errs = cv_fold_errors(X, y, w, folds, alphas)
@@ -330,7 +340,8 @@ def prev_minute_ids(season: int) -> set[int]:
     return out
 
 
-def load_season(season: int, career_floor: int, targets: dict | None = None) -> dict:
+def load_season(season: int, career_floor: int, targets: dict | None = None,
+                team_feature: str = "opp_quality") -> dict:
     """
     One season's inputs and training rows. targets None: baseline RAPM (players with
     both baseline O and D); else {"obpr", "dbpr"} keyed by NBA.com id (players in both).
@@ -342,8 +353,10 @@ def load_season(season: int, career_floor: int, targets: dict | None = None) -> 
     if not stats:
         raise CommandError(f"No stats found for season {season}.")
     stats, _ = _merge_player_rows(stats)
-    opp = compute_opp_quality_map(season)
     team = compute_team_adj_em_map(season)
+    # The opp_quality column holds opponents' mean adj_net, or the team's own adj_net
+    # (team_feature none drops the column at fit time, so its value does not matter).
+    opp = team if team_feature == "team_adj_net" else compute_opp_quality_map(season)
     career = build_career_stats_map(target_season_year=season, min_season_year=career_floor)
     feats = extract_nba_box_features(stats, opp, team, career)
 
@@ -385,6 +398,9 @@ class Command(BaseCommand):
         parser.add_argument("--seasons", nargs="+", type=int, required=True)
         parser.add_argument("--weight-by-poss", action="store_true",
                             help="Weight rows by on_court_poss / its mean over the training rows")
+        parser.add_argument("--team-feature", choices=TEAM_FEATURES, default="opp_quality",
+                            help="What the opp_quality column holds: opponents' mean adj_net "
+                                 "(default), the team's own adj_net, or none (dropped)")
         parser.add_argument("--features", choices=FEATURE_SETS, default="all",
                             help="box_only drops the features built from on-court results")
         parser.add_argument("--target", choices=TARGETS, default="baseline",
@@ -433,7 +449,8 @@ class Command(BaseCommand):
                                            "n_players": len(targets["obpr"])}
                     self.stdout.write(f"  {target} target {targets['years']}: lambda={targets['lambda']:g}, "
                                       f"{len(targets['obpr'])} players")
-                cache[season] = load_season(season, opts["career_floor"], targets)
+                cache[season] = load_season(season, opts["career_floor"], targets,
+                                            team_feature=opts["team_feature"])
                 if want_newcomers:
                     newcomer_by_season[season] = newcomer_stats(
                         targets["poss_season"], cache[season]["feature_nba_ids"],
@@ -450,7 +467,7 @@ class Command(BaseCommand):
             train, _ = plan_training(season, start)
             data = {s: get(s) for s in train}
             artifacts, info = fit_season(season, data, weighted, start, alphas=alphas,
-                                         features=opts["features"])
+                                         features=opts["features"], team_feature=opts["team_feature"])
             info["target"] = target
             info["target_lambda_fixed"] = target_lambda
             info["alpha_max"] = alphas[-1]
@@ -460,7 +477,8 @@ class Command(BaseCommand):
             if season in cache:
                 stats, opp, team, career = cache[season]["inputs"]
             else:
-                stats, opp, team, career = load_season(season, opts["career_floor"])["inputs"]
+                stats, opp, team, career = load_season(season, opts["career_floor"],
+                                                       team_feature=opts["team_feature"])["inputs"]
             preds = predict_nba_box_bpr(stats, opp, team, artifacts, career)
             nba_ids = nba_ids_for(preds)
             out = {str(nba_ids[pk]): [p["box_obpr"], p["box_dbpr"]] for pk, p in preds.items()}
