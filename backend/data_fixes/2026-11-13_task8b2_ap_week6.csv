@@ -1,0 +1,529 @@
+season,rank,sr_school,team_id,team_name,status
+2005,1,Illinois,120,Illinois,existing
+2005,2,Kansas,133,Kansas,existing
+2005,3,Georgia Tech,103,Georgia Tech,existing
+2005,4,Oklahoma State,225,Oklahoma St.,existing
+2005,5,UNC,205,North Carolina,existing
+2005,6,Wake Forest,346,Wake Forest,existing
+2005,7,Duke,74,Duke,existing
+2005,8,Syracuse,292,Syracuse,existing
+2005,9,Kentucky,137,Kentucky,existing
+2005,10,Pitt,234,Pittsburgh,added_8b2
+2005,11,UConn,60,Connecticut,existing
+2005,12,NC State,190,NC State,added_8b2
+2005,13,Louisville,154,Louisville,existing
+2005,14,Texas,300,Texas,existing
+2005,15,Arizona,11,Arizona,existing
+2005,16,Iowa,127,Iowa,existing
+2005,17,Alabama,4,Alabama,existing
+2005,18,Washington,347,Washington,existing
+2005,19,George Washington,98,George Washington,existing
+2005,20,Mississippi State,179,Mississippi St.,existing
+2005,21,Michigan State,174,Michigan St.,existing
+2005,22,Gonzaga,104,Gonzaga,existing
+2005,23,Maryland,163,Maryland,existing
+2005,24,Virginia,343,Virginia,existing
+2005,25,Cincinnati,52,Cincinnati,existing
+2006,1,Duke,74,Duke,existing
+2006,2,UConn,60,Connecticut,existing
+2006,3,Villanova,342,Villanova,existing
+2006,4,Louisville,154,Louisville,existing
+2006,5,Memphis,167,Memphis,existing
+2006,6,Texas,300,Texas,existing
+2006,7,Florida,88,Florida,existing
+2006,8,Oklahoma,224,Oklahoma,existing
+2006,9,Illinois,120,Illinois,existing
+2006,10,Gonzaga,104,Gonzaga,existing
+2006,11,Washington,347,Washington,existing
+2006,12,Michigan State,174,Michigan St.,existing
+2006,13,Boston College,27,Boston College,added_8b2
+2006,14,UCLA,319,UCLA,existing
+2006,15,George Washington,98,George Washington,existing
+2006,16,Wake Forest,346,Wake Forest,existing
+2006,17,Maryland,163,Maryland,existing
+2006,18,Indiana,124,Indiana,existing
+2006,19,UNC,205,North Carolina,existing
+2006,20,Nevada,195,Nevada,existing
+2006,21,NC State,190,NC State,added_8b2
+2006,22,Iowa,127,Iowa,existing
+2006,23,Kentucky,137,Kentucky,existing
+2006,24,Arizona,11,Arizona,existing
+2006,25,Houston,114,Houston,existing
+2007,1,UCLA,319,UCLA,existing
+2007,2,Pitt,234,Pittsburgh,added_8b2
+2007,3,UNC,205,North Carolina,existing
+2007,4,Ohio State,223,Ohio St.,existing
+2007,5,Florida,88,Florida,existing
+2007,6,Duke,74,Duke,existing
+2007,7,Wisconsin,359,Wisconsin,existing
+2007,8,Wichita State,356,Wichita St.,existing
+2007,9,Alabama,4,Alabama,existing
+2007,10,Arizona,11,Arizona,existing
+2007,11,Kansas,133,Kansas,existing
+2007,12,LSU,139,LSU,existing
+2007,13,Texas A&M,301,Texas A&M,existing
+2007,14,UConn,60,Connecticut,existing
+2007,15,Oklahoma State,225,Oklahoma St.,existing
+2007,16,Gonzaga,104,Gonzaga,existing
+2007,17,Washington,347,Washington,existing
+2007,18,Butler,35,Butler,existing
+2007,19,Memphis,167,Memphis,existing
+2007,20,Marquette,161,Marquette,existing
+2007,21,Notre Dame,220,Notre Dame,existing
+2007,22,Oregon,228,Oregon,existing
+2007,23,Syracuse,292,Syracuse,existing
+2007,24,Air Force,2,Air Force,existing
+2007,25,Nevada,195,Nevada,existing
+2008,1,UNC,205,North Carolina,existing
+2008,2,Memphis,167,Memphis,existing
+2008,3,Kansas,133,Kansas,existing
+2008,4,Texas,300,Texas,existing
+2008,5,Georgetown,99,Georgetown,existing
+2008,6,Duke,74,Duke,existing
+2008,7,Washington State,348,Washington St.,existing
+2008,8,UCLA,319,UCLA,existing
+2008,9,Michigan State,174,Michigan St.,existing
+2008,10,Marquette,161,Marquette,existing
+2008,11,Pitt,234,Pittsburgh,added_8b2
+2008,12,Tennessee,296,Tennessee,existing
+2008,13,Indiana,124,Indiana,existing
+2008,14,Texas A&M,301,Texas A&M,existing
+2008,15,Clemson,53,Clemson,existing
+2008,16,Oregon,228,Oregon,existing
+2008,17,Xavier,363,Xavier,existing
+2008,18,Butler,35,Butler,existing
+2008,19,Gonzaga,104,Gonzaga,existing
+2008,20,Vanderbilt,340,Vanderbilt,existing
+2008,21,Arizona,11,Arizona,existing
+2008,22,Louisville,154,Louisville,existing
+2008,23,Villanova,342,Villanova,existing
+2008,24,Saint Mary's,259,Saint Mary's,existing
+2008,25,BYU,19,BYU,existing
+2009,1,UNC,205,North Carolina,existing
+2009,2,UConn,60,Connecticut,existing
+2009,3,Pitt,234,Pittsburgh,added_8b2
+2009,4,Oklahoma,224,Oklahoma,existing
+2009,5,Texas,300,Texas,existing
+2009,6,Duke,74,Duke,existing
+2009,7,Xavier,363,Xavier,existing
+2009,8,Gonzaga,104,Gonzaga,existing
+2009,9,Louisville,154,Louisville,existing
+2009,10,Wake Forest,346,Wake Forest,existing
+2009,11,Syracuse,292,Syracuse,existing
+2009,12,Notre Dame,220,Notre Dame,existing
+2009,13,Purdue,241,Purdue,existing
+2009,14,UCLA,319,UCLA,existing
+2009,15,Georgetown,99,Georgetown,existing
+2009,16,Tennessee,296,Tennessee,existing
+2009,17,Ohio State,223,Ohio St.,existing
+2009,18,Villanova,342,Villanova,existing
+2009,19,Michigan State,174,Michigan St.,existing
+2009,20,Arizona State,12,Arizona St.,existing
+2009,21,Baylor,21,Baylor,existing
+2009,22,Davidson,65,Davidson,existing
+2009,23,Memphis,167,Memphis,existing
+2009,24,Marquette,161,Marquette,existing
+2009,25,Clemson,53,Clemson,existing
+2010,1,Kansas,133,Kansas,existing
+2010,2,Texas,300,Texas,existing
+2010,3,Kentucky,137,Kentucky,existing
+2010,4,Purdue,241,Purdue,existing
+2010,5,Syracuse,292,Syracuse,existing
+2010,6,West Virginia,351,West Virginia,existing
+2010,7,Duke,74,Duke,existing
+2010,8,Villanova,342,Villanova,existing
+2010,9,Tennessee,296,Tennessee,existing
+2010,10,UNC,205,North Carolina,existing
+2010,11,Georgetown,99,Georgetown,existing
+2010,12,Michigan State,174,Michigan St.,existing
+2010,13,Florida,88,Florida,existing
+2010,14,UConn,60,Connecticut,existing
+2010,15,Gonzaga,104,Gonzaga,existing
+2010,16,Texas Tech,305,Texas Tech,existing
+2010,17,Kansas State,134,Kansas St.,existing
+2010,18,Ohio State,223,Ohio St.,existing
+2010,19,New Mexico,198,New Mexico,existing
+2010,20,Ole Miss,178,Mississippi,existing
+2010,21,Butler,35,Butler,existing
+2010,22,Georgia Tech,103,Georgia Tech,existing
+2010,23,Texas A&M,301,Texas A&M,existing
+2010,24,Washington,347,Washington,existing
+2010,25,Cincinnati,52,Cincinnati,existing
+2011,1,Duke,74,Duke,existing
+2011,2,Ohio State,223,Ohio St.,existing
+2011,3,Kansas,133,Kansas,existing
+2011,4,UConn,60,Connecticut,existing
+2011,5,Syracuse,292,Syracuse,existing
+2011,6,Kansas State,134,Kansas St.,existing
+2011,7,Tennessee,296,Tennessee,existing
+2011,8,Pitt,234,Pittsburgh,added_8b2
+2011,9,Baylor,21,Baylor,existing
+2011,10,Villanova,342,Villanova,existing
+2011,11,San Diego State,264,San Diego St.,existing
+2011,12,Illinois,120,Illinois,existing
+2011,13,Missouri,181,Missouri,existing
+2011,14,Michigan State,174,Michigan St.,existing
+2011,15,Georgetown,99,Georgetown,existing
+2011,16,BYU,19,BYU,existing
+2011,17,Kentucky,137,Kentucky,existing
+2011,18,Memphis,167,Memphis,existing
+2011,19,Purdue,241,Purdue,existing
+2011,20,Louisville,154,Louisville,existing
+2011,21,Minnesota,177,Minnesota,existing
+2011,22,Texas,300,Texas,existing
+2011,22,UNLV,326,UNLV,existing
+2011,24,Notre Dame,220,Notre Dame,existing
+2011,25,Texas A&M,301,Texas A&M,existing
+2012,1,Syracuse,292,Syracuse,existing
+2012,2,Ohio State,223,Ohio St.,existing
+2012,3,Kentucky,137,Kentucky,existing
+2012,4,Louisville,154,Louisville,existing
+2012,5,UNC,205,North Carolina,existing
+2012,6,Baylor,21,Baylor,existing
+2012,7,Duke,74,Duke,existing
+2012,8,Xavier,363,Xavier,existing
+2012,9,UConn,60,Connecticut,existing
+2012,10,Missouri,181,Missouri,existing
+2012,11,Marquette,161,Marquette,existing
+2012,12,Kansas,133,Kansas,existing
+2012,13,Florida,88,Florida,existing
+2012,14,Wisconsin,359,Wisconsin,existing
+2012,15,Pitt,234,Pittsburgh,added_8b2
+2012,16,Georgetown,99,Georgetown,existing
+2012,17,Mississippi State,179,Mississippi St.,existing
+2012,18,Indiana,124,Indiana,existing
+2012,19,Illinois,120,Illinois,existing
+2012,20,Michigan,173,Michigan,existing
+2012,21,Michigan State,174,Michigan St.,existing
+2012,22,Texas A&M,301,Texas A&M,existing
+2012,23,Alabama,4,Alabama,existing
+2012,24,Murray State,189,Murray St.,existing
+2012,25,Creighton,63,Creighton,existing
+2012,25,Vanderbilt,340,Vanderbilt,existing
+2013,1,Indiana,124,Indiana,existing
+2013,2,Duke,74,Duke,existing
+2013,3,Michigan,173,Michigan,existing
+2013,4,Syracuse,292,Syracuse,existing
+2013,5,Florida,88,Florida,existing
+2013,6,Louisville,154,Louisville,existing
+2013,7,Ohio State,223,Ohio St.,existing
+2013,8,Arizona,11,Arizona,existing
+2013,9,Kansas,133,Kansas,existing
+2013,10,Illinois,120,Illinois,existing
+2013,11,Cincinnati,52,Cincinnati,existing
+2013,12,Missouri,181,Missouri,existing
+2013,13,Minnesota,177,Minnesota,existing
+2013,14,Gonzaga,104,Gonzaga,existing
+2013,15,Georgetown,99,Georgetown,existing
+2013,16,Creighton,63,Creighton,existing
+2013,17,New Mexico,198,New Mexico,existing
+2013,18,San Diego State,264,San Diego St.,existing
+2013,19,Michigan State,174,Michigan St.,existing
+2013,20,UNLV,326,UNLV,existing
+2013,21,UNC,205,North Carolina,existing
+2013,22,Notre Dame,220,Notre Dame,existing
+2013,23,Wichita State,356,Wichita St.,existing
+2013,24,Oklahoma State,225,Oklahoma St.,existing
+2013,25,NC State,190,NC State,added_8b2
+2014,1,Arizona,11,Arizona,existing
+2014,2,Syracuse,292,Syracuse,existing
+2014,3,Ohio State,223,Ohio St.,existing
+2014,4,Wisconsin,359,Wisconsin,existing
+2014,5,Michigan State,174,Michigan St.,existing
+2014,6,Louisville,154,Louisville,existing
+2014,7,Oklahoma State,225,Oklahoma St.,existing
+2014,8,Duke,74,Duke,existing
+2014,9,UConn,60,Connecticut,existing
+2014,10,Villanova,342,Villanova,existing
+2014,11,Kentucky,137,Kentucky,existing
+2014,12,Wichita State,356,Wichita St.,existing
+2014,13,Kansas,133,Kansas,existing
+2014,14,Baylor,21,Baylor,existing
+2014,15,Oregon,228,Oregon,existing
+2014,16,Memphis,167,Memphis,existing
+2014,17,Iowa State,128,Iowa St.,existing
+2014,18,UNC,205,North Carolina,existing
+2014,19,Florida,88,Florida,existing
+2014,20,Gonzaga,104,Gonzaga,existing
+2014,21,Colorado,57,Colorado,existing
+2014,22,UMass,165,Massachusetts,added_8b2
+2014,23,Iowa,127,Iowa,existing
+2014,24,Missouri,181,Missouri,existing
+2014,25,San Diego State,264,San Diego St.,existing
+2015,1,Kentucky,137,Kentucky,existing
+2015,2,Duke,74,Duke,existing
+2015,3,Arizona,11,Arizona,existing
+2015,4,Louisville,154,Louisville,existing
+2015,5,Wisconsin,359,Wisconsin,existing
+2015,6,Virginia,343,Virginia,existing
+2015,7,Villanova,342,Villanova,existing
+2015,8,Gonzaga,104,Gonzaga,existing
+2015,9,Texas,300,Texas,existing
+2015,10,Kansas,133,Kansas,existing
+2015,11,Wichita State,356,Wichita St.,existing
+2015,12,Ohio State,223,Ohio St.,existing
+2015,13,Iowa State,128,Iowa St.,existing
+2015,14,Utah,333,Utah,existing
+2015,15,Oklahoma,224,Oklahoma,existing
+2015,16,Washington,347,Washington,existing
+2015,17,Maryland,163,Maryland,existing
+2015,18,Miami (FL),171,Miami (FL),existing
+2015,19,San Diego State,264,San Diego St.,existing
+2015,20,St. John's (NY),285,St. John's,existing
+2015,21,Notre Dame,220,Notre Dame,existing
+2015,22,West Virginia,351,West Virginia,existing
+2015,23,Butler,35,Butler,existing
+2015,24,UNC,205,North Carolina,existing
+2015,25,Michigan State,174,Michigan St.,existing
+2016,1,Michigan State,174,Michigan St.,existing
+2016,2,Kansas,133,Kansas,existing
+2016,3,Oklahoma,224,Oklahoma,existing
+2016,4,Kentucky,137,Kentucky,existing
+2016,5,Iowa State,128,Iowa St.,existing
+2016,6,Maryland,163,Maryland,existing
+2016,7,Duke,74,Duke,existing
+2016,8,Virginia,343,Virginia,existing
+2016,9,Purdue,241,Purdue,existing
+2016,10,Xavier,363,Xavier,existing
+2016,11,UNC,205,North Carolina,existing
+2016,12,Villanova,342,Villanova,existing
+2016,13,Arizona,11,Arizona,existing
+2016,14,Providence,240,Providence,existing
+2016,15,Miami (FL),171,Miami (FL),existing
+2016,16,Baylor,21,Baylor,existing
+2016,17,Butler,35,Butler,existing
+2016,18,SMU,253,SMU,existing
+2016,19,Louisville,154,Louisville,existing
+2016,20,West Virginia,351,West Virginia,existing
+2016,21,George Washington,98,George Washington,existing
+2016,22,UCLA,319,UCLA,existing
+2016,23,Cincinnati,52,Cincinnati,existing
+2016,24,Texas A&M,301,Texas A&M,existing
+2016,25,UConn,60,Connecticut,existing
+2017,1,Villanova,342,Villanova,existing
+2017,2,UCLA,319,UCLA,existing
+2017,3,Kansas,133,Kansas,existing
+2017,4,Baylor,21,Baylor,existing
+2017,5,Duke,74,Duke,existing
+2017,6,Kentucky,137,Kentucky,existing
+2017,7,UNC,205,North Carolina,existing
+2017,8,Gonzaga,104,Gonzaga,existing
+2017,9,Indiana,124,Indiana,existing
+2017,10,Creighton,63,Creighton,existing
+2017,11,Louisville,154,Louisville,existing
+2017,12,West Virginia,351,West Virginia,existing
+2017,13,Virginia,343,Virginia,existing
+2017,14,Wisconsin,359,Wisconsin,existing
+2017,15,Purdue,241,Purdue,existing
+2017,16,South Carolina,272,South Carolina,existing
+2017,17,Xavier,363,Xavier,existing
+2017,18,Butler,35,Butler,existing
+2017,19,Arizona,11,Arizona,existing
+2017,20,Saint Mary's,259,Saint Mary's,existing
+2017,21,Notre Dame,220,Notre Dame,existing
+2017,22,Oregon,228,Oregon,existing
+2017,23,Florida State,92,Florida St.,existing
+2017,24,USC,327,USC,existing
+2017,25,Cincinnati,52,Cincinnati,existing
+2018,1,Villanova,342,Villanova,existing
+2018,2,Michigan State,174,Michigan St.,existing
+2018,3,Wichita State,356,Wichita St.,existing
+2018,4,Duke,74,Duke,existing
+2018,5,Arizona State,12,Arizona St.,existing
+2018,6,Miami (FL),171,Miami (FL),existing
+2018,7,UNC,205,North Carolina,existing
+2018,8,Kentucky,137,Kentucky,existing
+2018,9,Texas A&M,301,Texas A&M,existing
+2018,10,Xavier,363,Xavier,existing
+2018,11,West Virginia,351,West Virginia,existing
+2018,12,Gonzaga,104,Gonzaga,existing
+2018,13,Kansas,133,Kansas,existing
+2018,14,TCU,293,TCU,existing
+2018,15,Seton Hall,269,Seton Hall,existing
+2018,16,Virginia,343,Virginia,existing
+2018,17,Purdue,241,Purdue,existing
+2018,18,Notre Dame,220,Notre Dame,existing
+2018,19,Florida State,92,Florida St.,existing
+2018,20,Tennessee,296,Tennessee,existing
+2018,21,Baylor,21,Baylor,existing
+2018,22,Florida,88,Florida,existing
+2018,23,Arizona,11,Arizona,existing
+2018,24,Texas Tech,305,Texas Tech,existing
+2018,25,Cincinnati,52,Cincinnati,existing
+2019,1,Kansas,133,Kansas,existing
+2019,2,Duke,74,Duke,existing
+2019,3,Tennessee,296,Tennessee,existing
+2019,4,Gonzaga,104,Gonzaga,existing
+2019,5,Michigan,173,Michigan,existing
+2019,6,Virginia,343,Virginia,existing
+2019,7,Nevada,195,Nevada,existing
+2019,8,Auburn,17,Auburn,existing
+2019,9,Michigan State,174,Michigan St.,existing
+2019,10,Florida State,92,Florida St.,existing
+2019,11,Texas Tech,305,Texas Tech,existing
+2019,12,UNC,205,North Carolina,existing
+2019,13,Virginia Tech,344,Virginia Tech,existing
+2019,14,Buffalo,34,Buffalo,existing
+2019,15,Ohio State,223,Ohio St.,existing
+2019,16,Wisconsin,359,Wisconsin,existing
+2019,17,Villanova,342,Villanova,existing
+2019,18,Mississippi State,179,Mississippi St.,existing
+2019,19,Kentucky,137,Kentucky,existing
+2019,20,Arizona State,12,Arizona St.,existing
+2019,21,Marquette,161,Marquette,existing
+2019,22,Iowa,127,Iowa,existing
+2019,23,Furman,95,Furman,existing
+2019,24,Houston,114,Houston,existing
+2019,25,Indiana,124,Indiana,existing
+2019,25,Kansas State,134,Kansas St.,existing
+2019,25,Syracuse,292,Syracuse,existing
+2021,1,Gonzaga,104,Gonzaga,existing
+2021,2,Baylor,21,Baylor,existing
+2021,3,Kansas,133,Kansas,existing
+2021,4,Villanova,342,Villanova,existing
+2021,5,Houston,114,Houston,existing
+2021,6,Wisconsin,359,Wisconsin,existing
+2021,7,Tennessee,296,Tennessee,existing
+2021,8,Texas,300,Texas,existing
+2021,9,West Virginia,351,West Virginia,existing
+2021,10,Iowa,127,Iowa,existing
+2021,11,Creighton,63,Creighton,existing
+2021,12,Missouri,181,Missouri,existing
+2021,13,Texas Tech,305,Texas Tech,existing
+2021,14,Rutgers,251,Rutgers,existing
+2021,15,Illinois,120,Illinois,existing
+2021,16,Michigan,173,Michigan,existing
+2021,17,Michigan State,174,Michigan St.,existing
+2021,18,Florida State,92,Florida St.,existing
+2021,19,Northwestern,218,Northwestern,existing
+2021,20,Duke,74,Duke,existing
+2021,21,Minnesota,177,Minnesota,existing
+2021,21,Oregon,228,Oregon,existing
+2021,23,Virginia,343,Virginia,existing
+2021,24,Virginia Tech,344,Virginia Tech,existing
+2021,25,Ohio State,223,Ohio St.,existing
+2022,1,Baylor,21,Baylor,existing
+2022,2,Duke,74,Duke,existing
+2022,3,Purdue,241,Purdue,existing
+2022,4,UCLA,319,UCLA,existing
+2022,5,Gonzaga,104,Gonzaga,existing
+2022,6,Alabama,4,Alabama,existing
+2022,7,Kansas,133,Kansas,existing
+2022,8,Arizona,11,Arizona,existing
+2022,9,Villanova,342,Villanova,existing
+2022,10,USC,327,USC,existing
+2022,11,Iowa State,128,Iowa St.,existing
+2022,12,Michigan State,174,Michigan St.,existing
+2022,13,Auburn,17,Auburn,existing
+2022,14,Houston,114,Houston,existing
+2022,15,Ohio State,223,Ohio St.,existing
+2022,16,Seton Hall,269,Seton Hall,existing
+2022,17,Texas,300,Texas,existing
+2022,18,Tennessee,296,Tennessee,existing
+2022,19,LSU,139,LSU,existing
+2022,20,UConn,60,Connecticut,existing
+2022,21,Kentucky,137,Kentucky,existing
+2022,22,Xavier,363,Xavier,existing
+2022,23,Colorado State,58,Colorado St.,existing
+2022,24,Arkansas,13,Arkansas,existing
+2022,25,Texas Tech,305,Texas Tech,existing
+2023,1,Purdue,241,Purdue,existing
+2023,2,Virginia,343,Virginia,existing
+2023,3,UConn,60,Connecticut,existing
+2023,4,Alabama,4,Alabama,existing
+2023,5,Houston,114,Houston,existing
+2023,6,Tennessee,296,Tennessee,existing
+2023,7,Texas,300,Texas,existing
+2023,8,Kansas,133,Kansas,existing
+2023,9,Arizona,11,Arizona,existing
+2023,10,Arkansas,13,Arkansas,existing
+2023,11,Baylor,21,Baylor,existing
+2023,12,Duke,74,Duke,existing
+2023,13,Kentucky,137,Kentucky,existing
+2023,14,Indiana,124,Indiana,existing
+2023,15,Gonzaga,104,Gonzaga,existing
+2023,16,UCLA,319,UCLA,existing
+2023,17,Mississippi State,179,Mississippi St.,existing
+2023,18,Illinois,120,Illinois,existing
+2023,19,Auburn,17,Auburn,existing
+2023,20,Maryland,163,Maryland,existing
+2023,21,TCU,293,TCU,existing
+2023,22,Wisconsin,359,Wisconsin,existing
+2023,23,Ohio State,223,Ohio St.,existing
+2023,24,Virginia Tech,344,Virginia Tech,existing
+2023,25,Miami (FL),171,Miami (FL),existing
+2024,1,Arizona,11,Arizona,existing
+2024,2,Kansas,133,Kansas,existing
+2024,3,Purdue,241,Purdue,existing
+2024,4,Houston,114,Houston,existing
+2024,5,UConn,60,Connecticut,existing
+2024,6,Baylor,21,Baylor,existing
+2024,7,Marquette,161,Marquette,existing
+2024,8,Creighton,63,Creighton,existing
+2024,9,UNC,205,North Carolina,existing
+2024,10,Gonzaga,104,Gonzaga,existing
+2024,11,Oklahoma,224,Oklahoma,existing
+2024,12,Tennessee,296,Tennessee,existing
+2024,13,Clemson,53,Clemson,existing
+2024,14,Kentucky,137,Kentucky,existing
+2024,15,Florida Atlantic,90,Florida Atlantic,added_8b2
+2024,16,Illinois,120,Illinois,existing
+2024,17,Colorado State,58,Colorado St.,existing
+2024,18,BYU,19,BYU,existing
+2024,19,Texas,300,Texas,existing
+2024,20,James Madison,132,James Madison,existing
+2024,21,Duke,74,Duke,existing
+2024,22,Virginia,343,Virginia,existing
+2024,23,Wisconsin,359,Wisconsin,existing
+2024,24,Miami (FL),171,Miami (FL),existing
+2024,25,Northwestern,218,Northwestern,existing
+2025,1,Tennessee,296,Tennessee,existing
+2025,2,Auburn,17,Auburn,existing
+2025,3,Iowa State,128,Iowa St.,existing
+2025,4,Duke,74,Duke,existing
+2025,5,Kentucky,137,Kentucky,existing
+2025,6,Marquette,161,Marquette,existing
+2025,7,Alabama,4,Alabama,existing
+2025,8,Gonzaga,104,Gonzaga,existing
+2025,9,Florida,88,Florida,existing
+2025,10,Kansas,133,Kansas,existing
+2025,11,Purdue,241,Purdue,existing
+2025,12,Oregon,228,Oregon,existing
+2025,13,Oklahoma,224,Oklahoma,existing
+2025,14,Michigan,173,Michigan,existing
+2025,15,Houston,114,Houston,existing
+2025,16,Clemson,53,Clemson,existing
+2025,17,Texas A&M,301,Texas A&M,existing
+2025,18,UConn,60,Connecticut,existing
+2025,19,Ole Miss,178,Mississippi,existing
+2025,20,Wisconsin,359,Wisconsin,existing
+2025,21,Michigan State,174,Michigan St.,existing
+2025,22,Cincinnati,52,Cincinnati,existing
+2025,23,San Diego State,264,San Diego St.,existing
+2025,24,UCLA,319,UCLA,existing
+2025,25,Mississippi State,179,Mississippi St.,existing
+2026,1,Arizona,11,Arizona,existing
+2026,2,Michigan,173,Michigan,existing
+2026,3,Duke,74,Duke,existing
+2026,4,Iowa State,128,Iowa St.,existing
+2026,5,UConn,60,Connecticut,existing
+2026,6,Purdue,241,Purdue,existing
+2026,7,Houston,114,Houston,existing
+2026,8,Gonzaga,104,Gonzaga,existing
+2026,9,Michigan State,174,Michigan St.,existing
+2026,10,BYU,19,BYU,existing
+2026,11,Louisville,154,Louisville,existing
+2026,12,Alabama,4,Alabama,existing
+2026,13,Illinois,120,Illinois,existing
+2026,14,UNC,205,North Carolina,existing
+2026,15,Vanderbilt,340,Vanderbilt,existing
+2026,16,Texas Tech,305,Texas Tech,existing
+2026,17,Arkansas,13,Arkansas,existing
+2026,18,Florida,88,Florida,existing
+2026,19,Kansas,133,Kansas,existing
+2026,20,Tennessee,296,Tennessee,existing
+2026,21,Auburn,17,Auburn,existing
+2026,22,St. John's (NY),285,St. John's,existing
+2026,23,Nebraska,193,Nebraska,existing
+2026,24,Virginia,343,Virginia,existing
+2026,25,UCLA,319,UCLA,existing
