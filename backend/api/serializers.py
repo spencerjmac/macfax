@@ -676,16 +676,15 @@ class GameLogSerializer(serializers.ModelSerializer):
         ]
 
     def get_result(self, obj):
-        opp_stats = obj._get_opp_stats()
-        if opp_stats:
-            return "W" if obj.pts > opp_stats.pts else "L"
-        return "-"
+        won = obj.won   # from the Game's scores, not the opponent's box row
+        if won is None:
+            return "-"
+        return "W" if won else "L"
 
     def get_margin(self, obj):
-        opp_stats = obj._get_opp_stats()
-        if opp_stats:
-            return obj.pts - opp_stats.pts
-        return 0
+        if obj.won is None:
+            return 0
+        return obj.score_for - obj.score_against
 
     def get_opponent_net_rank(self, obj):
         """Get opponent's NET rank (use rank_adj_em as proxy if net_rank not available)"""

@@ -23,9 +23,9 @@ class FourFactorIndexTests(unittest.TestCase):
               FOUR_FACTOR_WEIGHTS['reb'] * reb_z + 
               FOUR_FACTOR_WEIGHTS['ftr'] * ftr_z)
         
-        # Expected: 0.4069*1.5 + 0.4069*2.0 + 0.1432*0.5 + 0.0428*(-0.5)
-        # = 0.61035 + 0.8138 + 0.0716 - 0.0214 = 1.47435
-        expected_wz = 1.47435
+        # Weights in ncaa/constants.py (March 2026; were Dean Oliver's 0.4069/0.4069/0.1432/0.0428):
+        # 0.45*1.5 + 0.24*2.0 + 0.22*0.5 + 0.09*(-0.5) = 0.675 + 0.48 + 0.11 - 0.045 = 1.22
+        expected_wz = 1.22
         
         self.assertAlmostEqual(wz, expected_wz, places=4)
     
@@ -80,19 +80,18 @@ class FourFactorIndexTests(unittest.TestCase):
               FOUR_FACTOR_WEIGHTS['reb'] * reb_z + 
               FOUR_FACTOR_WEIGHTS['ftr'] * ftr_z)
         
-        # Houston's WZ should be ~2.1
-        self.assertAlmostEqual(wz, 2.1, places=1)
-        
-        # Convert to 100 scale
+        # With the current weights: 0.45*1.322 + 0.24*3.416 + 0.22*1.766 + 0.09*(-1.887) = 1.63343
+        # (was ~2.1 under Dean Oliver's weights)
+        self.assertAlmostEqual(wz, 1.63343, places=4)
+
+        # Convert to 100 scale: 50 + 20*1.63343 = 82.67
         ffi_100 = max(0, min(100, 50 + FOUR_FACTOR_SCALE * wz))
-        
-        # Houston's 4FI should be ~92
-        self.assertAlmostEqual(ffi_100, 92.0, places=1)
+        self.assertAlmostEqual(ffi_100, 82.6686, places=3)
     
     def test_weights_sum_to_one(self):
         """Test that weights approximately sum to 1.0"""
         total = sum(FOUR_FACTOR_WEIGHTS.values())
-        # Dean Oliver's weights: 0.4069 + 0.4069 + 0.1432 + 0.0428 = 0.9998
+        # 0.45 + 0.24 + 0.22 + 0.09 = 1.00
         self.assertAlmostEqual(total, 1.0, places=2)
 
 

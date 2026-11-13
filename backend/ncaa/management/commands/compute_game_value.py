@@ -18,6 +18,7 @@ from django.db import transaction
 from ncaa.models import Season, TeamSeasonRatings, TeamGameStats, NationalAverages
 from api.matchup_engine import forecast_game
 from ncaa.seasons import resolve_season_year
+from ncaa.utils.d1 import d1_q
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +66,7 @@ class Command(BaseCommand):
         # Get bubble team (configured rank by AdjEM)
         bubble_rank = cfg.wab_bubble_rank
         try:
-            bubble_team = TeamSeasonRatings.objects.get(season=season, rank_adj_em=bubble_rank)
+            bubble_team = TeamSeasonRatings.objects.get(d1_q(season, "team"), season=season, rank_adj_em=bubble_rank)
         except TeamSeasonRatings.DoesNotExist:
             self.stderr.write(f"❌ Bubble team (rank #{bubble_rank}) not found")
             return
@@ -77,6 +78,8 @@ class Command(BaseCommand):
         
         # Get all completed games for this season
         all_games = TeamGameStats.objects.filter(
+            d1_q(season, "team"),
+            d1_q(season, "opponent"),   # D1-vs-D1 games only (membership that season)
             game__season_year=season_year,
             game__status='final'
         ).select_related('team', 'opponent', 'game')
@@ -104,13 +107,13 @@ class Command(BaseCommand):
                     games_skipped += 1
                     continue
                 
-                # Determine result
-                opp_stat = game_stat._get_opp_stats()
-                if not opp_stat:
+                # Determine result from the Game's scores (box rows can be missing)
+                won = game_stat.won
+                if won is None:
                     games_skipped += 1
                     continue
-                
-                result = 1.0 if game_stat.pts > opp_stat.pts else 0.0
+
+                result = 1.0 if won else 0.0
                 
                 # Determine site from team perspective
                 if game_stat.home_away == 'H':

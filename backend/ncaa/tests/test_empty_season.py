@@ -23,7 +23,7 @@ from django.test import TestCase
 from ncaa.models import Game, Season, Team, TeamSeasonRatings
 
 BASE_CALL = "ncaa.management.commands._pipeline_base.call_command"
-SETUP = {"ensure_ncaa_teams", "fix_team_duplicates", "sync_team_d1_status"}
+SETUP = {"ensure_ncaa_teams", "fix_team_duplicates", "sync_team_d1_status", "sync_team_season_membership"}
 
 
 def run(command, season):

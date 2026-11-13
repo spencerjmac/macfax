@@ -177,6 +177,7 @@ class Command(BaseCommand):
             "total_blk": 0,
             "total_tov": 0,
             "total_pf": 0,
+            "total_minutes": 0,   # game minutes (40 + 5 per OT), for pace on the same basis as national pace
         }
 
         for gs in game_stats:
@@ -200,6 +201,7 @@ class Command(BaseCommand):
             # Possessions (team)
             poss = gs.possessions_est
             totals["total_possessions"] += poss
+            totals["total_minutes"] += gs.game_minutes
 
             # Get opponent stats for defensive metrics
             opp_stats = TeamGameStats.objects.filter(
@@ -303,7 +305,9 @@ class Command(BaseCommand):
         # Per-game averages
         ppg = totals["total_pts"] / games
         papg = totals["total_pts_allowed"] / games
-        pace = totals["total_possessions"] / games
+        # Possessions per 40 minutes (overtime games last longer), like compute_national_averages' avg_pace
+        pace = (40 * totals["total_possessions"] / totals["total_minutes"]) if totals.get("total_minutes") else (
+            totals["total_possessions"] / games)
 
         # Per-possession metrics (per 100 possessions)
         total_poss = totals["total_possessions"]

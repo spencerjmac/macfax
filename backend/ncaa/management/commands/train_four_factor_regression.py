@@ -13,6 +13,7 @@ from ncaa.models import Season, TeamGameStats, NationalAverages
 import statistics
 from collections import defaultdict
 from ncaa.seasons import resolve_season_year
+from ncaa.utils.d1 import d1_q
 
 
 class Command(BaseCommand):
@@ -48,6 +49,8 @@ class Command(BaseCommand):
         
         # Get all games
         all_games = TeamGameStats.objects.filter(
+            d1_q(season, "team"),
+            d1_q(season, "opponent"),   # D1-vs-D1 games only (membership that season)
             game__season_year=season_year,
             game__isnull=False
         ).select_related('team', 'game').order_by('game_id', 'id')

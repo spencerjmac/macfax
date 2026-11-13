@@ -26,9 +26,25 @@ from ncaa.models import (
     NationalAverages,
 )
 from ncaa.seasons import resolve_season_year
+from ncaa.models.games import game_minutes_for
 from ncaa.utils.d1 import d1_q
 
 logger = logging.getLogger(__name__)
+
+
+def season_records(season_year: int, cutoff=None) -> dict:
+    """team_id -> (games, wins) from Game scores: final games with both scores, 0-0 (canceled) excluded,
+    game_date <= cutoff when given. Every opponent counts (the displayed record)."""
+    qs = Game.objects.filter(season_year=season_year, status="final", home_score__isnull=False,
+                             away_score__isnull=False).exclude(home_score=0, away_score=0)
+    if cutoff:
+        qs = qs.filter(game_date__lte=cutoff)
+    out: dict = {}
+    for h, a, hs, as_ in qs.values_list("home_team_id", "away_team_id", "home_score", "away_score"):
+        for tid, won in ((h, hs > as_), (a, as_ > hs)):
+            g, w = out.get(tid, (0, 0))
+            out[tid] = (g + 1, w + int(won))
+    return out
 
 
 class Command(BaseCommand):
@@ -351,7 +367,7 @@ class Command(BaseCommand):
             TeamGameStats.objects.filter(_tgs_d1, **_tgs_filter).values(
                 "team_id", "opponent_id", "game_id",
                 "fga", "oreb", "tov", "fta", "pts",
-                "home_away", "minutes",
+                "home_away", "minutes", "game__period_count", "game__went_to_ot",
                 "game__neutral_site", "game__elevation",
                 "opponent__elevation",
             )
@@ -406,6 +422,7 @@ class Command(BaseCommand):
 
             new_ratings = {}
             max_aem_change = 0.0
+            prior_only = []   # teams with box rows but no valid rating game this iteration
 
             for team in teams:
                 team_id = team.id
@@ -442,7 +459,8 @@ class Command(BaseCommand):
                     n_valid_games += 1
                     raw_oe_g = 100 * row["pts"] / poss_g
                     raw_de_g = 100 * opp_row["pts"] / poss_g
-                    minutes = row["minutes"] or 40
+                    # Overtime games last longer: 40 + 5 per OT period (TGS.minutes is not stored)
+                    minutes = row["minutes"] or game_minutes_for(row["game__period_count"], row["game__went_to_ot"])
                     raw_pace_g = 40 * poss_g / minutes
 
                     # Site factors (inlined: avoids property call overhead)
@@ -537,6 +555,8 @@ class Command(BaseCommand):
                     aor_season = prior_off
                     adr_season = prior_def
                     pace_season = nat_avg.avg_pace
+                    if _by_team.get(team_id):
+                        prior_only.append(team_id)
 
                 new_ratings[team_id] = {
                     "aor": aor_season,
@@ -619,6 +639,16 @@ class Command(BaseCommand):
             # Update ratings for next iteration
             ratings = new_ratings
 
+        # A team with box rows but no valid rating game gets the prior (league average without a BPR
+        # projection). That is how Georgia 2005-08 came out at adj_em 0 (its opponents' rows pointed at a
+        # non-D1 team): name every such team-season.
+        fallback_names = sorted(t.name for t in teams if t.id in set(prior_only))
+        for name in fallback_names:
+            msg = (f"{name} {season_year}{' pre' if is_pre_tournament else ''}: has box rows but no valid rating "
+                   f"game; rating fell back to the prior")
+            logger.warning(msg)
+            self.stdout.write(self.style.WARNING(f"  ⚠ {msg}"))
+
         # Report convergence status
         if converged:
             self.stdout.write(f"\n✓ Converged after {iteration} iterations")
@@ -626,6 +656,8 @@ class Command(BaseCommand):
             self.stdout.write(
                 f"\n⚠ Did not converge after {max_iterations} iterations (max change: {max_aem_change:.4f})"
             )
+
+        self.stdout.write(f"Teams with box rows that fell back to the prior: {len(fallback_names)}")
 
         # Capture current DB ratings for comparison before overwriting
         old_ratings_db = {
@@ -646,6 +678,11 @@ class Command(BaseCommand):
         created = 0
         updated = 0
 
+        # Record = ALL games (D1 + non-D1), decided from Game scores so a game counts whether or not its box
+        # rows exist (a win over an opponent with no box row used to count as a loss). Efficiency above still
+        # needs box rows.
+        record = season_records(season_year, season.selection_sunday_date if is_pre_tournament else None)
+
         with transaction.atomic():
             for team in teams:
                 if team.id not in ratings:
@@ -653,31 +690,7 @@ class Command(BaseCommand):
 
                 metrics = TeamSeasonMetrics.all_objects.get(team=team, season=season, is_pre_tournament=is_pre_tournament)
 
-                # Record = ALL games (D1 + non-D1). Computations use D1-only; display record uses all.
-                all_games_filters = Q(
-                    team=team, game__season_year=season_year, game__status="final"
-                )
-                
-                # Exclude canceled games (where both teams scored 0 points despite 'final' status)
-                all_games_filters &= ~Q(game__home_score=0, game__away_score=0)
-                if is_pre_tournament and season.selection_sunday_date:
-                    all_games_filters &= Q(game__game_date__lte=season.selection_sunday_date)
-
-                all_games = TeamGameStats.objects.filter(all_games_filters).select_related("game", "opponent")
-
-                total_games = all_games.count()
-                total_wins = 0
-
-                # Count wins by comparing team pts to opponent pts
-                for game_stat in all_games:
-                    # Get opponent's stats for this game
-                    opp_stats = TeamGameStats.objects.filter(
-                        game=game_stat.game, team=game_stat.opponent
-                    ).first()
-
-                    if opp_stats and game_stat.pts > opp_stats.pts:
-                        total_wins += 1
-
+                total_games, total_wins = record.get(team.id, (0, 0))
                 total_losses = total_games - total_wins
 
                 # D1 games count (from metrics which filters to D1 only)

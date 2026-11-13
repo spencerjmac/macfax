@@ -35,6 +35,7 @@ from ncaa.models import (
     TeamSeasonRatings, NationalAverages
 )
 from ncaa.seasons import resolve_season_year
+from ncaa.utils.d1 import d1_q
 
 KEYS = [
     'adj_efg', 'adj_tov', 'adj_orb', 'adj_ftr',
@@ -123,7 +124,9 @@ class Command(BaseCommand):
         }
 
         # Get all team season metrics
+        # D1 that season (TeamSeasonMembership), not every team with a (possibly stale) metrics row
         all_teams = Team.objects.filter(
+            d1_q(season, ""),
             season_metrics__season=season
         ).distinct()
 
@@ -167,6 +170,7 @@ class Command(BaseCommand):
             # Exclude canceled games (0-0 score)
             team_games = TeamGameStats.objects.filter(
                 ~Q(game__home_score=0, game__away_score=0),
+                d1_q(season, "opponent"),   # D1-vs-D1 games only
                 **tgs_filters
             ).select_related('game')
 

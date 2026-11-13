@@ -243,6 +243,14 @@ class Game(models.Model):
         return self.home_team if self.home_score > self.away_score else self.away_team
 
 
+def game_minutes_for(period_count, went_to_ot) -> int:
+    """Minutes played in a game: 40 + 5 per overtime period. period_count is the number of periods (2 =
+    regulation); when it is NULL, went_to_ot decides between 40 and 45 (a single overtime)."""
+    if period_count:
+        return 40 + 5 * max(int(period_count) - 2, 0)
+    return 45 if went_to_ot else 40
+
+
 class TeamGameStats(models.Model):
     """
     Box score statistics for one team in one game
@@ -349,10 +357,31 @@ class TeamGameStats(models.Model):
 
     @property
     def game_minutes(self):
-        """Total game minutes (40 for regulation, 45 for OT approximation)"""
+        """Total game minutes: TGS.minutes when stored, else 40 + 5 per overtime (game_minutes_for)."""
         if self.minutes:
             return self.minutes
-        return 45 if self.game.went_to_ot else 40
+        return game_minutes_for(self.game.period_count, self.game.went_to_ot)
+
+    # ==================== RESULT (from the Game's scores, not box rows) ====================
+
+    @property
+    def score_for(self):
+        """This team's final score from Game.home_score / away_score (box rows can be missing or partial)."""
+        g = self.game
+        return g.home_score if self.team_id == g.home_team_id else g.away_score
+
+    @property
+    def score_against(self):
+        g = self.game
+        return g.away_score if self.team_id == g.home_team_id else g.home_score
+
+    @property
+    def won(self):
+        """True/False from the Game's scores; None when a score is missing or the game is 0-0 (canceled)."""
+        f, a = self.score_for, self.score_against
+        if f is None or a is None or (f == 0 and a == 0):
+            return None
+        return f > a
 
     # ==================== 2-POINT STATS ====================
 

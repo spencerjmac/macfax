@@ -797,16 +797,12 @@ def compute_wab_for_team(
             # Skip non-D1 opponents or opponents without ratings
             continue
         
-        # Determine result (1 if won, 0 if lost)
-        try:
-            from ncaa.models import TeamGameStats
-            opp_stat = TeamGameStats.objects.get(
-                game=game_stat.game,
-                team=game_stat.opponent
-            )
-            result = 1.0 if game_stat.pts > opp_stat.pts else 0.0
-        except TeamGameStats.DoesNotExist:
+        # Determine result (1 if won, 0 if lost) from the Game's scores: a missing opponent box row
+        # no longer drops the game
+        won = game_stat.won
+        if won is None:
             continue
+        result = 1.0 if won else 0.0
         
         # Determine site from team perspective
         if game_stat.home_away == 'H':

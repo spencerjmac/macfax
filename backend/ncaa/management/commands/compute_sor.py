@@ -140,12 +140,8 @@ class Command(BaseCommand):
                     teams_skipped += 1
                     continue
                 
-                # Count actual wins - be careful with None checks
-                actual_wins = 0
-                for g in team_games:
-                    opp_stat = g.game.team_stats.exclude(team=team).first()
-                    if opp_stat and g.pts > opp_stat.pts:
-                        actual_wins += 1
+                # Count actual wins from the Game's scores (a missing opponent box row used to count as a loss)
+                actual_wins = sum(1 for g in team_games if g.won)
                 
                 # Compute win probability for baseline team in each game
                 win_probs = []

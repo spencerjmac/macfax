@@ -11,6 +11,7 @@ from django.db.models import Sum, Count, F, FloatField, ExpressionWrapper, Q
 from django.db import transaction
 
 from ncaa.models import Game, Player, PlayerGameStats, PlayerSeasonStats, Season, Team, TeamGameStats
+from ncaa.models.games import game_minutes_for
 from ncaa.seasons import resolve_season_year
 
 
@@ -51,10 +52,10 @@ class Command(BaseCommand):
             .values(
                 "game_id", "team_id", "opponent_id",
                 "fga", "fta", "fg3a", "tov", "oreb", "dreb",
-                "minutes", "game__went_to_ot",
+                "minutes", "game__period_count", "game__went_to_ot",
             )
         ):
-            gm = tgs["minutes"] if tgs["minutes"] else (45 if tgs["game__went_to_ot"] else 40)
+            gm = tgs["minutes"] if tgs["minutes"] else game_minutes_for(tgs["game__period_count"], tgs["game__went_to_ot"])
             tgs_lookup[(tgs["game_id"], tgs["team_id"])] = {
                 "fga": tgs["fga"],
                 "fta": tgs["fta"],
