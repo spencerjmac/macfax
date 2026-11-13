@@ -121,3 +121,7 @@ espn:
   "6760": "Missouri S&T"      # ESPN 6760 Missouri S&T Miners (second ESPN id)
   "2637": "Texas Col."        # ESPN 2637 Texas College Steers (NAIA), was stored as Texas
   "130189": "VTSU Randolph"   # ESPN 130189 Vermont State - Randolph Knights, was stored as Vermont
+  # Second ESPN ids of non-D1 teams whose TeamExternalId row holds another id (Task 6g).
+  "3087": "Old Westbury"      # ESPN 3087 Old Westbury Panthers (TeamExternalId: 16231)
+  "126749": "St. Thomas (TX)" # ESPN 126749 St. Thomas (TX) Celts, Houston (TeamExternalId: 3170). Not St. Thomas (MN), ESPN 2900, D1.
+  "108822": "Newbury College" # ESPN 108822 "Newbury College Wolves" (MA); not Newberry (SC), ESPN 2444

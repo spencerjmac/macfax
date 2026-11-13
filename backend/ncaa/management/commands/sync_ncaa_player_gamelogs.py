@@ -17,6 +17,9 @@ Usage:
 
     # Re-fetch everything (full overwrite):
     python manage.py sync_ncaa_player_gamelogs --season 2026 --force
+
+    # Only games involving some teams (Team primary keys), e.g. after fixing their ESPN ids:
+    python manage.py sync_ncaa_player_gamelogs --season 2026 --teams 27,28 --sleep 1.1
 """
 import time
 import logging
@@ -25,6 +28,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from django.core.management.base import BaseCommand
 from django.db import transaction
+from django.db.models import Q
 
 from ncaa.models import Game, Player, PlayerGameStats, Team, TeamExternalId
 from ncaa.seasons import resolve_season_year
@@ -63,6 +67,12 @@ class Command(BaseCommand):
             help="Delete existing PlayerGameStats for each game before re-inserting",
         )
         parser.add_argument(
+            "--teams",
+            type=str,
+            default=None,
+            help="Comma-separated Team primary keys: only games where one of them is home or away.",
+        )
+        parser.add_argument(
             "--limit",
             type=int,
             default=0,
@@ -92,6 +102,10 @@ class Command(BaseCommand):
             season_year=season_year,
             status="final",
         ).select_related("home_team", "away_team").order_by("game_date")
+
+        if options.get("teams"):
+            team_pks = [int(x) for x in options["teams"].split(",") if x.strip()]
+            games_qs = games_qs.filter(Q(home_team_id__in=team_pks) | Q(away_team_id__in=team_pks))
 
         if skip_done:
             done_game_ids = set(

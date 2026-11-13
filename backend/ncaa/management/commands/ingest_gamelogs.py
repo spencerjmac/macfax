@@ -6,6 +6,9 @@ Usage:
     python manage.py ingest_gamelogs --season 2026
     python manage.py ingest_gamelogs --season 2026 --start 2025-11-01 --end 2025-11-07
     python manage.py ingest_gamelogs --season 2026 --refresh
+    # Re-fetch only some games (scoreboard dates still scanned; other games untouched):
+    python manage.py ingest_gamelogs --season 2017 --source espn --start 2016-11-14 --end 2016-11-15 \
+        --refresh --game-ids 400915129
 """
 
 import logging
@@ -131,6 +134,13 @@ class Command(BaseCommand):
             help="In-process parallel workers for game ingestion (default: 1). Use 2+ for multiprocessing.",
         )
         parser.add_argument(
+            "--game-ids",
+            type=str,
+            default=None,
+            help="Comma-separated source game ids: process only these games from the scanned dates "
+                 "(other games on those dates are left untouched). Fails if any id is not found.",
+        )
+        parser.add_argument(
             "--create-season",
             action="store_true",
             help="Auto-create Season object if it doesn't exist (useful for historical seasons)",
@@ -145,6 +155,10 @@ class Command(BaseCommand):
         workers = max(1, int(options.get("workers", 1)))
 
         create_season = options.get("create_season", False)
+        only_ids = (
+            {x.strip() for x in options["game_ids"].split(",") if x.strip()}
+            if options.get("game_ids") else None
+        )
 
         # Get or create season
         try:
@@ -223,6 +237,7 @@ class Command(BaseCommand):
             dry_run=dry_run,
             source=source,
             workers=workers,
+            only_ids=only_ids,
         )
 
         # Step 3: Summary
@@ -277,8 +292,9 @@ class Command(BaseCommand):
         dry_run: bool,
         source: str = "ncaa",
         workers: int = 1,
+        only_ids: Optional[set] = None,
     ) -> Dict[str, int]:
-        """Main ingestion loop"""
+        """Main ingestion loop. only_ids: process only games with these source ids."""
         self.stdout.write("\n[2/3] Fetching games...")
 
         stats = {
@@ -302,6 +318,7 @@ class Command(BaseCommand):
             )
 
         current_date = start_date
+        seen_ids: set = set()
 
         while current_date <= end_date:
             self.stdout.write(f"\n  Processing {current_date}...")
@@ -310,6 +327,9 @@ class Command(BaseCommand):
             try:
                 # Fetch scoreboard for this date
                 games = api_client.get_scoreboard(current_date)
+                if only_ids is not None:
+                    games = [g for g in games if str(g.get("id") or g.get("gameID")) in only_ids]
+                    seen_ids.update(str(g.get("id") or g.get("gameID")) for g in games)
                 stats["games_found"] += len(games)
 
                 self.stdout.write(f"    Found {len(games)} games")
@@ -431,6 +451,11 @@ class Command(BaseCommand):
             # Move to next date
             current_date += timedelta(days=1)
 
+        if only_ids is not None and only_ids - seen_ids:
+            raise CommandError(
+                f"--game-ids not found on the scoreboard for {start_date}..{end_date}: "
+                f"{', '.join(sorted(only_ids - seen_ids))}"
+            )
         return stats
 
     def _process_game(

@@ -13,9 +13,9 @@ Scans from Tasks 6b and 7d, so team-identity breaks are caught before they reach
   multi_espn_ids        one of our teams fed by several ESPN team ids (raw competitors)
   null_team_player_rows player-game rows with no team
 
-Start time: Game.raw_json "date" (ISO UTC, ESPN-sourced games) or _raw.startTimeEpoch (NCAA-sourced);
-Eastern date from that, else the MM/DD/YYYY raw date, else Game.game_date. (Game.start_time_utc is
-empty in every season.)
+Start time: Game.start_time_utc when set (a correction: the column is otherwise empty), else
+Game.raw_json "date" (ISO UTC, ESPN-sourced games) or _raw.startTimeEpoch (NCAA-sourced);
+Eastern date from that, else the MM/DD/YYYY raw date, else Game.game_date.
 
 FAIL on anything touching D1 data; WARN where only non-D1 teams are involved (a non-D1 team fed
 by several ESPN ids; null-team player rows in a game with a non-D1 side, which are that side's
@@ -33,7 +33,8 @@ from django.core.management.base import BaseCommand
 from django.db import connection, transaction
 
 START_TS = """
-    case when g.raw_json->>'date' ~ '^\\d{4}-\\d{2}-\\d{2}T' then (g.raw_json->>'date')::timestamptz
+    case when g.start_time_utc is not null then g.start_time_utc
+         when g.raw_json->>'date' ~ '^\\d{4}-\\d{2}-\\d{2}T' then (g.raw_json->>'date')::timestamptz
          when g.raw_json->'_raw'->>'startTimeEpoch' ~ '^\\d+$'
               then to_timestamp((g.raw_json->'_raw'->>'startTimeEpoch')::bigint) end
 """
@@ -51,7 +52,11 @@ SAME_DATE_MAX_HOURS = 12
 # Verified real same-day doubles (game id pairs), not reported:
 #   2008 SEC tournament, Atlanta: the tornado moved Georgia-Kentucky (QF) to Saturday noon; Georgia then
 #   played Mississippi St. (SF) that night (28115, 28124).
-ALLOWED_SAME_DATE_PAIRS = [(28115, 28124)]
+#   2006 Outrigger Rainbow Classic, Honolulu: Creighton-Valparaiso (Dec 21 HST, 05:35Z Dec 22) and
+#   Creighton-Houston (Dec 22 HST; ESPN legacy id 263560156 = day 356). ESPN's only record of the
+#   Houston game carries a placeholder time (05:00Z) and no box stats, so its real tip is unknown
+#   (Task 6g; Houston's ESPN schedule lists it between its Dec 21 and Dec 23 Rainbow games) (19688, 19691).
+ALLOWED_SAME_DATE_PAIRS = [(28115, 28124), (19688, 19691)]
 
 # Each check: (name, description, SQL). The SQL selects one row per problem with columns season, detail, severity ('FAIL' or 'WARN').
 CHECKS = [
