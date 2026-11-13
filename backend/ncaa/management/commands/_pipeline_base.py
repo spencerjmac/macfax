@@ -59,6 +59,7 @@ class BasePipelineCommand(BaseCommand):
                 ("ensure_ncaa_teams",  {}, "D1 team stubs + aliases up to date"),
                 ("fix_team_duplicates", {}, "Informal/canonical duplicates merged"),
                 ("sync_team_d1_status", {}, "is_d1 flags synced"),
+                ("sync_team_season_membership", {}, "Season D1 membership rows present"),
             ]
         if nba:
             steps += [

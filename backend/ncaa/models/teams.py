@@ -82,6 +82,44 @@ class TeamExternalId(models.Model):
         return f"{self.team.name} → {self.source}:{self.external_id} ({self.external_name})"
 
 
+class TeamSeasonMembership(models.Model):
+    """Division I membership of a team in one season (Team.is_d1 is only "D1 today").
+
+    One row per (season, team) for every D1 member that season and every other team that played
+    a game that season. is_reclassifying: in an NCAA transition (counted as D1, not yet a full member);
+    NULL when the row is not D1.
+    """
+
+    SOURCE_ESPN_GROUP50 = "espn_group50"
+    SOURCE_DERIVED_GAMES = "derived_games"
+    SOURCE_WIKIPEDIA = "wikipedia"
+    SOURCE_MANUAL = "manual"
+    SOURCE_CHOICES = [
+        (SOURCE_ESPN_GROUP50, "ESPN core API seasons/{y}/types/2/groups/50/teams"),
+        (SOURCE_DERIVED_GAMES, "Derived from the season's games"),
+        (SOURCE_WIKIPEDIA, "Wikipedia"),
+        (SOURCE_MANUAL, "Manual ruling"),
+    ]
+
+    season = models.ForeignKey(Season, on_delete=models.CASCADE, related_name="team_memberships")
+    team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name="season_memberships")
+    is_d1 = models.BooleanField()
+    is_reclassifying = models.BooleanField(null=True, blank=True)
+    source = models.CharField(max_length=20, choices=SOURCE_CHOICES)
+    note = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["season", "team"], name="uniq_team_season_membership"),
+        ]
+        indexes = [models.Index(fields=["season", "is_d1"])]
+
+    def __str__(self):
+        return f"{self.season_id}/{self.team.name}: {'D1' if self.is_d1 else 'not D1'}"
+
+
 class TeamSeasonStats(models.Model):
     """
     Statistics for a team in a specific season

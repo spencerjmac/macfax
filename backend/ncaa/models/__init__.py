@@ -15,6 +15,7 @@ from .base import (
 from .teams import (
     Team,
     TeamExternalId,
+    TeamSeasonMembership,
     TeamSeasonStats,
     TeamSeasonRatings,
     TeamSeasonMetrics,
@@ -55,6 +56,7 @@ __all__ = [
     # teams
     "Team",
     "TeamExternalId",
+    "TeamSeasonMembership",
     "TeamSeasonStats",
     "TeamSeasonRatings",
     "TeamSeasonMetrics",
