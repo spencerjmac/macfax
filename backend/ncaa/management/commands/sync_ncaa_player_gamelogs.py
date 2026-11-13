@@ -59,7 +59,7 @@ class Command(BaseCommand):
         parser.add_argument(
             "--skip-done",
             action="store_true",
-            help="Skip games that already have PlayerGameStats rows",
+            help="Skip games that already have PlayerGameStats rows and a period_count",
         )
         parser.add_argument(
             "--force",
@@ -113,7 +113,9 @@ class Command(BaseCommand):
                     game__season_year=season_year,
                 ).values_list("game_id", flat=True).distinct()
             )
-            games_qs = games_qs.exclude(id__in=done_game_ids)
+            # A game with player rows but no period_count is not done: re-fetch it so its periods
+            # get recorded (otherwise --skip-done would leave it NULL forever).
+            games_qs = games_qs.exclude(id__in=done_game_ids, period_count__isnull=False)
 
         all_games = list(games_qs)
         if limit:
