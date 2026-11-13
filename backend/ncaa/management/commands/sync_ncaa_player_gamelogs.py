@@ -230,6 +230,7 @@ class Command(BaseCommand):
         total_players = 0
         total_stats = 0
         skipped = 0
+        periods_set = 0
 
         for game_id, _ in game_list:
             rows = fetched.get(game_id, [])
@@ -239,6 +240,13 @@ class Command(BaseCommand):
 
             if force:
                 PlayerGameStats.objects.filter(game_id=game_id).delete()
+
+            # Periods played, from the same ESPN summary. Nothing else sets Game.period_count at ingest
+            # (fix_ncaa_stint_data backfills it from stints only), so games without stints stayed NULL.
+            period = rows[0].get("game_period")
+            if isinstance(period, int) and period >= 2:
+                periods_set += Game.objects.filter(pk=game_id, period_count__isnull=True).update(
+                    period_count=period, went_to_ot=period > 2)
 
             with transaction.atomic():
                 for row in rows:
@@ -296,6 +304,7 @@ class Command(BaseCommand):
             self.style.SUCCESS(
                 f"Done. New players: {total_players} | "
                 f"New game rows: {total_stats} | "
-                f"Games with no data: {skipped}"
+                f"Games with no data: {skipped} | "
+                f"period_count set: {periods_set}"
             )
         )

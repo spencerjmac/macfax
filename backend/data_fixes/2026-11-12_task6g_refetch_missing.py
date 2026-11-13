@@ -20,6 +20,8 @@ Decisions (evidence in the Task 6g report):
   2026-03-14T03:59Z, neutral, Thomas & Mack). Corrected: game_date 2026-03-13, start_time_utc,
   neutral_site. Game 8344 (final vs Utah St., 2026-03-14) is unchanged. Both are before Selection
   Sunday (2026-03-15).
+  SUPERSEDED by Task 6h: ESPN's 03:59Z is an 11:59 PM ET placeholder; the play-by-play wallclock tip is
+  2026-03-14T04:29Z (12:29 AM EDT Sat), so 8340's Eastern date is 3/14 (data_fixes/2026-11-12_task6h_*).
 - ESPN 108822 ("Newbury College Wolves", location "Newbury College") is not Newberry (SC, ESPN 2444):
   no player appears for both, though Newberry has 2017/2020/2021 boxes. New non-D1 team Newbury College;
   its 2 games (61204, 83464) move off Newberry (731).

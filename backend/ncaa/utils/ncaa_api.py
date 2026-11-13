@@ -749,6 +749,7 @@ class ESPNAPIClient:
           fg3_made, fg3_attempted, ft_made, ft_attempted,
           rebounds, offensive_rebounds, defensive_rebounds,
           assists, turnovers, steals, blocks, fouls,
+          game_period,   # periods played, from the summary's per-period linescores (2 = regulation, 3+ = OT); None if absent
         }
         """
         self._rate_limit()
@@ -760,6 +761,12 @@ class ESPNAPIClient:
         except Exception as e:
             logger.error(f"ESPN summary fetch failed for {game_id}: {e}")
             return []
+
+        # Periods played: the summary header has no status.period; count the per-period linescores.
+        _comp = ((data.get("header") or {}).get("competitions") or [{}])[0]
+        _done = ((_comp.get("status") or {}).get("type") or {}).get("completed")
+        _n = max((len(c.get("linescores") or []) for c in _comp.get("competitors") or []), default=0)
+        game_period = _n if _done and _n >= 2 else None
 
         boxscore = data.get("boxscore", {})
         player_entries = boxscore.get("players", [])
@@ -830,6 +837,7 @@ class ESPNAPIClient:
                     "position": position_obj.get("abbreviation", "") if isinstance(position_obj, dict) else "",
                     "headshot_url": (athlete.get("headshot") or {}).get("href", ""),
                     "espn_team_id": espn_team_id,
+                    "game_period": game_period,
                     "team_display_name": team_name,
                     "starter": athlete_entry.get("starter", False),
                     "did_not_play": did_not_play,

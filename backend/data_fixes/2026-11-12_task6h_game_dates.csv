@@ -1,0 +1,2 @@
+game_id,espn_event,old_date,new_date,new_start_time_utc,evidence
+8340,401851504,2026-03-13,2026-03-14,2026-03-14T04:29:19Z,"MW semifinal San Diego St. 64-New Mexico 62: ESPN play-by-play first wallclock 2026-03-14T04:29:19Z = 12:29 AM EDT Sat 3/14 (9:29 PM PT Fri). 2026 game_date is the Eastern date of the tip, so 3/14 (NCAA's original date) is right; Task 6g had used ESPN's 03:59Z header, a 11:59 PM ET placeholder."
