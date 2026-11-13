@@ -234,73 +234,16 @@ class Command(BaseCommand):
         skipped = 0
         periods_set = 0
 
+        team_by_espn = {k: v.pk for k, v in espn_team_map.items()}
         for game_id, _ in game_list:
             rows = fetched.get(game_id, [])
             if not rows:
                 skipped += 1
                 continue
-
-            if force:
-                PlayerGameStats.objects.filter(game_id=game_id).delete()
-
-            # Periods played, from the same ESPN summary. Nothing else sets Game.period_count at ingest
-            # (fix_ncaa_stint_data backfills it from stints only), so games without stints stayed NULL.
-            period = rows[0].get("game_period")
-            if isinstance(period, int) and period >= 2:
-                periods_set += Game.objects.filter(pk=game_id, period_count__isnull=True).update(
-                    period_count=period, went_to_ot=period > 2)
-
-            with transaction.atomic():
-                for row in rows:
-                    espn_athlete_id = row.get("espn_athlete_id", "")
-                    if not espn_athlete_id:
-                        continue
-
-                    # Upsert Player
-                    player, created = Player.objects.update_or_create(
-                        espn_athlete_id=espn_athlete_id,
-                        defaults={
-                            "display_name": row["display_name"],
-                            "short_name": row["short_name"],
-                            "jersey": row["jersey"],
-                            "position": row["position"],
-                            "headshot_url": row["headshot_url"],
-                        },
-                    )
-                    if created:
-                        total_players += 1
-
-                    # Resolve team from ESPN team ID
-                    team = espn_team_map.get(row["espn_team_id"])
-
-                    # Upsert PlayerGameStats
-                    _, created = PlayerGameStats.objects.update_or_create(
-                        player=player,
-                        game_id=game_id,
-                        defaults={
-                            "team": team,
-                            "starter": row["starter"],
-                            "did_not_play": row["did_not_play"],
-                            "minutes": row["minutes"],
-                            "points": row["points"],
-                            "fg_made": row["fg_made"],
-                            "fg_attempted": row["fg_attempted"],
-                            "fg3_made": row["fg3_made"],
-                            "fg3_attempted": row["fg3_attempted"],
-                            "ft_made": row["ft_made"],
-                            "ft_attempted": row["ft_attempted"],
-                            "rebounds": row["rebounds"],
-                            "offensive_rebounds": row["offensive_rebounds"],
-                            "defensive_rebounds": row["defensive_rebounds"],
-                            "assists": row["assists"],
-                            "turnovers": row["turnovers"],
-                            "steals": row["steals"],
-                            "blocks": row["blocks"],
-                            "fouls": row["fouls"],
-                        },
-                    )
-                    if created:
-                        total_stats += 1
+            n_players, n_stats, n_period = write_player_rows(game_id, rows, team_by_espn, force=force)
+            total_players += n_players
+            total_stats += n_stats
+            periods_set += n_period
 
         self.stdout.write(
             self.style.SUCCESS(
@@ -310,3 +253,53 @@ class Command(BaseCommand):
                 f"period_count set: {periods_set}"
             )
         )
+
+
+def write_player_rows(game_id: int, rows: list, team_by_espn: dict, force: bool = False):
+    """Upsert Player and PlayerGameStats rows for one game from ESPNAPIClient.parse_player_box_score rows,
+    and record the game's periods into a NULL period_count.
+
+    team_by_espn: ESPN team id -> Team pk (an unmapped team leaves the row's team NULL).
+    Returns (new players, new PlayerGameStats rows, period_count set 0/1).
+    """
+    new_players = new_stats = period_set = 0
+    if force:
+        PlayerGameStats.objects.filter(game_id=game_id).delete()
+
+    # Periods played, from the same ESPN summary. Nothing else sets Game.period_count at ingest
+    # (fix_ncaa_stint_data backfills it from stints only), so games without stints stayed NULL.
+    period = rows[0].get("game_period") if rows else None
+    if isinstance(period, int) and period >= 2:
+        period_set = Game.objects.filter(pk=game_id, period_count__isnull=True).update(
+            period_count=period, went_to_ot=period > 2)
+
+    with transaction.atomic():
+        for row in rows:
+            espn_athlete_id = row.get("espn_athlete_id", "")
+            if not espn_athlete_id:
+                continue
+            player, created = Player.objects.update_or_create(
+                espn_athlete_id=espn_athlete_id,
+                defaults={
+                    "display_name": row["display_name"],
+                    "short_name": row["short_name"],
+                    "jersey": row["jersey"],
+                    "position": row["position"],
+                    "headshot_url": row["headshot_url"],
+                },
+            )
+            new_players += int(created)
+            _, created = PlayerGameStats.objects.update_or_create(
+                player=player,
+                game_id=game_id,
+                defaults={
+                    "team_id": team_by_espn.get(row["espn_team_id"]),
+                    **{k: row[k] for k in (
+                        "starter", "did_not_play", "minutes", "points", "fg_made", "fg_attempted",
+                        "fg3_made", "fg3_attempted", "ft_made", "ft_attempted", "rebounds",
+                        "offensive_rebounds", "defensive_rebounds", "assists", "turnovers",
+                        "steals", "blocks", "fouls")},
+                },
+            )
+            new_stats += int(created)
+    return new_players, new_stats, period_set

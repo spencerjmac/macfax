@@ -9,6 +9,9 @@ Usage:
     # Re-fetch only some games (scoreboard dates still scanned; other games untouched):
     python manage.py ingest_gamelogs --season 2017 --source espn --start 2016-11-14 --end 2016-11-15 \
         --refresh --game-ids 400915129
+    # Add games by ESPN event id (one summary request each; no scoreboard). Both teams must resolve by
+    # ESPN id (TeamExternalId or an ESPN-id override); games that don't are reported, never name-matched:
+    python manage.py ingest_gamelogs --season 2010 --source espn --espn-event-file ids.txt --report out.json
 """
 
 import logging
@@ -141,6 +144,25 @@ class Command(BaseCommand):
                  "(other games on those dates are left untouched). Fails if any id is not found.",
         )
         parser.add_argument(
+            "--espn-event-ids",
+            type=str,
+            default=None,
+            help="Comma-separated ESPN event ids to add (summary per event, no scoreboard scan). "
+                 "Teams resolve by ESPN id only; existing ids and the same pair tipping < 12 h apart are skipped.",
+        )
+        parser.add_argument(
+            "--espn-event-file",
+            type=str,
+            default=None,
+            help="File with ESPN event ids, one per line (same as --espn-event-ids)",
+        )
+        parser.add_argument(
+            "--report",
+            type=str,
+            default=None,
+            help="With --espn-event-ids/--espn-event-file: write a JSON report (created, skipped, unresolved, blanked players)",
+        )
+        parser.add_argument(
             "--create-season",
             action="store_true",
             help="Auto-create Season object if it doesn't exist (useful for historical seasons)",
@@ -182,6 +204,25 @@ class Command(BaseCommand):
                     f"Season {season_year} not found. "
                     f"Run with --create-season to auto-create it."
                 )
+
+        event_ids = []
+        if options.get("espn_event_ids"):
+            event_ids += [x.strip() for x in options["espn_event_ids"].split(",") if x.strip()]
+        if options.get("espn_event_file"):
+            event_ids += [x.strip() for x in Path(options["espn_event_file"]).read_text().split() if x.strip()]
+        if event_ids:
+            if source != "espn":
+                raise CommandError("--espn-event-ids/--espn-event-file need --source espn")
+            report = self._ingest_espn_events(event_ids, season, refresh=refresh, dry_run=dry_run)
+            if options.get("report"):
+                import json
+                Path(options["report"]).write_text(json.dumps(report, indent=1, default=str))
+            self.stdout.write(
+                f"ESPN events: {len(event_ids)} | created {len(report['created'])} | updated {len(report['updated'])} | "
+                f"skipped existing {len(report['skipped_existing'])} | skipped same pair/day {len(report['skipped_same_pair'])} | "
+                f"unresolved team {len(report['unresolved'])} | no summary {len(report['no_summary'])}"
+            )
+            return
 
         # Determine date range
         start_date = self._parse_date(options.get("start"))
@@ -249,6 +290,82 @@ class Command(BaseCommand):
             raise CommandError(
                 f"NCAA API failed for all {stats['date_errors']} dates in {start_date}..{end_date}; nothing ingested"
             )
+
+    def _ingest_espn_events(self, event_ids, season: Season, refresh: bool = False, dry_run: bool = False) -> Dict:
+        """Add games by ESPN event id from one summary request each (see --espn-event-ids).
+
+        Both teams resolve by ESPN id only (TeamExternalId, then ESPN-id overrides). Writes the Game,
+        both TeamGameStats rows (via _upsert_game / _extract_team_stats), period_count / went_to_ot from
+        the event's status.period, and for 2015+ the player rows (sync_ncaa_player_gamelogs.write_player_rows).
+        """
+        from django.db.models import Q
+        from ncaa.management.commands.sync_ncaa_player_gamelogs import write_player_rows
+        from ncaa.management.commands.sync_team_season_membership import espn_team_map
+
+        client = ESPNAPIClient()
+        emap = espn_team_map()
+        report = {"created": [], "updated": [], "skipped_existing": [], "skipped_same_pair": [],
+                  "unresolved": [], "no_summary": [], "blanked_players": {}, "player_rows": 0}
+        for eid in event_ids:
+            if not refresh and Game.objects.filter(source_game_id=eid).exists():
+                report["skipped_existing"].append(eid)
+                continue
+            data = client.get_summary(eid)
+            game_data = client.event_from_summary(data) if data else None
+            if not game_data:
+                report["no_summary"].append(eid)
+                continue
+            ids = (str(game_data["home"]["id"]), str(game_data["away"]["id"]))
+            home_id, away_id = emap.get(ids[0]), emap.get(ids[1])
+            if not home_id or not away_id:
+                report["unresolved"].append({"event": eid, "date": game_data.get("date"),
+                    "home": [ids[0], game_data["home"].get("name"), home_id], "away": [ids[1], game_data["away"].get("name"), away_id]})
+                continue
+            tip = datetime.fromisoformat(game_data["date"].replace("Z", "+00:00"))
+            gdate = tip.date()
+            # The same game stored under another id: same two teams, tips < 12 h apart (same date when a time is
+            # missing). A day window alone is wrong: 2021 conferences played two-game series on consecutive days.
+            dupes = []
+            for gid, sid, other_date, raw_date in Game.objects.filter(
+                game_date__range=(gdate - timedelta(days=1), gdate + timedelta(days=1))
+            ).filter(
+                Q(home_team_id=home_id, away_team_id=away_id) | Q(home_team_id=away_id, away_team_id=home_id)
+            ).exclude(source_game_id=eid).values_list("id", "source_game_id", "game_date", "raw_json__date"):
+                try:
+                    other = datetime.fromisoformat(str(raw_date).replace("Z", "+00:00"))
+                    close = abs((other - tip).total_seconds()) < 12 * 3600
+                except (TypeError, ValueError):
+                    close = other_date == gdate
+                if close:
+                    dupes.append((gid, sid))
+            if dupes:
+                report["skipped_same_pair"].append({"event": eid, "existing": dupes})
+                continue
+            details = client._normalize_game_details(data)
+            for side in ("home", "away"):
+                if side in details and "stats" in details[side]:
+                    game_data[side]["stats"] = details[side]["stats"]
+            blanked = client.blanked_athletes(data)
+            if blanked:
+                report["blanked_players"][eid] = blanked
+            if dry_run:
+                continue
+            existed = Game.objects.filter(source_game_id=eid).exists()
+            with transaction.atomic():
+                game = self._upsert_game(game_id=eid, game_data=game_data, season=season,
+                                         home_team=Team.objects.get(pk=home_id), away_team=Team.objects.get(pk=away_id),
+                                         source="espn")
+                period = ((game_data["_raw"]["competitions"][0].get("status") or {}).get("period"))
+                if game.status == "final" and isinstance(period, int) and period >= 2:
+                    Game.objects.filter(pk=game.pk).update(period_count=period, went_to_ot=period > 2)
+                if game.home_score is not None and game.away_score is not None:
+                    self._extract_team_stats(game=game, game_data=game_data)
+                if season.year >= 2015 and game.status == "final":
+                    rows = client.parse_player_box_score(data)
+                    if rows:
+                        report["player_rows"] += write_player_rows(game.pk, rows, emap)[1]
+            report["updated" if existed else "created"].append(eid)
+        return report
 
     def _parse_date(self, date_str: Optional[str]) -> Optional[date]:
         """Parse date string to date object"""

@@ -736,9 +736,69 @@ class ESPNAPIClient:
 
         return result
 
-    def get_player_box_score(self, game_id: str) -> List[Dict[str, Any]]:
+    def get_summary(self, game_id: str) -> Optional[Dict[str, Any]]:
+        """Raw ESPN summary JSON for one event (rate-limited); None on failure."""
+        self._rate_limit()
+        url = f"{self.BASE_URL}/summary"
+        try:
+            response = self.session.get(url, params={"event": game_id}, timeout=self.timeout)
+            response.raise_for_status()
+            return response.json()
+        except Exception as e:
+            logger.error(f"ESPN summary fetch failed for {game_id}: {e}")
+            return None
+
+    def event_from_summary(self, data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Scoreboard-style normalized game dict built from a summary's header (same shape as
+        get_scoreboard rows, so ingest code and raw_json->'_raw'->'competitions' work unchanged)."""
+        header = data.get("header") or {}
+        comps = header.get("competitions") or []
+        if not comps:
+            return None
+        status = comps[0].setdefault("status", {})
+        if "period" not in status:
+            # The summary header has no status.period (scoreboard/schedule events do): count linescores.
+            n = max((len(c.get("linescores") or []) for c in comps[0].get("competitors") or []), default=0)
+            if n:
+                status["period"] = n
+                status["_period_from"] = "linescores"
+        event = {"id": header.get("id"), "date": comps[0].get("date"), "competitions": comps,
+                 "season": header.get("season"), "_from_summary": True}
+        game = self._normalize_game(event)
+        if game:
+            # status from the summary's own type (scoreboard rows carry state pre/in/post)
+            state = ((comps[0].get("status") or {}).get("type") or {}).get("state", "pre")
+            game["status"] = {"pre": "scheduled", "in": "in_progress", "post": "final"}.get(state, "scheduled")
+            name = ((comps[0].get("status") or {}).get("type") or {}).get("name", "")
+            if name in ("STATUS_CANCELED", "STATUS_POSTPONED"):
+                game["status"] = "canceled" if name == "STATUS_CANCELED" else "postponed"
+        return game
+
+    @staticmethod
+    def blanked_athletes(data: Dict[str, Any]) -> Dict[str, int]:
+        """ESPN team id -> athletes listed in the box with no stat line who are not marked DNP
+        (ESPN blanked their stats; parse_player_box_score cannot store them)."""
+        out: Dict[str, int] = {}
+        for team_entry in (data.get("boxscore") or {}).get("players", []):
+            tid = str((team_entry.get("team") or {}).get("id", ""))
+            for group in team_entry.get("statistics", [])[:1]:
+                keys = group.get("keys", [])
+                for a in group.get("athletes", []):
+                    if len(a.get("stats", [])) != len(keys) and not a.get("didNotPlay", False):
+                        out[tid] = out.get(tid, 0) + 1
+        return out
+
+    def get_player_box_score(self, game_id: str, data: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+        """Per-player rows for one ESPN game (fetches the summary unless `data` is given)."""
+        if data is None:
+            data = self.get_summary(game_id)
+            if data is None:
+                return []
+        return self.parse_player_box_score(data)
+
+    def parse_player_box_score(self, data: Dict[str, Any]) -> List[Dict[str, Any]]:
         """
-        Fetch per-player box score rows for a completed ESPN game.
+        Per-player box score rows from an ESPN summary.
 
         Returns a flat list of dicts, one per player per team:
         {
@@ -752,16 +812,6 @@ class ESPNAPIClient:
           game_period,   # periods played, from the summary's per-period linescores (2 = regulation, 3+ = OT); None if absent
         }
         """
-        self._rate_limit()
-        url = f"{self.BASE_URL}/summary"
-        try:
-            response = self.session.get(url, params={"event": game_id}, timeout=self.timeout)
-            response.raise_for_status()
-            data = response.json()
-        except Exception as e:
-            logger.error(f"ESPN summary fetch failed for {game_id}: {e}")
-            return []
-
         # Periods played: the summary header has no status.period; count the per-period linescores.
         _comp = ((data.get("header") or {}).get("competitions") or [{}])[0]
         _done = ((_comp.get("status") or {}).get("type") or {}).get("completed")
