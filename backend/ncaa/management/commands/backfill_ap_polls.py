@@ -14,8 +14,36 @@ import pandas as pd
 from io import StringIO
 from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
-from ncaa.models import Season, TeamSeasonRatings
+from ncaa.models import Season, Team, TeamSeasonRatings
 from ncaa.utils.team_mapping import TeamMapper
+
+# Sports-Reference poll names the NCAA-name mapper can't resolve -> exact Team.name. Checked before the
+# ' State' -> ' St.' rewrite (which turns 'NC State' into 'NC St.'). These four went unmatched in every
+# season they were ranked until Task 8b.2 filled the gaps by hand.
+SR_TEAM_ALIASES = {
+    "Pitt": "Pittsburgh",
+    "NC State": "NC State",
+    "UMass": "Massachusetts",
+    "Florida Atlantic": "Florida Atlantic",
+}
+
+
+def clean_sr_name(raw) -> str:
+    """Strip Sports-Reference's postseason tags and non-breaking spaces from a school cell."""
+    return str(raw).replace('NCAA', '').replace('NIT', '').replace('CBI', '').replace('\xa0', ' ').strip()
+
+
+def resolve_sr_team(raw, mapper):
+    """(Team or None, name used for the lookup) for a Sports-Reference poll school cell."""
+    sr_name = clean_sr_name(raw)
+    if sr_name in SR_TEAM_ALIASES:
+        return Team.objects.filter(name=SR_TEAM_ALIASES[sr_name]).first(), sr_name
+    sr_name = sr_name.replace(' State', ' St.')
+    if sr_name == 'UNC': sr_name = 'North Carolina'
+    if sr_name == 'USC': sr_name = 'Southern California'
+    if sr_name == "Saint Mary's": sr_name = "Saint Mary's (CA)"
+    team, _conf, _override = mapper.find_team(sr_name, min_confidence=0.88)
+    return team, sr_name
 
 
 class Command(BaseCommand):
@@ -94,17 +122,10 @@ class Command(BaseCommand):
             season_updated = 0
             
             for _, row in data.iterrows():
-                # Clean up SR name noise
-                sr_name = str(row['School']).replace('NCAA', '').replace('NIT', '').replace('CBI', '').replace('\xa0', ' ').strip()
-                sr_name = sr_name.replace(' State', ' St.')
-                if sr_name == 'UNC': sr_name = 'North Carolina'
-                if sr_name == 'USC': sr_name = 'Southern California'
-                if sr_name == "Saint Mary's": sr_name = "Saint Mary's (CA)"
-                
                 rank = row['Rank']
-                
-                # Match team
-                team, conf, is_override = mapper.find_team(sr_name, min_confidence=0.88)
+
+                # Match team (SR aliases first, then the NCAA-name mapper)
+                team, sr_name = resolve_sr_team(row['School'], mapper)
                 
                 if team:
                     ratings_qs = TeamSeasonRatings.all_objects.filter(season=season, team=team)
