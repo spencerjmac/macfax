@@ -1,0 +1,7706 @@
+season,team_id,team_name,conference_code
+2005,2,Air Force,MWC
+2005,3,Akron,MAC
+2005,4,Alabama,SEC
+2005,5,Alabama A&M,SWAC
+2005,6,Alabama St.,SWAC
+2005,7,Albany,AE
+2005,8,Alcorn St.,SWAC
+2005,9,American,Pat
+2005,10,Appalachian St.,SC
+2005,11,Arizona,P12
+2005,12,Arizona St.,P12
+2005,13,Arkansas,SEC
+2005,14,Arkansas Pine Bluff,SWAC
+2005,15,Arkansas St.,SB
+2005,16,Army,Pat
+2005,17,Auburn,SEC
+2005,18,Austin Peay,OVC
+2005,19,BYU,MWC
+2005,20,Ball St.,MAC
+2005,21,Baylor,B12
+2005,23,Belmont,ASun
+2005,24,Bethune Cookman,MEAC
+2005,25,Binghamton,AE
+2005,26,Boise St.,WAC
+2005,27,Boston College,BE
+2005,28,Boston University,AE
+2005,29,Bowling Green,MAC
+2005,30,Bradley,MVC
+2005,31,Brown,Ivy
+2005,33,Bucknell,Pat
+2005,34,Buffalo,MAC
+2005,35,Butler,Horz
+2005,37,Cal Poly,BW
+2005,39,Cal St. Fullerton,BW
+2005,40,Cal St. Northridge,BW
+2005,41,California,P12
+2005,42,Campbell,ASun
+2005,43,Canisius,MAAC
+2005,45,Central Connecticut,NEC
+2005,46,Central Michigan,MAC
+2005,47,Charleston,SC
+2005,48,Charleston Southern,BSth
+2005,49,Charlotte,CUSA
+2005,50,Chattanooga,SC
+2005,51,Chicago St.,Sum
+2005,52,Cincinnati,CUSA
+2005,53,Clemson,ACC
+2005,54,Cleveland St.,Horz
+2005,55,Coastal Carolina,BSth
+2005,56,Colgate,Pat
+2005,57,Colorado,B12
+2005,58,Colorado St.,MWC
+2005,59,Columbia,Ivy
+2005,60,Connecticut,BE
+2005,61,Coppin St.,MEAC
+2005,62,Cornell,Ivy
+2005,63,Creighton,MVC
+2005,64,Dartmouth,Ivy
+2005,65,Davidson,SC
+2005,66,Dayton,A10
+2005,67,DePaul,CUSA
+2005,68,Delaware,CAA
+2005,69,Delaware St.,MEAC
+2005,70,Denver,SB
+2005,71,Detroit Mercy,Horz
+2005,72,Drake,MVC
+2005,73,Drexel,CAA
+2005,74,Duke,ACC
+2005,75,Duquesne,A10
+2005,76,East Carolina,CUSA
+2005,77,East Tennessee St.,SC
+2005,79,Eastern Illinois,OVC
+2005,80,Eastern Kentucky,OVC
+2005,81,Eastern Mich.,MAC
+2005,82,Eastern Washington,BSky
+2005,83,Elon,SC
+2005,84,Evansville,MVC
+2005,85,FIU,SB
+2005,86,Fairfield,MAAC
+2005,87,Fairleigh Dickinson,NEC
+2005,88,Florida,SEC
+2005,89,Florida A&M,MEAC
+2005,90,Florida Atlantic,ASun
+2005,92,Florida St.,ACC
+2005,93,Fordham,A10
+2005,94,Fresno St.,WAC
+2005,95,Furman,SC
+2005,96,Gardner Webb,ASun
+2005,97,George Mason,CAA
+2005,98,George Washington,A10
+2005,99,Georgetown,BE
+2005,100,Georgia,SEC
+2005,101,Georgia Southern,SC
+2005,102,Georgia St.,ASun
+2005,103,Georgia Tech,ACC
+2005,104,Gonzaga,WCC
+2005,105,Grambling St.,SWAC
+2005,107,Green Bay,Horz
+2005,108,Hampton,MEAC
+2005,109,Harvard,Ivy
+2005,110,Hawaii,WAC
+2005,111,High Point,BSth
+2005,112,Hofstra,CAA
+2005,113,Holy Cross,Pat
+2005,114,Houston,CUSA
+2005,116,Howard,MEAC
+2005,117,IU Indy,Sum
+2005,118,Idaho,BW
+2005,119,Idaho St.,BSky
+2005,120,Illinois,B10
+2005,121,Illinois Chicago,Horz
+2005,122,Illinois St.,MVC
+2005,124,Indiana,B10
+2005,125,Indiana St.,MVC
+2005,126,Iona,MAAC
+2005,127,Iowa,B10
+2005,128,Iowa St.,B12
+2005,129,Jackson St.,SWAC
+2005,130,Jacksonville,ASun
+2005,131,Jacksonville St.,OVC
+2005,132,James Madison,CAA
+2005,133,Kansas,B12
+2005,134,Kansas St.,B12
+2005,136,Kent St.,MAC
+2005,137,Kentucky,SEC
+2005,138,LIU,NEC
+2005,139,LSU,SEC
+2005,140,La Salle,A10
+2005,141,Lafayette,Pat
+2005,142,Lamar,Slnd
+2005,144,Lehigh,Pat
+2005,145,Liberty,BSth
+2005,147,Lipscomb,ASun
+2005,148,Little Rock,SB
+2005,149,Long Beach St.,BW
+2005,150,Longwood,IND
+2005,151,Louisiana,SB
+2005,152,Louisiana Monroe,Slnd
+2005,153,Louisiana Tech,WAC
+2005,154,Louisville,CUSA
+2005,155,Loyola Chicago,Horz
+2005,156,Loyola MD,MAAC
+2005,157,Loyola Marymount,WCC
+2005,158,Maine,AE
+2005,159,Manhattan,MAAC
+2005,160,Marist,MAAC
+2005,161,Marquette,CUSA
+2005,162,Marshall,MAC
+2005,163,Maryland,ACC
+2005,164,Maryland Eastern Shore,MEAC
+2005,165,Massachusetts,A10
+2005,166,McNeese,Slnd
+2005,167,Memphis,CUSA
+2005,168,Mercer,ASun
+2005,171,Miami (FL),ACC
+2005,172,Miami (OH),MAC
+2005,173,Michigan,B10
+2005,174,Michigan St.,B10
+2005,175,Middle Tennessee,SB
+2005,176,Milwaukee,Horz
+2005,177,Minnesota,B10
+2005,178,Mississippi,SEC
+2005,179,Mississippi St.,SEC
+2005,180,Mississippi Valley St.,SWAC
+2005,181,Missouri,B12
+2005,182,Missouri St.,MVC
+2005,183,Monmouth,NEC
+2005,184,Montana,BSky
+2005,185,Montana St.,BSky
+2005,186,Morehead St.,OVC
+2005,187,Morgan St.,MEAC
+2005,188,Mount St. Mary's,NEC
+2005,189,Murray St.,OVC
+2005,190,NC State,ACC
+2005,192,Navy,Pat
+2005,193,Nebraska,B12
+2005,195,Nevada,WAC
+2005,196,New Hampshire,AE
+2005,198,New Mexico,MWC
+2005,199,New Mexico St.,SB
+2005,200,New Orleans,SB
+2005,201,Niagara,MAAC
+2005,202,Nicholls St.,Slnd
+2005,203,Norfolk St.,MEAC
+2005,205,North Carolina,ACC
+2005,206,North Carolina A&T,MEAC
+2005,209,North Dakota St.,IND
+2005,211,North Texas,SB
+2005,212,Northeastern,AE
+2005,213,Northern Arizona,BSky
+2005,214,Northern Colorado,IND
+2005,215,Northern Illinois,MAC
+2005,216,Northern Iowa,MVC
+2005,218,Northwestern,B10
+2005,219,Northwestern St.,Slnd
+2005,220,Notre Dame,BE
+2005,221,Oakland,Sum
+2005,222,Ohio,MAC
+2005,223,Ohio St.,B10
+2005,224,Oklahoma,B12
+2005,225,Oklahoma St.,B12
+2005,226,Old Dominion,CAA
+2005,227,Oral Roberts,Sum
+2005,228,Oregon,P12
+2005,229,Oregon St.,P12
+2005,230,Pacific,BW
+2005,231,Penn,Ivy
+2005,232,Penn St.,B10
+2005,233,Pepperdine,WCC
+2005,234,Pittsburgh,BE
+2005,235,Portland,WCC
+2005,236,Portland St.,BSky
+2005,237,Prairie View A&M,SWAC
+2005,239,Princeton,Ivy
+2005,240,Providence,BE
+2005,241,Purdue,B10
+2005,242,Purdue Fort Wayne,IND
+2005,244,Quinnipiac,NEC
+2005,245,Radford,BSth
+2005,246,Rhode Island,A10
+2005,247,Rice,WAC
+2005,248,Richmond,A10
+2005,249,Rider,MAAC
+2005,250,Robert Morris,NEC
+2005,251,Rutgers,BE
+2005,253,SMU,WAC
+2005,254,Sacramento St.,BSky
+2005,255,Sacred Heart,NEC
+2005,256,Saint Francis,NEC
+2005,257,Saint Joseph's,A10
+2005,258,Saint Louis,CUSA
+2005,259,Saint Mary's,WCC
+2005,260,Saint Peter's,MAAC
+2005,261,Sam Houston St.,Slnd
+2005,262,Samford,OVC
+2005,263,San Diego,WCC
+2005,264,San Diego St.,MWC
+2005,265,San Francisco,WCC
+2005,266,San Jose St.,WAC
+2005,267,Santa Clara,WCC
+2005,269,Seton Hall,BE
+2005,270,Siena,MAAC
+2005,271,South Alabama,SB
+2005,272,South Carolina,SEC
+2005,273,South Carolina St.,MEAC
+2005,275,South Dakota St.,IND
+2005,276,South Florida,CUSA
+2005,277,Southeast Missouri St.,OVC
+2005,278,Southeastern Louisiana,Slnd
+2005,279,Southern,SWAC
+2005,280,Southern Illinois,MVC
+2005,282,Southern Miss,CUSA
+2005,283,Southern Utah,Sum
+2005,284,St. Bonaventure,A10
+2005,285,St. John's,BE
+2005,287,Stanford,P12
+2005,288,Stephen F. Austin,Slnd
+2005,289,Stetson,ASun
+2005,291,Stony Brook,AE
+2005,292,Syracuse,BE
+2005,293,TCU,CUSA
+2005,295,Temple,A10
+2005,296,Tennessee,SEC
+2005,297,Tennessee Martin,OVC
+2005,298,Tennessee St.,OVC
+2005,299,Tennessee Tech,OVC
+2005,300,Texas,B12
+2005,301,Texas A&M,B12
+2005,302,Texas A&M Corpus Chris,IND
+2005,303,Texas Southern,SWAC
+2005,304,Texas St.,Slnd
+2005,305,Texas Tech,B12
+2005,306,The Citadel,SC
+2005,307,Toledo,MAC
+2005,308,Towson,CAA
+2005,309,Troy,ASun
+2005,310,Tulane,CUSA
+2005,311,Tulsa,WAC
+2005,312,UAB,CUSA
+2005,313,UC Davis,IND
+2005,314,UC Irvine,BW
+2005,315,UC Riverside,BW
+2005,317,UC Santa Barbara,BW
+2005,318,UCF,ASun
+2005,319,UCLA,P12
+2005,320,UMBC,AE
+2005,321,UMKC,Sum
+2005,323,UNC Asheville,BSth
+2005,324,UNC Greensboro,SC
+2005,325,UNC Wilmington,CAA
+2005,326,UNLV,MWC
+2005,327,USC,P12
+2005,329,UT Arlington,Slnd
+2005,330,UT Rio Grande Valley,IND
+2005,331,UTEP,WAC
+2005,332,UTSA,Slnd
+2005,333,Utah,MWC
+2005,334,Utah St.,BW
+2005,336,Utah Valley,IND
+2005,337,VCU,CAA
+2005,338,VMI,BSth
+2005,339,Valparaiso,Sum
+2005,340,Vanderbilt,SEC
+2005,341,Vermont,AE
+2005,342,Villanova,BE
+2005,343,Virginia,ACC
+2005,344,Virginia Tech,ACC
+2005,345,Wagner,NEC
+2005,346,Wake Forest,ACC
+2005,347,Washington,P12
+2005,348,Washington St.,P12
+2005,349,Weber St.,BSky
+2005,351,West Virginia,BE
+2005,352,Western Carolina,SC
+2005,353,Western Illinois,Sum
+2005,354,Western Kentucky,SB
+2005,355,Western Mich.,MAC
+2005,356,Wichita St.,MVC
+2005,357,William & Mary,CAA
+2005,358,Winthrop,BSth
+2005,359,Wisconsin,B10
+2005,360,Wofford,SC
+2005,361,Wright St.,Horz
+2005,362,Wyoming,MWC
+2005,363,Xavier,A10
+2005,364,Yale,Ivy
+2005,365,Youngstown St.,Horz
+2005,719,Centenary (LA),Sum
+2005,824,Hartford,AE
+2005,825,St. Francis Brooklyn,NEC
+2005,826,Savannah St.,IND
+2005,828,Birmingham-Southern,BSth
+2006,2,Air Force,MWC
+2006,3,Akron,MAC
+2006,4,Alabama,SEC
+2006,5,Alabama A&M,SWAC
+2006,6,Alabama St.,SWAC
+2006,7,Albany,AE
+2006,8,Alcorn St.,SWAC
+2006,9,American,Pat
+2006,10,Appalachian St.,SC
+2006,11,Arizona,P12
+2006,12,Arizona St.,P12
+2006,13,Arkansas,SEC
+2006,14,Arkansas Pine Bluff,SWAC
+2006,15,Arkansas St.,SB
+2006,16,Army,Pat
+2006,17,Auburn,SEC
+2006,18,Austin Peay,OVC
+2006,19,BYU,MWC
+2006,20,Ball St.,MAC
+2006,21,Baylor,B12
+2006,23,Belmont,ASun
+2006,24,Bethune Cookman,MEAC
+2006,25,Binghamton,AE
+2006,26,Boise St.,WAC
+2006,27,Boston College,ACC
+2006,28,Boston University,AE
+2006,29,Bowling Green,MAC
+2006,30,Bradley,MVC
+2006,31,Brown,Ivy
+2006,33,Bucknell,Pat
+2006,34,Buffalo,MAC
+2006,35,Butler,Horz
+2006,37,Cal Poly,BW
+2006,39,Cal St. Fullerton,BW
+2006,40,Cal St. Northridge,BW
+2006,41,California,P12
+2006,42,Campbell,ASun
+2006,43,Canisius,MAAC
+2006,45,Central Connecticut,NEC
+2006,46,Central Michigan,MAC
+2006,47,Charleston,SC
+2006,48,Charleston Southern,BSth
+2006,49,Charlotte,A10
+2006,50,Chattanooga,SC
+2006,51,Chicago St.,Sum
+2006,52,Cincinnati,BE
+2006,53,Clemson,ACC
+2006,54,Cleveland St.,Horz
+2006,55,Coastal Carolina,BSth
+2006,56,Colgate,Pat
+2006,57,Colorado,B12
+2006,58,Colorado St.,MWC
+2006,59,Columbia,Ivy
+2006,60,Connecticut,BE
+2006,61,Coppin St.,MEAC
+2006,62,Cornell,Ivy
+2006,63,Creighton,MVC
+2006,64,Dartmouth,Ivy
+2006,65,Davidson,SC
+2006,66,Dayton,A10
+2006,67,DePaul,BE
+2006,68,Delaware,CAA
+2006,69,Delaware St.,MEAC
+2006,70,Denver,SB
+2006,71,Detroit Mercy,Horz
+2006,72,Drake,MVC
+2006,73,Drexel,CAA
+2006,74,Duke,ACC
+2006,75,Duquesne,A10
+2006,76,East Carolina,CUSA
+2006,77,East Tennessee St.,ASun
+2006,79,Eastern Illinois,OVC
+2006,80,Eastern Kentucky,OVC
+2006,81,Eastern Mich.,MAC
+2006,82,Eastern Washington,BSky
+2006,83,Elon,SC
+2006,84,Evansville,MVC
+2006,85,FIU,SB
+2006,86,Fairfield,MAAC
+2006,87,Fairleigh Dickinson,NEC
+2006,88,Florida,SEC
+2006,89,Florida A&M,MEAC
+2006,90,Florida Atlantic,ASun
+2006,92,Florida St.,ACC
+2006,93,Fordham,A10
+2006,94,Fresno St.,WAC
+2006,95,Furman,SC
+2006,96,Gardner Webb,ASun
+2006,97,George Mason,CAA
+2006,98,George Washington,A10
+2006,99,Georgetown,BE
+2006,100,Georgia,SEC
+2006,101,Georgia Southern,SC
+2006,102,Georgia St.,CAA
+2006,103,Georgia Tech,ACC
+2006,104,Gonzaga,WCC
+2006,105,Grambling St.,SWAC
+2006,107,Green Bay,Horz
+2006,108,Hampton,MEAC
+2006,109,Harvard,Ivy
+2006,110,Hawaii,WAC
+2006,111,High Point,BSth
+2006,112,Hofstra,CAA
+2006,113,Holy Cross,Pat
+2006,114,Houston,CUSA
+2006,116,Howard,MEAC
+2006,117,IU Indy,Sum
+2006,118,Idaho,WAC
+2006,119,Idaho St.,BSky
+2006,120,Illinois,B10
+2006,121,Illinois Chicago,Horz
+2006,122,Illinois St.,MVC
+2006,124,Indiana,B10
+2006,125,Indiana St.,MVC
+2006,126,Iona,MAAC
+2006,127,Iowa,B10
+2006,128,Iowa St.,B12
+2006,129,Jackson St.,SWAC
+2006,130,Jacksonville,ASun
+2006,131,Jacksonville St.,OVC
+2006,132,James Madison,CAA
+2006,133,Kansas,B12
+2006,134,Kansas St.,B12
+2006,135,Kennesaw St.,ASun
+2006,136,Kent St.,MAC
+2006,137,Kentucky,SEC
+2006,138,LIU,NEC
+2006,139,LSU,SEC
+2006,140,La Salle,A10
+2006,141,Lafayette,Pat
+2006,142,Lamar,Slnd
+2006,144,Lehigh,Pat
+2006,145,Liberty,BSth
+2006,147,Lipscomb,ASun
+2006,148,Little Rock,SB
+2006,149,Long Beach St.,BW
+2006,150,Longwood,IND
+2006,151,Louisiana,SB
+2006,152,Louisiana Monroe,Slnd
+2006,153,Louisiana Tech,WAC
+2006,154,Louisville,BE
+2006,155,Loyola Chicago,Horz
+2006,156,Loyola MD,MAAC
+2006,157,Loyola Marymount,WCC
+2006,158,Maine,AE
+2006,159,Manhattan,MAAC
+2006,160,Marist,MAAC
+2006,161,Marquette,BE
+2006,162,Marshall,CUSA
+2006,163,Maryland,ACC
+2006,164,Maryland Eastern Shore,MEAC
+2006,165,Massachusetts,A10
+2006,166,McNeese,Slnd
+2006,167,Memphis,CUSA
+2006,168,Mercer,ASun
+2006,171,Miami (FL),ACC
+2006,172,Miami (OH),MAC
+2006,173,Michigan,B10
+2006,174,Michigan St.,B10
+2006,175,Middle Tennessee,SB
+2006,176,Milwaukee,Horz
+2006,177,Minnesota,B10
+2006,178,Mississippi,SEC
+2006,179,Mississippi St.,SEC
+2006,180,Mississippi Valley St.,SWAC
+2006,181,Missouri,B12
+2006,182,Missouri St.,MVC
+2006,183,Monmouth,NEC
+2006,184,Montana,BSky
+2006,185,Montana St.,BSky
+2006,186,Morehead St.,OVC
+2006,187,Morgan St.,MEAC
+2006,188,Mount St. Mary's,NEC
+2006,189,Murray St.,OVC
+2006,190,NC State,ACC
+2006,192,Navy,Pat
+2006,193,Nebraska,B12
+2006,195,Nevada,WAC
+2006,196,New Hampshire,AE
+2006,198,New Mexico,MWC
+2006,199,New Mexico St.,WAC
+2006,200,New Orleans,SB
+2006,201,Niagara,MAAC
+2006,202,Nicholls St.,Slnd
+2006,203,Norfolk St.,MEAC
+2006,205,North Carolina,ACC
+2006,206,North Carolina A&T,MEAC
+2006,209,North Dakota St.,IND
+2006,210,North Florida,ASun
+2006,211,North Texas,SB
+2006,212,Northeastern,CAA
+2006,213,Northern Arizona,BSky
+2006,214,Northern Colorado,IND
+2006,215,Northern Illinois,MAC
+2006,216,Northern Iowa,MVC
+2006,218,Northwestern,B10
+2006,219,Northwestern St.,Slnd
+2006,220,Notre Dame,BE
+2006,221,Oakland,Sum
+2006,222,Ohio,MAC
+2006,223,Ohio St.,B10
+2006,224,Oklahoma,B12
+2006,225,Oklahoma St.,B12
+2006,226,Old Dominion,CAA
+2006,227,Oral Roberts,Sum
+2006,228,Oregon,P12
+2006,229,Oregon St.,P12
+2006,230,Pacific,BW
+2006,231,Penn,Ivy
+2006,232,Penn St.,B10
+2006,233,Pepperdine,WCC
+2006,234,Pittsburgh,BE
+2006,235,Portland,WCC
+2006,236,Portland St.,BSky
+2006,237,Prairie View A&M,SWAC
+2006,239,Princeton,Ivy
+2006,240,Providence,BE
+2006,241,Purdue,B10
+2006,242,Purdue Fort Wayne,IND
+2006,244,Quinnipiac,NEC
+2006,245,Radford,BSth
+2006,246,Rhode Island,A10
+2006,247,Rice,CUSA
+2006,248,Richmond,A10
+2006,249,Rider,MAAC
+2006,250,Robert Morris,NEC
+2006,251,Rutgers,BE
+2006,253,SMU,CUSA
+2006,254,Sacramento St.,BSky
+2006,255,Sacred Heart,NEC
+2006,256,Saint Francis,NEC
+2006,257,Saint Joseph's,A10
+2006,258,Saint Louis,A10
+2006,259,Saint Mary's,WCC
+2006,260,Saint Peter's,MAAC
+2006,261,Sam Houston St.,Slnd
+2006,262,Samford,OVC
+2006,263,San Diego,WCC
+2006,264,San Diego St.,MWC
+2006,265,San Francisco,WCC
+2006,266,San Jose St.,WAC
+2006,267,Santa Clara,WCC
+2006,269,Seton Hall,BE
+2006,270,Siena,MAAC
+2006,271,South Alabama,SB
+2006,272,South Carolina,SEC
+2006,273,South Carolina St.,MEAC
+2006,275,South Dakota St.,IND
+2006,276,South Florida,BE
+2006,277,Southeast Missouri St.,OVC
+2006,278,Southeastern Louisiana,Slnd
+2006,279,Southern,SWAC
+2006,280,Southern Illinois,MVC
+2006,282,Southern Miss,CUSA
+2006,283,Southern Utah,Sum
+2006,284,St. Bonaventure,A10
+2006,285,St. John's,BE
+2006,287,Stanford,P12
+2006,288,Stephen F. Austin,Slnd
+2006,289,Stetson,ASun
+2006,291,Stony Brook,AE
+2006,292,Syracuse,BE
+2006,293,TCU,MWC
+2006,295,Temple,A10
+2006,296,Tennessee,SEC
+2006,297,Tennessee Martin,OVC
+2006,298,Tennessee St.,OVC
+2006,299,Tennessee Tech,OVC
+2006,300,Texas,B12
+2006,301,Texas A&M,B12
+2006,302,Texas A&M Corpus Chris,IND
+2006,303,Texas Southern,SWAC
+2006,304,Texas St.,Slnd
+2006,305,Texas Tech,B12
+2006,306,The Citadel,SC
+2006,307,Toledo,MAC
+2006,308,Towson,CAA
+2006,309,Troy,SB
+2006,310,Tulane,CUSA
+2006,311,Tulsa,CUSA
+2006,312,UAB,CUSA
+2006,313,UC Davis,IND
+2006,314,UC Irvine,BW
+2006,315,UC Riverside,BW
+2006,317,UC Santa Barbara,BW
+2006,318,UCF,CUSA
+2006,319,UCLA,P12
+2006,320,UMBC,AE
+2006,321,UMKC,Sum
+2006,323,UNC Asheville,BSth
+2006,324,UNC Greensboro,SC
+2006,325,UNC Wilmington,CAA
+2006,326,UNLV,MWC
+2006,327,USC,P12
+2006,329,UT Arlington,Slnd
+2006,330,UT Rio Grande Valley,IND
+2006,331,UTEP,CUSA
+2006,332,UTSA,Slnd
+2006,333,Utah,MWC
+2006,334,Utah St.,WAC
+2006,336,Utah Valley,IND
+2006,337,VCU,CAA
+2006,338,VMI,BSth
+2006,339,Valparaiso,Sum
+2006,340,Vanderbilt,SEC
+2006,341,Vermont,AE
+2006,342,Villanova,BE
+2006,343,Virginia,ACC
+2006,344,Virginia Tech,ACC
+2006,345,Wagner,NEC
+2006,346,Wake Forest,ACC
+2006,347,Washington,P12
+2006,348,Washington St.,P12
+2006,349,Weber St.,BSky
+2006,351,West Virginia,BE
+2006,352,Western Carolina,SC
+2006,353,Western Illinois,Sum
+2006,354,Western Kentucky,SB
+2006,355,Western Mich.,MAC
+2006,356,Wichita St.,MVC
+2006,357,William & Mary,CAA
+2006,358,Winthrop,BSth
+2006,359,Wisconsin,B10
+2006,360,Wofford,SC
+2006,361,Wright St.,Horz
+2006,362,Wyoming,MWC
+2006,363,Xavier,A10
+2006,364,Yale,Ivy
+2006,365,Youngstown St.,Horz
+2006,719,Centenary (LA),Sum
+2006,824,Hartford,AE
+2006,825,St. Francis Brooklyn,NEC
+2006,826,Savannah St.,IND
+2006,828,Birmingham-Southern,BSth
+2007,2,Air Force,MWC
+2007,3,Akron,MAC
+2007,4,Alabama,SEC
+2007,5,Alabama A&M,SWAC
+2007,6,Alabama St.,SWAC
+2007,7,Albany,AE
+2007,8,Alcorn St.,SWAC
+2007,9,American,Pat
+2007,10,Appalachian St.,SC
+2007,11,Arizona,P12
+2007,12,Arizona St.,P12
+2007,13,Arkansas,SEC
+2007,14,Arkansas Pine Bluff,SWAC
+2007,15,Arkansas St.,SB
+2007,16,Army,Pat
+2007,17,Auburn,SEC
+2007,18,Austin Peay,OVC
+2007,19,BYU,MWC
+2007,20,Ball St.,MAC
+2007,21,Baylor,B12
+2007,23,Belmont,ASun
+2007,24,Bethune Cookman,MEAC
+2007,25,Binghamton,AE
+2007,26,Boise St.,WAC
+2007,27,Boston College,ACC
+2007,28,Boston University,AE
+2007,29,Bowling Green,MAC
+2007,30,Bradley,MVC
+2007,31,Brown,Ivy
+2007,33,Bucknell,Pat
+2007,34,Buffalo,MAC
+2007,35,Butler,Horz
+2007,37,Cal Poly,BW
+2007,39,Cal St. Fullerton,BW
+2007,40,Cal St. Northridge,BW
+2007,41,California,P12
+2007,42,Campbell,ASun
+2007,43,Canisius,MAAC
+2007,44,Central Arkansas,Slnd
+2007,45,Central Connecticut,NEC
+2007,46,Central Michigan,MAC
+2007,47,Charleston,SC
+2007,48,Charleston Southern,BSth
+2007,49,Charlotte,A10
+2007,50,Chattanooga,SC
+2007,51,Chicago St.,IND
+2007,52,Cincinnati,BE
+2007,53,Clemson,ACC
+2007,54,Cleveland St.,Horz
+2007,55,Coastal Carolina,BSth
+2007,56,Colgate,Pat
+2007,57,Colorado,B12
+2007,58,Colorado St.,MWC
+2007,59,Columbia,Ivy
+2007,60,Connecticut,BE
+2007,61,Coppin St.,MEAC
+2007,62,Cornell,Ivy
+2007,63,Creighton,MVC
+2007,64,Dartmouth,Ivy
+2007,65,Davidson,SC
+2007,66,Dayton,A10
+2007,67,DePaul,BE
+2007,68,Delaware,CAA
+2007,69,Delaware St.,MEAC
+2007,70,Denver,SB
+2007,71,Detroit Mercy,Horz
+2007,72,Drake,MVC
+2007,73,Drexel,CAA
+2007,74,Duke,ACC
+2007,75,Duquesne,A10
+2007,76,East Carolina,CUSA
+2007,77,East Tennessee St.,ASun
+2007,79,Eastern Illinois,OVC
+2007,80,Eastern Kentucky,OVC
+2007,81,Eastern Mich.,MAC
+2007,82,Eastern Washington,BSky
+2007,83,Elon,SC
+2007,84,Evansville,MVC
+2007,85,FIU,SB
+2007,86,Fairfield,MAAC
+2007,87,Fairleigh Dickinson,NEC
+2007,88,Florida,SEC
+2007,89,Florida A&M,MEAC
+2007,90,Florida Atlantic,SB
+2007,92,Florida St.,ACC
+2007,93,Fordham,A10
+2007,94,Fresno St.,WAC
+2007,95,Furman,SC
+2007,96,Gardner Webb,ASun
+2007,97,George Mason,CAA
+2007,98,George Washington,A10
+2007,99,Georgetown,BE
+2007,100,Georgia,SEC
+2007,101,Georgia Southern,SC
+2007,102,Georgia St.,CAA
+2007,103,Georgia Tech,ACC
+2007,104,Gonzaga,WCC
+2007,105,Grambling St.,SWAC
+2007,107,Green Bay,Horz
+2007,108,Hampton,MEAC
+2007,109,Harvard,Ivy
+2007,110,Hawaii,WAC
+2007,111,High Point,BSth
+2007,112,Hofstra,CAA
+2007,113,Holy Cross,Pat
+2007,114,Houston,CUSA
+2007,116,Howard,MEAC
+2007,117,IU Indy,Sum
+2007,118,Idaho,WAC
+2007,119,Idaho St.,BSky
+2007,120,Illinois,B10
+2007,121,Illinois Chicago,Horz
+2007,122,Illinois St.,MVC
+2007,124,Indiana,B10
+2007,125,Indiana St.,MVC
+2007,126,Iona,MAAC
+2007,127,Iowa,B10
+2007,128,Iowa St.,B12
+2007,129,Jackson St.,SWAC
+2007,130,Jacksonville,ASun
+2007,131,Jacksonville St.,OVC
+2007,132,James Madison,CAA
+2007,133,Kansas,B12
+2007,134,Kansas St.,B12
+2007,135,Kennesaw St.,ASun
+2007,136,Kent St.,MAC
+2007,137,Kentucky,SEC
+2007,138,LIU,NEC
+2007,139,LSU,SEC
+2007,140,La Salle,A10
+2007,141,Lafayette,Pat
+2007,142,Lamar,Slnd
+2007,144,Lehigh,Pat
+2007,145,Liberty,BSth
+2007,147,Lipscomb,ASun
+2007,148,Little Rock,SB
+2007,149,Long Beach St.,BW
+2007,150,Longwood,IND
+2007,151,Louisiana,SB
+2007,152,Louisiana Monroe,SB
+2007,153,Louisiana Tech,WAC
+2007,154,Louisville,BE
+2007,155,Loyola Chicago,Horz
+2007,156,Loyola MD,MAAC
+2007,157,Loyola Marymount,WCC
+2007,158,Maine,AE
+2007,159,Manhattan,MAAC
+2007,160,Marist,MAAC
+2007,161,Marquette,BE
+2007,162,Marshall,CUSA
+2007,163,Maryland,ACC
+2007,164,Maryland Eastern Shore,MEAC
+2007,165,Massachusetts,A10
+2007,166,McNeese,Slnd
+2007,167,Memphis,CUSA
+2007,168,Mercer,ASun
+2007,171,Miami (FL),ACC
+2007,172,Miami (OH),MAC
+2007,173,Michigan,B10
+2007,174,Michigan St.,B10
+2007,175,Middle Tennessee,SB
+2007,176,Milwaukee,Horz
+2007,177,Minnesota,B10
+2007,178,Mississippi,SEC
+2007,179,Mississippi St.,SEC
+2007,180,Mississippi Valley St.,SWAC
+2007,181,Missouri,B12
+2007,182,Missouri St.,MVC
+2007,183,Monmouth,NEC
+2007,184,Montana,BSky
+2007,185,Montana St.,BSky
+2007,186,Morehead St.,OVC
+2007,187,Morgan St.,MEAC
+2007,188,Mount St. Mary's,NEC
+2007,189,Murray St.,OVC
+2007,190,NC State,ACC
+2007,191,NJIT,IND
+2007,192,Navy,Pat
+2007,193,Nebraska,B12
+2007,195,Nevada,WAC
+2007,196,New Hampshire,AE
+2007,198,New Mexico,MWC
+2007,199,New Mexico St.,WAC
+2007,200,New Orleans,SB
+2007,201,Niagara,MAAC
+2007,202,Nicholls St.,Slnd
+2007,203,Norfolk St.,MEAC
+2007,205,North Carolina,ACC
+2007,206,North Carolina A&T,MEAC
+2007,209,North Dakota St.,IND
+2007,210,North Florida,ASun
+2007,211,North Texas,SB
+2007,212,Northeastern,CAA
+2007,213,Northern Arizona,BSky
+2007,214,Northern Colorado,BSky
+2007,215,Northern Illinois,MAC
+2007,216,Northern Iowa,MVC
+2007,218,Northwestern,B10
+2007,219,Northwestern St.,Slnd
+2007,220,Notre Dame,BE
+2007,221,Oakland,Sum
+2007,222,Ohio,MAC
+2007,223,Ohio St.,B10
+2007,224,Oklahoma,B12
+2007,225,Oklahoma St.,B12
+2007,226,Old Dominion,CAA
+2007,227,Oral Roberts,Sum
+2007,228,Oregon,P12
+2007,229,Oregon St.,P12
+2007,230,Pacific,BW
+2007,231,Penn,Ivy
+2007,232,Penn St.,B10
+2007,233,Pepperdine,WCC
+2007,234,Pittsburgh,BE
+2007,235,Portland,WCC
+2007,236,Portland St.,BSky
+2007,237,Prairie View A&M,SWAC
+2007,239,Princeton,Ivy
+2007,240,Providence,BE
+2007,241,Purdue,B10
+2007,242,Purdue Fort Wayne,IND
+2007,244,Quinnipiac,NEC
+2007,245,Radford,BSth
+2007,246,Rhode Island,A10
+2007,247,Rice,CUSA
+2007,248,Richmond,A10
+2007,249,Rider,MAAC
+2007,250,Robert Morris,NEC
+2007,251,Rutgers,BE
+2007,253,SMU,CUSA
+2007,254,Sacramento St.,BSky
+2007,255,Sacred Heart,NEC
+2007,256,Saint Francis,NEC
+2007,257,Saint Joseph's,A10
+2007,258,Saint Louis,A10
+2007,259,Saint Mary's,WCC
+2007,260,Saint Peter's,MAAC
+2007,261,Sam Houston St.,Slnd
+2007,262,Samford,OVC
+2007,263,San Diego,WCC
+2007,264,San Diego St.,MWC
+2007,265,San Francisco,WCC
+2007,266,San Jose St.,WAC
+2007,267,Santa Clara,WCC
+2007,269,Seton Hall,BE
+2007,270,Siena,MAAC
+2007,271,South Alabama,SB
+2007,272,South Carolina,SEC
+2007,273,South Carolina St.,MEAC
+2007,275,South Dakota St.,IND
+2007,276,South Florida,BE
+2007,277,Southeast Missouri St.,OVC
+2007,278,Southeastern Louisiana,Slnd
+2007,279,Southern,SWAC
+2007,280,Southern Illinois,MVC
+2007,282,Southern Miss,CUSA
+2007,283,Southern Utah,Sum
+2007,284,St. Bonaventure,A10
+2007,285,St. John's,BE
+2007,287,Stanford,P12
+2007,288,Stephen F. Austin,Slnd
+2007,289,Stetson,ASun
+2007,291,Stony Brook,AE
+2007,292,Syracuse,BE
+2007,293,TCU,MWC
+2007,295,Temple,A10
+2007,296,Tennessee,SEC
+2007,297,Tennessee Martin,OVC
+2007,298,Tennessee St.,OVC
+2007,299,Tennessee Tech,OVC
+2007,300,Texas,B12
+2007,301,Texas A&M,B12
+2007,302,Texas A&M Corpus Chris,Slnd
+2007,303,Texas Southern,SWAC
+2007,304,Texas St.,Slnd
+2007,305,Texas Tech,B12
+2007,306,The Citadel,SC
+2007,307,Toledo,MAC
+2007,308,Towson,CAA
+2007,309,Troy,SB
+2007,310,Tulane,CUSA
+2007,311,Tulsa,CUSA
+2007,312,UAB,CUSA
+2007,313,UC Davis,IND
+2007,314,UC Irvine,BW
+2007,315,UC Riverside,BW
+2007,317,UC Santa Barbara,BW
+2007,318,UCF,CUSA
+2007,319,UCLA,P12
+2007,320,UMBC,AE
+2007,321,UMKC,Sum
+2007,323,UNC Asheville,BSth
+2007,324,UNC Greensboro,SC
+2007,325,UNC Wilmington,CAA
+2007,326,UNLV,MWC
+2007,327,USC,P12
+2007,329,UT Arlington,Slnd
+2007,330,UT Rio Grande Valley,IND
+2007,331,UTEP,CUSA
+2007,332,UTSA,Slnd
+2007,333,Utah,MWC
+2007,334,Utah St.,WAC
+2007,336,Utah Valley,IND
+2007,337,VCU,CAA
+2007,338,VMI,BSth
+2007,339,Valparaiso,Sum
+2007,340,Vanderbilt,SEC
+2007,341,Vermont,AE
+2007,342,Villanova,BE
+2007,343,Virginia,ACC
+2007,344,Virginia Tech,ACC
+2007,345,Wagner,NEC
+2007,346,Wake Forest,ACC
+2007,347,Washington,P12
+2007,348,Washington St.,P12
+2007,349,Weber St.,BSky
+2007,351,West Virginia,BE
+2007,352,Western Carolina,SC
+2007,353,Western Illinois,Sum
+2007,354,Western Kentucky,SB
+2007,355,Western Mich.,MAC
+2007,356,Wichita St.,MVC
+2007,357,William & Mary,CAA
+2007,358,Winthrop,BSth
+2007,359,Wisconsin,B10
+2007,360,Wofford,SC
+2007,361,Wright St.,Horz
+2007,362,Wyoming,MWC
+2007,363,Xavier,A10
+2007,364,Yale,Ivy
+2007,365,Youngstown St.,Horz
+2007,719,Centenary (LA),Sum
+2007,824,Hartford,AE
+2007,825,St. Francis Brooklyn,NEC
+2007,826,Savannah St.,IND
+2007,827,Winston-Salem St.,IND
+2008,2,Air Force,MWC
+2008,3,Akron,MAC
+2008,4,Alabama,SEC
+2008,5,Alabama A&M,SWAC
+2008,6,Alabama St.,SWAC
+2008,7,Albany,AE
+2008,8,Alcorn St.,SWAC
+2008,9,American,Pat
+2008,10,Appalachian St.,SC
+2008,11,Arizona,P12
+2008,12,Arizona St.,P12
+2008,13,Arkansas,SEC
+2008,14,Arkansas Pine Bluff,SWAC
+2008,15,Arkansas St.,SB
+2008,16,Army,Pat
+2008,17,Auburn,SEC
+2008,18,Austin Peay,OVC
+2008,19,BYU,MWC
+2008,20,Ball St.,MAC
+2008,21,Baylor,B12
+2008,23,Belmont,ASun
+2008,24,Bethune Cookman,MEAC
+2008,25,Binghamton,AE
+2008,26,Boise St.,WAC
+2008,27,Boston College,ACC
+2008,28,Boston University,AE
+2008,29,Bowling Green,MAC
+2008,30,Bradley,MVC
+2008,31,Brown,Ivy
+2008,33,Bucknell,Pat
+2008,34,Buffalo,MAC
+2008,35,Butler,Horz
+2008,37,Cal Poly,BW
+2008,38,Cal St. Bakersfield,IND
+2008,39,Cal St. Fullerton,BW
+2008,40,Cal St. Northridge,BW
+2008,41,California,P12
+2008,42,Campbell,ASun
+2008,43,Canisius,MAAC
+2008,44,Central Arkansas,Slnd
+2008,45,Central Connecticut,NEC
+2008,46,Central Michigan,MAC
+2008,47,Charleston,SC
+2008,48,Charleston Southern,BSth
+2008,49,Charlotte,A10
+2008,50,Chattanooga,SC
+2008,51,Chicago St.,IND
+2008,52,Cincinnati,BE
+2008,53,Clemson,ACC
+2008,54,Cleveland St.,Horz
+2008,55,Coastal Carolina,BSth
+2008,56,Colgate,Pat
+2008,57,Colorado,B12
+2008,58,Colorado St.,MWC
+2008,59,Columbia,Ivy
+2008,60,Connecticut,BE
+2008,61,Coppin St.,MEAC
+2008,62,Cornell,Ivy
+2008,63,Creighton,MVC
+2008,64,Dartmouth,Ivy
+2008,65,Davidson,SC
+2008,66,Dayton,A10
+2008,67,DePaul,BE
+2008,68,Delaware,CAA
+2008,69,Delaware St.,MEAC
+2008,70,Denver,SB
+2008,71,Detroit Mercy,Horz
+2008,72,Drake,MVC
+2008,73,Drexel,CAA
+2008,74,Duke,ACC
+2008,75,Duquesne,A10
+2008,76,East Carolina,CUSA
+2008,77,East Tennessee St.,ASun
+2008,79,Eastern Illinois,OVC
+2008,80,Eastern Kentucky,OVC
+2008,81,Eastern Mich.,MAC
+2008,82,Eastern Washington,BSky
+2008,83,Elon,SC
+2008,84,Evansville,MVC
+2008,85,FIU,SB
+2008,86,Fairfield,MAAC
+2008,87,Fairleigh Dickinson,NEC
+2008,88,Florida,SEC
+2008,89,Florida A&M,MEAC
+2008,90,Florida Atlantic,SB
+2008,91,Florida Gulf Coast,ASun
+2008,92,Florida St.,ACC
+2008,93,Fordham,A10
+2008,94,Fresno St.,WAC
+2008,95,Furman,SC
+2008,96,Gardner Webb,ASun
+2008,97,George Mason,CAA
+2008,98,George Washington,A10
+2008,99,Georgetown,BE
+2008,100,Georgia,SEC
+2008,101,Georgia Southern,SC
+2008,102,Georgia St.,CAA
+2008,103,Georgia Tech,ACC
+2008,104,Gonzaga,WCC
+2008,105,Grambling St.,SWAC
+2008,107,Green Bay,Horz
+2008,108,Hampton,MEAC
+2008,109,Harvard,Ivy
+2008,110,Hawaii,WAC
+2008,111,High Point,BSth
+2008,112,Hofstra,CAA
+2008,113,Holy Cross,Pat
+2008,114,Houston,CUSA
+2008,115,Houston Christian,IND
+2008,116,Howard,MEAC
+2008,117,IU Indy,Sum
+2008,118,Idaho,WAC
+2008,119,Idaho St.,BSky
+2008,120,Illinois,B10
+2008,121,Illinois Chicago,Horz
+2008,122,Illinois St.,MVC
+2008,124,Indiana,B10
+2008,125,Indiana St.,MVC
+2008,126,Iona,MAAC
+2008,127,Iowa,B10
+2008,128,Iowa St.,B12
+2008,129,Jackson St.,SWAC
+2008,130,Jacksonville,ASun
+2008,131,Jacksonville St.,OVC
+2008,132,James Madison,CAA
+2008,133,Kansas,B12
+2008,134,Kansas St.,B12
+2008,135,Kennesaw St.,ASun
+2008,136,Kent St.,MAC
+2008,137,Kentucky,SEC
+2008,138,LIU,NEC
+2008,139,LSU,SEC
+2008,140,La Salle,A10
+2008,141,Lafayette,Pat
+2008,142,Lamar,Slnd
+2008,144,Lehigh,Pat
+2008,145,Liberty,BSth
+2008,147,Lipscomb,ASun
+2008,148,Little Rock,SB
+2008,149,Long Beach St.,BW
+2008,150,Longwood,IND
+2008,151,Louisiana,SB
+2008,152,Louisiana Monroe,SB
+2008,153,Louisiana Tech,WAC
+2008,154,Louisville,BE
+2008,155,Loyola Chicago,Horz
+2008,156,Loyola MD,MAAC
+2008,157,Loyola Marymount,WCC
+2008,158,Maine,AE
+2008,159,Manhattan,MAAC
+2008,160,Marist,MAAC
+2008,161,Marquette,BE
+2008,162,Marshall,CUSA
+2008,163,Maryland,ACC
+2008,164,Maryland Eastern Shore,MEAC
+2008,165,Massachusetts,A10
+2008,166,McNeese,Slnd
+2008,167,Memphis,CUSA
+2008,168,Mercer,ASun
+2008,171,Miami (FL),ACC
+2008,172,Miami (OH),MAC
+2008,173,Michigan,B10
+2008,174,Michigan St.,B10
+2008,175,Middle Tennessee,SB
+2008,176,Milwaukee,Horz
+2008,177,Minnesota,B10
+2008,178,Mississippi,SEC
+2008,179,Mississippi St.,SEC
+2008,180,Mississippi Valley St.,SWAC
+2008,181,Missouri,B12
+2008,182,Missouri St.,MVC
+2008,183,Monmouth,NEC
+2008,184,Montana,BSky
+2008,185,Montana St.,BSky
+2008,186,Morehead St.,OVC
+2008,187,Morgan St.,MEAC
+2008,188,Mount St. Mary's,NEC
+2008,189,Murray St.,OVC
+2008,190,NC State,ACC
+2008,191,NJIT,IND
+2008,192,Navy,Pat
+2008,193,Nebraska,B12
+2008,195,Nevada,WAC
+2008,196,New Hampshire,AE
+2008,198,New Mexico,MWC
+2008,199,New Mexico St.,WAC
+2008,200,New Orleans,SB
+2008,201,Niagara,MAAC
+2008,202,Nicholls St.,Slnd
+2008,203,Norfolk St.,MEAC
+2008,205,North Carolina,ACC
+2008,206,North Carolina A&T,MEAC
+2008,207,North Carolina Central,IND
+2008,209,North Dakota St.,Sum
+2008,210,North Florida,ASun
+2008,211,North Texas,SB
+2008,212,Northeastern,CAA
+2008,213,Northern Arizona,BSky
+2008,214,Northern Colorado,BSky
+2008,215,Northern Illinois,MAC
+2008,216,Northern Iowa,MVC
+2008,218,Northwestern,B10
+2008,219,Northwestern St.,Slnd
+2008,220,Notre Dame,BE
+2008,221,Oakland,Sum
+2008,222,Ohio,MAC
+2008,223,Ohio St.,B10
+2008,224,Oklahoma,B12
+2008,225,Oklahoma St.,B12
+2008,226,Old Dominion,CAA
+2008,227,Oral Roberts,Sum
+2008,228,Oregon,P12
+2008,229,Oregon St.,P12
+2008,230,Pacific,BW
+2008,231,Penn,Ivy
+2008,232,Penn St.,B10
+2008,233,Pepperdine,WCC
+2008,234,Pittsburgh,BE
+2008,235,Portland,WCC
+2008,236,Portland St.,BSky
+2008,237,Prairie View A&M,SWAC
+2008,238,Presbyterian,IND
+2008,239,Princeton,Ivy
+2008,240,Providence,BE
+2008,241,Purdue,B10
+2008,242,Purdue Fort Wayne,Sum
+2008,244,Quinnipiac,NEC
+2008,245,Radford,BSth
+2008,246,Rhode Island,A10
+2008,247,Rice,CUSA
+2008,248,Richmond,A10
+2008,249,Rider,MAAC
+2008,250,Robert Morris,NEC
+2008,251,Rutgers,BE
+2008,253,SMU,CUSA
+2008,254,Sacramento St.,BSky
+2008,255,Sacred Heart,NEC
+2008,256,Saint Francis,NEC
+2008,257,Saint Joseph's,A10
+2008,258,Saint Louis,A10
+2008,259,Saint Mary's,WCC
+2008,260,Saint Peter's,MAAC
+2008,261,Sam Houston St.,Slnd
+2008,262,Samford,OVC
+2008,263,San Diego,WCC
+2008,264,San Diego St.,MWC
+2008,265,San Francisco,WCC
+2008,266,San Jose St.,WAC
+2008,267,Santa Clara,WCC
+2008,269,Seton Hall,BE
+2008,270,Siena,MAAC
+2008,271,South Alabama,SB
+2008,272,South Carolina,SEC
+2008,273,South Carolina St.,MEAC
+2008,275,South Dakota St.,Sum
+2008,276,South Florida,BE
+2008,277,Southeast Missouri St.,OVC
+2008,278,Southeastern Louisiana,Slnd
+2008,279,Southern,SWAC
+2008,280,Southern Illinois,MVC
+2008,282,Southern Miss,CUSA
+2008,283,Southern Utah,Sum
+2008,284,St. Bonaventure,A10
+2008,285,St. John's,BE
+2008,287,Stanford,P12
+2008,288,Stephen F. Austin,Slnd
+2008,289,Stetson,ASun
+2008,291,Stony Brook,AE
+2008,292,Syracuse,BE
+2008,293,TCU,MWC
+2008,295,Temple,A10
+2008,296,Tennessee,SEC
+2008,297,Tennessee Martin,OVC
+2008,298,Tennessee St.,OVC
+2008,299,Tennessee Tech,OVC
+2008,300,Texas,B12
+2008,301,Texas A&M,B12
+2008,302,Texas A&M Corpus Chris,Slnd
+2008,303,Texas Southern,SWAC
+2008,304,Texas St.,Slnd
+2008,305,Texas Tech,B12
+2008,306,The Citadel,SC
+2008,307,Toledo,MAC
+2008,308,Towson,CAA
+2008,309,Troy,SB
+2008,310,Tulane,CUSA
+2008,311,Tulsa,CUSA
+2008,312,UAB,CUSA
+2008,313,UC Davis,BW
+2008,314,UC Irvine,BW
+2008,315,UC Riverside,BW
+2008,317,UC Santa Barbara,BW
+2008,318,UCF,CUSA
+2008,319,UCLA,P12
+2008,320,UMBC,AE
+2008,321,UMKC,Sum
+2008,323,UNC Asheville,BSth
+2008,324,UNC Greensboro,SC
+2008,325,UNC Wilmington,CAA
+2008,326,UNLV,MWC
+2008,327,USC,P12
+2008,328,USC Upstate,ASun
+2008,329,UT Arlington,Slnd
+2008,330,UT Rio Grande Valley,IND
+2008,331,UTEP,CUSA
+2008,332,UTSA,Slnd
+2008,333,Utah,MWC
+2008,334,Utah St.,WAC
+2008,336,Utah Valley,IND
+2008,337,VCU,CAA
+2008,338,VMI,BSth
+2008,339,Valparaiso,Horz
+2008,340,Vanderbilt,SEC
+2008,341,Vermont,AE
+2008,342,Villanova,BE
+2008,343,Virginia,ACC
+2008,344,Virginia Tech,ACC
+2008,345,Wagner,NEC
+2008,346,Wake Forest,ACC
+2008,347,Washington,P12
+2008,348,Washington St.,P12
+2008,349,Weber St.,BSky
+2008,351,West Virginia,BE
+2008,352,Western Carolina,SC
+2008,353,Western Illinois,Sum
+2008,354,Western Kentucky,SB
+2008,355,Western Mich.,MAC
+2008,356,Wichita St.,MVC
+2008,357,William & Mary,CAA
+2008,358,Winthrop,BSth
+2008,359,Wisconsin,B10
+2008,360,Wofford,SC
+2008,361,Wright St.,Horz
+2008,362,Wyoming,MWC
+2008,363,Xavier,A10
+2008,364,Yale,Ivy
+2008,365,Youngstown St.,Horz
+2008,719,Centenary (LA),Sum
+2008,824,Hartford,AE
+2008,825,St. Francis Brooklyn,NEC
+2008,826,Savannah St.,IND
+2008,827,Winston-Salem St.,MEAC
+2009,2,Air Force,MWC
+2009,3,Akron,MAC
+2009,4,Alabama,SEC
+2009,5,Alabama A&M,SWAC
+2009,6,Alabama St.,SWAC
+2009,7,Albany,AE
+2009,8,Alcorn St.,SWAC
+2009,9,American,Pat
+2009,10,Appalachian St.,SC
+2009,11,Arizona,P12
+2009,12,Arizona St.,P12
+2009,13,Arkansas,SEC
+2009,14,Arkansas Pine Bluff,SWAC
+2009,15,Arkansas St.,SB
+2009,16,Army,Pat
+2009,17,Auburn,SEC
+2009,18,Austin Peay,OVC
+2009,19,BYU,MWC
+2009,20,Ball St.,MAC
+2009,21,Baylor,B12
+2009,23,Belmont,ASun
+2009,24,Bethune Cookman,MEAC
+2009,25,Binghamton,AE
+2009,26,Boise St.,WAC
+2009,27,Boston College,ACC
+2009,28,Boston University,AE
+2009,29,Bowling Green,MAC
+2009,30,Bradley,MVC
+2009,31,Brown,Ivy
+2009,32,Bryant,IND
+2009,33,Bucknell,Pat
+2009,34,Buffalo,MAC
+2009,35,Butler,Horz
+2009,37,Cal Poly,BW
+2009,38,Cal St. Bakersfield,IND
+2009,39,Cal St. Fullerton,BW
+2009,40,Cal St. Northridge,BW
+2009,41,California,P12
+2009,42,Campbell,ASun
+2009,43,Canisius,MAAC
+2009,44,Central Arkansas,Slnd
+2009,45,Central Connecticut,NEC
+2009,46,Central Michigan,MAC
+2009,47,Charleston,SC
+2009,48,Charleston Southern,BSth
+2009,49,Charlotte,A10
+2009,50,Chattanooga,SC
+2009,51,Chicago St.,IND
+2009,52,Cincinnati,BE
+2009,53,Clemson,ACC
+2009,54,Cleveland St.,Horz
+2009,55,Coastal Carolina,BSth
+2009,56,Colgate,Pat
+2009,57,Colorado,B12
+2009,58,Colorado St.,MWC
+2009,59,Columbia,Ivy
+2009,60,Connecticut,BE
+2009,61,Coppin St.,MEAC
+2009,62,Cornell,Ivy
+2009,63,Creighton,MVC
+2009,64,Dartmouth,Ivy
+2009,65,Davidson,SC
+2009,66,Dayton,A10
+2009,67,DePaul,BE
+2009,68,Delaware,CAA
+2009,69,Delaware St.,MEAC
+2009,70,Denver,SB
+2009,71,Detroit Mercy,Horz
+2009,72,Drake,MVC
+2009,73,Drexel,CAA
+2009,74,Duke,ACC
+2009,75,Duquesne,A10
+2009,76,East Carolina,CUSA
+2009,77,East Tennessee St.,ASun
+2009,79,Eastern Illinois,OVC
+2009,80,Eastern Kentucky,OVC
+2009,81,Eastern Mich.,MAC
+2009,82,Eastern Washington,BSky
+2009,83,Elon,SC
+2009,84,Evansville,MVC
+2009,85,FIU,SB
+2009,86,Fairfield,MAAC
+2009,87,Fairleigh Dickinson,NEC
+2009,88,Florida,SEC
+2009,89,Florida A&M,MEAC
+2009,90,Florida Atlantic,SB
+2009,91,Florida Gulf Coast,ASun
+2009,92,Florida St.,ACC
+2009,93,Fordham,A10
+2009,94,Fresno St.,WAC
+2009,95,Furman,SC
+2009,96,Gardner Webb,BSth
+2009,97,George Mason,CAA
+2009,98,George Washington,A10
+2009,99,Georgetown,BE
+2009,100,Georgia,SEC
+2009,101,Georgia Southern,SC
+2009,102,Georgia St.,CAA
+2009,103,Georgia Tech,ACC
+2009,104,Gonzaga,WCC
+2009,105,Grambling St.,SWAC
+2009,107,Green Bay,Horz
+2009,108,Hampton,MEAC
+2009,109,Harvard,Ivy
+2009,110,Hawaii,WAC
+2009,111,High Point,BSth
+2009,112,Hofstra,CAA
+2009,113,Holy Cross,Pat
+2009,114,Houston,CUSA
+2009,115,Houston Christian,IND
+2009,116,Howard,MEAC
+2009,117,IU Indy,Sum
+2009,118,Idaho,WAC
+2009,119,Idaho St.,BSky
+2009,120,Illinois,B10
+2009,121,Illinois Chicago,Horz
+2009,122,Illinois St.,MVC
+2009,124,Indiana,B10
+2009,125,Indiana St.,MVC
+2009,126,Iona,MAAC
+2009,127,Iowa,B10
+2009,128,Iowa St.,B12
+2009,129,Jackson St.,SWAC
+2009,130,Jacksonville,ASun
+2009,131,Jacksonville St.,OVC
+2009,132,James Madison,CAA
+2009,133,Kansas,B12
+2009,134,Kansas St.,B12
+2009,135,Kennesaw St.,ASun
+2009,136,Kent St.,MAC
+2009,137,Kentucky,SEC
+2009,138,LIU,NEC
+2009,139,LSU,SEC
+2009,140,La Salle,A10
+2009,141,Lafayette,Pat
+2009,142,Lamar,Slnd
+2009,144,Lehigh,Pat
+2009,145,Liberty,BSth
+2009,147,Lipscomb,ASun
+2009,148,Little Rock,SB
+2009,149,Long Beach St.,BW
+2009,150,Longwood,IND
+2009,151,Louisiana,SB
+2009,152,Louisiana Monroe,SB
+2009,153,Louisiana Tech,WAC
+2009,154,Louisville,BE
+2009,155,Loyola Chicago,Horz
+2009,156,Loyola MD,MAAC
+2009,157,Loyola Marymount,WCC
+2009,158,Maine,AE
+2009,159,Manhattan,MAAC
+2009,160,Marist,MAAC
+2009,161,Marquette,BE
+2009,162,Marshall,CUSA
+2009,163,Maryland,ACC
+2009,164,Maryland Eastern Shore,MEAC
+2009,165,Massachusetts,A10
+2009,166,McNeese,Slnd
+2009,167,Memphis,CUSA
+2009,168,Mercer,ASun
+2009,171,Miami (FL),ACC
+2009,172,Miami (OH),MAC
+2009,173,Michigan,B10
+2009,174,Michigan St.,B10
+2009,175,Middle Tennessee,SB
+2009,176,Milwaukee,Horz
+2009,177,Minnesota,B10
+2009,178,Mississippi,SEC
+2009,179,Mississippi St.,SEC
+2009,180,Mississippi Valley St.,SWAC
+2009,181,Missouri,B12
+2009,182,Missouri St.,MVC
+2009,183,Monmouth,NEC
+2009,184,Montana,BSky
+2009,185,Montana St.,BSky
+2009,186,Morehead St.,OVC
+2009,187,Morgan St.,MEAC
+2009,188,Mount St. Mary's,NEC
+2009,189,Murray St.,OVC
+2009,190,NC State,ACC
+2009,191,NJIT,IND
+2009,192,Navy,Pat
+2009,193,Nebraska,B12
+2009,195,Nevada,WAC
+2009,196,New Hampshire,AE
+2009,198,New Mexico,MWC
+2009,199,New Mexico St.,WAC
+2009,200,New Orleans,SB
+2009,201,Niagara,MAAC
+2009,202,Nicholls St.,Slnd
+2009,203,Norfolk St.,MEAC
+2009,205,North Carolina,ACC
+2009,206,North Carolina A&T,MEAC
+2009,207,North Carolina Central,IND
+2009,208,North Dakota,IND
+2009,209,North Dakota St.,Sum
+2009,210,North Florida,ASun
+2009,211,North Texas,SB
+2009,212,Northeastern,CAA
+2009,213,Northern Arizona,BSky
+2009,214,Northern Colorado,BSky
+2009,215,Northern Illinois,MAC
+2009,216,Northern Iowa,MVC
+2009,218,Northwestern,B10
+2009,219,Northwestern St.,Slnd
+2009,220,Notre Dame,BE
+2009,221,Oakland,Sum
+2009,222,Ohio,MAC
+2009,223,Ohio St.,B10
+2009,224,Oklahoma,B12
+2009,225,Oklahoma St.,B12
+2009,226,Old Dominion,CAA
+2009,227,Oral Roberts,Sum
+2009,228,Oregon,P12
+2009,229,Oregon St.,P12
+2009,230,Pacific,BW
+2009,231,Penn,Ivy
+2009,232,Penn St.,B10
+2009,233,Pepperdine,WCC
+2009,234,Pittsburgh,BE
+2009,235,Portland,WCC
+2009,236,Portland St.,BSky
+2009,237,Prairie View A&M,SWAC
+2009,238,Presbyterian,BSth
+2009,239,Princeton,Ivy
+2009,240,Providence,BE
+2009,241,Purdue,B10
+2009,242,Purdue Fort Wayne,Sum
+2009,244,Quinnipiac,NEC
+2009,245,Radford,BSth
+2009,246,Rhode Island,A10
+2009,247,Rice,CUSA
+2009,248,Richmond,A10
+2009,249,Rider,MAAC
+2009,250,Robert Morris,NEC
+2009,251,Rutgers,BE
+2009,252,SIU Edwardsville,IND
+2009,253,SMU,CUSA
+2009,254,Sacramento St.,BSky
+2009,255,Sacred Heart,NEC
+2009,256,Saint Francis,NEC
+2009,257,Saint Joseph's,A10
+2009,258,Saint Louis,A10
+2009,259,Saint Mary's,WCC
+2009,260,Saint Peter's,MAAC
+2009,261,Sam Houston St.,Slnd
+2009,262,Samford,SC
+2009,263,San Diego,WCC
+2009,264,San Diego St.,MWC
+2009,265,San Francisco,WCC
+2009,266,San Jose St.,WAC
+2009,267,Santa Clara,WCC
+2009,268,Seattle,IND
+2009,269,Seton Hall,BE
+2009,270,Siena,MAAC
+2009,271,South Alabama,SB
+2009,272,South Carolina,SEC
+2009,273,South Carolina St.,MEAC
+2009,274,South Dakota,IND
+2009,275,South Dakota St.,Sum
+2009,276,South Florida,BE
+2009,277,Southeast Missouri St.,OVC
+2009,278,Southeastern Louisiana,Slnd
+2009,279,Southern,SWAC
+2009,280,Southern Illinois,MVC
+2009,282,Southern Miss,CUSA
+2009,283,Southern Utah,Sum
+2009,284,St. Bonaventure,A10
+2009,285,St. John's,BE
+2009,287,Stanford,P12
+2009,288,Stephen F. Austin,Slnd
+2009,289,Stetson,ASun
+2009,291,Stony Brook,AE
+2009,292,Syracuse,BE
+2009,293,TCU,MWC
+2009,295,Temple,A10
+2009,296,Tennessee,SEC
+2009,297,Tennessee Martin,OVC
+2009,298,Tennessee St.,OVC
+2009,299,Tennessee Tech,OVC
+2009,300,Texas,B12
+2009,301,Texas A&M,B12
+2009,302,Texas A&M Corpus Chris,Slnd
+2009,303,Texas Southern,SWAC
+2009,304,Texas St.,Slnd
+2009,305,Texas Tech,B12
+2009,306,The Citadel,SC
+2009,307,Toledo,MAC
+2009,308,Towson,CAA
+2009,309,Troy,SB
+2009,310,Tulane,CUSA
+2009,311,Tulsa,CUSA
+2009,312,UAB,CUSA
+2009,313,UC Davis,BW
+2009,314,UC Irvine,BW
+2009,315,UC Riverside,BW
+2009,317,UC Santa Barbara,BW
+2009,318,UCF,CUSA
+2009,319,UCLA,P12
+2009,320,UMBC,AE
+2009,321,UMKC,Sum
+2009,323,UNC Asheville,BSth
+2009,324,UNC Greensboro,SC
+2009,325,UNC Wilmington,CAA
+2009,326,UNLV,MWC
+2009,327,USC,P12
+2009,328,USC Upstate,ASun
+2009,329,UT Arlington,Slnd
+2009,330,UT Rio Grande Valley,IND
+2009,331,UTEP,CUSA
+2009,332,UTSA,Slnd
+2009,333,Utah,MWC
+2009,334,Utah St.,WAC
+2009,336,Utah Valley,IND
+2009,337,VCU,CAA
+2009,338,VMI,BSth
+2009,339,Valparaiso,Horz
+2009,340,Vanderbilt,SEC
+2009,341,Vermont,AE
+2009,342,Villanova,BE
+2009,343,Virginia,ACC
+2009,344,Virginia Tech,ACC
+2009,345,Wagner,NEC
+2009,346,Wake Forest,ACC
+2009,347,Washington,P12
+2009,348,Washington St.,P12
+2009,349,Weber St.,BSky
+2009,351,West Virginia,BE
+2009,352,Western Carolina,SC
+2009,353,Western Illinois,Sum
+2009,354,Western Kentucky,SB
+2009,355,Western Mich.,MAC
+2009,356,Wichita St.,MVC
+2009,357,William & Mary,CAA
+2009,358,Winthrop,BSth
+2009,359,Wisconsin,B10
+2009,360,Wofford,SC
+2009,361,Wright St.,Horz
+2009,362,Wyoming,MWC
+2009,363,Xavier,A10
+2009,364,Yale,Ivy
+2009,365,Youngstown St.,Horz
+2009,719,Centenary (LA),Sum
+2009,824,Hartford,AE
+2009,825,St. Francis Brooklyn,NEC
+2009,826,Savannah St.,IND
+2009,827,Winston-Salem St.,MEAC
+2010,2,Air Force,MWC
+2010,3,Akron,MAC
+2010,4,Alabama,SEC
+2010,5,Alabama A&M,SWAC
+2010,6,Alabama St.,SWAC
+2010,7,Albany,AE
+2010,8,Alcorn St.,SWAC
+2010,9,American,Pat
+2010,10,Appalachian St.,SC
+2010,11,Arizona,P12
+2010,12,Arizona St.,P12
+2010,13,Arkansas,SEC
+2010,14,Arkansas Pine Bluff,SWAC
+2010,15,Arkansas St.,SB
+2010,16,Army,Pat
+2010,17,Auburn,SEC
+2010,18,Austin Peay,OVC
+2010,19,BYU,MWC
+2010,20,Ball St.,MAC
+2010,21,Baylor,B12
+2010,23,Belmont,ASun
+2010,24,Bethune Cookman,MEAC
+2010,25,Binghamton,AE
+2010,26,Boise St.,WAC
+2010,27,Boston College,ACC
+2010,28,Boston University,AE
+2010,29,Bowling Green,MAC
+2010,30,Bradley,MVC
+2010,31,Brown,Ivy
+2010,32,Bryant,NEC
+2010,33,Bucknell,Pat
+2010,34,Buffalo,MAC
+2010,35,Butler,Horz
+2010,37,Cal Poly,BW
+2010,38,Cal St. Bakersfield,IND
+2010,39,Cal St. Fullerton,BW
+2010,40,Cal St. Northridge,BW
+2010,41,California,P12
+2010,42,Campbell,ASun
+2010,43,Canisius,MAAC
+2010,44,Central Arkansas,Slnd
+2010,45,Central Connecticut,NEC
+2010,46,Central Michigan,MAC
+2010,47,Charleston,SC
+2010,48,Charleston Southern,BSth
+2010,49,Charlotte,A10
+2010,50,Chattanooga,SC
+2010,51,Chicago St.,GWC
+2010,52,Cincinnati,BE
+2010,53,Clemson,ACC
+2010,54,Cleveland St.,Horz
+2010,55,Coastal Carolina,BSth
+2010,56,Colgate,Pat
+2010,57,Colorado,B12
+2010,58,Colorado St.,MWC
+2010,59,Columbia,Ivy
+2010,60,Connecticut,BE
+2010,61,Coppin St.,MEAC
+2010,62,Cornell,Ivy
+2010,63,Creighton,MVC
+2010,64,Dartmouth,Ivy
+2010,65,Davidson,SC
+2010,66,Dayton,A10
+2010,67,DePaul,BE
+2010,68,Delaware,CAA
+2010,69,Delaware St.,MEAC
+2010,70,Denver,SB
+2010,71,Detroit Mercy,Horz
+2010,72,Drake,MVC
+2010,73,Drexel,CAA
+2010,74,Duke,ACC
+2010,75,Duquesne,A10
+2010,76,East Carolina,CUSA
+2010,77,East Tennessee St.,ASun
+2010,79,Eastern Illinois,OVC
+2010,80,Eastern Kentucky,OVC
+2010,81,Eastern Mich.,MAC
+2010,82,Eastern Washington,BSky
+2010,83,Elon,SC
+2010,84,Evansville,MVC
+2010,85,FIU,SB
+2010,86,Fairfield,MAAC
+2010,87,Fairleigh Dickinson,NEC
+2010,88,Florida,SEC
+2010,89,Florida A&M,MEAC
+2010,90,Florida Atlantic,SB
+2010,91,Florida Gulf Coast,ASun
+2010,92,Florida St.,ACC
+2010,93,Fordham,A10
+2010,94,Fresno St.,WAC
+2010,95,Furman,SC
+2010,96,Gardner Webb,BSth
+2010,97,George Mason,CAA
+2010,98,George Washington,A10
+2010,99,Georgetown,BE
+2010,100,Georgia,SEC
+2010,101,Georgia Southern,SC
+2010,102,Georgia St.,CAA
+2010,103,Georgia Tech,ACC
+2010,104,Gonzaga,WCC
+2010,105,Grambling St.,SWAC
+2010,107,Green Bay,Horz
+2010,108,Hampton,MEAC
+2010,109,Harvard,Ivy
+2010,110,Hawaii,WAC
+2010,111,High Point,BSth
+2010,112,Hofstra,CAA
+2010,113,Holy Cross,Pat
+2010,114,Houston,CUSA
+2010,115,Houston Christian,GWC
+2010,116,Howard,MEAC
+2010,117,IU Indy,Sum
+2010,118,Idaho,WAC
+2010,119,Idaho St.,BSky
+2010,120,Illinois,B10
+2010,121,Illinois Chicago,Horz
+2010,122,Illinois St.,MVC
+2010,124,Indiana,B10
+2010,125,Indiana St.,MVC
+2010,126,Iona,MAAC
+2010,127,Iowa,B10
+2010,128,Iowa St.,B12
+2010,129,Jackson St.,SWAC
+2010,130,Jacksonville,ASun
+2010,131,Jacksonville St.,OVC
+2010,132,James Madison,CAA
+2010,133,Kansas,B12
+2010,134,Kansas St.,B12
+2010,135,Kennesaw St.,ASun
+2010,136,Kent St.,MAC
+2010,137,Kentucky,SEC
+2010,138,LIU,NEC
+2010,139,LSU,SEC
+2010,140,La Salle,A10
+2010,141,Lafayette,Pat
+2010,142,Lamar,Slnd
+2010,144,Lehigh,Pat
+2010,145,Liberty,BSth
+2010,147,Lipscomb,ASun
+2010,148,Little Rock,SB
+2010,149,Long Beach St.,BW
+2010,150,Longwood,IND
+2010,151,Louisiana,SB
+2010,152,Louisiana Monroe,SB
+2010,153,Louisiana Tech,WAC
+2010,154,Louisville,BE
+2010,155,Loyola Chicago,Horz
+2010,156,Loyola MD,MAAC
+2010,157,Loyola Marymount,WCC
+2010,158,Maine,AE
+2010,159,Manhattan,MAAC
+2010,160,Marist,MAAC
+2010,161,Marquette,BE
+2010,162,Marshall,CUSA
+2010,163,Maryland,ACC
+2010,164,Maryland Eastern Shore,MEAC
+2010,165,Massachusetts,A10
+2010,166,McNeese,Slnd
+2010,167,Memphis,CUSA
+2010,168,Mercer,ASun
+2010,171,Miami (FL),ACC
+2010,172,Miami (OH),MAC
+2010,173,Michigan,B10
+2010,174,Michigan St.,B10
+2010,175,Middle Tennessee,SB
+2010,176,Milwaukee,Horz
+2010,177,Minnesota,B10
+2010,178,Mississippi,SEC
+2010,179,Mississippi St.,SEC
+2010,180,Mississippi Valley St.,SWAC
+2010,181,Missouri,B12
+2010,182,Missouri St.,MVC
+2010,183,Monmouth,NEC
+2010,184,Montana,BSky
+2010,185,Montana St.,BSky
+2010,186,Morehead St.,OVC
+2010,187,Morgan St.,MEAC
+2010,188,Mount St. Mary's,NEC
+2010,189,Murray St.,OVC
+2010,190,NC State,ACC
+2010,191,NJIT,GWC
+2010,192,Navy,Pat
+2010,193,Nebraska,B12
+2010,195,Nevada,WAC
+2010,196,New Hampshire,AE
+2010,198,New Mexico,MWC
+2010,199,New Mexico St.,WAC
+2010,200,New Orleans,SB
+2010,201,Niagara,MAAC
+2010,202,Nicholls St.,Slnd
+2010,203,Norfolk St.,MEAC
+2010,205,North Carolina,ACC
+2010,206,North Carolina A&T,MEAC
+2010,207,North Carolina Central,IND
+2010,208,North Dakota,GWC
+2010,209,North Dakota St.,Sum
+2010,210,North Florida,ASun
+2010,211,North Texas,SB
+2010,212,Northeastern,CAA
+2010,213,Northern Arizona,BSky
+2010,214,Northern Colorado,BSky
+2010,215,Northern Illinois,MAC
+2010,216,Northern Iowa,MVC
+2010,218,Northwestern,B10
+2010,219,Northwestern St.,Slnd
+2010,220,Notre Dame,BE
+2010,221,Oakland,Sum
+2010,222,Ohio,MAC
+2010,223,Ohio St.,B10
+2010,224,Oklahoma,B12
+2010,225,Oklahoma St.,B12
+2010,226,Old Dominion,CAA
+2010,227,Oral Roberts,Sum
+2010,228,Oregon,P12
+2010,229,Oregon St.,P12
+2010,230,Pacific,BW
+2010,231,Penn,Ivy
+2010,232,Penn St.,B10
+2010,233,Pepperdine,WCC
+2010,234,Pittsburgh,BE
+2010,235,Portland,WCC
+2010,236,Portland St.,BSky
+2010,237,Prairie View A&M,SWAC
+2010,238,Presbyterian,BSth
+2010,239,Princeton,Ivy
+2010,240,Providence,BE
+2010,241,Purdue,B10
+2010,242,Purdue Fort Wayne,Sum
+2010,244,Quinnipiac,NEC
+2010,245,Radford,BSth
+2010,246,Rhode Island,A10
+2010,247,Rice,CUSA
+2010,248,Richmond,A10
+2010,249,Rider,MAAC
+2010,250,Robert Morris,NEC
+2010,251,Rutgers,BE
+2010,252,SIU Edwardsville,IND
+2010,253,SMU,CUSA
+2010,254,Sacramento St.,BSky
+2010,255,Sacred Heart,NEC
+2010,256,Saint Francis,NEC
+2010,257,Saint Joseph's,A10
+2010,258,Saint Louis,A10
+2010,259,Saint Mary's,WCC
+2010,260,Saint Peter's,MAAC
+2010,261,Sam Houston St.,Slnd
+2010,262,Samford,SC
+2010,263,San Diego,WCC
+2010,264,San Diego St.,MWC
+2010,265,San Francisco,WCC
+2010,266,San Jose St.,WAC
+2010,267,Santa Clara,WCC
+2010,268,Seattle,IND
+2010,269,Seton Hall,BE
+2010,270,Siena,MAAC
+2010,271,South Alabama,SB
+2010,272,South Carolina,SEC
+2010,273,South Carolina St.,MEAC
+2010,274,South Dakota,GWC
+2010,275,South Dakota St.,Sum
+2010,276,South Florida,BE
+2010,277,Southeast Missouri St.,OVC
+2010,278,Southeastern Louisiana,Slnd
+2010,279,Southern,SWAC
+2010,280,Southern Illinois,MVC
+2010,282,Southern Miss,CUSA
+2010,283,Southern Utah,Sum
+2010,284,St. Bonaventure,A10
+2010,285,St. John's,BE
+2010,287,Stanford,P12
+2010,288,Stephen F. Austin,Slnd
+2010,289,Stetson,ASun
+2010,291,Stony Brook,AE
+2010,292,Syracuse,BE
+2010,293,TCU,MWC
+2010,295,Temple,A10
+2010,296,Tennessee,SEC
+2010,297,Tennessee Martin,OVC
+2010,298,Tennessee St.,OVC
+2010,299,Tennessee Tech,OVC
+2010,300,Texas,B12
+2010,301,Texas A&M,B12
+2010,302,Texas A&M Corpus Chris,Slnd
+2010,303,Texas Southern,SWAC
+2010,304,Texas St.,Slnd
+2010,305,Texas Tech,B12
+2010,306,The Citadel,SC
+2010,307,Toledo,MAC
+2010,308,Towson,CAA
+2010,309,Troy,SB
+2010,310,Tulane,CUSA
+2010,311,Tulsa,CUSA
+2010,312,UAB,CUSA
+2010,313,UC Davis,BW
+2010,314,UC Irvine,BW
+2010,315,UC Riverside,BW
+2010,317,UC Santa Barbara,BW
+2010,318,UCF,CUSA
+2010,319,UCLA,P12
+2010,320,UMBC,AE
+2010,321,UMKC,Sum
+2010,323,UNC Asheville,BSth
+2010,324,UNC Greensboro,SC
+2010,325,UNC Wilmington,CAA
+2010,326,UNLV,MWC
+2010,327,USC,P12
+2010,328,USC Upstate,ASun
+2010,329,UT Arlington,Slnd
+2010,330,UT Rio Grande Valley,GWC
+2010,331,UTEP,CUSA
+2010,332,UTSA,Slnd
+2010,333,Utah,MWC
+2010,334,Utah St.,WAC
+2010,336,Utah Valley,GWC
+2010,337,VCU,CAA
+2010,338,VMI,BSth
+2010,339,Valparaiso,Horz
+2010,340,Vanderbilt,SEC
+2010,341,Vermont,AE
+2010,342,Villanova,BE
+2010,343,Virginia,ACC
+2010,344,Virginia Tech,ACC
+2010,345,Wagner,NEC
+2010,346,Wake Forest,ACC
+2010,347,Washington,P12
+2010,348,Washington St.,P12
+2010,349,Weber St.,BSky
+2010,351,West Virginia,BE
+2010,352,Western Carolina,SC
+2010,353,Western Illinois,Sum
+2010,354,Western Kentucky,SB
+2010,355,Western Mich.,MAC
+2010,356,Wichita St.,MVC
+2010,357,William & Mary,CAA
+2010,358,Winthrop,BSth
+2010,359,Wisconsin,B10
+2010,360,Wofford,SC
+2010,361,Wright St.,Horz
+2010,362,Wyoming,MWC
+2010,363,Xavier,A10
+2010,364,Yale,Ivy
+2010,365,Youngstown St.,Horz
+2010,719,Centenary (LA),Sum
+2010,824,Hartford,AE
+2010,825,St. Francis Brooklyn,NEC
+2010,826,Savannah St.,IND
+2010,827,Winston-Salem St.,IND
+2011,2,Air Force,MWC
+2011,3,Akron,MAC
+2011,4,Alabama,SEC
+2011,5,Alabama A&M,SWAC
+2011,6,Alabama St.,SWAC
+2011,7,Albany,AE
+2011,8,Alcorn St.,SWAC
+2011,9,American,Pat
+2011,10,Appalachian St.,SC
+2011,11,Arizona,P12
+2011,12,Arizona St.,P12
+2011,13,Arkansas,SEC
+2011,14,Arkansas Pine Bluff,SWAC
+2011,15,Arkansas St.,SB
+2011,16,Army,Pat
+2011,17,Auburn,SEC
+2011,18,Austin Peay,OVC
+2011,19,BYU,MWC
+2011,20,Ball St.,MAC
+2011,21,Baylor,B12
+2011,23,Belmont,ASun
+2011,24,Bethune Cookman,MEAC
+2011,25,Binghamton,AE
+2011,26,Boise St.,WAC
+2011,27,Boston College,ACC
+2011,28,Boston University,AE
+2011,29,Bowling Green,MAC
+2011,30,Bradley,MVC
+2011,31,Brown,Ivy
+2011,32,Bryant,NEC
+2011,33,Bucknell,Pat
+2011,34,Buffalo,MAC
+2011,35,Butler,Horz
+2011,37,Cal Poly,BW
+2011,38,Cal St. Bakersfield,IND
+2011,39,Cal St. Fullerton,BW
+2011,40,Cal St. Northridge,BW
+2011,41,California,P12
+2011,42,Campbell,ASun
+2011,43,Canisius,MAAC
+2011,44,Central Arkansas,Slnd
+2011,45,Central Connecticut,NEC
+2011,46,Central Michigan,MAC
+2011,47,Charleston,SC
+2011,48,Charleston Southern,BSth
+2011,49,Charlotte,A10
+2011,50,Chattanooga,SC
+2011,51,Chicago St.,GWC
+2011,52,Cincinnati,BE
+2011,53,Clemson,ACC
+2011,54,Cleveland St.,Horz
+2011,55,Coastal Carolina,BSth
+2011,56,Colgate,Pat
+2011,57,Colorado,B12
+2011,58,Colorado St.,MWC
+2011,59,Columbia,Ivy
+2011,60,Connecticut,BE
+2011,61,Coppin St.,MEAC
+2011,62,Cornell,Ivy
+2011,63,Creighton,MVC
+2011,64,Dartmouth,Ivy
+2011,65,Davidson,SC
+2011,66,Dayton,A10
+2011,67,DePaul,BE
+2011,68,Delaware,CAA
+2011,69,Delaware St.,MEAC
+2011,70,Denver,SB
+2011,71,Detroit Mercy,Horz
+2011,72,Drake,MVC
+2011,73,Drexel,CAA
+2011,74,Duke,ACC
+2011,75,Duquesne,A10
+2011,76,East Carolina,CUSA
+2011,77,East Tennessee St.,ASun
+2011,79,Eastern Illinois,OVC
+2011,80,Eastern Kentucky,OVC
+2011,81,Eastern Mich.,MAC
+2011,82,Eastern Washington,BSky
+2011,83,Elon,SC
+2011,84,Evansville,MVC
+2011,85,FIU,SB
+2011,86,Fairfield,MAAC
+2011,87,Fairleigh Dickinson,NEC
+2011,88,Florida,SEC
+2011,89,Florida A&M,MEAC
+2011,90,Florida Atlantic,SB
+2011,91,Florida Gulf Coast,ASun
+2011,92,Florida St.,ACC
+2011,93,Fordham,A10
+2011,94,Fresno St.,WAC
+2011,95,Furman,SC
+2011,96,Gardner Webb,BSth
+2011,97,George Mason,CAA
+2011,98,George Washington,A10
+2011,99,Georgetown,BE
+2011,100,Georgia,SEC
+2011,101,Georgia Southern,SC
+2011,102,Georgia St.,CAA
+2011,103,Georgia Tech,ACC
+2011,104,Gonzaga,WCC
+2011,105,Grambling St.,SWAC
+2011,107,Green Bay,Horz
+2011,108,Hampton,MEAC
+2011,109,Harvard,Ivy
+2011,110,Hawaii,WAC
+2011,111,High Point,BSth
+2011,112,Hofstra,CAA
+2011,113,Holy Cross,Pat
+2011,114,Houston,CUSA
+2011,115,Houston Christian,GWC
+2011,116,Howard,MEAC
+2011,117,IU Indy,Sum
+2011,118,Idaho,WAC
+2011,119,Idaho St.,BSky
+2011,120,Illinois,B10
+2011,121,Illinois Chicago,Horz
+2011,122,Illinois St.,MVC
+2011,124,Indiana,B10
+2011,125,Indiana St.,MVC
+2011,126,Iona,MAAC
+2011,127,Iowa,B10
+2011,128,Iowa St.,B12
+2011,129,Jackson St.,SWAC
+2011,130,Jacksonville,ASun
+2011,131,Jacksonville St.,OVC
+2011,132,James Madison,CAA
+2011,133,Kansas,B12
+2011,134,Kansas St.,B12
+2011,135,Kennesaw St.,ASun
+2011,136,Kent St.,MAC
+2011,137,Kentucky,SEC
+2011,138,LIU,NEC
+2011,139,LSU,SEC
+2011,140,La Salle,A10
+2011,141,Lafayette,Pat
+2011,142,Lamar,Slnd
+2011,144,Lehigh,Pat
+2011,145,Liberty,BSth
+2011,147,Lipscomb,ASun
+2011,148,Little Rock,SB
+2011,149,Long Beach St.,BW
+2011,150,Longwood,IND
+2011,151,Louisiana,SB
+2011,152,Louisiana Monroe,SB
+2011,153,Louisiana Tech,WAC
+2011,154,Louisville,BE
+2011,155,Loyola Chicago,Horz
+2011,156,Loyola MD,MAAC
+2011,157,Loyola Marymount,WCC
+2011,158,Maine,AE
+2011,159,Manhattan,MAAC
+2011,160,Marist,MAAC
+2011,161,Marquette,BE
+2011,162,Marshall,CUSA
+2011,163,Maryland,ACC
+2011,164,Maryland Eastern Shore,MEAC
+2011,165,Massachusetts,A10
+2011,166,McNeese,Slnd
+2011,167,Memphis,CUSA
+2011,168,Mercer,ASun
+2011,171,Miami (FL),ACC
+2011,172,Miami (OH),MAC
+2011,173,Michigan,B10
+2011,174,Michigan St.,B10
+2011,175,Middle Tennessee,SB
+2011,176,Milwaukee,Horz
+2011,177,Minnesota,B10
+2011,178,Mississippi,SEC
+2011,179,Mississippi St.,SEC
+2011,180,Mississippi Valley St.,SWAC
+2011,181,Missouri,B12
+2011,182,Missouri St.,MVC
+2011,183,Monmouth,NEC
+2011,184,Montana,BSky
+2011,185,Montana St.,BSky
+2011,186,Morehead St.,OVC
+2011,187,Morgan St.,MEAC
+2011,188,Mount St. Mary's,NEC
+2011,189,Murray St.,OVC
+2011,190,NC State,ACC
+2011,191,NJIT,GWC
+2011,192,Navy,Pat
+2011,193,Nebraska,B12
+2011,195,Nevada,WAC
+2011,196,New Hampshire,AE
+2011,198,New Mexico,MWC
+2011,199,New Mexico St.,WAC
+2011,200,New Orleans,IND
+2011,201,Niagara,MAAC
+2011,202,Nicholls St.,Slnd
+2011,203,Norfolk St.,MEAC
+2011,205,North Carolina,ACC
+2011,206,North Carolina A&T,MEAC
+2011,207,North Carolina Central,IND
+2011,208,North Dakota,GWC
+2011,209,North Dakota St.,Sum
+2011,210,North Florida,ASun
+2011,211,North Texas,SB
+2011,212,Northeastern,CAA
+2011,213,Northern Arizona,BSky
+2011,214,Northern Colorado,BSky
+2011,215,Northern Illinois,MAC
+2011,216,Northern Iowa,MVC
+2011,218,Northwestern,B10
+2011,219,Northwestern St.,Slnd
+2011,220,Notre Dame,BE
+2011,221,Oakland,Sum
+2011,222,Ohio,MAC
+2011,223,Ohio St.,B10
+2011,224,Oklahoma,B12
+2011,225,Oklahoma St.,B12
+2011,226,Old Dominion,CAA
+2011,227,Oral Roberts,Sum
+2011,228,Oregon,P12
+2011,229,Oregon St.,P12
+2011,230,Pacific,BW
+2011,231,Penn,Ivy
+2011,232,Penn St.,B10
+2011,233,Pepperdine,WCC
+2011,234,Pittsburgh,BE
+2011,235,Portland,WCC
+2011,236,Portland St.,BSky
+2011,237,Prairie View A&M,SWAC
+2011,238,Presbyterian,BSth
+2011,239,Princeton,Ivy
+2011,240,Providence,BE
+2011,241,Purdue,B10
+2011,242,Purdue Fort Wayne,Sum
+2011,244,Quinnipiac,NEC
+2011,245,Radford,BSth
+2011,246,Rhode Island,A10
+2011,247,Rice,CUSA
+2011,248,Richmond,A10
+2011,249,Rider,MAAC
+2011,250,Robert Morris,NEC
+2011,251,Rutgers,BE
+2011,252,SIU Edwardsville,IND
+2011,253,SMU,CUSA
+2011,254,Sacramento St.,BSky
+2011,255,Sacred Heart,NEC
+2011,256,Saint Francis,NEC
+2011,257,Saint Joseph's,A10
+2011,258,Saint Louis,A10
+2011,259,Saint Mary's,WCC
+2011,260,Saint Peter's,MAAC
+2011,261,Sam Houston St.,Slnd
+2011,262,Samford,SC
+2011,263,San Diego,WCC
+2011,264,San Diego St.,MWC
+2011,265,San Francisco,WCC
+2011,266,San Jose St.,WAC
+2011,267,Santa Clara,WCC
+2011,268,Seattle,IND
+2011,269,Seton Hall,BE
+2011,270,Siena,MAAC
+2011,271,South Alabama,SB
+2011,272,South Carolina,SEC
+2011,273,South Carolina St.,MEAC
+2011,274,South Dakota,GWC
+2011,275,South Dakota St.,Sum
+2011,276,South Florida,BE
+2011,277,Southeast Missouri St.,OVC
+2011,278,Southeastern Louisiana,Slnd
+2011,279,Southern,SWAC
+2011,280,Southern Illinois,MVC
+2011,282,Southern Miss,CUSA
+2011,283,Southern Utah,Sum
+2011,284,St. Bonaventure,A10
+2011,285,St. John's,BE
+2011,287,Stanford,P12
+2011,288,Stephen F. Austin,Slnd
+2011,289,Stetson,ASun
+2011,291,Stony Brook,AE
+2011,292,Syracuse,BE
+2011,293,TCU,MWC
+2011,295,Temple,A10
+2011,296,Tennessee,SEC
+2011,297,Tennessee Martin,OVC
+2011,298,Tennessee St.,OVC
+2011,299,Tennessee Tech,OVC
+2011,300,Texas,B12
+2011,301,Texas A&M,B12
+2011,302,Texas A&M Corpus Chris,Slnd
+2011,303,Texas Southern,SWAC
+2011,304,Texas St.,Slnd
+2011,305,Texas Tech,B12
+2011,306,The Citadel,SC
+2011,307,Toledo,MAC
+2011,308,Towson,CAA
+2011,309,Troy,SB
+2011,310,Tulane,CUSA
+2011,311,Tulsa,CUSA
+2011,312,UAB,CUSA
+2011,313,UC Davis,BW
+2011,314,UC Irvine,BW
+2011,315,UC Riverside,BW
+2011,317,UC Santa Barbara,BW
+2011,318,UCF,CUSA
+2011,319,UCLA,P12
+2011,320,UMBC,AE
+2011,321,UMKC,Sum
+2011,323,UNC Asheville,BSth
+2011,324,UNC Greensboro,SC
+2011,325,UNC Wilmington,CAA
+2011,326,UNLV,MWC
+2011,327,USC,P12
+2011,328,USC Upstate,ASun
+2011,329,UT Arlington,Slnd
+2011,330,UT Rio Grande Valley,GWC
+2011,331,UTEP,CUSA
+2011,332,UTSA,Slnd
+2011,333,Utah,MWC
+2011,334,Utah St.,WAC
+2011,336,Utah Valley,GWC
+2011,337,VCU,CAA
+2011,338,VMI,BSth
+2011,339,Valparaiso,Horz
+2011,340,Vanderbilt,SEC
+2011,341,Vermont,AE
+2011,342,Villanova,BE
+2011,343,Virginia,ACC
+2011,344,Virginia Tech,ACC
+2011,345,Wagner,NEC
+2011,346,Wake Forest,ACC
+2011,347,Washington,P12
+2011,348,Washington St.,P12
+2011,349,Weber St.,BSky
+2011,351,West Virginia,BE
+2011,352,Western Carolina,SC
+2011,353,Western Illinois,Sum
+2011,354,Western Kentucky,SB
+2011,355,Western Mich.,MAC
+2011,356,Wichita St.,MVC
+2011,357,William & Mary,CAA
+2011,358,Winthrop,BSth
+2011,359,Wisconsin,B10
+2011,360,Wofford,SC
+2011,361,Wright St.,Horz
+2011,362,Wyoming,MWC
+2011,363,Xavier,A10
+2011,364,Yale,Ivy
+2011,365,Youngstown St.,Horz
+2011,719,Centenary (LA),Sum
+2011,824,Hartford,AE
+2011,825,St. Francis Brooklyn,NEC
+2011,826,Savannah St.,IND
+2012,2,Air Force,MWC
+2012,3,Akron,MAC
+2012,4,Alabama,SEC
+2012,5,Alabama A&M,SWAC
+2012,6,Alabama St.,SWAC
+2012,7,Albany,AE
+2012,8,Alcorn St.,SWAC
+2012,9,American,Pat
+2012,10,Appalachian St.,SC
+2012,11,Arizona,P12
+2012,12,Arizona St.,P12
+2012,13,Arkansas,SEC
+2012,14,Arkansas Pine Bluff,SWAC
+2012,15,Arkansas St.,SB
+2012,16,Army,Pat
+2012,17,Auburn,SEC
+2012,18,Austin Peay,OVC
+2012,19,BYU,WCC
+2012,20,Ball St.,MAC
+2012,21,Baylor,B12
+2012,23,Belmont,ASun
+2012,24,Bethune Cookman,MEAC
+2012,25,Binghamton,AE
+2012,26,Boise St.,MWC
+2012,27,Boston College,ACC
+2012,28,Boston University,AE
+2012,29,Bowling Green,MAC
+2012,30,Bradley,MVC
+2012,31,Brown,Ivy
+2012,32,Bryant,NEC
+2012,33,Bucknell,Pat
+2012,34,Buffalo,MAC
+2012,35,Butler,Horz
+2012,37,Cal Poly,BW
+2012,38,Cal St. Bakersfield,IND
+2012,39,Cal St. Fullerton,BW
+2012,40,Cal St. Northridge,BW
+2012,41,California,P12
+2012,42,Campbell,BSth
+2012,43,Canisius,MAAC
+2012,44,Central Arkansas,Slnd
+2012,45,Central Connecticut,NEC
+2012,46,Central Michigan,MAC
+2012,47,Charleston,SC
+2012,48,Charleston Southern,BSth
+2012,49,Charlotte,A10
+2012,50,Chattanooga,SC
+2012,51,Chicago St.,GWC
+2012,52,Cincinnati,BE
+2012,53,Clemson,ACC
+2012,54,Cleveland St.,Horz
+2012,55,Coastal Carolina,BSth
+2012,56,Colgate,Pat
+2012,57,Colorado,P12
+2012,58,Colorado St.,MWC
+2012,59,Columbia,Ivy
+2012,60,Connecticut,BE
+2012,61,Coppin St.,MEAC
+2012,62,Cornell,Ivy
+2012,63,Creighton,MVC
+2012,64,Dartmouth,Ivy
+2012,65,Davidson,SC
+2012,66,Dayton,A10
+2012,67,DePaul,BE
+2012,68,Delaware,CAA
+2012,69,Delaware St.,MEAC
+2012,70,Denver,SB
+2012,71,Detroit Mercy,Horz
+2012,72,Drake,MVC
+2012,73,Drexel,CAA
+2012,74,Duke,ACC
+2012,75,Duquesne,A10
+2012,76,East Carolina,CUSA
+2012,77,East Tennessee St.,ASun
+2012,79,Eastern Illinois,OVC
+2012,80,Eastern Kentucky,OVC
+2012,81,Eastern Mich.,MAC
+2012,82,Eastern Washington,BSky
+2012,83,Elon,SC
+2012,84,Evansville,MVC
+2012,85,FIU,SB
+2012,86,Fairfield,MAAC
+2012,87,Fairleigh Dickinson,NEC
+2012,88,Florida,SEC
+2012,89,Florida A&M,MEAC
+2012,90,Florida Atlantic,SB
+2012,91,Florida Gulf Coast,ASun
+2012,92,Florida St.,ACC
+2012,93,Fordham,A10
+2012,94,Fresno St.,WAC
+2012,95,Furman,SC
+2012,96,Gardner Webb,BSth
+2012,97,George Mason,CAA
+2012,98,George Washington,A10
+2012,99,Georgetown,BE
+2012,100,Georgia,SEC
+2012,101,Georgia Southern,SC
+2012,102,Georgia St.,CAA
+2012,103,Georgia Tech,ACC
+2012,104,Gonzaga,WCC
+2012,105,Grambling St.,SWAC
+2012,107,Green Bay,Horz
+2012,108,Hampton,MEAC
+2012,109,Harvard,Ivy
+2012,110,Hawaii,WAC
+2012,111,High Point,BSth
+2012,112,Hofstra,CAA
+2012,113,Holy Cross,Pat
+2012,114,Houston,CUSA
+2012,115,Houston Christian,GWC
+2012,116,Howard,MEAC
+2012,117,IU Indy,Sum
+2012,118,Idaho,WAC
+2012,119,Idaho St.,BSky
+2012,120,Illinois,B10
+2012,121,Illinois Chicago,Horz
+2012,122,Illinois St.,MVC
+2012,124,Indiana,B10
+2012,125,Indiana St.,MVC
+2012,126,Iona,MAAC
+2012,127,Iowa,B10
+2012,128,Iowa St.,B12
+2012,129,Jackson St.,SWAC
+2012,130,Jacksonville,ASun
+2012,131,Jacksonville St.,OVC
+2012,132,James Madison,CAA
+2012,133,Kansas,B12
+2012,134,Kansas St.,B12
+2012,135,Kennesaw St.,ASun
+2012,136,Kent St.,MAC
+2012,137,Kentucky,SEC
+2012,138,LIU,NEC
+2012,139,LSU,SEC
+2012,140,La Salle,A10
+2012,141,Lafayette,Pat
+2012,142,Lamar,Slnd
+2012,144,Lehigh,Pat
+2012,145,Liberty,BSth
+2012,147,Lipscomb,ASun
+2012,148,Little Rock,SB
+2012,149,Long Beach St.,BW
+2012,150,Longwood,IND
+2012,151,Louisiana,SB
+2012,152,Louisiana Monroe,SB
+2012,153,Louisiana Tech,WAC
+2012,154,Louisville,BE
+2012,155,Loyola Chicago,Horz
+2012,156,Loyola MD,MAAC
+2012,157,Loyola Marymount,WCC
+2012,158,Maine,AE
+2012,159,Manhattan,MAAC
+2012,160,Marist,MAAC
+2012,161,Marquette,BE
+2012,162,Marshall,CUSA
+2012,163,Maryland,ACC
+2012,164,Maryland Eastern Shore,MEAC
+2012,165,Massachusetts,A10
+2012,166,McNeese,Slnd
+2012,167,Memphis,CUSA
+2012,168,Mercer,ASun
+2012,171,Miami (FL),ACC
+2012,172,Miami (OH),MAC
+2012,173,Michigan,B10
+2012,174,Michigan St.,B10
+2012,175,Middle Tennessee,SB
+2012,176,Milwaukee,Horz
+2012,177,Minnesota,B10
+2012,178,Mississippi,SEC
+2012,179,Mississippi St.,SEC
+2012,180,Mississippi Valley St.,SWAC
+2012,181,Missouri,B12
+2012,182,Missouri St.,MVC
+2012,183,Monmouth,NEC
+2012,184,Montana,BSky
+2012,185,Montana St.,BSky
+2012,186,Morehead St.,OVC
+2012,187,Morgan St.,MEAC
+2012,188,Mount St. Mary's,NEC
+2012,189,Murray St.,OVC
+2012,190,NC State,ACC
+2012,191,NJIT,GWC
+2012,192,Navy,Pat
+2012,193,Nebraska,B10
+2012,194,Nebraska Omaha,IND
+2012,195,Nevada,WAC
+2012,196,New Hampshire,AE
+2012,198,New Mexico,MWC
+2012,199,New Mexico St.,WAC
+2012,200,New Orleans,IND
+2012,201,Niagara,MAAC
+2012,202,Nicholls St.,Slnd
+2012,203,Norfolk St.,MEAC
+2012,205,North Carolina,ACC
+2012,206,North Carolina A&T,MEAC
+2012,207,North Carolina Central,MEAC
+2012,208,North Dakota,GWC
+2012,209,North Dakota St.,Sum
+2012,210,North Florida,ASun
+2012,211,North Texas,SB
+2012,212,Northeastern,CAA
+2012,213,Northern Arizona,BSky
+2012,214,Northern Colorado,BSky
+2012,215,Northern Illinois,MAC
+2012,216,Northern Iowa,MVC
+2012,218,Northwestern,B10
+2012,219,Northwestern St.,Slnd
+2012,220,Notre Dame,BE
+2012,221,Oakland,Sum
+2012,222,Ohio,MAC
+2012,223,Ohio St.,B10
+2012,224,Oklahoma,B12
+2012,225,Oklahoma St.,B12
+2012,226,Old Dominion,CAA
+2012,227,Oral Roberts,Sum
+2012,228,Oregon,P12
+2012,229,Oregon St.,P12
+2012,230,Pacific,BW
+2012,231,Penn,Ivy
+2012,232,Penn St.,B10
+2012,233,Pepperdine,WCC
+2012,234,Pittsburgh,BE
+2012,235,Portland,WCC
+2012,236,Portland St.,BSky
+2012,237,Prairie View A&M,SWAC
+2012,238,Presbyterian,BSth
+2012,239,Princeton,Ivy
+2012,240,Providence,BE
+2012,241,Purdue,B10
+2012,242,Purdue Fort Wayne,Sum
+2012,244,Quinnipiac,NEC
+2012,245,Radford,BSth
+2012,246,Rhode Island,A10
+2012,247,Rice,CUSA
+2012,248,Richmond,A10
+2012,249,Rider,MAAC
+2012,250,Robert Morris,NEC
+2012,251,Rutgers,BE
+2012,252,SIU Edwardsville,OVC
+2012,253,SMU,CUSA
+2012,254,Sacramento St.,BSky
+2012,255,Sacred Heart,NEC
+2012,256,Saint Francis,NEC
+2012,257,Saint Joseph's,A10
+2012,258,Saint Louis,A10
+2012,259,Saint Mary's,WCC
+2012,260,Saint Peter's,MAAC
+2012,261,Sam Houston St.,Slnd
+2012,262,Samford,SC
+2012,263,San Diego,WCC
+2012,264,San Diego St.,MWC
+2012,265,San Francisco,WCC
+2012,266,San Jose St.,WAC
+2012,267,Santa Clara,WCC
+2012,268,Seattle,IND
+2012,269,Seton Hall,BE
+2012,270,Siena,MAAC
+2012,271,South Alabama,SB
+2012,272,South Carolina,SEC
+2012,273,South Carolina St.,MEAC
+2012,274,South Dakota,Sum
+2012,275,South Dakota St.,Sum
+2012,276,South Florida,BE
+2012,277,Southeast Missouri St.,OVC
+2012,278,Southeastern Louisiana,Slnd
+2012,279,Southern,SWAC
+2012,280,Southern Illinois,MVC
+2012,282,Southern Miss,CUSA
+2012,283,Southern Utah,Sum
+2012,284,St. Bonaventure,A10
+2012,285,St. John's,BE
+2012,287,Stanford,P12
+2012,288,Stephen F. Austin,Slnd
+2012,289,Stetson,ASun
+2012,291,Stony Brook,AE
+2012,292,Syracuse,BE
+2012,293,TCU,MWC
+2012,295,Temple,A10
+2012,296,Tennessee,SEC
+2012,297,Tennessee Martin,OVC
+2012,298,Tennessee St.,OVC
+2012,299,Tennessee Tech,OVC
+2012,300,Texas,B12
+2012,301,Texas A&M,B12
+2012,302,Texas A&M Corpus Chris,Slnd
+2012,303,Texas Southern,SWAC
+2012,304,Texas St.,Slnd
+2012,305,Texas Tech,B12
+2012,306,The Citadel,SC
+2012,307,Toledo,MAC
+2012,308,Towson,CAA
+2012,309,Troy,SB
+2012,310,Tulane,CUSA
+2012,311,Tulsa,CUSA
+2012,312,UAB,CUSA
+2012,313,UC Davis,BW
+2012,314,UC Irvine,BW
+2012,315,UC Riverside,BW
+2012,317,UC Santa Barbara,BW
+2012,318,UCF,CUSA
+2012,319,UCLA,P12
+2012,320,UMBC,AE
+2012,321,UMKC,Sum
+2012,323,UNC Asheville,BSth
+2012,324,UNC Greensboro,SC
+2012,325,UNC Wilmington,CAA
+2012,326,UNLV,MWC
+2012,327,USC,P12
+2012,328,USC Upstate,ASun
+2012,329,UT Arlington,Slnd
+2012,330,UT Rio Grande Valley,GWC
+2012,331,UTEP,CUSA
+2012,332,UTSA,Slnd
+2012,333,Utah,P12
+2012,334,Utah St.,WAC
+2012,336,Utah Valley,GWC
+2012,337,VCU,CAA
+2012,338,VMI,BSth
+2012,339,Valparaiso,Horz
+2012,340,Vanderbilt,SEC
+2012,341,Vermont,AE
+2012,342,Villanova,BE
+2012,343,Virginia,ACC
+2012,344,Virginia Tech,ACC
+2012,345,Wagner,NEC
+2012,346,Wake Forest,ACC
+2012,347,Washington,P12
+2012,348,Washington St.,P12
+2012,349,Weber St.,BSky
+2012,351,West Virginia,BE
+2012,352,Western Carolina,SC
+2012,353,Western Illinois,Sum
+2012,354,Western Kentucky,SB
+2012,355,Western Mich.,MAC
+2012,356,Wichita St.,MVC
+2012,357,William & Mary,CAA
+2012,358,Winthrop,BSth
+2012,359,Wisconsin,B10
+2012,360,Wofford,SC
+2012,361,Wright St.,Horz
+2012,362,Wyoming,MWC
+2012,363,Xavier,A10
+2012,364,Yale,Ivy
+2012,365,Youngstown St.,Horz
+2012,824,Hartford,AE
+2012,825,St. Francis Brooklyn,NEC
+2012,826,Savannah St.,MEAC
+2013,2,Air Force,MWC
+2013,3,Akron,MAC
+2013,4,Alabama,SEC
+2013,5,Alabama A&M,SWAC
+2013,6,Alabama St.,SWAC
+2013,7,Albany,AE
+2013,8,Alcorn St.,SWAC
+2013,9,American,Pat
+2013,10,Appalachian St.,SC
+2013,11,Arizona,P12
+2013,12,Arizona St.,P12
+2013,13,Arkansas,SEC
+2013,14,Arkansas Pine Bluff,SWAC
+2013,15,Arkansas St.,SB
+2013,16,Army,Pat
+2013,17,Auburn,SEC
+2013,18,Austin Peay,OVC
+2013,19,BYU,WCC
+2013,20,Ball St.,MAC
+2013,21,Baylor,B12
+2013,23,Belmont,OVC
+2013,24,Bethune Cookman,MEAC
+2013,25,Binghamton,AE
+2013,26,Boise St.,MWC
+2013,27,Boston College,ACC
+2013,28,Boston University,AE
+2013,29,Bowling Green,MAC
+2013,30,Bradley,MVC
+2013,31,Brown,Ivy
+2013,32,Bryant,NEC
+2013,33,Bucknell,Pat
+2013,34,Buffalo,MAC
+2013,35,Butler,A10
+2013,37,Cal Poly,BW
+2013,38,Cal St. Bakersfield,IND
+2013,39,Cal St. Fullerton,BW
+2013,40,Cal St. Northridge,BW
+2013,41,California,P12
+2013,42,Campbell,BSth
+2013,43,Canisius,MAAC
+2013,44,Central Arkansas,Slnd
+2013,45,Central Connecticut,NEC
+2013,46,Central Michigan,MAC
+2013,47,Charleston,SC
+2013,48,Charleston Southern,BSth
+2013,49,Charlotte,A10
+2013,50,Chattanooga,SC
+2013,51,Chicago St.,GWC
+2013,52,Cincinnati,BE
+2013,53,Clemson,ACC
+2013,54,Cleveland St.,Horz
+2013,55,Coastal Carolina,BSth
+2013,56,Colgate,Pat
+2013,57,Colorado,P12
+2013,58,Colorado St.,MWC
+2013,59,Columbia,Ivy
+2013,60,Connecticut,BE
+2013,61,Coppin St.,MEAC
+2013,62,Cornell,Ivy
+2013,63,Creighton,MVC
+2013,64,Dartmouth,Ivy
+2013,65,Davidson,SC
+2013,66,Dayton,A10
+2013,67,DePaul,BE
+2013,68,Delaware,CAA
+2013,69,Delaware St.,MEAC
+2013,70,Denver,WAC
+2013,71,Detroit Mercy,Horz
+2013,72,Drake,MVC
+2013,73,Drexel,CAA
+2013,74,Duke,ACC
+2013,75,Duquesne,A10
+2013,76,East Carolina,CUSA
+2013,77,East Tennessee St.,ASun
+2013,79,Eastern Illinois,OVC
+2013,80,Eastern Kentucky,OVC
+2013,81,Eastern Mich.,MAC
+2013,82,Eastern Washington,BSky
+2013,83,Elon,SC
+2013,84,Evansville,MVC
+2013,85,FIU,SB
+2013,86,Fairfield,MAAC
+2013,87,Fairleigh Dickinson,NEC
+2013,88,Florida,SEC
+2013,89,Florida A&M,MEAC
+2013,90,Florida Atlantic,SB
+2013,91,Florida Gulf Coast,ASun
+2013,92,Florida St.,ACC
+2013,93,Fordham,A10
+2013,94,Fresno St.,MWC
+2013,95,Furman,SC
+2013,96,Gardner Webb,BSth
+2013,97,George Mason,CAA
+2013,98,George Washington,A10
+2013,99,Georgetown,BE
+2013,100,Georgia,SEC
+2013,101,Georgia Southern,SC
+2013,102,Georgia St.,CAA
+2013,103,Georgia Tech,ACC
+2013,104,Gonzaga,WCC
+2013,105,Grambling St.,SWAC
+2013,107,Green Bay,Horz
+2013,108,Hampton,MEAC
+2013,109,Harvard,Ivy
+2013,110,Hawaii,BW
+2013,111,High Point,BSth
+2013,112,Hofstra,CAA
+2013,113,Holy Cross,Pat
+2013,114,Houston,CUSA
+2013,115,Houston Christian,GWC
+2013,116,Howard,MEAC
+2013,117,IU Indy,Sum
+2013,118,Idaho,WAC
+2013,119,Idaho St.,BSky
+2013,120,Illinois,B10
+2013,121,Illinois Chicago,Horz
+2013,122,Illinois St.,MVC
+2013,124,Indiana,B10
+2013,125,Indiana St.,MVC
+2013,126,Iona,MAAC
+2013,127,Iowa,B10
+2013,128,Iowa St.,B12
+2013,129,Jackson St.,SWAC
+2013,130,Jacksonville,ASun
+2013,131,Jacksonville St.,OVC
+2013,132,James Madison,CAA
+2013,133,Kansas,B12
+2013,134,Kansas St.,B12
+2013,135,Kennesaw St.,ASun
+2013,136,Kent St.,MAC
+2013,137,Kentucky,SEC
+2013,138,LIU,NEC
+2013,139,LSU,SEC
+2013,140,La Salle,A10
+2013,141,Lafayette,Pat
+2013,142,Lamar,Slnd
+2013,144,Lehigh,Pat
+2013,145,Liberty,BSth
+2013,147,Lipscomb,ASun
+2013,148,Little Rock,SB
+2013,149,Long Beach St.,BW
+2013,150,Longwood,BSth
+2013,151,Louisiana,SB
+2013,152,Louisiana Monroe,SB
+2013,153,Louisiana Tech,WAC
+2013,154,Louisville,BE
+2013,155,Loyola Chicago,Horz
+2013,156,Loyola MD,MAAC
+2013,157,Loyola Marymount,WCC
+2013,158,Maine,AE
+2013,159,Manhattan,MAAC
+2013,160,Marist,MAAC
+2013,161,Marquette,BE
+2013,162,Marshall,CUSA
+2013,163,Maryland,ACC
+2013,164,Maryland Eastern Shore,MEAC
+2013,165,Massachusetts,A10
+2013,166,McNeese,Slnd
+2013,167,Memphis,CUSA
+2013,168,Mercer,ASun
+2013,171,Miami (FL),ACC
+2013,172,Miami (OH),MAC
+2013,173,Michigan,B10
+2013,174,Michigan St.,B10
+2013,175,Middle Tennessee,SB
+2013,176,Milwaukee,Horz
+2013,177,Minnesota,B10
+2013,178,Mississippi,SEC
+2013,179,Mississippi St.,SEC
+2013,180,Mississippi Valley St.,SWAC
+2013,181,Missouri,SEC
+2013,182,Missouri St.,MVC
+2013,183,Monmouth,NEC
+2013,184,Montana,BSky
+2013,185,Montana St.,BSky
+2013,186,Morehead St.,OVC
+2013,187,Morgan St.,MEAC
+2013,188,Mount St. Mary's,NEC
+2013,189,Murray St.,OVC
+2013,190,NC State,ACC
+2013,191,NJIT,GWC
+2013,192,Navy,Pat
+2013,193,Nebraska,B10
+2013,194,Nebraska Omaha,Sum
+2013,195,Nevada,MWC
+2013,196,New Hampshire,AE
+2013,198,New Mexico,MWC
+2013,199,New Mexico St.,WAC
+2013,200,New Orleans,IND
+2013,201,Niagara,MAAC
+2013,202,Nicholls St.,Slnd
+2013,203,Norfolk St.,MEAC
+2013,205,North Carolina,ACC
+2013,206,North Carolina A&T,MEAC
+2013,207,North Carolina Central,MEAC
+2013,208,North Dakota,BSky
+2013,209,North Dakota St.,Sum
+2013,210,North Florida,ASun
+2013,211,North Texas,SB
+2013,212,Northeastern,CAA
+2013,213,Northern Arizona,BSky
+2013,214,Northern Colorado,BSky
+2013,215,Northern Illinois,MAC
+2013,216,Northern Iowa,MVC
+2013,217,Northern Kentucky,ASun
+2013,218,Northwestern,B10
+2013,219,Northwestern St.,Slnd
+2013,220,Notre Dame,BE
+2013,221,Oakland,Sum
+2013,222,Ohio,MAC
+2013,223,Ohio St.,B10
+2013,224,Oklahoma,B12
+2013,225,Oklahoma St.,B12
+2013,226,Old Dominion,CAA
+2013,227,Oral Roberts,Slnd
+2013,228,Oregon,P12
+2013,229,Oregon St.,P12
+2013,230,Pacific,BW
+2013,231,Penn,Ivy
+2013,232,Penn St.,B10
+2013,233,Pepperdine,WCC
+2013,234,Pittsburgh,BE
+2013,235,Portland,WCC
+2013,236,Portland St.,BSky
+2013,237,Prairie View A&M,SWAC
+2013,238,Presbyterian,BSth
+2013,239,Princeton,Ivy
+2013,240,Providence,BE
+2013,241,Purdue,B10
+2013,242,Purdue Fort Wayne,Sum
+2013,244,Quinnipiac,NEC
+2013,245,Radford,BSth
+2013,246,Rhode Island,A10
+2013,247,Rice,CUSA
+2013,248,Richmond,A10
+2013,249,Rider,MAAC
+2013,250,Robert Morris,NEC
+2013,251,Rutgers,BE
+2013,252,SIU Edwardsville,OVC
+2013,253,SMU,CUSA
+2013,254,Sacramento St.,BSky
+2013,255,Sacred Heart,NEC
+2013,256,Saint Francis,NEC
+2013,257,Saint Joseph's,A10
+2013,258,Saint Louis,A10
+2013,259,Saint Mary's,WCC
+2013,260,Saint Peter's,MAAC
+2013,261,Sam Houston St.,Slnd
+2013,262,Samford,SC
+2013,263,San Diego,WCC
+2013,264,San Diego St.,MWC
+2013,265,San Francisco,WCC
+2013,266,San Jose St.,WAC
+2013,267,Santa Clara,WCC
+2013,268,Seattle,WAC
+2013,269,Seton Hall,BE
+2013,270,Siena,MAAC
+2013,271,South Alabama,SB
+2013,272,South Carolina,SEC
+2013,273,South Carolina St.,MEAC
+2013,274,South Dakota,Sum
+2013,275,South Dakota St.,Sum
+2013,276,South Florida,BE
+2013,277,Southeast Missouri St.,OVC
+2013,278,Southeastern Louisiana,Slnd
+2013,279,Southern,SWAC
+2013,280,Southern Illinois,MVC
+2013,282,Southern Miss,CUSA
+2013,283,Southern Utah,BSky
+2013,284,St. Bonaventure,A10
+2013,285,St. John's,BE
+2013,287,Stanford,P12
+2013,288,Stephen F. Austin,Slnd
+2013,289,Stetson,ASun
+2013,291,Stony Brook,AE
+2013,292,Syracuse,BE
+2013,293,TCU,B12
+2013,295,Temple,A10
+2013,296,Tennessee,SEC
+2013,297,Tennessee Martin,OVC
+2013,298,Tennessee St.,OVC
+2013,299,Tennessee Tech,OVC
+2013,300,Texas,B12
+2013,301,Texas A&M,SEC
+2013,302,Texas A&M Corpus Chris,Slnd
+2013,303,Texas Southern,SWAC
+2013,304,Texas St.,WAC
+2013,305,Texas Tech,B12
+2013,306,The Citadel,SC
+2013,307,Toledo,MAC
+2013,308,Towson,CAA
+2013,309,Troy,SB
+2013,310,Tulane,CUSA
+2013,311,Tulsa,CUSA
+2013,312,UAB,CUSA
+2013,313,UC Davis,BW
+2013,314,UC Irvine,BW
+2013,315,UC Riverside,BW
+2013,317,UC Santa Barbara,BW
+2013,318,UCF,CUSA
+2013,319,UCLA,P12
+2013,320,UMBC,AE
+2013,321,UMKC,Sum
+2013,323,UNC Asheville,BSth
+2013,324,UNC Greensboro,SC
+2013,325,UNC Wilmington,CAA
+2013,326,UNLV,MWC
+2013,327,USC,P12
+2013,328,USC Upstate,ASun
+2013,329,UT Arlington,WAC
+2013,330,UT Rio Grande Valley,GWC
+2013,331,UTEP,CUSA
+2013,332,UTSA,WAC
+2013,333,Utah,P12
+2013,334,Utah St.,WAC
+2013,336,Utah Valley,GWC
+2013,337,VCU,A10
+2013,338,VMI,BSth
+2013,339,Valparaiso,Horz
+2013,340,Vanderbilt,SEC
+2013,341,Vermont,AE
+2013,342,Villanova,BE
+2013,343,Virginia,ACC
+2013,344,Virginia Tech,ACC
+2013,345,Wagner,NEC
+2013,346,Wake Forest,ACC
+2013,347,Washington,P12
+2013,348,Washington St.,P12
+2013,349,Weber St.,BSky
+2013,351,West Virginia,B12
+2013,352,Western Carolina,SC
+2013,353,Western Illinois,Sum
+2013,354,Western Kentucky,SB
+2013,355,Western Mich.,MAC
+2013,356,Wichita St.,MVC
+2013,357,William & Mary,CAA
+2013,358,Winthrop,BSth
+2013,359,Wisconsin,B10
+2013,360,Wofford,SC
+2013,361,Wright St.,Horz
+2013,362,Wyoming,MWC
+2013,363,Xavier,A10
+2013,364,Yale,Ivy
+2013,365,Youngstown St.,Horz
+2013,824,Hartford,AE
+2013,825,St. Francis Brooklyn,NEC
+2013,826,Savannah St.,MEAC
+2014,1,Abilene Christian,Slnd
+2014,2,Air Force,MWC
+2014,3,Akron,MAC
+2014,4,Alabama,SEC
+2014,5,Alabama A&M,SWAC
+2014,6,Alabama St.,SWAC
+2014,7,Albany,AE
+2014,8,Alcorn St.,SWAC
+2014,9,American,Pat
+2014,10,Appalachian St.,SC
+2014,11,Arizona,P12
+2014,12,Arizona St.,P12
+2014,13,Arkansas,SEC
+2014,14,Arkansas Pine Bluff,SWAC
+2014,15,Arkansas St.,SB
+2014,16,Army,Pat
+2014,17,Auburn,SEC
+2014,18,Austin Peay,OVC
+2014,19,BYU,WCC
+2014,20,Ball St.,MAC
+2014,21,Baylor,B12
+2014,23,Belmont,OVC
+2014,24,Bethune Cookman,MEAC
+2014,25,Binghamton,AE
+2014,26,Boise St.,MWC
+2014,27,Boston College,ACC
+2014,28,Boston University,Pat
+2014,29,Bowling Green,MAC
+2014,30,Bradley,MVC
+2014,31,Brown,Ivy
+2014,32,Bryant,NEC
+2014,33,Bucknell,Pat
+2014,34,Buffalo,MAC
+2014,35,Butler,BE
+2014,37,Cal Poly,BW
+2014,38,Cal St. Bakersfield,WAC
+2014,39,Cal St. Fullerton,BW
+2014,40,Cal St. Northridge,BW
+2014,41,California,P12
+2014,42,Campbell,BSth
+2014,43,Canisius,MAAC
+2014,44,Central Arkansas,Slnd
+2014,45,Central Connecticut,NEC
+2014,46,Central Michigan,MAC
+2014,47,Charleston,CAA
+2014,48,Charleston Southern,BSth
+2014,49,Charlotte,CUSA
+2014,50,Chattanooga,SC
+2014,51,Chicago St.,WAC
+2014,52,Cincinnati,Amer
+2014,53,Clemson,ACC
+2014,54,Cleveland St.,Horz
+2014,55,Coastal Carolina,BSth
+2014,56,Colgate,Pat
+2014,57,Colorado,P12
+2014,58,Colorado St.,MWC
+2014,59,Columbia,Ivy
+2014,60,Connecticut,Amer
+2014,61,Coppin St.,MEAC
+2014,62,Cornell,Ivy
+2014,63,Creighton,BE
+2014,64,Dartmouth,Ivy
+2014,65,Davidson,SC
+2014,66,Dayton,A10
+2014,67,DePaul,BE
+2014,68,Delaware,CAA
+2014,69,Delaware St.,MEAC
+2014,70,Denver,Sum
+2014,71,Detroit Mercy,Horz
+2014,72,Drake,MVC
+2014,73,Drexel,CAA
+2014,74,Duke,ACC
+2014,75,Duquesne,A10
+2014,76,East Carolina,CUSA
+2014,77,East Tennessee St.,ASun
+2014,79,Eastern Illinois,OVC
+2014,80,Eastern Kentucky,OVC
+2014,81,Eastern Mich.,MAC
+2014,82,Eastern Washington,BSky
+2014,83,Elon,SC
+2014,84,Evansville,MVC
+2014,85,FIU,CUSA
+2014,86,Fairfield,MAAC
+2014,87,Fairleigh Dickinson,NEC
+2014,88,Florida,SEC
+2014,89,Florida A&M,MEAC
+2014,90,Florida Atlantic,CUSA
+2014,91,Florida Gulf Coast,ASun
+2014,92,Florida St.,ACC
+2014,93,Fordham,A10
+2014,94,Fresno St.,MWC
+2014,95,Furman,SC
+2014,96,Gardner Webb,BSth
+2014,97,George Mason,A10
+2014,98,George Washington,A10
+2014,99,Georgetown,BE
+2014,100,Georgia,SEC
+2014,101,Georgia Southern,SC
+2014,102,Georgia St.,SB
+2014,103,Georgia Tech,ACC
+2014,104,Gonzaga,WCC
+2014,105,Grambling St.,SWAC
+2014,106,Grand Canyon,WAC
+2014,107,Green Bay,Horz
+2014,108,Hampton,MEAC
+2014,109,Harvard,Ivy
+2014,110,Hawaii,BW
+2014,111,High Point,BSth
+2014,112,Hofstra,CAA
+2014,113,Holy Cross,Pat
+2014,114,Houston,Amer
+2014,115,Houston Christian,Slnd
+2014,116,Howard,MEAC
+2014,117,IU Indy,Sum
+2014,118,Idaho,WAC
+2014,119,Idaho St.,BSky
+2014,120,Illinois,B10
+2014,121,Illinois Chicago,Horz
+2014,122,Illinois St.,MVC
+2014,123,Incarnate Word,Slnd
+2014,124,Indiana,B10
+2014,125,Indiana St.,MVC
+2014,126,Iona,MAAC
+2014,127,Iowa,B10
+2014,128,Iowa St.,B12
+2014,129,Jackson St.,SWAC
+2014,130,Jacksonville,ASun
+2014,131,Jacksonville St.,OVC
+2014,132,James Madison,CAA
+2014,133,Kansas,B12
+2014,134,Kansas St.,B12
+2014,135,Kennesaw St.,ASun
+2014,136,Kent St.,MAC
+2014,137,Kentucky,SEC
+2014,138,LIU,NEC
+2014,139,LSU,SEC
+2014,140,La Salle,A10
+2014,141,Lafayette,Pat
+2014,142,Lamar,Slnd
+2014,144,Lehigh,Pat
+2014,145,Liberty,BSth
+2014,147,Lipscomb,ASun
+2014,148,Little Rock,SB
+2014,149,Long Beach St.,BW
+2014,150,Longwood,BSth
+2014,151,Louisiana,SB
+2014,152,Louisiana Monroe,SB
+2014,153,Louisiana Tech,CUSA
+2014,154,Louisville,Amer
+2014,155,Loyola Chicago,MVC
+2014,156,Loyola MD,Pat
+2014,157,Loyola Marymount,WCC
+2014,158,Maine,AE
+2014,159,Manhattan,MAAC
+2014,160,Marist,MAAC
+2014,161,Marquette,BE
+2014,162,Marshall,CUSA
+2014,163,Maryland,ACC
+2014,164,Maryland Eastern Shore,MEAC
+2014,165,Massachusetts,A10
+2014,166,McNeese,Slnd
+2014,167,Memphis,Amer
+2014,168,Mercer,ASun
+2014,171,Miami (FL),ACC
+2014,172,Miami (OH),MAC
+2014,173,Michigan,B10
+2014,174,Michigan St.,B10
+2014,175,Middle Tennessee,CUSA
+2014,176,Milwaukee,Horz
+2014,177,Minnesota,B10
+2014,178,Mississippi,SEC
+2014,179,Mississippi St.,SEC
+2014,180,Mississippi Valley St.,SWAC
+2014,181,Missouri,SEC
+2014,182,Missouri St.,MVC
+2014,183,Monmouth,MAAC
+2014,184,Montana,BSky
+2014,185,Montana St.,BSky
+2014,186,Morehead St.,OVC
+2014,187,Morgan St.,MEAC
+2014,188,Mount St. Mary's,NEC
+2014,189,Murray St.,OVC
+2014,190,NC State,ACC
+2014,191,NJIT,IND
+2014,192,Navy,Pat
+2014,193,Nebraska,B10
+2014,194,Nebraska Omaha,Sum
+2014,195,Nevada,MWC
+2014,196,New Hampshire,AE
+2014,198,New Mexico,MWC
+2014,199,New Mexico St.,WAC
+2014,200,New Orleans,Slnd
+2014,201,Niagara,MAAC
+2014,202,Nicholls St.,Slnd
+2014,203,Norfolk St.,MEAC
+2014,205,North Carolina,ACC
+2014,206,North Carolina A&T,MEAC
+2014,207,North Carolina Central,MEAC
+2014,208,North Dakota,BSky
+2014,209,North Dakota St.,Sum
+2014,210,North Florida,ASun
+2014,211,North Texas,CUSA
+2014,212,Northeastern,CAA
+2014,213,Northern Arizona,BSky
+2014,214,Northern Colorado,BSky
+2014,215,Northern Illinois,MAC
+2014,216,Northern Iowa,MVC
+2014,217,Northern Kentucky,ASun
+2014,218,Northwestern,B10
+2014,219,Northwestern St.,Slnd
+2014,220,Notre Dame,ACC
+2014,221,Oakland,Horz
+2014,222,Ohio,MAC
+2014,223,Ohio St.,B10
+2014,224,Oklahoma,B12
+2014,225,Oklahoma St.,B12
+2014,226,Old Dominion,CUSA
+2014,227,Oral Roberts,Slnd
+2014,228,Oregon,P12
+2014,229,Oregon St.,P12
+2014,230,Pacific,WCC
+2014,231,Penn,Ivy
+2014,232,Penn St.,B10
+2014,233,Pepperdine,WCC
+2014,234,Pittsburgh,ACC
+2014,235,Portland,WCC
+2014,236,Portland St.,BSky
+2014,237,Prairie View A&M,SWAC
+2014,238,Presbyterian,BSth
+2014,239,Princeton,Ivy
+2014,240,Providence,BE
+2014,241,Purdue,B10
+2014,242,Purdue Fort Wayne,Sum
+2014,244,Quinnipiac,MAAC
+2014,245,Radford,BSth
+2014,246,Rhode Island,A10
+2014,247,Rice,CUSA
+2014,248,Richmond,A10
+2014,249,Rider,MAAC
+2014,250,Robert Morris,NEC
+2014,251,Rutgers,Amer
+2014,252,SIU Edwardsville,OVC
+2014,253,SMU,Amer
+2014,254,Sacramento St.,BSky
+2014,255,Sacred Heart,NEC
+2014,256,Saint Francis,NEC
+2014,257,Saint Joseph's,A10
+2014,258,Saint Louis,A10
+2014,259,Saint Mary's,WCC
+2014,260,Saint Peter's,MAAC
+2014,261,Sam Houston St.,Slnd
+2014,262,Samford,SC
+2014,263,San Diego,WCC
+2014,264,San Diego St.,MWC
+2014,265,San Francisco,WCC
+2014,266,San Jose St.,MWC
+2014,267,Santa Clara,WCC
+2014,268,Seattle,WAC
+2014,269,Seton Hall,BE
+2014,270,Siena,MAAC
+2014,271,South Alabama,SB
+2014,272,South Carolina,SEC
+2014,273,South Carolina St.,MEAC
+2014,274,South Dakota,Sum
+2014,275,South Dakota St.,Sum
+2014,276,South Florida,Amer
+2014,277,Southeast Missouri St.,OVC
+2014,278,Southeastern Louisiana,Slnd
+2014,279,Southern,SWAC
+2014,280,Southern Illinois,MVC
+2014,282,Southern Miss,CUSA
+2014,283,Southern Utah,BSky
+2014,284,St. Bonaventure,A10
+2014,285,St. John's,BE
+2014,287,Stanford,P12
+2014,288,Stephen F. Austin,Slnd
+2014,289,Stetson,ASun
+2014,291,Stony Brook,AE
+2014,292,Syracuse,ACC
+2014,293,TCU,B12
+2014,295,Temple,Amer
+2014,296,Tennessee,SEC
+2014,297,Tennessee Martin,OVC
+2014,298,Tennessee St.,OVC
+2014,299,Tennessee Tech,OVC
+2014,300,Texas,B12
+2014,301,Texas A&M,SEC
+2014,302,Texas A&M Corpus Chris,Slnd
+2014,303,Texas Southern,SWAC
+2014,304,Texas St.,SB
+2014,305,Texas Tech,B12
+2014,306,The Citadel,SC
+2014,307,Toledo,MAC
+2014,308,Towson,CAA
+2014,309,Troy,SB
+2014,310,Tulane,CUSA
+2014,311,Tulsa,CUSA
+2014,312,UAB,CUSA
+2014,313,UC Davis,BW
+2014,314,UC Irvine,BW
+2014,315,UC Riverside,BW
+2014,317,UC Santa Barbara,BW
+2014,318,UCF,Amer
+2014,319,UCLA,P12
+2014,320,UMBC,AE
+2014,321,UMKC,WAC
+2014,322,UMass Lowell,AE
+2014,323,UNC Asheville,BSth
+2014,324,UNC Greensboro,SC
+2014,325,UNC Wilmington,CAA
+2014,326,UNLV,MWC
+2014,327,USC,P12
+2014,328,USC Upstate,ASun
+2014,329,UT Arlington,SB
+2014,330,UT Rio Grande Valley,WAC
+2014,331,UTEP,CUSA
+2014,332,UTSA,CUSA
+2014,333,Utah,P12
+2014,334,Utah St.,MWC
+2014,336,Utah Valley,WAC
+2014,337,VCU,A10
+2014,338,VMI,BSth
+2014,339,Valparaiso,Horz
+2014,340,Vanderbilt,SEC
+2014,341,Vermont,AE
+2014,342,Villanova,BE
+2014,343,Virginia,ACC
+2014,344,Virginia Tech,ACC
+2014,345,Wagner,NEC
+2014,346,Wake Forest,ACC
+2014,347,Washington,P12
+2014,348,Washington St.,P12
+2014,349,Weber St.,BSky
+2014,351,West Virginia,B12
+2014,352,Western Carolina,SC
+2014,353,Western Illinois,Sum
+2014,354,Western Kentucky,SB
+2014,355,Western Mich.,MAC
+2014,356,Wichita St.,MVC
+2014,357,William & Mary,CAA
+2014,358,Winthrop,BSth
+2014,359,Wisconsin,B10
+2014,360,Wofford,SC
+2014,361,Wright St.,Horz
+2014,362,Wyoming,MWC
+2014,363,Xavier,BE
+2014,364,Yale,Ivy
+2014,365,Youngstown St.,Horz
+2014,824,Hartford,AE
+2014,825,St. Francis Brooklyn,NEC
+2014,826,Savannah St.,MEAC
+2015,1,Abilene Christian,Slnd
+2015,2,Air Force,MWC
+2015,3,Akron,MAC
+2015,4,Alabama,SEC
+2015,5,Alabama A&M,SWAC
+2015,6,Alabama St.,SWAC
+2015,7,Albany,AE
+2015,8,Alcorn St.,SWAC
+2015,9,American,Pat
+2015,10,Appalachian St.,SB
+2015,11,Arizona,P12
+2015,12,Arizona St.,P12
+2015,13,Arkansas,SEC
+2015,14,Arkansas Pine Bluff,SWAC
+2015,15,Arkansas St.,SB
+2015,16,Army,Pat
+2015,17,Auburn,SEC
+2015,18,Austin Peay,OVC
+2015,19,BYU,WCC
+2015,20,Ball St.,MAC
+2015,21,Baylor,B12
+2015,23,Belmont,OVC
+2015,24,Bethune Cookman,MEAC
+2015,25,Binghamton,AE
+2015,26,Boise St.,MWC
+2015,27,Boston College,ACC
+2015,28,Boston University,Pat
+2015,29,Bowling Green,MAC
+2015,30,Bradley,MVC
+2015,31,Brown,Ivy
+2015,32,Bryant,NEC
+2015,33,Bucknell,Pat
+2015,34,Buffalo,MAC
+2015,35,Butler,BE
+2015,37,Cal Poly,BW
+2015,38,Cal St. Bakersfield,WAC
+2015,39,Cal St. Fullerton,BW
+2015,40,Cal St. Northridge,BW
+2015,41,California,P12
+2015,42,Campbell,BSth
+2015,43,Canisius,MAAC
+2015,44,Central Arkansas,Slnd
+2015,45,Central Connecticut,NEC
+2015,46,Central Michigan,MAC
+2015,47,Charleston,CAA
+2015,48,Charleston Southern,BSth
+2015,49,Charlotte,CUSA
+2015,50,Chattanooga,SC
+2015,51,Chicago St.,WAC
+2015,52,Cincinnati,Amer
+2015,53,Clemson,ACC
+2015,54,Cleveland St.,Horz
+2015,55,Coastal Carolina,BSth
+2015,56,Colgate,Pat
+2015,57,Colorado,P12
+2015,58,Colorado St.,MWC
+2015,59,Columbia,Ivy
+2015,60,Connecticut,Amer
+2015,61,Coppin St.,MEAC
+2015,62,Cornell,Ivy
+2015,63,Creighton,BE
+2015,64,Dartmouth,Ivy
+2015,65,Davidson,A10
+2015,66,Dayton,A10
+2015,67,DePaul,BE
+2015,68,Delaware,CAA
+2015,69,Delaware St.,MEAC
+2015,70,Denver,Sum
+2015,71,Detroit Mercy,Horz
+2015,72,Drake,MVC
+2015,73,Drexel,CAA
+2015,74,Duke,ACC
+2015,75,Duquesne,A10
+2015,76,East Carolina,Amer
+2015,77,East Tennessee St.,SC
+2015,79,Eastern Illinois,OVC
+2015,80,Eastern Kentucky,OVC
+2015,81,Eastern Mich.,MAC
+2015,82,Eastern Washington,BSky
+2015,83,Elon,CAA
+2015,84,Evansville,MVC
+2015,85,FIU,CUSA
+2015,86,Fairfield,MAAC
+2015,87,Fairleigh Dickinson,NEC
+2015,88,Florida,SEC
+2015,89,Florida A&M,MEAC
+2015,90,Florida Atlantic,CUSA
+2015,91,Florida Gulf Coast,ASun
+2015,92,Florida St.,ACC
+2015,93,Fordham,A10
+2015,94,Fresno St.,MWC
+2015,95,Furman,SC
+2015,96,Gardner Webb,BSth
+2015,97,George Mason,A10
+2015,98,George Washington,A10
+2015,99,Georgetown,BE
+2015,100,Georgia,SEC
+2015,101,Georgia Southern,SB
+2015,102,Georgia St.,SB
+2015,103,Georgia Tech,ACC
+2015,104,Gonzaga,WCC
+2015,105,Grambling St.,SWAC
+2015,106,Grand Canyon,WAC
+2015,107,Green Bay,Horz
+2015,108,Hampton,MEAC
+2015,109,Harvard,Ivy
+2015,110,Hawaii,BW
+2015,111,High Point,BSth
+2015,112,Hofstra,CAA
+2015,113,Holy Cross,Pat
+2015,114,Houston,Amer
+2015,115,Houston Christian,Slnd
+2015,116,Howard,MEAC
+2015,117,IU Indy,Sum
+2015,118,Idaho,BSky
+2015,119,Idaho St.,BSky
+2015,120,Illinois,B10
+2015,121,Illinois Chicago,Horz
+2015,122,Illinois St.,MVC
+2015,123,Incarnate Word,Slnd
+2015,124,Indiana,B10
+2015,125,Indiana St.,MVC
+2015,126,Iona,MAAC
+2015,127,Iowa,B10
+2015,128,Iowa St.,B12
+2015,129,Jackson St.,SWAC
+2015,130,Jacksonville,ASun
+2015,131,Jacksonville St.,OVC
+2015,132,James Madison,CAA
+2015,133,Kansas,B12
+2015,134,Kansas St.,B12
+2015,135,Kennesaw St.,ASun
+2015,136,Kent St.,MAC
+2015,137,Kentucky,SEC
+2015,138,LIU,NEC
+2015,139,LSU,SEC
+2015,140,La Salle,A10
+2015,141,Lafayette,Pat
+2015,142,Lamar,Slnd
+2015,144,Lehigh,Pat
+2015,145,Liberty,BSth
+2015,147,Lipscomb,ASun
+2015,148,Little Rock,SB
+2015,149,Long Beach St.,BW
+2015,150,Longwood,BSth
+2015,151,Louisiana,SB
+2015,152,Louisiana Monroe,SB
+2015,153,Louisiana Tech,CUSA
+2015,154,Louisville,ACC
+2015,155,Loyola Chicago,MVC
+2015,156,Loyola MD,Pat
+2015,157,Loyola Marymount,WCC
+2015,158,Maine,AE
+2015,159,Manhattan,MAAC
+2015,160,Marist,MAAC
+2015,161,Marquette,BE
+2015,162,Marshall,CUSA
+2015,163,Maryland,B10
+2015,164,Maryland Eastern Shore,MEAC
+2015,165,Massachusetts,A10
+2015,166,McNeese,Slnd
+2015,167,Memphis,Amer
+2015,168,Mercer,SC
+2015,171,Miami (FL),ACC
+2015,172,Miami (OH),MAC
+2015,173,Michigan,B10
+2015,174,Michigan St.,B10
+2015,175,Middle Tennessee,CUSA
+2015,176,Milwaukee,Horz
+2015,177,Minnesota,B10
+2015,178,Mississippi,SEC
+2015,179,Mississippi St.,SEC
+2015,180,Mississippi Valley St.,SWAC
+2015,181,Missouri,SEC
+2015,182,Missouri St.,MVC
+2015,183,Monmouth,MAAC
+2015,184,Montana,BSky
+2015,185,Montana St.,BSky
+2015,186,Morehead St.,OVC
+2015,187,Morgan St.,MEAC
+2015,188,Mount St. Mary's,NEC
+2015,189,Murray St.,OVC
+2015,190,NC State,ACC
+2015,191,NJIT,IND
+2015,192,Navy,Pat
+2015,193,Nebraska,B10
+2015,194,Nebraska Omaha,Sum
+2015,195,Nevada,MWC
+2015,196,New Hampshire,AE
+2015,198,New Mexico,MWC
+2015,199,New Mexico St.,WAC
+2015,200,New Orleans,Slnd
+2015,201,Niagara,MAAC
+2015,202,Nicholls St.,Slnd
+2015,203,Norfolk St.,MEAC
+2015,205,North Carolina,ACC
+2015,206,North Carolina A&T,MEAC
+2015,207,North Carolina Central,MEAC
+2015,208,North Dakota,BSky
+2015,209,North Dakota St.,Sum
+2015,210,North Florida,ASun
+2015,211,North Texas,CUSA
+2015,212,Northeastern,CAA
+2015,213,Northern Arizona,BSky
+2015,214,Northern Colorado,BSky
+2015,215,Northern Illinois,MAC
+2015,216,Northern Iowa,MVC
+2015,217,Northern Kentucky,ASun
+2015,218,Northwestern,B10
+2015,219,Northwestern St.,Slnd
+2015,220,Notre Dame,ACC
+2015,221,Oakland,Horz
+2015,222,Ohio,MAC
+2015,223,Ohio St.,B10
+2015,224,Oklahoma,B12
+2015,225,Oklahoma St.,B12
+2015,226,Old Dominion,CUSA
+2015,227,Oral Roberts,Sum
+2015,228,Oregon,P12
+2015,229,Oregon St.,P12
+2015,230,Pacific,WCC
+2015,231,Penn,Ivy
+2015,232,Penn St.,B10
+2015,233,Pepperdine,WCC
+2015,234,Pittsburgh,ACC
+2015,235,Portland,WCC
+2015,236,Portland St.,BSky
+2015,237,Prairie View A&M,SWAC
+2015,238,Presbyterian,BSth
+2015,239,Princeton,Ivy
+2015,240,Providence,BE
+2015,241,Purdue,B10
+2015,242,Purdue Fort Wayne,Sum
+2015,244,Quinnipiac,MAAC
+2015,245,Radford,BSth
+2015,246,Rhode Island,A10
+2015,247,Rice,CUSA
+2015,248,Richmond,A10
+2015,249,Rider,MAAC
+2015,250,Robert Morris,NEC
+2015,251,Rutgers,B10
+2015,252,SIU Edwardsville,OVC
+2015,253,SMU,Amer
+2015,254,Sacramento St.,BSky
+2015,255,Sacred Heart,NEC
+2015,256,Saint Francis,NEC
+2015,257,Saint Joseph's,A10
+2015,258,Saint Louis,A10
+2015,259,Saint Mary's,WCC
+2015,260,Saint Peter's,MAAC
+2015,261,Sam Houston St.,Slnd
+2015,262,Samford,SC
+2015,263,San Diego,WCC
+2015,264,San Diego St.,MWC
+2015,265,San Francisco,WCC
+2015,266,San Jose St.,MWC
+2015,267,Santa Clara,WCC
+2015,268,Seattle,WAC
+2015,269,Seton Hall,BE
+2015,270,Siena,MAAC
+2015,271,South Alabama,SB
+2015,272,South Carolina,SEC
+2015,273,South Carolina St.,MEAC
+2015,274,South Dakota,Sum
+2015,275,South Dakota St.,Sum
+2015,276,South Florida,Amer
+2015,277,Southeast Missouri St.,OVC
+2015,278,Southeastern Louisiana,Slnd
+2015,279,Southern,SWAC
+2015,280,Southern Illinois,MVC
+2015,282,Southern Miss,CUSA
+2015,283,Southern Utah,BSky
+2015,284,St. Bonaventure,A10
+2015,285,St. John's,BE
+2015,287,Stanford,P12
+2015,288,Stephen F. Austin,Slnd
+2015,289,Stetson,ASun
+2015,291,Stony Brook,AE
+2015,292,Syracuse,ACC
+2015,293,TCU,B12
+2015,295,Temple,Amer
+2015,296,Tennessee,SEC
+2015,297,Tennessee Martin,OVC
+2015,298,Tennessee St.,OVC
+2015,299,Tennessee Tech,OVC
+2015,300,Texas,B12
+2015,301,Texas A&M,SEC
+2015,302,Texas A&M Corpus Chris,Slnd
+2015,303,Texas Southern,SWAC
+2015,304,Texas St.,SB
+2015,305,Texas Tech,B12
+2015,306,The Citadel,SC
+2015,307,Toledo,MAC
+2015,308,Towson,CAA
+2015,309,Troy,SB
+2015,310,Tulane,Amer
+2015,311,Tulsa,Amer
+2015,312,UAB,CUSA
+2015,313,UC Davis,BW
+2015,314,UC Irvine,BW
+2015,315,UC Riverside,BW
+2015,317,UC Santa Barbara,BW
+2015,318,UCF,Amer
+2015,319,UCLA,P12
+2015,320,UMBC,AE
+2015,321,UMKC,WAC
+2015,322,UMass Lowell,AE
+2015,323,UNC Asheville,BSth
+2015,324,UNC Greensboro,SC
+2015,325,UNC Wilmington,CAA
+2015,326,UNLV,MWC
+2015,327,USC,P12
+2015,328,USC Upstate,ASun
+2015,329,UT Arlington,SB
+2015,330,UT Rio Grande Valley,WAC
+2015,331,UTEP,CUSA
+2015,332,UTSA,CUSA
+2015,333,Utah,P12
+2015,334,Utah St.,MWC
+2015,336,Utah Valley,WAC
+2015,337,VCU,A10
+2015,338,VMI,SC
+2015,339,Valparaiso,Horz
+2015,340,Vanderbilt,SEC
+2015,341,Vermont,AE
+2015,342,Villanova,BE
+2015,343,Virginia,ACC
+2015,344,Virginia Tech,ACC
+2015,345,Wagner,NEC
+2015,346,Wake Forest,ACC
+2015,347,Washington,P12
+2015,348,Washington St.,P12
+2015,349,Weber St.,BSky
+2015,351,West Virginia,B12
+2015,352,Western Carolina,SC
+2015,353,Western Illinois,Sum
+2015,354,Western Kentucky,CUSA
+2015,355,Western Mich.,MAC
+2015,356,Wichita St.,MVC
+2015,357,William & Mary,CAA
+2015,358,Winthrop,BSth
+2015,359,Wisconsin,B10
+2015,360,Wofford,SC
+2015,361,Wright St.,Horz
+2015,362,Wyoming,MWC
+2015,363,Xavier,BE
+2015,364,Yale,Ivy
+2015,365,Youngstown St.,Horz
+2015,824,Hartford,AE
+2015,825,St. Francis Brooklyn,NEC
+2015,826,Savannah St.,MEAC
+2016,1,Abilene Christian,Slnd
+2016,2,Air Force,MWC
+2016,3,Akron,MAC
+2016,4,Alabama,SEC
+2016,5,Alabama A&M,SWAC
+2016,6,Alabama St.,SWAC
+2016,7,Albany,AE
+2016,8,Alcorn St.,SWAC
+2016,9,American,Pat
+2016,10,Appalachian St.,SB
+2016,11,Arizona,P12
+2016,12,Arizona St.,P12
+2016,13,Arkansas,SEC
+2016,14,Arkansas Pine Bluff,SWAC
+2016,15,Arkansas St.,SB
+2016,16,Army,Pat
+2016,17,Auburn,SEC
+2016,18,Austin Peay,OVC
+2016,19,BYU,WCC
+2016,20,Ball St.,MAC
+2016,21,Baylor,B12
+2016,23,Belmont,OVC
+2016,24,Bethune Cookman,MEAC
+2016,25,Binghamton,AE
+2016,26,Boise St.,MWC
+2016,27,Boston College,ACC
+2016,28,Boston University,Pat
+2016,29,Bowling Green,MAC
+2016,30,Bradley,MVC
+2016,31,Brown,Ivy
+2016,32,Bryant,NEC
+2016,33,Bucknell,Pat
+2016,34,Buffalo,MAC
+2016,35,Butler,BE
+2016,37,Cal Poly,BW
+2016,38,Cal St. Bakersfield,WAC
+2016,39,Cal St. Fullerton,BW
+2016,40,Cal St. Northridge,BW
+2016,41,California,P12
+2016,42,Campbell,BSth
+2016,43,Canisius,MAAC
+2016,44,Central Arkansas,Slnd
+2016,45,Central Connecticut,NEC
+2016,46,Central Michigan,MAC
+2016,47,Charleston,CAA
+2016,48,Charleston Southern,BSth
+2016,49,Charlotte,CUSA
+2016,50,Chattanooga,SC
+2016,51,Chicago St.,WAC
+2016,52,Cincinnati,Amer
+2016,53,Clemson,ACC
+2016,54,Cleveland St.,Horz
+2016,55,Coastal Carolina,BSth
+2016,56,Colgate,Pat
+2016,57,Colorado,P12
+2016,58,Colorado St.,MWC
+2016,59,Columbia,Ivy
+2016,60,Connecticut,Amer
+2016,61,Coppin St.,MEAC
+2016,62,Cornell,Ivy
+2016,63,Creighton,BE
+2016,64,Dartmouth,Ivy
+2016,65,Davidson,A10
+2016,66,Dayton,A10
+2016,67,DePaul,BE
+2016,68,Delaware,CAA
+2016,69,Delaware St.,MEAC
+2016,70,Denver,Sum
+2016,71,Detroit Mercy,Horz
+2016,72,Drake,MVC
+2016,73,Drexel,CAA
+2016,74,Duke,ACC
+2016,75,Duquesne,A10
+2016,76,East Carolina,Amer
+2016,77,East Tennessee St.,SC
+2016,79,Eastern Illinois,OVC
+2016,80,Eastern Kentucky,OVC
+2016,81,Eastern Mich.,MAC
+2016,82,Eastern Washington,BSky
+2016,83,Elon,CAA
+2016,84,Evansville,MVC
+2016,85,FIU,CUSA
+2016,86,Fairfield,MAAC
+2016,87,Fairleigh Dickinson,NEC
+2016,88,Florida,SEC
+2016,89,Florida A&M,MEAC
+2016,90,Florida Atlantic,CUSA
+2016,91,Florida Gulf Coast,ASun
+2016,92,Florida St.,ACC
+2016,93,Fordham,A10
+2016,94,Fresno St.,MWC
+2016,95,Furman,SC
+2016,96,Gardner Webb,BSth
+2016,97,George Mason,A10
+2016,98,George Washington,A10
+2016,99,Georgetown,BE
+2016,100,Georgia,SEC
+2016,101,Georgia Southern,SB
+2016,102,Georgia St.,SB
+2016,103,Georgia Tech,ACC
+2016,104,Gonzaga,WCC
+2016,105,Grambling St.,SWAC
+2016,106,Grand Canyon,WAC
+2016,107,Green Bay,Horz
+2016,108,Hampton,MEAC
+2016,109,Harvard,Ivy
+2016,110,Hawaii,BW
+2016,111,High Point,BSth
+2016,112,Hofstra,CAA
+2016,113,Holy Cross,Pat
+2016,114,Houston,Amer
+2016,115,Houston Christian,Slnd
+2016,116,Howard,MEAC
+2016,117,IU Indy,Sum
+2016,118,Idaho,BSky
+2016,119,Idaho St.,BSky
+2016,120,Illinois,B10
+2016,121,Illinois Chicago,Horz
+2016,122,Illinois St.,MVC
+2016,123,Incarnate Word,Slnd
+2016,124,Indiana,B10
+2016,125,Indiana St.,MVC
+2016,126,Iona,MAAC
+2016,127,Iowa,B10
+2016,128,Iowa St.,B12
+2016,129,Jackson St.,SWAC
+2016,130,Jacksonville,ASun
+2016,131,Jacksonville St.,OVC
+2016,132,James Madison,CAA
+2016,133,Kansas,B12
+2016,134,Kansas St.,B12
+2016,135,Kennesaw St.,ASun
+2016,136,Kent St.,MAC
+2016,137,Kentucky,SEC
+2016,138,LIU,NEC
+2016,139,LSU,SEC
+2016,140,La Salle,A10
+2016,141,Lafayette,Pat
+2016,142,Lamar,Slnd
+2016,144,Lehigh,Pat
+2016,145,Liberty,BSth
+2016,147,Lipscomb,ASun
+2016,148,Little Rock,SB
+2016,149,Long Beach St.,BW
+2016,150,Longwood,BSth
+2016,151,Louisiana,SB
+2016,152,Louisiana Monroe,SB
+2016,153,Louisiana Tech,CUSA
+2016,154,Louisville,ACC
+2016,155,Loyola Chicago,MVC
+2016,156,Loyola MD,Pat
+2016,157,Loyola Marymount,WCC
+2016,158,Maine,AE
+2016,159,Manhattan,MAAC
+2016,160,Marist,MAAC
+2016,161,Marquette,BE
+2016,162,Marshall,CUSA
+2016,163,Maryland,B10
+2016,164,Maryland Eastern Shore,MEAC
+2016,165,Massachusetts,A10
+2016,166,McNeese,Slnd
+2016,167,Memphis,Amer
+2016,168,Mercer,SC
+2016,171,Miami (FL),ACC
+2016,172,Miami (OH),MAC
+2016,173,Michigan,B10
+2016,174,Michigan St.,B10
+2016,175,Middle Tennessee,CUSA
+2016,176,Milwaukee,Horz
+2016,177,Minnesota,B10
+2016,178,Mississippi,SEC
+2016,179,Mississippi St.,SEC
+2016,180,Mississippi Valley St.,SWAC
+2016,181,Missouri,SEC
+2016,182,Missouri St.,MVC
+2016,183,Monmouth,MAAC
+2016,184,Montana,BSky
+2016,185,Montana St.,BSky
+2016,186,Morehead St.,OVC
+2016,187,Morgan St.,MEAC
+2016,188,Mount St. Mary's,NEC
+2016,189,Murray St.,OVC
+2016,190,NC State,ACC
+2016,191,NJIT,ASun
+2016,192,Navy,Pat
+2016,193,Nebraska,B10
+2016,194,Nebraska Omaha,Sum
+2016,195,Nevada,MWC
+2016,196,New Hampshire,AE
+2016,198,New Mexico,MWC
+2016,199,New Mexico St.,WAC
+2016,200,New Orleans,Slnd
+2016,201,Niagara,MAAC
+2016,202,Nicholls St.,Slnd
+2016,203,Norfolk St.,MEAC
+2016,205,North Carolina,ACC
+2016,206,North Carolina A&T,MEAC
+2016,207,North Carolina Central,MEAC
+2016,208,North Dakota,BSky
+2016,209,North Dakota St.,Sum
+2016,210,North Florida,ASun
+2016,211,North Texas,CUSA
+2016,212,Northeastern,CAA
+2016,213,Northern Arizona,BSky
+2016,214,Northern Colorado,BSky
+2016,215,Northern Illinois,MAC
+2016,216,Northern Iowa,MVC
+2016,217,Northern Kentucky,Horz
+2016,218,Northwestern,B10
+2016,219,Northwestern St.,Slnd
+2016,220,Notre Dame,ACC
+2016,221,Oakland,Horz
+2016,222,Ohio,MAC
+2016,223,Ohio St.,B10
+2016,224,Oklahoma,B12
+2016,225,Oklahoma St.,B12
+2016,226,Old Dominion,CUSA
+2016,227,Oral Roberts,Sum
+2016,228,Oregon,P12
+2016,229,Oregon St.,P12
+2016,230,Pacific,WCC
+2016,231,Penn,Ivy
+2016,232,Penn St.,B10
+2016,233,Pepperdine,WCC
+2016,234,Pittsburgh,ACC
+2016,235,Portland,WCC
+2016,236,Portland St.,BSky
+2016,237,Prairie View A&M,SWAC
+2016,238,Presbyterian,BSth
+2016,239,Princeton,Ivy
+2016,240,Providence,BE
+2016,241,Purdue,B10
+2016,242,Purdue Fort Wayne,Sum
+2016,244,Quinnipiac,MAAC
+2016,245,Radford,BSth
+2016,246,Rhode Island,A10
+2016,247,Rice,CUSA
+2016,248,Richmond,A10
+2016,249,Rider,MAAC
+2016,250,Robert Morris,NEC
+2016,251,Rutgers,B10
+2016,252,SIU Edwardsville,OVC
+2016,253,SMU,Amer
+2016,254,Sacramento St.,BSky
+2016,255,Sacred Heart,NEC
+2016,256,Saint Francis,NEC
+2016,257,Saint Joseph's,A10
+2016,258,Saint Louis,A10
+2016,259,Saint Mary's,WCC
+2016,260,Saint Peter's,MAAC
+2016,261,Sam Houston St.,Slnd
+2016,262,Samford,SC
+2016,263,San Diego,WCC
+2016,264,San Diego St.,MWC
+2016,265,San Francisco,WCC
+2016,266,San Jose St.,MWC
+2016,267,Santa Clara,WCC
+2016,268,Seattle,WAC
+2016,269,Seton Hall,BE
+2016,270,Siena,MAAC
+2016,271,South Alabama,SB
+2016,272,South Carolina,SEC
+2016,273,South Carolina St.,MEAC
+2016,274,South Dakota,Sum
+2016,275,South Dakota St.,Sum
+2016,276,South Florida,Amer
+2016,277,Southeast Missouri St.,OVC
+2016,278,Southeastern Louisiana,Slnd
+2016,279,Southern,SWAC
+2016,280,Southern Illinois,MVC
+2016,282,Southern Miss,CUSA
+2016,283,Southern Utah,BSky
+2016,284,St. Bonaventure,A10
+2016,285,St. John's,BE
+2016,287,Stanford,P12
+2016,288,Stephen F. Austin,Slnd
+2016,289,Stetson,ASun
+2016,291,Stony Brook,AE
+2016,292,Syracuse,ACC
+2016,293,TCU,B12
+2016,295,Temple,Amer
+2016,296,Tennessee,SEC
+2016,297,Tennessee Martin,OVC
+2016,298,Tennessee St.,OVC
+2016,299,Tennessee Tech,OVC
+2016,300,Texas,B12
+2016,301,Texas A&M,SEC
+2016,302,Texas A&M Corpus Chris,Slnd
+2016,303,Texas Southern,SWAC
+2016,304,Texas St.,SB
+2016,305,Texas Tech,B12
+2016,306,The Citadel,SC
+2016,307,Toledo,MAC
+2016,308,Towson,CAA
+2016,309,Troy,SB
+2016,310,Tulane,Amer
+2016,311,Tulsa,Amer
+2016,312,UAB,CUSA
+2016,313,UC Davis,BW
+2016,314,UC Irvine,BW
+2016,315,UC Riverside,BW
+2016,317,UC Santa Barbara,BW
+2016,318,UCF,Amer
+2016,319,UCLA,P12
+2016,320,UMBC,AE
+2016,321,UMKC,WAC
+2016,322,UMass Lowell,AE
+2016,323,UNC Asheville,BSth
+2016,324,UNC Greensboro,SC
+2016,325,UNC Wilmington,CAA
+2016,326,UNLV,MWC
+2016,327,USC,P12
+2016,328,USC Upstate,ASun
+2016,329,UT Arlington,SB
+2016,330,UT Rio Grande Valley,WAC
+2016,331,UTEP,CUSA
+2016,332,UTSA,CUSA
+2016,333,Utah,P12
+2016,334,Utah St.,MWC
+2016,336,Utah Valley,WAC
+2016,337,VCU,A10
+2016,338,VMI,SC
+2016,339,Valparaiso,Horz
+2016,340,Vanderbilt,SEC
+2016,341,Vermont,AE
+2016,342,Villanova,BE
+2016,343,Virginia,ACC
+2016,344,Virginia Tech,ACC
+2016,345,Wagner,NEC
+2016,346,Wake Forest,ACC
+2016,347,Washington,P12
+2016,348,Washington St.,P12
+2016,349,Weber St.,BSky
+2016,351,West Virginia,B12
+2016,352,Western Carolina,SC
+2016,353,Western Illinois,Sum
+2016,354,Western Kentucky,CUSA
+2016,355,Western Mich.,MAC
+2016,356,Wichita St.,MVC
+2016,357,William & Mary,CAA
+2016,358,Winthrop,BSth
+2016,359,Wisconsin,B10
+2016,360,Wofford,SC
+2016,361,Wright St.,Horz
+2016,362,Wyoming,MWC
+2016,363,Xavier,BE
+2016,364,Yale,Ivy
+2016,365,Youngstown St.,Horz
+2016,824,Hartford,AE
+2016,825,St. Francis Brooklyn,NEC
+2016,826,Savannah St.,MEAC
+2017,1,Abilene Christian,Slnd
+2017,2,Air Force,MWC
+2017,3,Akron,MAC
+2017,4,Alabama,SEC
+2017,5,Alabama A&M,SWAC
+2017,6,Alabama St.,SWAC
+2017,7,Albany,AE
+2017,8,Alcorn St.,SWAC
+2017,9,American,Pat
+2017,10,Appalachian St.,SB
+2017,11,Arizona,P12
+2017,12,Arizona St.,P12
+2017,13,Arkansas,SEC
+2017,14,Arkansas Pine Bluff,SWAC
+2017,15,Arkansas St.,SB
+2017,16,Army,Pat
+2017,17,Auburn,SEC
+2017,18,Austin Peay,OVC
+2017,19,BYU,WCC
+2017,20,Ball St.,MAC
+2017,21,Baylor,B12
+2017,23,Belmont,OVC
+2017,24,Bethune Cookman,MEAC
+2017,25,Binghamton,AE
+2017,26,Boise St.,MWC
+2017,27,Boston College,ACC
+2017,28,Boston University,Pat
+2017,29,Bowling Green,MAC
+2017,30,Bradley,MVC
+2017,31,Brown,Ivy
+2017,32,Bryant,NEC
+2017,33,Bucknell,Pat
+2017,34,Buffalo,MAC
+2017,35,Butler,BE
+2017,37,Cal Poly,BW
+2017,38,Cal St. Bakersfield,WAC
+2017,39,Cal St. Fullerton,BW
+2017,40,Cal St. Northridge,BW
+2017,41,California,P12
+2017,42,Campbell,BSth
+2017,43,Canisius,MAAC
+2017,44,Central Arkansas,Slnd
+2017,45,Central Connecticut,NEC
+2017,46,Central Michigan,MAC
+2017,47,Charleston,CAA
+2017,48,Charleston Southern,BSth
+2017,49,Charlotte,CUSA
+2017,50,Chattanooga,SC
+2017,51,Chicago St.,WAC
+2017,52,Cincinnati,Amer
+2017,53,Clemson,ACC
+2017,54,Cleveland St.,Horz
+2017,55,Coastal Carolina,SB
+2017,56,Colgate,Pat
+2017,57,Colorado,P12
+2017,58,Colorado St.,MWC
+2017,59,Columbia,Ivy
+2017,60,Connecticut,Amer
+2017,61,Coppin St.,MEAC
+2017,62,Cornell,Ivy
+2017,63,Creighton,BE
+2017,64,Dartmouth,Ivy
+2017,65,Davidson,A10
+2017,66,Dayton,A10
+2017,67,DePaul,BE
+2017,68,Delaware,CAA
+2017,69,Delaware St.,MEAC
+2017,70,Denver,Sum
+2017,71,Detroit Mercy,Horz
+2017,72,Drake,MVC
+2017,73,Drexel,CAA
+2017,74,Duke,ACC
+2017,75,Duquesne,A10
+2017,76,East Carolina,Amer
+2017,77,East Tennessee St.,SC
+2017,79,Eastern Illinois,OVC
+2017,80,Eastern Kentucky,OVC
+2017,81,Eastern Mich.,MAC
+2017,82,Eastern Washington,BSky
+2017,83,Elon,CAA
+2017,84,Evansville,MVC
+2017,85,FIU,CUSA
+2017,86,Fairfield,MAAC
+2017,87,Fairleigh Dickinson,NEC
+2017,88,Florida,SEC
+2017,89,Florida A&M,MEAC
+2017,90,Florida Atlantic,CUSA
+2017,91,Florida Gulf Coast,ASun
+2017,92,Florida St.,ACC
+2017,93,Fordham,A10
+2017,94,Fresno St.,MWC
+2017,95,Furman,SC
+2017,96,Gardner Webb,BSth
+2017,97,George Mason,A10
+2017,98,George Washington,A10
+2017,99,Georgetown,BE
+2017,100,Georgia,SEC
+2017,101,Georgia Southern,SB
+2017,102,Georgia St.,SB
+2017,103,Georgia Tech,ACC
+2017,104,Gonzaga,WCC
+2017,105,Grambling St.,SWAC
+2017,106,Grand Canyon,WAC
+2017,107,Green Bay,Horz
+2017,108,Hampton,MEAC
+2017,109,Harvard,Ivy
+2017,110,Hawaii,BW
+2017,111,High Point,BSth
+2017,112,Hofstra,CAA
+2017,113,Holy Cross,Pat
+2017,114,Houston,Amer
+2017,115,Houston Christian,Slnd
+2017,116,Howard,MEAC
+2017,117,IU Indy,Sum
+2017,118,Idaho,BSky
+2017,119,Idaho St.,BSky
+2017,120,Illinois,B10
+2017,121,Illinois Chicago,Horz
+2017,122,Illinois St.,MVC
+2017,123,Incarnate Word,Slnd
+2017,124,Indiana,B10
+2017,125,Indiana St.,MVC
+2017,126,Iona,MAAC
+2017,127,Iowa,B10
+2017,128,Iowa St.,B12
+2017,129,Jackson St.,SWAC
+2017,130,Jacksonville,ASun
+2017,131,Jacksonville St.,OVC
+2017,132,James Madison,CAA
+2017,133,Kansas,B12
+2017,134,Kansas St.,B12
+2017,135,Kennesaw St.,ASun
+2017,136,Kent St.,MAC
+2017,137,Kentucky,SEC
+2017,138,LIU,NEC
+2017,139,LSU,SEC
+2017,140,La Salle,A10
+2017,141,Lafayette,Pat
+2017,142,Lamar,Slnd
+2017,144,Lehigh,Pat
+2017,145,Liberty,BSth
+2017,147,Lipscomb,ASun
+2017,148,Little Rock,SB
+2017,149,Long Beach St.,BW
+2017,150,Longwood,BSth
+2017,151,Louisiana,SB
+2017,152,Louisiana Monroe,SB
+2017,153,Louisiana Tech,CUSA
+2017,154,Louisville,ACC
+2017,155,Loyola Chicago,MVC
+2017,156,Loyola MD,Pat
+2017,157,Loyola Marymount,WCC
+2017,158,Maine,AE
+2017,159,Manhattan,MAAC
+2017,160,Marist,MAAC
+2017,161,Marquette,BE
+2017,162,Marshall,CUSA
+2017,163,Maryland,B10
+2017,164,Maryland Eastern Shore,MEAC
+2017,165,Massachusetts,A10
+2017,166,McNeese,Slnd
+2017,167,Memphis,Amer
+2017,168,Mercer,SC
+2017,171,Miami (FL),ACC
+2017,172,Miami (OH),MAC
+2017,173,Michigan,B10
+2017,174,Michigan St.,B10
+2017,175,Middle Tennessee,CUSA
+2017,176,Milwaukee,Horz
+2017,177,Minnesota,B10
+2017,178,Mississippi,SEC
+2017,179,Mississippi St.,SEC
+2017,180,Mississippi Valley St.,SWAC
+2017,181,Missouri,SEC
+2017,182,Missouri St.,MVC
+2017,183,Monmouth,MAAC
+2017,184,Montana,BSky
+2017,185,Montana St.,BSky
+2017,186,Morehead St.,OVC
+2017,187,Morgan St.,MEAC
+2017,188,Mount St. Mary's,NEC
+2017,189,Murray St.,OVC
+2017,190,NC State,ACC
+2017,191,NJIT,ASun
+2017,192,Navy,Pat
+2017,193,Nebraska,B10
+2017,194,Nebraska Omaha,Sum
+2017,195,Nevada,MWC
+2017,196,New Hampshire,AE
+2017,198,New Mexico,MWC
+2017,199,New Mexico St.,WAC
+2017,200,New Orleans,Slnd
+2017,201,Niagara,MAAC
+2017,202,Nicholls St.,Slnd
+2017,203,Norfolk St.,MEAC
+2017,205,North Carolina,ACC
+2017,206,North Carolina A&T,MEAC
+2017,207,North Carolina Central,MEAC
+2017,208,North Dakota,BSky
+2017,209,North Dakota St.,Sum
+2017,210,North Florida,ASun
+2017,211,North Texas,CUSA
+2017,212,Northeastern,CAA
+2017,213,Northern Arizona,BSky
+2017,214,Northern Colorado,BSky
+2017,215,Northern Illinois,MAC
+2017,216,Northern Iowa,MVC
+2017,217,Northern Kentucky,Horz
+2017,218,Northwestern,B10
+2017,219,Northwestern St.,Slnd
+2017,220,Notre Dame,ACC
+2017,221,Oakland,Horz
+2017,222,Ohio,MAC
+2017,223,Ohio St.,B10
+2017,224,Oklahoma,B12
+2017,225,Oklahoma St.,B12
+2017,226,Old Dominion,CUSA
+2017,227,Oral Roberts,Sum
+2017,228,Oregon,P12
+2017,229,Oregon St.,P12
+2017,230,Pacific,WCC
+2017,231,Penn,Ivy
+2017,232,Penn St.,B10
+2017,233,Pepperdine,WCC
+2017,234,Pittsburgh,ACC
+2017,235,Portland,WCC
+2017,236,Portland St.,BSky
+2017,237,Prairie View A&M,SWAC
+2017,238,Presbyterian,BSth
+2017,239,Princeton,Ivy
+2017,240,Providence,BE
+2017,241,Purdue,B10
+2017,242,Purdue Fort Wayne,Sum
+2017,244,Quinnipiac,MAAC
+2017,245,Radford,BSth
+2017,246,Rhode Island,A10
+2017,247,Rice,CUSA
+2017,248,Richmond,A10
+2017,249,Rider,MAAC
+2017,250,Robert Morris,NEC
+2017,251,Rutgers,B10
+2017,252,SIU Edwardsville,OVC
+2017,253,SMU,Amer
+2017,254,Sacramento St.,BSky
+2017,255,Sacred Heart,NEC
+2017,256,Saint Francis,NEC
+2017,257,Saint Joseph's,A10
+2017,258,Saint Louis,A10
+2017,259,Saint Mary's,WCC
+2017,260,Saint Peter's,MAAC
+2017,261,Sam Houston St.,Slnd
+2017,262,Samford,SC
+2017,263,San Diego,WCC
+2017,264,San Diego St.,MWC
+2017,265,San Francisco,WCC
+2017,266,San Jose St.,MWC
+2017,267,Santa Clara,WCC
+2017,268,Seattle,WAC
+2017,269,Seton Hall,BE
+2017,270,Siena,MAAC
+2017,271,South Alabama,SB
+2017,272,South Carolina,SEC
+2017,273,South Carolina St.,MEAC
+2017,274,South Dakota,Sum
+2017,275,South Dakota St.,Sum
+2017,276,South Florida,Amer
+2017,277,Southeast Missouri St.,OVC
+2017,278,Southeastern Louisiana,Slnd
+2017,279,Southern,SWAC
+2017,280,Southern Illinois,MVC
+2017,282,Southern Miss,CUSA
+2017,283,Southern Utah,BSky
+2017,284,St. Bonaventure,A10
+2017,285,St. John's,BE
+2017,287,Stanford,P12
+2017,288,Stephen F. Austin,Slnd
+2017,289,Stetson,ASun
+2017,291,Stony Brook,AE
+2017,292,Syracuse,ACC
+2017,293,TCU,B12
+2017,295,Temple,Amer
+2017,296,Tennessee,SEC
+2017,297,Tennessee Martin,OVC
+2017,298,Tennessee St.,OVC
+2017,299,Tennessee Tech,OVC
+2017,300,Texas,B12
+2017,301,Texas A&M,SEC
+2017,302,Texas A&M Corpus Chris,Slnd
+2017,303,Texas Southern,SWAC
+2017,304,Texas St.,SB
+2017,305,Texas Tech,B12
+2017,306,The Citadel,SC
+2017,307,Toledo,MAC
+2017,308,Towson,CAA
+2017,309,Troy,SB
+2017,310,Tulane,Amer
+2017,311,Tulsa,Amer
+2017,312,UAB,CUSA
+2017,313,UC Davis,BW
+2017,314,UC Irvine,BW
+2017,315,UC Riverside,BW
+2017,317,UC Santa Barbara,BW
+2017,318,UCF,Amer
+2017,319,UCLA,P12
+2017,320,UMBC,AE
+2017,321,UMKC,WAC
+2017,322,UMass Lowell,AE
+2017,323,UNC Asheville,BSth
+2017,324,UNC Greensboro,SC
+2017,325,UNC Wilmington,CAA
+2017,326,UNLV,MWC
+2017,327,USC,P12
+2017,328,USC Upstate,ASun
+2017,329,UT Arlington,SB
+2017,330,UT Rio Grande Valley,WAC
+2017,331,UTEP,CUSA
+2017,332,UTSA,CUSA
+2017,333,Utah,P12
+2017,334,Utah St.,MWC
+2017,336,Utah Valley,WAC
+2017,337,VCU,A10
+2017,338,VMI,SC
+2017,339,Valparaiso,Horz
+2017,340,Vanderbilt,SEC
+2017,341,Vermont,AE
+2017,342,Villanova,BE
+2017,343,Virginia,ACC
+2017,344,Virginia Tech,ACC
+2017,345,Wagner,NEC
+2017,346,Wake Forest,ACC
+2017,347,Washington,P12
+2017,348,Washington St.,P12
+2017,349,Weber St.,BSky
+2017,351,West Virginia,B12
+2017,352,Western Carolina,SC
+2017,353,Western Illinois,Sum
+2017,354,Western Kentucky,CUSA
+2017,355,Western Mich.,MAC
+2017,356,Wichita St.,MVC
+2017,357,William & Mary,CAA
+2017,358,Winthrop,BSth
+2017,359,Wisconsin,B10
+2017,360,Wofford,SC
+2017,361,Wright St.,Horz
+2017,362,Wyoming,MWC
+2017,363,Xavier,BE
+2017,364,Yale,Ivy
+2017,365,Youngstown St.,Horz
+2017,824,Hartford,AE
+2017,825,St. Francis Brooklyn,NEC
+2017,826,Savannah St.,MEAC
+2018,1,Abilene Christian,Slnd
+2018,2,Air Force,MWC
+2018,3,Akron,MAC
+2018,4,Alabama,SEC
+2018,5,Alabama A&M,SWAC
+2018,6,Alabama St.,SWAC
+2018,7,Albany,AE
+2018,8,Alcorn St.,SWAC
+2018,9,American,Pat
+2018,10,Appalachian St.,SB
+2018,11,Arizona,P12
+2018,12,Arizona St.,P12
+2018,13,Arkansas,SEC
+2018,14,Arkansas Pine Bluff,SWAC
+2018,15,Arkansas St.,SB
+2018,16,Army,Pat
+2018,17,Auburn,SEC
+2018,18,Austin Peay,OVC
+2018,19,BYU,WCC
+2018,20,Ball St.,MAC
+2018,21,Baylor,B12
+2018,23,Belmont,OVC
+2018,24,Bethune Cookman,MEAC
+2018,25,Binghamton,AE
+2018,26,Boise St.,MWC
+2018,27,Boston College,ACC
+2018,28,Boston University,Pat
+2018,29,Bowling Green,MAC
+2018,30,Bradley,MVC
+2018,31,Brown,Ivy
+2018,32,Bryant,NEC
+2018,33,Bucknell,Pat
+2018,34,Buffalo,MAC
+2018,35,Butler,BE
+2018,37,Cal Poly,BW
+2018,38,Cal St. Bakersfield,WAC
+2018,39,Cal St. Fullerton,BW
+2018,40,Cal St. Northridge,BW
+2018,41,California,P12
+2018,42,Campbell,BSth
+2018,43,Canisius,MAAC
+2018,44,Central Arkansas,Slnd
+2018,45,Central Connecticut,NEC
+2018,46,Central Michigan,MAC
+2018,47,Charleston,CAA
+2018,48,Charleston Southern,BSth
+2018,49,Charlotte,CUSA
+2018,50,Chattanooga,SC
+2018,51,Chicago St.,WAC
+2018,52,Cincinnati,Amer
+2018,53,Clemson,ACC
+2018,54,Cleveland St.,Horz
+2018,55,Coastal Carolina,SB
+2018,56,Colgate,Pat
+2018,57,Colorado,P12
+2018,58,Colorado St.,MWC
+2018,59,Columbia,Ivy
+2018,60,Connecticut,Amer
+2018,61,Coppin St.,MEAC
+2018,62,Cornell,Ivy
+2018,63,Creighton,BE
+2018,64,Dartmouth,Ivy
+2018,65,Davidson,A10
+2018,66,Dayton,A10
+2018,67,DePaul,BE
+2018,68,Delaware,CAA
+2018,69,Delaware St.,MEAC
+2018,70,Denver,Sum
+2018,71,Detroit Mercy,Horz
+2018,72,Drake,MVC
+2018,73,Drexel,CAA
+2018,74,Duke,ACC
+2018,75,Duquesne,A10
+2018,76,East Carolina,Amer
+2018,77,East Tennessee St.,SC
+2018,79,Eastern Illinois,OVC
+2018,80,Eastern Kentucky,OVC
+2018,81,Eastern Mich.,MAC
+2018,82,Eastern Washington,BSky
+2018,83,Elon,CAA
+2018,84,Evansville,MVC
+2018,85,FIU,CUSA
+2018,86,Fairfield,MAAC
+2018,87,Fairleigh Dickinson,NEC
+2018,88,Florida,SEC
+2018,89,Florida A&M,MEAC
+2018,90,Florida Atlantic,CUSA
+2018,91,Florida Gulf Coast,ASun
+2018,92,Florida St.,ACC
+2018,93,Fordham,A10
+2018,94,Fresno St.,MWC
+2018,95,Furman,SC
+2018,96,Gardner Webb,BSth
+2018,97,George Mason,A10
+2018,98,George Washington,A10
+2018,99,Georgetown,BE
+2018,100,Georgia,SEC
+2018,101,Georgia Southern,SB
+2018,102,Georgia St.,SB
+2018,103,Georgia Tech,ACC
+2018,104,Gonzaga,WCC
+2018,105,Grambling St.,SWAC
+2018,106,Grand Canyon,WAC
+2018,107,Green Bay,Horz
+2018,108,Hampton,MEAC
+2018,109,Harvard,Ivy
+2018,110,Hawaii,BW
+2018,111,High Point,BSth
+2018,112,Hofstra,CAA
+2018,113,Holy Cross,Pat
+2018,114,Houston,Amer
+2018,115,Houston Christian,Slnd
+2018,116,Howard,MEAC
+2018,117,IU Indy,Horz
+2018,118,Idaho,BSky
+2018,119,Idaho St.,BSky
+2018,120,Illinois,B10
+2018,121,Illinois Chicago,Horz
+2018,122,Illinois St.,MVC
+2018,123,Incarnate Word,Slnd
+2018,124,Indiana,B10
+2018,125,Indiana St.,MVC
+2018,126,Iona,MAAC
+2018,127,Iowa,B10
+2018,128,Iowa St.,B12
+2018,129,Jackson St.,SWAC
+2018,130,Jacksonville,ASun
+2018,131,Jacksonville St.,OVC
+2018,132,James Madison,CAA
+2018,133,Kansas,B12
+2018,134,Kansas St.,B12
+2018,135,Kennesaw St.,ASun
+2018,136,Kent St.,MAC
+2018,137,Kentucky,SEC
+2018,138,LIU,NEC
+2018,139,LSU,SEC
+2018,140,La Salle,A10
+2018,141,Lafayette,Pat
+2018,142,Lamar,Slnd
+2018,144,Lehigh,Pat
+2018,145,Liberty,BSth
+2018,147,Lipscomb,ASun
+2018,148,Little Rock,SB
+2018,149,Long Beach St.,BW
+2018,150,Longwood,BSth
+2018,151,Louisiana,SB
+2018,152,Louisiana Monroe,SB
+2018,153,Louisiana Tech,CUSA
+2018,154,Louisville,ACC
+2018,155,Loyola Chicago,MVC
+2018,156,Loyola MD,Pat
+2018,157,Loyola Marymount,WCC
+2018,158,Maine,AE
+2018,159,Manhattan,MAAC
+2018,160,Marist,MAAC
+2018,161,Marquette,BE
+2018,162,Marshall,CUSA
+2018,163,Maryland,B10
+2018,164,Maryland Eastern Shore,MEAC
+2018,165,Massachusetts,A10
+2018,166,McNeese,Slnd
+2018,167,Memphis,Amer
+2018,168,Mercer,SC
+2018,171,Miami (FL),ACC
+2018,172,Miami (OH),MAC
+2018,173,Michigan,B10
+2018,174,Michigan St.,B10
+2018,175,Middle Tennessee,CUSA
+2018,176,Milwaukee,Horz
+2018,177,Minnesota,B10
+2018,178,Mississippi,SEC
+2018,179,Mississippi St.,SEC
+2018,180,Mississippi Valley St.,SWAC
+2018,181,Missouri,SEC
+2018,182,Missouri St.,MVC
+2018,183,Monmouth,MAAC
+2018,184,Montana,BSky
+2018,185,Montana St.,BSky
+2018,186,Morehead St.,OVC
+2018,187,Morgan St.,MEAC
+2018,188,Mount St. Mary's,NEC
+2018,189,Murray St.,OVC
+2018,190,NC State,ACC
+2018,191,NJIT,ASun
+2018,192,Navy,Pat
+2018,193,Nebraska,B10
+2018,194,Nebraska Omaha,Sum
+2018,195,Nevada,MWC
+2018,196,New Hampshire,AE
+2018,198,New Mexico,MWC
+2018,199,New Mexico St.,WAC
+2018,200,New Orleans,Slnd
+2018,201,Niagara,MAAC
+2018,202,Nicholls St.,Slnd
+2018,203,Norfolk St.,MEAC
+2018,205,North Carolina,ACC
+2018,206,North Carolina A&T,MEAC
+2018,207,North Carolina Central,MEAC
+2018,208,North Dakota,BSky
+2018,209,North Dakota St.,Sum
+2018,210,North Florida,ASun
+2018,211,North Texas,CUSA
+2018,212,Northeastern,CAA
+2018,213,Northern Arizona,BSky
+2018,214,Northern Colorado,BSky
+2018,215,Northern Illinois,MAC
+2018,216,Northern Iowa,MVC
+2018,217,Northern Kentucky,Horz
+2018,218,Northwestern,B10
+2018,219,Northwestern St.,Slnd
+2018,220,Notre Dame,ACC
+2018,221,Oakland,Horz
+2018,222,Ohio,MAC
+2018,223,Ohio St.,B10
+2018,224,Oklahoma,B12
+2018,225,Oklahoma St.,B12
+2018,226,Old Dominion,CUSA
+2018,227,Oral Roberts,Sum
+2018,228,Oregon,P12
+2018,229,Oregon St.,P12
+2018,230,Pacific,WCC
+2018,231,Penn,Ivy
+2018,232,Penn St.,B10
+2018,233,Pepperdine,WCC
+2018,234,Pittsburgh,ACC
+2018,235,Portland,WCC
+2018,236,Portland St.,BSky
+2018,237,Prairie View A&M,SWAC
+2018,238,Presbyterian,BSth
+2018,239,Princeton,Ivy
+2018,240,Providence,BE
+2018,241,Purdue,B10
+2018,242,Purdue Fort Wayne,Sum
+2018,244,Quinnipiac,MAAC
+2018,245,Radford,BSth
+2018,246,Rhode Island,A10
+2018,247,Rice,CUSA
+2018,248,Richmond,A10
+2018,249,Rider,MAAC
+2018,250,Robert Morris,NEC
+2018,251,Rutgers,B10
+2018,252,SIU Edwardsville,OVC
+2018,253,SMU,Amer
+2018,254,Sacramento St.,BSky
+2018,255,Sacred Heart,NEC
+2018,256,Saint Francis,NEC
+2018,257,Saint Joseph's,A10
+2018,258,Saint Louis,A10
+2018,259,Saint Mary's,WCC
+2018,260,Saint Peter's,MAAC
+2018,261,Sam Houston St.,Slnd
+2018,262,Samford,SC
+2018,263,San Diego,WCC
+2018,264,San Diego St.,MWC
+2018,265,San Francisco,WCC
+2018,266,San Jose St.,MWC
+2018,267,Santa Clara,WCC
+2018,268,Seattle,WAC
+2018,269,Seton Hall,BE
+2018,270,Siena,MAAC
+2018,271,South Alabama,SB
+2018,272,South Carolina,SEC
+2018,273,South Carolina St.,MEAC
+2018,274,South Dakota,Sum
+2018,275,South Dakota St.,Sum
+2018,276,South Florida,Amer
+2018,277,Southeast Missouri St.,OVC
+2018,278,Southeastern Louisiana,Slnd
+2018,279,Southern,SWAC
+2018,280,Southern Illinois,MVC
+2018,282,Southern Miss,CUSA
+2018,283,Southern Utah,BSky
+2018,284,St. Bonaventure,A10
+2018,285,St. John's,BE
+2018,287,Stanford,P12
+2018,288,Stephen F. Austin,Slnd
+2018,289,Stetson,ASun
+2018,291,Stony Brook,AE
+2018,292,Syracuse,ACC
+2018,293,TCU,B12
+2018,295,Temple,Amer
+2018,296,Tennessee,SEC
+2018,297,Tennessee Martin,OVC
+2018,298,Tennessee St.,OVC
+2018,299,Tennessee Tech,OVC
+2018,300,Texas,B12
+2018,301,Texas A&M,SEC
+2018,302,Texas A&M Corpus Chris,Slnd
+2018,303,Texas Southern,SWAC
+2018,304,Texas St.,SB
+2018,305,Texas Tech,B12
+2018,306,The Citadel,SC
+2018,307,Toledo,MAC
+2018,308,Towson,CAA
+2018,309,Troy,SB
+2018,310,Tulane,Amer
+2018,311,Tulsa,Amer
+2018,312,UAB,CUSA
+2018,313,UC Davis,BW
+2018,314,UC Irvine,BW
+2018,315,UC Riverside,BW
+2018,317,UC Santa Barbara,BW
+2018,318,UCF,Amer
+2018,319,UCLA,P12
+2018,320,UMBC,AE
+2018,321,UMKC,WAC
+2018,322,UMass Lowell,AE
+2018,323,UNC Asheville,BSth
+2018,324,UNC Greensboro,SC
+2018,325,UNC Wilmington,CAA
+2018,326,UNLV,MWC
+2018,327,USC,P12
+2018,328,USC Upstate,ASun
+2018,329,UT Arlington,SB
+2018,330,UT Rio Grande Valley,WAC
+2018,331,UTEP,CUSA
+2018,332,UTSA,CUSA
+2018,333,Utah,P12
+2018,334,Utah St.,MWC
+2018,336,Utah Valley,WAC
+2018,337,VCU,A10
+2018,338,VMI,SC
+2018,339,Valparaiso,MVC
+2018,340,Vanderbilt,SEC
+2018,341,Vermont,AE
+2018,342,Villanova,BE
+2018,343,Virginia,ACC
+2018,344,Virginia Tech,ACC
+2018,345,Wagner,NEC
+2018,346,Wake Forest,ACC
+2018,347,Washington,P12
+2018,348,Washington St.,P12
+2018,349,Weber St.,BSky
+2018,351,West Virginia,B12
+2018,352,Western Carolina,SC
+2018,353,Western Illinois,Sum
+2018,354,Western Kentucky,CUSA
+2018,355,Western Mich.,MAC
+2018,356,Wichita St.,Amer
+2018,357,William & Mary,CAA
+2018,358,Winthrop,BSth
+2018,359,Wisconsin,B10
+2018,360,Wofford,SC
+2018,361,Wright St.,Horz
+2018,362,Wyoming,MWC
+2018,363,Xavier,BE
+2018,364,Yale,Ivy
+2018,365,Youngstown St.,Horz
+2018,824,Hartford,AE
+2018,825,St. Francis Brooklyn,NEC
+2018,826,Savannah St.,MEAC
+2019,1,Abilene Christian,Slnd
+2019,2,Air Force,MWC
+2019,3,Akron,MAC
+2019,4,Alabama,SEC
+2019,5,Alabama A&M,SWAC
+2019,6,Alabama St.,SWAC
+2019,7,Albany,AE
+2019,8,Alcorn St.,SWAC
+2019,9,American,Pat
+2019,10,Appalachian St.,SB
+2019,11,Arizona,P12
+2019,12,Arizona St.,P12
+2019,13,Arkansas,SEC
+2019,14,Arkansas Pine Bluff,SWAC
+2019,15,Arkansas St.,SB
+2019,16,Army,Pat
+2019,17,Auburn,SEC
+2019,18,Austin Peay,OVC
+2019,19,BYU,WCC
+2019,20,Ball St.,MAC
+2019,21,Baylor,B12
+2019,23,Belmont,OVC
+2019,24,Bethune Cookman,MEAC
+2019,25,Binghamton,AE
+2019,26,Boise St.,MWC
+2019,27,Boston College,ACC
+2019,28,Boston University,Pat
+2019,29,Bowling Green,MAC
+2019,30,Bradley,MVC
+2019,31,Brown,Ivy
+2019,32,Bryant,NEC
+2019,33,Bucknell,Pat
+2019,34,Buffalo,MAC
+2019,35,Butler,BE
+2019,36,Cal Baptist,WAC
+2019,37,Cal Poly,BW
+2019,38,Cal St. Bakersfield,WAC
+2019,39,Cal St. Fullerton,BW
+2019,40,Cal St. Northridge,BW
+2019,41,California,P12
+2019,42,Campbell,BSth
+2019,43,Canisius,MAAC
+2019,44,Central Arkansas,Slnd
+2019,45,Central Connecticut,NEC
+2019,46,Central Michigan,MAC
+2019,47,Charleston,CAA
+2019,48,Charleston Southern,BSth
+2019,49,Charlotte,CUSA
+2019,50,Chattanooga,SC
+2019,51,Chicago St.,WAC
+2019,52,Cincinnati,Amer
+2019,53,Clemson,ACC
+2019,54,Cleveland St.,Horz
+2019,55,Coastal Carolina,SB
+2019,56,Colgate,Pat
+2019,57,Colorado,P12
+2019,58,Colorado St.,MWC
+2019,59,Columbia,Ivy
+2019,60,Connecticut,Amer
+2019,61,Coppin St.,MEAC
+2019,62,Cornell,Ivy
+2019,63,Creighton,BE
+2019,64,Dartmouth,Ivy
+2019,65,Davidson,A10
+2019,66,Dayton,A10
+2019,67,DePaul,BE
+2019,68,Delaware,CAA
+2019,69,Delaware St.,MEAC
+2019,70,Denver,Sum
+2019,71,Detroit Mercy,Horz
+2019,72,Drake,MVC
+2019,73,Drexel,CAA
+2019,74,Duke,ACC
+2019,75,Duquesne,A10
+2019,76,East Carolina,Amer
+2019,77,East Tennessee St.,SC
+2019,79,Eastern Illinois,OVC
+2019,80,Eastern Kentucky,OVC
+2019,81,Eastern Mich.,MAC
+2019,82,Eastern Washington,BSky
+2019,83,Elon,CAA
+2019,84,Evansville,MVC
+2019,85,FIU,CUSA
+2019,86,Fairfield,MAAC
+2019,87,Fairleigh Dickinson,NEC
+2019,88,Florida,SEC
+2019,89,Florida A&M,MEAC
+2019,90,Florida Atlantic,CUSA
+2019,91,Florida Gulf Coast,ASun
+2019,92,Florida St.,ACC
+2019,93,Fordham,A10
+2019,94,Fresno St.,MWC
+2019,95,Furman,SC
+2019,96,Gardner Webb,BSth
+2019,97,George Mason,A10
+2019,98,George Washington,A10
+2019,99,Georgetown,BE
+2019,100,Georgia,SEC
+2019,101,Georgia Southern,SB
+2019,102,Georgia St.,SB
+2019,103,Georgia Tech,ACC
+2019,104,Gonzaga,WCC
+2019,105,Grambling St.,SWAC
+2019,106,Grand Canyon,WAC
+2019,107,Green Bay,Horz
+2019,108,Hampton,BSth
+2019,109,Harvard,Ivy
+2019,110,Hawaii,BW
+2019,111,High Point,BSth
+2019,112,Hofstra,CAA
+2019,113,Holy Cross,Pat
+2019,114,Houston,Amer
+2019,115,Houston Christian,Slnd
+2019,116,Howard,MEAC
+2019,117,IU Indy,Horz
+2019,118,Idaho,BSky
+2019,119,Idaho St.,BSky
+2019,120,Illinois,B10
+2019,121,Illinois Chicago,Horz
+2019,122,Illinois St.,MVC
+2019,123,Incarnate Word,Slnd
+2019,124,Indiana,B10
+2019,125,Indiana St.,MVC
+2019,126,Iona,MAAC
+2019,127,Iowa,B10
+2019,128,Iowa St.,B12
+2019,129,Jackson St.,SWAC
+2019,130,Jacksonville,ASun
+2019,131,Jacksonville St.,OVC
+2019,132,James Madison,CAA
+2019,133,Kansas,B12
+2019,134,Kansas St.,B12
+2019,135,Kennesaw St.,ASun
+2019,136,Kent St.,MAC
+2019,137,Kentucky,SEC
+2019,138,LIU,NEC
+2019,139,LSU,SEC
+2019,140,La Salle,A10
+2019,141,Lafayette,Pat
+2019,142,Lamar,Slnd
+2019,144,Lehigh,Pat
+2019,145,Liberty,ASun
+2019,147,Lipscomb,ASun
+2019,148,Little Rock,SB
+2019,149,Long Beach St.,BW
+2019,150,Longwood,BSth
+2019,151,Louisiana,SB
+2019,152,Louisiana Monroe,SB
+2019,153,Louisiana Tech,CUSA
+2019,154,Louisville,ACC
+2019,155,Loyola Chicago,MVC
+2019,156,Loyola MD,Pat
+2019,157,Loyola Marymount,WCC
+2019,158,Maine,AE
+2019,159,Manhattan,MAAC
+2019,160,Marist,MAAC
+2019,161,Marquette,BE
+2019,162,Marshall,CUSA
+2019,163,Maryland,B10
+2019,164,Maryland Eastern Shore,MEAC
+2019,165,Massachusetts,A10
+2019,166,McNeese,Slnd
+2019,167,Memphis,Amer
+2019,168,Mercer,SC
+2019,171,Miami (FL),ACC
+2019,172,Miami (OH),MAC
+2019,173,Michigan,B10
+2019,174,Michigan St.,B10
+2019,175,Middle Tennessee,CUSA
+2019,176,Milwaukee,Horz
+2019,177,Minnesota,B10
+2019,178,Mississippi,SEC
+2019,179,Mississippi St.,SEC
+2019,180,Mississippi Valley St.,SWAC
+2019,181,Missouri,SEC
+2019,182,Missouri St.,MVC
+2019,183,Monmouth,MAAC
+2019,184,Montana,BSky
+2019,185,Montana St.,BSky
+2019,186,Morehead St.,OVC
+2019,187,Morgan St.,MEAC
+2019,188,Mount St. Mary's,NEC
+2019,189,Murray St.,OVC
+2019,190,NC State,ACC
+2019,191,NJIT,ASun
+2019,192,Navy,Pat
+2019,193,Nebraska,B10
+2019,194,Nebraska Omaha,Sum
+2019,195,Nevada,MWC
+2019,196,New Hampshire,AE
+2019,198,New Mexico,MWC
+2019,199,New Mexico St.,WAC
+2019,200,New Orleans,Slnd
+2019,201,Niagara,MAAC
+2019,202,Nicholls St.,Slnd
+2019,203,Norfolk St.,MEAC
+2019,204,North Alabama,ASun
+2019,205,North Carolina,ACC
+2019,206,North Carolina A&T,MEAC
+2019,207,North Carolina Central,MEAC
+2019,208,North Dakota,Sum
+2019,209,North Dakota St.,Sum
+2019,210,North Florida,ASun
+2019,211,North Texas,CUSA
+2019,212,Northeastern,CAA
+2019,213,Northern Arizona,BSky
+2019,214,Northern Colorado,BSky
+2019,215,Northern Illinois,MAC
+2019,216,Northern Iowa,MVC
+2019,217,Northern Kentucky,Horz
+2019,218,Northwestern,B10
+2019,219,Northwestern St.,Slnd
+2019,220,Notre Dame,ACC
+2019,221,Oakland,Horz
+2019,222,Ohio,MAC
+2019,223,Ohio St.,B10
+2019,224,Oklahoma,B12
+2019,225,Oklahoma St.,B12
+2019,226,Old Dominion,CUSA
+2019,227,Oral Roberts,Sum
+2019,228,Oregon,P12
+2019,229,Oregon St.,P12
+2019,230,Pacific,WCC
+2019,231,Penn,Ivy
+2019,232,Penn St.,B10
+2019,233,Pepperdine,WCC
+2019,234,Pittsburgh,ACC
+2019,235,Portland,WCC
+2019,236,Portland St.,BSky
+2019,237,Prairie View A&M,SWAC
+2019,238,Presbyterian,BSth
+2019,239,Princeton,Ivy
+2019,240,Providence,BE
+2019,241,Purdue,B10
+2019,242,Purdue Fort Wayne,Sum
+2019,244,Quinnipiac,MAAC
+2019,245,Radford,BSth
+2019,246,Rhode Island,A10
+2019,247,Rice,CUSA
+2019,248,Richmond,A10
+2019,249,Rider,MAAC
+2019,250,Robert Morris,NEC
+2019,251,Rutgers,B10
+2019,252,SIU Edwardsville,OVC
+2019,253,SMU,Amer
+2019,254,Sacramento St.,BSky
+2019,255,Sacred Heart,NEC
+2019,256,Saint Francis,NEC
+2019,257,Saint Joseph's,A10
+2019,258,Saint Louis,A10
+2019,259,Saint Mary's,WCC
+2019,260,Saint Peter's,MAAC
+2019,261,Sam Houston St.,Slnd
+2019,262,Samford,SC
+2019,263,San Diego,WCC
+2019,264,San Diego St.,MWC
+2019,265,San Francisco,WCC
+2019,266,San Jose St.,MWC
+2019,267,Santa Clara,WCC
+2019,268,Seattle,WAC
+2019,269,Seton Hall,BE
+2019,270,Siena,MAAC
+2019,271,South Alabama,SB
+2019,272,South Carolina,SEC
+2019,273,South Carolina St.,MEAC
+2019,274,South Dakota,Sum
+2019,275,South Dakota St.,Sum
+2019,276,South Florida,Amer
+2019,277,Southeast Missouri St.,OVC
+2019,278,Southeastern Louisiana,Slnd
+2019,279,Southern,SWAC
+2019,280,Southern Illinois,MVC
+2019,282,Southern Miss,CUSA
+2019,283,Southern Utah,BSky
+2019,284,St. Bonaventure,A10
+2019,285,St. John's,BE
+2019,287,Stanford,P12
+2019,288,Stephen F. Austin,Slnd
+2019,289,Stetson,ASun
+2019,291,Stony Brook,AE
+2019,292,Syracuse,ACC
+2019,293,TCU,B12
+2019,295,Temple,Amer
+2019,296,Tennessee,SEC
+2019,297,Tennessee Martin,OVC
+2019,298,Tennessee St.,OVC
+2019,299,Tennessee Tech,OVC
+2019,300,Texas,B12
+2019,301,Texas A&M,SEC
+2019,302,Texas A&M Corpus Chris,Slnd
+2019,303,Texas Southern,SWAC
+2019,304,Texas St.,SB
+2019,305,Texas Tech,B12
+2019,306,The Citadel,SC
+2019,307,Toledo,MAC
+2019,308,Towson,CAA
+2019,309,Troy,SB
+2019,310,Tulane,Amer
+2019,311,Tulsa,Amer
+2019,312,UAB,CUSA
+2019,313,UC Davis,BW
+2019,314,UC Irvine,BW
+2019,315,UC Riverside,BW
+2019,317,UC Santa Barbara,BW
+2019,318,UCF,Amer
+2019,319,UCLA,P12
+2019,320,UMBC,AE
+2019,321,UMKC,WAC
+2019,322,UMass Lowell,AE
+2019,323,UNC Asheville,BSth
+2019,324,UNC Greensboro,SC
+2019,325,UNC Wilmington,CAA
+2019,326,UNLV,MWC
+2019,327,USC,P12
+2019,328,USC Upstate,BSth
+2019,329,UT Arlington,SB
+2019,330,UT Rio Grande Valley,WAC
+2019,331,UTEP,CUSA
+2019,332,UTSA,CUSA
+2019,333,Utah,P12
+2019,334,Utah St.,MWC
+2019,336,Utah Valley,WAC
+2019,337,VCU,A10
+2019,338,VMI,SC
+2019,339,Valparaiso,MVC
+2019,340,Vanderbilt,SEC
+2019,341,Vermont,AE
+2019,342,Villanova,BE
+2019,343,Virginia,ACC
+2019,344,Virginia Tech,ACC
+2019,345,Wagner,NEC
+2019,346,Wake Forest,ACC
+2019,347,Washington,P12
+2019,348,Washington St.,P12
+2019,349,Weber St.,BSky
+2019,351,West Virginia,B12
+2019,352,Western Carolina,SC
+2019,353,Western Illinois,Sum
+2019,354,Western Kentucky,CUSA
+2019,355,Western Mich.,MAC
+2019,356,Wichita St.,Amer
+2019,357,William & Mary,CAA
+2019,358,Winthrop,BSth
+2019,359,Wisconsin,B10
+2019,360,Wofford,SC
+2019,361,Wright St.,Horz
+2019,362,Wyoming,MWC
+2019,363,Xavier,BE
+2019,364,Yale,Ivy
+2019,365,Youngstown St.,Horz
+2019,824,Hartford,AE
+2019,825,St. Francis Brooklyn,NEC
+2019,826,Savannah St.,MEAC
+2020,1,Abilene Christian,Slnd
+2020,2,Air Force,MWC
+2020,3,Akron,MAC
+2020,4,Alabama,SEC
+2020,5,Alabama A&M,SWAC
+2020,6,Alabama St.,SWAC
+2020,7,Albany,AE
+2020,8,Alcorn St.,SWAC
+2020,9,American,Pat
+2020,10,Appalachian St.,SB
+2020,11,Arizona,P12
+2020,12,Arizona St.,P12
+2020,13,Arkansas,SEC
+2020,14,Arkansas Pine Bluff,SWAC
+2020,15,Arkansas St.,SB
+2020,16,Army,Pat
+2020,17,Auburn,SEC
+2020,18,Austin Peay,OVC
+2020,19,BYU,WCC
+2020,20,Ball St.,MAC
+2020,21,Baylor,B12
+2020,23,Belmont,OVC
+2020,24,Bethune Cookman,MEAC
+2020,25,Binghamton,AE
+2020,26,Boise St.,MWC
+2020,27,Boston College,ACC
+2020,28,Boston University,Pat
+2020,29,Bowling Green,MAC
+2020,30,Bradley,MVC
+2020,31,Brown,Ivy
+2020,32,Bryant,NEC
+2020,33,Bucknell,Pat
+2020,34,Buffalo,MAC
+2020,35,Butler,BE
+2020,36,Cal Baptist,WAC
+2020,37,Cal Poly,BW
+2020,38,Cal St. Bakersfield,WAC
+2020,39,Cal St. Fullerton,BW
+2020,40,Cal St. Northridge,BW
+2020,41,California,P12
+2020,42,Campbell,BSth
+2020,43,Canisius,MAAC
+2020,44,Central Arkansas,Slnd
+2020,45,Central Connecticut,NEC
+2020,46,Central Michigan,MAC
+2020,47,Charleston,CAA
+2020,48,Charleston Southern,BSth
+2020,49,Charlotte,CUSA
+2020,50,Chattanooga,SC
+2020,51,Chicago St.,WAC
+2020,52,Cincinnati,Amer
+2020,53,Clemson,ACC
+2020,54,Cleveland St.,Horz
+2020,55,Coastal Carolina,SB
+2020,56,Colgate,Pat
+2020,57,Colorado,P12
+2020,58,Colorado St.,MWC
+2020,59,Columbia,Ivy
+2020,60,Connecticut,Amer
+2020,61,Coppin St.,MEAC
+2020,62,Cornell,Ivy
+2020,63,Creighton,BE
+2020,64,Dartmouth,Ivy
+2020,65,Davidson,A10
+2020,66,Dayton,A10
+2020,67,DePaul,BE
+2020,68,Delaware,CAA
+2020,69,Delaware St.,MEAC
+2020,70,Denver,Sum
+2020,71,Detroit Mercy,Horz
+2020,72,Drake,MVC
+2020,73,Drexel,CAA
+2020,74,Duke,ACC
+2020,75,Duquesne,A10
+2020,76,East Carolina,Amer
+2020,77,East Tennessee St.,SC
+2020,79,Eastern Illinois,OVC
+2020,80,Eastern Kentucky,OVC
+2020,81,Eastern Mich.,MAC
+2020,82,Eastern Washington,BSky
+2020,83,Elon,CAA
+2020,84,Evansville,MVC
+2020,85,FIU,CUSA
+2020,86,Fairfield,MAAC
+2020,87,Fairleigh Dickinson,NEC
+2020,88,Florida,SEC
+2020,89,Florida A&M,MEAC
+2020,90,Florida Atlantic,CUSA
+2020,91,Florida Gulf Coast,ASun
+2020,92,Florida St.,ACC
+2020,93,Fordham,A10
+2020,94,Fresno St.,MWC
+2020,95,Furman,SC
+2020,96,Gardner Webb,BSth
+2020,97,George Mason,A10
+2020,98,George Washington,A10
+2020,99,Georgetown,BE
+2020,100,Georgia,SEC
+2020,101,Georgia Southern,SB
+2020,102,Georgia St.,SB
+2020,103,Georgia Tech,ACC
+2020,104,Gonzaga,WCC
+2020,105,Grambling St.,SWAC
+2020,106,Grand Canyon,WAC
+2020,107,Green Bay,Horz
+2020,108,Hampton,BSth
+2020,109,Harvard,Ivy
+2020,110,Hawaii,BW
+2020,111,High Point,BSth
+2020,112,Hofstra,CAA
+2020,113,Holy Cross,Pat
+2020,114,Houston,Amer
+2020,115,Houston Christian,Slnd
+2020,116,Howard,MEAC
+2020,117,IU Indy,Horz
+2020,118,Idaho,BSky
+2020,119,Idaho St.,BSky
+2020,120,Illinois,B10
+2020,121,Illinois Chicago,Horz
+2020,122,Illinois St.,MVC
+2020,123,Incarnate Word,Slnd
+2020,124,Indiana,B10
+2020,125,Indiana St.,MVC
+2020,126,Iona,MAAC
+2020,127,Iowa,B10
+2020,128,Iowa St.,B12
+2020,129,Jackson St.,SWAC
+2020,130,Jacksonville,ASun
+2020,131,Jacksonville St.,OVC
+2020,132,James Madison,CAA
+2020,133,Kansas,B12
+2020,134,Kansas St.,B12
+2020,135,Kennesaw St.,ASun
+2020,136,Kent St.,MAC
+2020,137,Kentucky,SEC
+2020,138,LIU,NEC
+2020,139,LSU,SEC
+2020,140,La Salle,A10
+2020,141,Lafayette,Pat
+2020,142,Lamar,Slnd
+2020,144,Lehigh,Pat
+2020,145,Liberty,ASun
+2020,147,Lipscomb,ASun
+2020,148,Little Rock,SB
+2020,149,Long Beach St.,BW
+2020,150,Longwood,BSth
+2020,151,Louisiana,SB
+2020,152,Louisiana Monroe,SB
+2020,153,Louisiana Tech,CUSA
+2020,154,Louisville,ACC
+2020,155,Loyola Chicago,MVC
+2020,156,Loyola MD,Pat
+2020,157,Loyola Marymount,WCC
+2020,158,Maine,AE
+2020,159,Manhattan,MAAC
+2020,160,Marist,MAAC
+2020,161,Marquette,BE
+2020,162,Marshall,CUSA
+2020,163,Maryland,B10
+2020,164,Maryland Eastern Shore,MEAC
+2020,165,Massachusetts,A10
+2020,166,McNeese,Slnd
+2020,167,Memphis,Amer
+2020,168,Mercer,SC
+2020,170,Merrimack,NEC
+2020,171,Miami (FL),ACC
+2020,172,Miami (OH),MAC
+2020,173,Michigan,B10
+2020,174,Michigan St.,B10
+2020,175,Middle Tennessee,CUSA
+2020,176,Milwaukee,Horz
+2020,177,Minnesota,B10
+2020,178,Mississippi,SEC
+2020,179,Mississippi St.,SEC
+2020,180,Mississippi Valley St.,SWAC
+2020,181,Missouri,SEC
+2020,182,Missouri St.,MVC
+2020,183,Monmouth,MAAC
+2020,184,Montana,BSky
+2020,185,Montana St.,BSky
+2020,186,Morehead St.,OVC
+2020,187,Morgan St.,MEAC
+2020,188,Mount St. Mary's,NEC
+2020,189,Murray St.,OVC
+2020,190,NC State,ACC
+2020,191,NJIT,ASun
+2020,192,Navy,Pat
+2020,193,Nebraska,B10
+2020,194,Nebraska Omaha,Sum
+2020,195,Nevada,MWC
+2020,196,New Hampshire,AE
+2020,198,New Mexico,MWC
+2020,199,New Mexico St.,WAC
+2020,200,New Orleans,Slnd
+2020,201,Niagara,MAAC
+2020,202,Nicholls St.,Slnd
+2020,203,Norfolk St.,MEAC
+2020,204,North Alabama,ASun
+2020,205,North Carolina,ACC
+2020,206,North Carolina A&T,MEAC
+2020,207,North Carolina Central,MEAC
+2020,208,North Dakota,Sum
+2020,209,North Dakota St.,Sum
+2020,210,North Florida,ASun
+2020,211,North Texas,CUSA
+2020,212,Northeastern,CAA
+2020,213,Northern Arizona,BSky
+2020,214,Northern Colorado,BSky
+2020,215,Northern Illinois,MAC
+2020,216,Northern Iowa,MVC
+2020,217,Northern Kentucky,Horz
+2020,218,Northwestern,B10
+2020,219,Northwestern St.,Slnd
+2020,220,Notre Dame,ACC
+2020,221,Oakland,Horz
+2020,222,Ohio,MAC
+2020,223,Ohio St.,B10
+2020,224,Oklahoma,B12
+2020,225,Oklahoma St.,B12
+2020,226,Old Dominion,CUSA
+2020,227,Oral Roberts,Sum
+2020,228,Oregon,P12
+2020,229,Oregon St.,P12
+2020,230,Pacific,WCC
+2020,231,Penn,Ivy
+2020,232,Penn St.,B10
+2020,233,Pepperdine,WCC
+2020,234,Pittsburgh,ACC
+2020,235,Portland,WCC
+2020,236,Portland St.,BSky
+2020,237,Prairie View A&M,SWAC
+2020,238,Presbyterian,BSth
+2020,239,Princeton,Ivy
+2020,240,Providence,BE
+2020,241,Purdue,B10
+2020,242,Purdue Fort Wayne,Sum
+2020,244,Quinnipiac,MAAC
+2020,245,Radford,BSth
+2020,246,Rhode Island,A10
+2020,247,Rice,CUSA
+2020,248,Richmond,A10
+2020,249,Rider,MAAC
+2020,250,Robert Morris,NEC
+2020,251,Rutgers,B10
+2020,252,SIU Edwardsville,OVC
+2020,253,SMU,Amer
+2020,254,Sacramento St.,BSky
+2020,255,Sacred Heart,NEC
+2020,256,Saint Francis,NEC
+2020,257,Saint Joseph's,A10
+2020,258,Saint Louis,A10
+2020,259,Saint Mary's,WCC
+2020,260,Saint Peter's,MAAC
+2020,261,Sam Houston St.,Slnd
+2020,262,Samford,SC
+2020,263,San Diego,WCC
+2020,264,San Diego St.,MWC
+2020,265,San Francisco,WCC
+2020,266,San Jose St.,MWC
+2020,267,Santa Clara,WCC
+2020,268,Seattle,WAC
+2020,269,Seton Hall,BE
+2020,270,Siena,MAAC
+2020,271,South Alabama,SB
+2020,272,South Carolina,SEC
+2020,273,South Carolina St.,MEAC
+2020,274,South Dakota,Sum
+2020,275,South Dakota St.,Sum
+2020,276,South Florida,Amer
+2020,277,Southeast Missouri St.,OVC
+2020,278,Southeastern Louisiana,Slnd
+2020,279,Southern,SWAC
+2020,280,Southern Illinois,MVC
+2020,282,Southern Miss,CUSA
+2020,283,Southern Utah,BSky
+2020,284,St. Bonaventure,A10
+2020,285,St. John's,BE
+2020,287,Stanford,P12
+2020,288,Stephen F. Austin,Slnd
+2020,289,Stetson,ASun
+2020,291,Stony Brook,AE
+2020,292,Syracuse,ACC
+2020,293,TCU,B12
+2020,295,Temple,Amer
+2020,296,Tennessee,SEC
+2020,297,Tennessee Martin,OVC
+2020,298,Tennessee St.,OVC
+2020,299,Tennessee Tech,OVC
+2020,300,Texas,B12
+2020,301,Texas A&M,SEC
+2020,302,Texas A&M Corpus Chris,Slnd
+2020,303,Texas Southern,SWAC
+2020,304,Texas St.,SB
+2020,305,Texas Tech,B12
+2020,306,The Citadel,SC
+2020,307,Toledo,MAC
+2020,308,Towson,CAA
+2020,309,Troy,SB
+2020,310,Tulane,Amer
+2020,311,Tulsa,Amer
+2020,312,UAB,CUSA
+2020,313,UC Davis,BW
+2020,314,UC Irvine,BW
+2020,315,UC Riverside,BW
+2020,317,UC Santa Barbara,BW
+2020,318,UCF,Amer
+2020,319,UCLA,P12
+2020,320,UMBC,AE
+2020,321,UMKC,WAC
+2020,322,UMass Lowell,AE
+2020,323,UNC Asheville,BSth
+2020,324,UNC Greensboro,SC
+2020,325,UNC Wilmington,CAA
+2020,326,UNLV,MWC
+2020,327,USC,P12
+2020,328,USC Upstate,BSth
+2020,329,UT Arlington,SB
+2020,330,UT Rio Grande Valley,WAC
+2020,331,UTEP,CUSA
+2020,332,UTSA,CUSA
+2020,333,Utah,P12
+2020,334,Utah St.,MWC
+2020,336,Utah Valley,WAC
+2020,337,VCU,A10
+2020,338,VMI,SC
+2020,339,Valparaiso,MVC
+2020,340,Vanderbilt,SEC
+2020,341,Vermont,AE
+2020,342,Villanova,BE
+2020,343,Virginia,ACC
+2020,344,Virginia Tech,ACC
+2020,345,Wagner,NEC
+2020,346,Wake Forest,ACC
+2020,347,Washington,P12
+2020,348,Washington St.,P12
+2020,349,Weber St.,BSky
+2020,351,West Virginia,B12
+2020,352,Western Carolina,SC
+2020,353,Western Illinois,Sum
+2020,354,Western Kentucky,CUSA
+2020,355,Western Mich.,MAC
+2020,356,Wichita St.,Amer
+2020,357,William & Mary,CAA
+2020,358,Winthrop,BSth
+2020,359,Wisconsin,B10
+2020,360,Wofford,SC
+2020,361,Wright St.,Horz
+2020,362,Wyoming,MWC
+2020,363,Xavier,BE
+2020,364,Yale,Ivy
+2020,365,Youngstown St.,Horz
+2020,824,Hartford,AE
+2020,825,St. Francis Brooklyn,NEC
+2021,1,Abilene Christian,Slnd
+2021,2,Air Force,MWC
+2021,3,Akron,MAC
+2021,4,Alabama,SEC
+2021,5,Alabama A&M,SWAC
+2021,6,Alabama St.,SWAC
+2021,7,Albany,AE
+2021,8,Alcorn St.,SWAC
+2021,9,American,Pat
+2021,10,Appalachian St.,SB
+2021,11,Arizona,P12
+2021,12,Arizona St.,P12
+2021,13,Arkansas,SEC
+2021,14,Arkansas Pine Bluff,SWAC
+2021,15,Arkansas St.,SB
+2021,16,Army,Pat
+2021,17,Auburn,SEC
+2021,18,Austin Peay,OVC
+2021,19,BYU,WCC
+2021,20,Ball St.,MAC
+2021,21,Baylor,B12
+2021,22,Bellarmine,ASun
+2021,23,Belmont,OVC
+2021,25,Binghamton,AE
+2021,26,Boise St.,MWC
+2021,27,Boston College,ACC
+2021,28,Boston University,Pat
+2021,29,Bowling Green,MAC
+2021,30,Bradley,MVC
+2021,31,Brown,Ivy
+2021,32,Bryant,NEC
+2021,33,Bucknell,Pat
+2021,34,Buffalo,MAC
+2021,35,Butler,BE
+2021,36,Cal Baptist,WAC
+2021,37,Cal Poly,BW
+2021,38,Cal St. Bakersfield,BW
+2021,39,Cal St. Fullerton,BW
+2021,40,Cal St. Northridge,BW
+2021,41,California,P12
+2021,42,Campbell,BSth
+2021,43,Canisius,MAAC
+2021,44,Central Arkansas,Slnd
+2021,45,Central Connecticut,NEC
+2021,46,Central Michigan,MAC
+2021,47,Charleston,CAA
+2021,48,Charleston Southern,BSth
+2021,49,Charlotte,CUSA
+2021,50,Chattanooga,SC
+2021,51,Chicago St.,WAC
+2021,52,Cincinnati,Amer
+2021,53,Clemson,ACC
+2021,54,Cleveland St.,Horz
+2021,55,Coastal Carolina,SB
+2021,56,Colgate,Pat
+2021,57,Colorado,P12
+2021,58,Colorado St.,MWC
+2021,59,Columbia,Ivy
+2021,60,Connecticut,BE
+2021,61,Coppin St.,MEAC
+2021,62,Cornell,Ivy
+2021,63,Creighton,BE
+2021,64,Dartmouth,Ivy
+2021,65,Davidson,A10
+2021,66,Dayton,A10
+2021,67,DePaul,BE
+2021,68,Delaware,CAA
+2021,69,Delaware St.,MEAC
+2021,70,Denver,Sum
+2021,71,Detroit Mercy,Horz
+2021,72,Drake,MVC
+2021,73,Drexel,CAA
+2021,74,Duke,ACC
+2021,75,Duquesne,A10
+2021,76,East Carolina,Amer
+2021,77,East Tennessee St.,SC
+2021,79,Eastern Illinois,OVC
+2021,80,Eastern Kentucky,OVC
+2021,81,Eastern Mich.,MAC
+2021,82,Eastern Washington,BSky
+2021,83,Elon,CAA
+2021,84,Evansville,MVC
+2021,85,FIU,CUSA
+2021,86,Fairfield,MAAC
+2021,87,Fairleigh Dickinson,NEC
+2021,88,Florida,SEC
+2021,89,Florida A&M,MEAC
+2021,90,Florida Atlantic,CUSA
+2021,91,Florida Gulf Coast,ASun
+2021,92,Florida St.,ACC
+2021,93,Fordham,A10
+2021,94,Fresno St.,MWC
+2021,95,Furman,SC
+2021,96,Gardner Webb,BSth
+2021,97,George Mason,A10
+2021,98,George Washington,A10
+2021,99,Georgetown,BE
+2021,100,Georgia,SEC
+2021,101,Georgia Southern,SB
+2021,102,Georgia St.,SB
+2021,103,Georgia Tech,ACC
+2021,104,Gonzaga,WCC
+2021,105,Grambling St.,SWAC
+2021,106,Grand Canyon,WAC
+2021,107,Green Bay,Horz
+2021,108,Hampton,BSth
+2021,109,Harvard,Ivy
+2021,110,Hawaii,BW
+2021,111,High Point,BSth
+2021,112,Hofstra,CAA
+2021,113,Holy Cross,Pat
+2021,114,Houston,Amer
+2021,115,Houston Christian,Slnd
+2021,116,Howard,MEAC
+2021,117,IU Indy,Horz
+2021,118,Idaho,BSky
+2021,119,Idaho St.,BSky
+2021,120,Illinois,B10
+2021,121,Illinois Chicago,Horz
+2021,122,Illinois St.,MVC
+2021,123,Incarnate Word,Slnd
+2021,124,Indiana,B10
+2021,125,Indiana St.,MVC
+2021,126,Iona,MAAC
+2021,127,Iowa,B10
+2021,128,Iowa St.,B12
+2021,129,Jackson St.,SWAC
+2021,130,Jacksonville,ASun
+2021,131,Jacksonville St.,OVC
+2021,132,James Madison,CAA
+2021,133,Kansas,B12
+2021,134,Kansas St.,B12
+2021,135,Kennesaw St.,ASun
+2021,136,Kent St.,MAC
+2021,137,Kentucky,SEC
+2021,138,LIU,NEC
+2021,139,LSU,SEC
+2021,140,La Salle,A10
+2021,141,Lafayette,Pat
+2021,142,Lamar,Slnd
+2021,144,Lehigh,Pat
+2021,145,Liberty,ASun
+2021,147,Lipscomb,ASun
+2021,148,Little Rock,SB
+2021,149,Long Beach St.,BW
+2021,150,Longwood,BSth
+2021,151,Louisiana,SB
+2021,152,Louisiana Monroe,SB
+2021,153,Louisiana Tech,CUSA
+2021,154,Louisville,ACC
+2021,155,Loyola Chicago,MVC
+2021,156,Loyola MD,Pat
+2021,157,Loyola Marymount,WCC
+2021,158,Maine,AE
+2021,159,Manhattan,MAAC
+2021,160,Marist,MAAC
+2021,161,Marquette,BE
+2021,162,Marshall,CUSA
+2021,163,Maryland,B10
+2021,165,Massachusetts,A10
+2021,166,McNeese,Slnd
+2021,167,Memphis,Amer
+2021,168,Mercer,SC
+2021,170,Merrimack,NEC
+2021,171,Miami (FL),ACC
+2021,172,Miami (OH),MAC
+2021,173,Michigan,B10
+2021,174,Michigan St.,B10
+2021,175,Middle Tennessee,CUSA
+2021,176,Milwaukee,Horz
+2021,177,Minnesota,B10
+2021,178,Mississippi,SEC
+2021,179,Mississippi St.,SEC
+2021,180,Mississippi Valley St.,SWAC
+2021,181,Missouri,SEC
+2021,182,Missouri St.,MVC
+2021,183,Monmouth,MAAC
+2021,184,Montana,BSky
+2021,185,Montana St.,BSky
+2021,186,Morehead St.,OVC
+2021,187,Morgan St.,MEAC
+2021,188,Mount St. Mary's,NEC
+2021,189,Murray St.,OVC
+2021,190,NC State,ACC
+2021,191,NJIT,AE
+2021,192,Navy,Pat
+2021,193,Nebraska,B10
+2021,194,Nebraska Omaha,Sum
+2021,195,Nevada,MWC
+2021,196,New Hampshire,AE
+2021,198,New Mexico,MWC
+2021,199,New Mexico St.,WAC
+2021,200,New Orleans,Slnd
+2021,201,Niagara,MAAC
+2021,202,Nicholls St.,Slnd
+2021,203,Norfolk St.,MEAC
+2021,204,North Alabama,ASun
+2021,205,North Carolina,ACC
+2021,206,North Carolina A&T,MEAC
+2021,207,North Carolina Central,MEAC
+2021,208,North Dakota,Sum
+2021,209,North Dakota St.,Sum
+2021,210,North Florida,ASun
+2021,211,North Texas,CUSA
+2021,212,Northeastern,CAA
+2021,213,Northern Arizona,BSky
+2021,214,Northern Colorado,BSky
+2021,215,Northern Illinois,MAC
+2021,216,Northern Iowa,MVC
+2021,217,Northern Kentucky,Horz
+2021,218,Northwestern,B10
+2021,219,Northwestern St.,Slnd
+2021,220,Notre Dame,ACC
+2021,221,Oakland,Horz
+2021,222,Ohio,MAC
+2021,223,Ohio St.,B10
+2021,224,Oklahoma,B12
+2021,225,Oklahoma St.,B12
+2021,226,Old Dominion,CUSA
+2021,227,Oral Roberts,Sum
+2021,228,Oregon,P12
+2021,229,Oregon St.,P12
+2021,230,Pacific,WCC
+2021,231,Penn,Ivy
+2021,232,Penn St.,B10
+2021,233,Pepperdine,WCC
+2021,234,Pittsburgh,ACC
+2021,235,Portland,WCC
+2021,236,Portland St.,BSky
+2021,237,Prairie View A&M,SWAC
+2021,238,Presbyterian,BSth
+2021,239,Princeton,Ivy
+2021,240,Providence,BE
+2021,241,Purdue,B10
+2021,242,Purdue Fort Wayne,Horz
+2021,244,Quinnipiac,MAAC
+2021,245,Radford,BSth
+2021,246,Rhode Island,A10
+2021,247,Rice,CUSA
+2021,248,Richmond,A10
+2021,249,Rider,MAAC
+2021,250,Robert Morris,Horz
+2021,251,Rutgers,B10
+2021,252,SIU Edwardsville,OVC
+2021,253,SMU,Amer
+2021,254,Sacramento St.,BSky
+2021,255,Sacred Heart,NEC
+2021,256,Saint Francis,NEC
+2021,257,Saint Joseph's,A10
+2021,258,Saint Louis,A10
+2021,259,Saint Mary's,WCC
+2021,260,Saint Peter's,MAAC
+2021,261,Sam Houston St.,Slnd
+2021,262,Samford,SC
+2021,263,San Diego,WCC
+2021,264,San Diego St.,MWC
+2021,265,San Francisco,WCC
+2021,266,San Jose St.,MWC
+2021,267,Santa Clara,WCC
+2021,268,Seattle,WAC
+2021,269,Seton Hall,BE
+2021,270,Siena,MAAC
+2021,271,South Alabama,SB
+2021,272,South Carolina,SEC
+2021,273,South Carolina St.,MEAC
+2021,274,South Dakota,Sum
+2021,275,South Dakota St.,Sum
+2021,276,South Florida,Amer
+2021,277,Southeast Missouri St.,OVC
+2021,278,Southeastern Louisiana,Slnd
+2021,279,Southern,SWAC
+2021,280,Southern Illinois,MVC
+2021,282,Southern Miss,CUSA
+2021,283,Southern Utah,BSky
+2021,284,St. Bonaventure,A10
+2021,285,St. John's,BE
+2021,287,Stanford,P12
+2021,288,Stephen F. Austin,Slnd
+2021,289,Stetson,ASun
+2021,291,Stony Brook,AE
+2021,292,Syracuse,ACC
+2021,293,TCU,B12
+2021,294,Tarleton St.,WAC
+2021,295,Temple,Amer
+2021,296,Tennessee,SEC
+2021,297,Tennessee Martin,OVC
+2021,298,Tennessee St.,OVC
+2021,299,Tennessee Tech,OVC
+2021,300,Texas,B12
+2021,301,Texas A&M,SEC
+2021,302,Texas A&M Corpus Chris,Slnd
+2021,303,Texas Southern,SWAC
+2021,304,Texas St.,SB
+2021,305,Texas Tech,B12
+2021,306,The Citadel,SC
+2021,307,Toledo,MAC
+2021,308,Towson,CAA
+2021,309,Troy,SB
+2021,310,Tulane,Amer
+2021,311,Tulsa,Amer
+2021,312,UAB,CUSA
+2021,313,UC Davis,BW
+2021,314,UC Irvine,BW
+2021,315,UC Riverside,BW
+2021,316,UC San Diego,BW
+2021,317,UC Santa Barbara,BW
+2021,318,UCF,Amer
+2021,319,UCLA,P12
+2021,320,UMBC,AE
+2021,321,UMKC,Sum
+2021,322,UMass Lowell,AE
+2021,323,UNC Asheville,BSth
+2021,324,UNC Greensboro,SC
+2021,325,UNC Wilmington,CAA
+2021,326,UNLV,MWC
+2021,327,USC,P12
+2021,328,USC Upstate,BSth
+2021,329,UT Arlington,SB
+2021,330,UT Rio Grande Valley,WAC
+2021,331,UTEP,CUSA
+2021,332,UTSA,CUSA
+2021,333,Utah,P12
+2021,334,Utah St.,MWC
+2021,335,Utah Tech,WAC
+2021,336,Utah Valley,WAC
+2021,337,VCU,A10
+2021,338,VMI,SC
+2021,339,Valparaiso,MVC
+2021,340,Vanderbilt,SEC
+2021,341,Vermont,AE
+2021,342,Villanova,BE
+2021,343,Virginia,ACC
+2021,344,Virginia Tech,ACC
+2021,345,Wagner,NEC
+2021,346,Wake Forest,ACC
+2021,347,Washington,P12
+2021,348,Washington St.,P12
+2021,349,Weber St.,BSky
+2021,351,West Virginia,B12
+2021,352,Western Carolina,SC
+2021,353,Western Illinois,Sum
+2021,354,Western Kentucky,CUSA
+2021,355,Western Mich.,MAC
+2021,356,Wichita St.,Amer
+2021,357,William & Mary,CAA
+2021,358,Winthrop,BSth
+2021,359,Wisconsin,B10
+2021,360,Wofford,SC
+2021,361,Wright St.,Horz
+2021,362,Wyoming,MWC
+2021,363,Xavier,BE
+2021,364,Yale,Ivy
+2021,365,Youngstown St.,Horz
+2021,824,Hartford,AE
+2021,825,St. Francis Brooklyn,NEC
+2022,1,Abilene Christian,WAC
+2022,2,Air Force,MWC
+2022,3,Akron,MAC
+2022,4,Alabama,SEC
+2022,5,Alabama A&M,SWAC
+2022,6,Alabama St.,SWAC
+2022,7,Albany,AE
+2022,8,Alcorn St.,SWAC
+2022,9,American,Pat
+2022,10,Appalachian St.,SB
+2022,11,Arizona,P12
+2022,12,Arizona St.,P12
+2022,13,Arkansas,SEC
+2022,14,Arkansas Pine Bluff,SWAC
+2022,15,Arkansas St.,SB
+2022,16,Army,Pat
+2022,17,Auburn,SEC
+2022,18,Austin Peay,OVC
+2022,19,BYU,WCC
+2022,20,Ball St.,MAC
+2022,21,Baylor,B12
+2022,22,Bellarmine,ASun
+2022,23,Belmont,OVC
+2022,24,Bethune Cookman,SWAC
+2022,25,Binghamton,AE
+2022,26,Boise St.,MWC
+2022,27,Boston College,ACC
+2022,28,Boston University,Pat
+2022,29,Bowling Green,MAC
+2022,30,Bradley,MVC
+2022,31,Brown,Ivy
+2022,32,Bryant,NEC
+2022,33,Bucknell,Pat
+2022,34,Buffalo,MAC
+2022,35,Butler,BE
+2022,36,Cal Baptist,WAC
+2022,37,Cal Poly,BW
+2022,38,Cal St. Bakersfield,BW
+2022,39,Cal St. Fullerton,BW
+2022,40,Cal St. Northridge,BW
+2022,41,California,P12
+2022,42,Campbell,BSth
+2022,43,Canisius,MAAC
+2022,44,Central Arkansas,ASun
+2022,45,Central Connecticut,NEC
+2022,46,Central Michigan,MAC
+2022,47,Charleston,CAA
+2022,48,Charleston Southern,BSth
+2022,49,Charlotte,CUSA
+2022,50,Chattanooga,SC
+2022,51,Chicago St.,WAC
+2022,52,Cincinnati,Amer
+2022,53,Clemson,ACC
+2022,54,Cleveland St.,Horz
+2022,55,Coastal Carolina,SB
+2022,56,Colgate,Pat
+2022,57,Colorado,P12
+2022,58,Colorado St.,MWC
+2022,59,Columbia,Ivy
+2022,60,Connecticut,BE
+2022,61,Coppin St.,MEAC
+2022,62,Cornell,Ivy
+2022,63,Creighton,BE
+2022,64,Dartmouth,Ivy
+2022,65,Davidson,A10
+2022,66,Dayton,A10
+2022,67,DePaul,BE
+2022,68,Delaware,CAA
+2022,69,Delaware St.,MEAC
+2022,70,Denver,Sum
+2022,71,Detroit Mercy,Horz
+2022,72,Drake,MVC
+2022,73,Drexel,CAA
+2022,74,Duke,ACC
+2022,75,Duquesne,A10
+2022,76,East Carolina,Amer
+2022,77,East Tennessee St.,SC
+2022,79,Eastern Illinois,OVC
+2022,80,Eastern Kentucky,ASun
+2022,81,Eastern Mich.,MAC
+2022,82,Eastern Washington,BSky
+2022,83,Elon,CAA
+2022,84,Evansville,MVC
+2022,85,FIU,CUSA
+2022,86,Fairfield,MAAC
+2022,87,Fairleigh Dickinson,NEC
+2022,88,Florida,SEC
+2022,89,Florida A&M,SWAC
+2022,90,Florida Atlantic,CUSA
+2022,91,Florida Gulf Coast,ASun
+2022,92,Florida St.,ACC
+2022,93,Fordham,A10
+2022,94,Fresno St.,MWC
+2022,95,Furman,SC
+2022,96,Gardner Webb,BSth
+2022,97,George Mason,A10
+2022,98,George Washington,A10
+2022,99,Georgetown,BE
+2022,100,Georgia,SEC
+2022,101,Georgia Southern,SB
+2022,102,Georgia St.,SB
+2022,103,Georgia Tech,ACC
+2022,104,Gonzaga,WCC
+2022,105,Grambling St.,SWAC
+2022,106,Grand Canyon,WAC
+2022,107,Green Bay,Horz
+2022,108,Hampton,BSth
+2022,109,Harvard,Ivy
+2022,110,Hawaii,BW
+2022,111,High Point,BSth
+2022,112,Hofstra,CAA
+2022,113,Holy Cross,Pat
+2022,114,Houston,Amer
+2022,115,Houston Christian,Slnd
+2022,116,Howard,MEAC
+2022,117,IU Indy,Horz
+2022,118,Idaho,BSky
+2022,119,Idaho St.,BSky
+2022,120,Illinois,B10
+2022,121,Illinois Chicago,Horz
+2022,122,Illinois St.,MVC
+2022,123,Incarnate Word,Slnd
+2022,124,Indiana,B10
+2022,125,Indiana St.,MVC
+2022,126,Iona,MAAC
+2022,127,Iowa,B10
+2022,128,Iowa St.,B12
+2022,129,Jackson St.,SWAC
+2022,130,Jacksonville,ASun
+2022,131,Jacksonville St.,ASun
+2022,132,James Madison,CAA
+2022,133,Kansas,B12
+2022,134,Kansas St.,B12
+2022,135,Kennesaw St.,ASun
+2022,136,Kent St.,MAC
+2022,137,Kentucky,SEC
+2022,138,LIU,NEC
+2022,139,LSU,SEC
+2022,140,La Salle,A10
+2022,141,Lafayette,Pat
+2022,142,Lamar,WAC
+2022,144,Lehigh,Pat
+2022,145,Liberty,ASun
+2022,147,Lipscomb,ASun
+2022,148,Little Rock,SB
+2022,149,Long Beach St.,BW
+2022,150,Longwood,BSth
+2022,151,Louisiana,SB
+2022,152,Louisiana Monroe,SB
+2022,153,Louisiana Tech,CUSA
+2022,154,Louisville,ACC
+2022,155,Loyola Chicago,MVC
+2022,156,Loyola MD,Pat
+2022,157,Loyola Marymount,WCC
+2022,158,Maine,AE
+2022,159,Manhattan,MAAC
+2022,160,Marist,MAAC
+2022,161,Marquette,BE
+2022,162,Marshall,CUSA
+2022,163,Maryland,B10
+2022,164,Maryland Eastern Shore,MEAC
+2022,165,Massachusetts,A10
+2022,166,McNeese,Slnd
+2022,167,Memphis,Amer
+2022,168,Mercer,SC
+2022,170,Merrimack,NEC
+2022,171,Miami (FL),ACC
+2022,172,Miami (OH),MAC
+2022,173,Michigan,B10
+2022,174,Michigan St.,B10
+2022,175,Middle Tennessee,CUSA
+2022,176,Milwaukee,Horz
+2022,177,Minnesota,B10
+2022,178,Mississippi,SEC
+2022,179,Mississippi St.,SEC
+2022,180,Mississippi Valley St.,SWAC
+2022,181,Missouri,SEC
+2022,182,Missouri St.,MVC
+2022,183,Monmouth,MAAC
+2022,184,Montana,BSky
+2022,185,Montana St.,BSky
+2022,186,Morehead St.,OVC
+2022,187,Morgan St.,MEAC
+2022,188,Mount St. Mary's,NEC
+2022,189,Murray St.,OVC
+2022,190,NC State,ACC
+2022,191,NJIT,AE
+2022,192,Navy,Pat
+2022,193,Nebraska,B10
+2022,194,Nebraska Omaha,Sum
+2022,195,Nevada,MWC
+2022,196,New Hampshire,AE
+2022,198,New Mexico,MWC
+2022,199,New Mexico St.,WAC
+2022,200,New Orleans,Slnd
+2022,201,Niagara,MAAC
+2022,202,Nicholls St.,Slnd
+2022,203,Norfolk St.,MEAC
+2022,204,North Alabama,ASun
+2022,205,North Carolina,ACC
+2022,206,North Carolina A&T,BSth
+2022,207,North Carolina Central,MEAC
+2022,208,North Dakota,Sum
+2022,209,North Dakota St.,Sum
+2022,210,North Florida,ASun
+2022,211,North Texas,CUSA
+2022,212,Northeastern,CAA
+2022,213,Northern Arizona,BSky
+2022,214,Northern Colorado,BSky
+2022,215,Northern Illinois,MAC
+2022,216,Northern Iowa,MVC
+2022,217,Northern Kentucky,Horz
+2022,218,Northwestern,B10
+2022,219,Northwestern St.,Slnd
+2022,220,Notre Dame,ACC
+2022,221,Oakland,Horz
+2022,222,Ohio,MAC
+2022,223,Ohio St.,B10
+2022,224,Oklahoma,B12
+2022,225,Oklahoma St.,B12
+2022,226,Old Dominion,CUSA
+2022,227,Oral Roberts,Sum
+2022,228,Oregon,P12
+2022,229,Oregon St.,P12
+2022,230,Pacific,WCC
+2022,231,Penn,Ivy
+2022,232,Penn St.,B10
+2022,233,Pepperdine,WCC
+2022,234,Pittsburgh,ACC
+2022,235,Portland,WCC
+2022,236,Portland St.,BSky
+2022,237,Prairie View A&M,SWAC
+2022,238,Presbyterian,BSth
+2022,239,Princeton,Ivy
+2022,240,Providence,BE
+2022,241,Purdue,B10
+2022,242,Purdue Fort Wayne,Horz
+2022,244,Quinnipiac,MAAC
+2022,245,Radford,BSth
+2022,246,Rhode Island,A10
+2022,247,Rice,CUSA
+2022,248,Richmond,A10
+2022,249,Rider,MAAC
+2022,250,Robert Morris,Horz
+2022,251,Rutgers,B10
+2022,252,SIU Edwardsville,OVC
+2022,253,SMU,Amer
+2022,254,Sacramento St.,BSky
+2022,255,Sacred Heart,NEC
+2022,256,Saint Francis,NEC
+2022,257,Saint Joseph's,A10
+2022,258,Saint Louis,A10
+2022,259,Saint Mary's,WCC
+2022,260,Saint Peter's,MAAC
+2022,261,Sam Houston St.,WAC
+2022,262,Samford,SC
+2022,263,San Diego,WCC
+2022,264,San Diego St.,MWC
+2022,265,San Francisco,WCC
+2022,266,San Jose St.,MWC
+2022,267,Santa Clara,WCC
+2022,268,Seattle,WAC
+2022,269,Seton Hall,BE
+2022,270,Siena,MAAC
+2022,271,South Alabama,SB
+2022,272,South Carolina,SEC
+2022,273,South Carolina St.,MEAC
+2022,274,South Dakota,Sum
+2022,275,South Dakota St.,Sum
+2022,276,South Florida,Amer
+2022,277,Southeast Missouri St.,OVC
+2022,278,Southeastern Louisiana,Slnd
+2022,279,Southern,SWAC
+2022,280,Southern Illinois,MVC
+2022,282,Southern Miss,CUSA
+2022,283,Southern Utah,BSky
+2022,284,St. Bonaventure,A10
+2022,285,St. John's,BE
+2022,286,St. Thomas,Sum
+2022,287,Stanford,P12
+2022,288,Stephen F. Austin,WAC
+2022,289,Stetson,ASun
+2022,291,Stony Brook,AE
+2022,292,Syracuse,ACC
+2022,293,TCU,B12
+2022,294,Tarleton St.,WAC
+2022,295,Temple,Amer
+2022,296,Tennessee,SEC
+2022,297,Tennessee Martin,OVC
+2022,298,Tennessee St.,OVC
+2022,299,Tennessee Tech,OVC
+2022,300,Texas,B12
+2022,301,Texas A&M,SEC
+2022,302,Texas A&M Corpus Chris,Slnd
+2022,303,Texas Southern,SWAC
+2022,304,Texas St.,SB
+2022,305,Texas Tech,B12
+2022,306,The Citadel,SC
+2022,307,Toledo,MAC
+2022,308,Towson,CAA
+2022,309,Troy,SB
+2022,310,Tulane,Amer
+2022,311,Tulsa,Amer
+2022,312,UAB,CUSA
+2022,313,UC Davis,BW
+2022,314,UC Irvine,BW
+2022,315,UC Riverside,BW
+2022,316,UC San Diego,BW
+2022,317,UC Santa Barbara,BW
+2022,318,UCF,Amer
+2022,319,UCLA,P12
+2022,320,UMBC,AE
+2022,321,UMKC,Sum
+2022,322,UMass Lowell,AE
+2022,323,UNC Asheville,BSth
+2022,324,UNC Greensboro,SC
+2022,325,UNC Wilmington,CAA
+2022,326,UNLV,MWC
+2022,327,USC,P12
+2022,328,USC Upstate,BSth
+2022,329,UT Arlington,SB
+2022,330,UT Rio Grande Valley,WAC
+2022,331,UTEP,CUSA
+2022,332,UTSA,CUSA
+2022,333,Utah,P12
+2022,334,Utah St.,MWC
+2022,335,Utah Tech,WAC
+2022,336,Utah Valley,WAC
+2022,337,VCU,A10
+2022,338,VMI,SC
+2022,339,Valparaiso,MVC
+2022,340,Vanderbilt,SEC
+2022,341,Vermont,AE
+2022,342,Villanova,BE
+2022,343,Virginia,ACC
+2022,344,Virginia Tech,ACC
+2022,345,Wagner,NEC
+2022,346,Wake Forest,ACC
+2022,347,Washington,P12
+2022,348,Washington St.,P12
+2022,349,Weber St.,BSky
+2022,351,West Virginia,B12
+2022,352,Western Carolina,SC
+2022,353,Western Illinois,Sum
+2022,354,Western Kentucky,CUSA
+2022,355,Western Mich.,MAC
+2022,356,Wichita St.,Amer
+2022,357,William & Mary,CAA
+2022,358,Winthrop,BSth
+2022,359,Wisconsin,B10
+2022,360,Wofford,SC
+2022,361,Wright St.,Horz
+2022,362,Wyoming,MWC
+2022,363,Xavier,BE
+2022,364,Yale,Ivy
+2022,365,Youngstown St.,Horz
+2022,824,Hartford,AE
+2022,825,St. Francis Brooklyn,NEC
+2023,1,Abilene Christian,WAC
+2023,2,Air Force,MWC
+2023,3,Akron,MAC
+2023,4,Alabama,SEC
+2023,5,Alabama A&M,SWAC
+2023,6,Alabama St.,SWAC
+2023,7,Albany,AE
+2023,8,Alcorn St.,SWAC
+2023,9,American,Pat
+2023,10,Appalachian St.,SB
+2023,11,Arizona,P12
+2023,12,Arizona St.,P12
+2023,13,Arkansas,SEC
+2023,14,Arkansas Pine Bluff,SWAC
+2023,15,Arkansas St.,SB
+2023,16,Army,Pat
+2023,17,Auburn,SEC
+2023,18,Austin Peay,ASun
+2023,19,BYU,WCC
+2023,20,Ball St.,MAC
+2023,21,Baylor,B12
+2023,22,Bellarmine,ASun
+2023,23,Belmont,MVC
+2023,24,Bethune Cookman,SWAC
+2023,25,Binghamton,AE
+2023,26,Boise St.,MWC
+2023,27,Boston College,ACC
+2023,28,Boston University,Pat
+2023,29,Bowling Green,MAC
+2023,30,Bradley,MVC
+2023,31,Brown,Ivy
+2023,32,Bryant,AE
+2023,33,Bucknell,Pat
+2023,34,Buffalo,MAC
+2023,35,Butler,BE
+2023,36,Cal Baptist,WAC
+2023,37,Cal Poly,BW
+2023,38,Cal St. Bakersfield,BW
+2023,39,Cal St. Fullerton,BW
+2023,40,Cal St. Northridge,BW
+2023,41,California,P12
+2023,42,Campbell,BSth
+2023,43,Canisius,MAAC
+2023,44,Central Arkansas,ASun
+2023,45,Central Connecticut,NEC
+2023,46,Central Michigan,MAC
+2023,47,Charleston,CAA
+2023,48,Charleston Southern,BSth
+2023,49,Charlotte,CUSA
+2023,50,Chattanooga,SC
+2023,51,Chicago St.,IND
+2023,52,Cincinnati,Amer
+2023,53,Clemson,ACC
+2023,54,Cleveland St.,Horz
+2023,55,Coastal Carolina,SB
+2023,56,Colgate,Pat
+2023,57,Colorado,P12
+2023,58,Colorado St.,MWC
+2023,59,Columbia,Ivy
+2023,60,Connecticut,BE
+2023,61,Coppin St.,MEAC
+2023,62,Cornell,Ivy
+2023,63,Creighton,BE
+2023,64,Dartmouth,Ivy
+2023,65,Davidson,A10
+2023,66,Dayton,A10
+2023,67,DePaul,BE
+2023,68,Delaware,CAA
+2023,69,Delaware St.,MEAC
+2023,70,Denver,Sum
+2023,71,Detroit Mercy,Horz
+2023,72,Drake,MVC
+2023,73,Drexel,CAA
+2023,74,Duke,ACC
+2023,75,Duquesne,A10
+2023,76,East Carolina,Amer
+2023,77,East Tennessee St.,SC
+2023,78,East Texas A&M,Slnd
+2023,79,Eastern Illinois,OVC
+2023,80,Eastern Kentucky,ASun
+2023,81,Eastern Mich.,MAC
+2023,82,Eastern Washington,BSky
+2023,83,Elon,CAA
+2023,84,Evansville,MVC
+2023,85,FIU,CUSA
+2023,86,Fairfield,MAAC
+2023,87,Fairleigh Dickinson,NEC
+2023,88,Florida,SEC
+2023,89,Florida A&M,SWAC
+2023,90,Florida Atlantic,CUSA
+2023,91,Florida Gulf Coast,ASun
+2023,92,Florida St.,ACC
+2023,93,Fordham,A10
+2023,94,Fresno St.,MWC
+2023,95,Furman,SC
+2023,96,Gardner Webb,BSth
+2023,97,George Mason,A10
+2023,98,George Washington,A10
+2023,99,Georgetown,BE
+2023,100,Georgia,SEC
+2023,101,Georgia Southern,SB
+2023,102,Georgia St.,SB
+2023,103,Georgia Tech,ACC
+2023,104,Gonzaga,WCC
+2023,105,Grambling St.,SWAC
+2023,106,Grand Canyon,WAC
+2023,107,Green Bay,Horz
+2023,108,Hampton,CAA
+2023,109,Harvard,Ivy
+2023,110,Hawaii,BW
+2023,111,High Point,BSth
+2023,112,Hofstra,CAA
+2023,113,Holy Cross,Pat
+2023,114,Houston,Amer
+2023,115,Houston Christian,Slnd
+2023,116,Howard,MEAC
+2023,117,IU Indy,Horz
+2023,118,Idaho,BSky
+2023,119,Idaho St.,BSky
+2023,120,Illinois,B10
+2023,121,Illinois Chicago,MVC
+2023,122,Illinois St.,MVC
+2023,123,Incarnate Word,Slnd
+2023,124,Indiana,B10
+2023,125,Indiana St.,MVC
+2023,126,Iona,MAAC
+2023,127,Iowa,B10
+2023,128,Iowa St.,B12
+2023,129,Jackson St.,SWAC
+2023,130,Jacksonville,ASun
+2023,131,Jacksonville St.,ASun
+2023,132,James Madison,SB
+2023,133,Kansas,B12
+2023,134,Kansas St.,B12
+2023,135,Kennesaw St.,ASun
+2023,136,Kent St.,MAC
+2023,137,Kentucky,SEC
+2023,138,LIU,NEC
+2023,139,LSU,SEC
+2023,140,La Salle,A10
+2023,141,Lafayette,Pat
+2023,142,Lamar,Slnd
+2023,144,Lehigh,Pat
+2023,145,Liberty,ASun
+2023,146,Lindenwood,OVC
+2023,147,Lipscomb,ASun
+2023,148,Little Rock,OVC
+2023,149,Long Beach St.,BW
+2023,150,Longwood,BSth
+2023,151,Louisiana,SB
+2023,152,Louisiana Monroe,SB
+2023,153,Louisiana Tech,CUSA
+2023,154,Louisville,ACC
+2023,155,Loyola Chicago,A10
+2023,156,Loyola MD,Pat
+2023,157,Loyola Marymount,WCC
+2023,158,Maine,AE
+2023,159,Manhattan,MAAC
+2023,160,Marist,MAAC
+2023,161,Marquette,BE
+2023,162,Marshall,SB
+2023,163,Maryland,B10
+2023,164,Maryland Eastern Shore,MEAC
+2023,165,Massachusetts,A10
+2023,166,McNeese,Slnd
+2023,167,Memphis,Amer
+2023,168,Mercer,SC
+2023,170,Merrimack,NEC
+2023,171,Miami (FL),ACC
+2023,172,Miami (OH),MAC
+2023,173,Michigan,B10
+2023,174,Michigan St.,B10
+2023,175,Middle Tennessee,CUSA
+2023,176,Milwaukee,Horz
+2023,177,Minnesota,B10
+2023,178,Mississippi,SEC
+2023,179,Mississippi St.,SEC
+2023,180,Mississippi Valley St.,SWAC
+2023,181,Missouri,SEC
+2023,182,Missouri St.,MVC
+2023,183,Monmouth,CAA
+2023,184,Montana,BSky
+2023,185,Montana St.,BSky
+2023,186,Morehead St.,OVC
+2023,187,Morgan St.,MEAC
+2023,188,Mount St. Mary's,MAAC
+2023,189,Murray St.,MVC
+2023,190,NC State,ACC
+2023,191,NJIT,AE
+2023,192,Navy,Pat
+2023,193,Nebraska,B10
+2023,194,Nebraska Omaha,Sum
+2023,195,Nevada,MWC
+2023,196,New Hampshire,AE
+2023,198,New Mexico,MWC
+2023,199,New Mexico St.,WAC
+2023,200,New Orleans,Slnd
+2023,201,Niagara,MAAC
+2023,202,Nicholls St.,Slnd
+2023,203,Norfolk St.,MEAC
+2023,204,North Alabama,ASun
+2023,205,North Carolina,ACC
+2023,206,North Carolina A&T,CAA
+2023,207,North Carolina Central,MEAC
+2023,208,North Dakota,Sum
+2023,209,North Dakota St.,Sum
+2023,210,North Florida,ASun
+2023,211,North Texas,CUSA
+2023,212,Northeastern,CAA
+2023,213,Northern Arizona,BSky
+2023,214,Northern Colorado,BSky
+2023,215,Northern Illinois,MAC
+2023,216,Northern Iowa,MVC
+2023,217,Northern Kentucky,Horz
+2023,218,Northwestern,B10
+2023,219,Northwestern St.,Slnd
+2023,220,Notre Dame,ACC
+2023,221,Oakland,Horz
+2023,222,Ohio,MAC
+2023,223,Ohio St.,B10
+2023,224,Oklahoma,B12
+2023,225,Oklahoma St.,B12
+2023,226,Old Dominion,SB
+2023,227,Oral Roberts,Sum
+2023,228,Oregon,P12
+2023,229,Oregon St.,P12
+2023,230,Pacific,WCC
+2023,231,Penn,Ivy
+2023,232,Penn St.,B10
+2023,233,Pepperdine,WCC
+2023,234,Pittsburgh,ACC
+2023,235,Portland,WCC
+2023,236,Portland St.,BSky
+2023,237,Prairie View A&M,SWAC
+2023,238,Presbyterian,BSth
+2023,239,Princeton,Ivy
+2023,240,Providence,BE
+2023,241,Purdue,B10
+2023,242,Purdue Fort Wayne,Horz
+2023,243,Queens,ASun
+2023,244,Quinnipiac,MAAC
+2023,245,Radford,BSth
+2023,246,Rhode Island,A10
+2023,247,Rice,CUSA
+2023,248,Richmond,A10
+2023,249,Rider,MAAC
+2023,250,Robert Morris,Horz
+2023,251,Rutgers,B10
+2023,252,SIU Edwardsville,OVC
+2023,253,SMU,Amer
+2023,254,Sacramento St.,BSky
+2023,255,Sacred Heart,NEC
+2023,256,Saint Francis,NEC
+2023,257,Saint Joseph's,A10
+2023,258,Saint Louis,A10
+2023,259,Saint Mary's,WCC
+2023,260,Saint Peter's,MAAC
+2023,261,Sam Houston St.,WAC
+2023,262,Samford,SC
+2023,263,San Diego,WCC
+2023,264,San Diego St.,MWC
+2023,265,San Francisco,WCC
+2023,266,San Jose St.,MWC
+2023,267,Santa Clara,WCC
+2023,268,Seattle,WAC
+2023,269,Seton Hall,BE
+2023,270,Siena,MAAC
+2023,271,South Alabama,SB
+2023,272,South Carolina,SEC
+2023,273,South Carolina St.,MEAC
+2023,274,South Dakota,Sum
+2023,275,South Dakota St.,Sum
+2023,276,South Florida,Amer
+2023,277,Southeast Missouri St.,OVC
+2023,278,Southeastern Louisiana,Slnd
+2023,279,Southern,SWAC
+2023,280,Southern Illinois,MVC
+2023,281,Southern Indiana,OVC
+2023,282,Southern Miss,SB
+2023,283,Southern Utah,WAC
+2023,284,St. Bonaventure,A10
+2023,285,St. John's,BE
+2023,286,St. Thomas,Sum
+2023,287,Stanford,P12
+2023,288,Stephen F. Austin,WAC
+2023,289,Stetson,ASun
+2023,290,Stonehill,NEC
+2023,291,Stony Brook,CAA
+2023,292,Syracuse,ACC
+2023,293,TCU,B12
+2023,294,Tarleton St.,WAC
+2023,295,Temple,Amer
+2023,296,Tennessee,SEC
+2023,297,Tennessee Martin,OVC
+2023,298,Tennessee St.,OVC
+2023,299,Tennessee Tech,OVC
+2023,300,Texas,B12
+2023,301,Texas A&M,SEC
+2023,302,Texas A&M Corpus Chris,Slnd
+2023,303,Texas Southern,SWAC
+2023,304,Texas St.,SB
+2023,305,Texas Tech,B12
+2023,306,The Citadel,SC
+2023,307,Toledo,MAC
+2023,308,Towson,CAA
+2023,309,Troy,SB
+2023,310,Tulane,Amer
+2023,311,Tulsa,Amer
+2023,312,UAB,CUSA
+2023,313,UC Davis,BW
+2023,314,UC Irvine,BW
+2023,315,UC Riverside,BW
+2023,316,UC San Diego,BW
+2023,317,UC Santa Barbara,BW
+2023,318,UCF,Amer
+2023,319,UCLA,P12
+2023,320,UMBC,AE
+2023,321,UMKC,Sum
+2023,322,UMass Lowell,AE
+2023,323,UNC Asheville,BSth
+2023,324,UNC Greensboro,SC
+2023,325,UNC Wilmington,CAA
+2023,326,UNLV,MWC
+2023,327,USC,P12
+2023,328,USC Upstate,BSth
+2023,329,UT Arlington,WAC
+2023,330,UT Rio Grande Valley,WAC
+2023,331,UTEP,CUSA
+2023,332,UTSA,CUSA
+2023,333,Utah,P12
+2023,334,Utah St.,MWC
+2023,335,Utah Tech,WAC
+2023,336,Utah Valley,WAC
+2023,337,VCU,A10
+2023,338,VMI,SC
+2023,339,Valparaiso,MVC
+2023,340,Vanderbilt,SEC
+2023,341,Vermont,AE
+2023,342,Villanova,BE
+2023,343,Virginia,ACC
+2023,344,Virginia Tech,ACC
+2023,345,Wagner,NEC
+2023,346,Wake Forest,ACC
+2023,347,Washington,P12
+2023,348,Washington St.,P12
+2023,349,Weber St.,BSky
+2023,351,West Virginia,B12
+2023,352,Western Carolina,SC
+2023,353,Western Illinois,Sum
+2023,354,Western Kentucky,CUSA
+2023,355,Western Mich.,MAC
+2023,356,Wichita St.,Amer
+2023,357,William & Mary,CAA
+2023,358,Winthrop,BSth
+2023,359,Wisconsin,B10
+2023,360,Wofford,SC
+2023,361,Wright St.,Horz
+2023,362,Wyoming,MWC
+2023,363,Xavier,BE
+2023,364,Yale,Ivy
+2023,365,Youngstown St.,Horz
+2023,824,Hartford,IND
+2023,825,St. Francis Brooklyn,NEC
+2024,1,Abilene Christian,WAC
+2024,2,Air Force,MWC
+2024,3,Akron,MAC
+2024,4,Alabama,SEC
+2024,5,Alabama A&M,SWAC
+2024,6,Alabama St.,SWAC
+2024,7,Albany,AE
+2024,8,Alcorn St.,SWAC
+2024,9,American,Pat
+2024,10,Appalachian St.,SB
+2024,11,Arizona,P12
+2024,12,Arizona St.,P12
+2024,13,Arkansas,SEC
+2024,14,Arkansas Pine Bluff,SWAC
+2024,15,Arkansas St.,SB
+2024,16,Army,Pat
+2024,17,Auburn,SEC
+2024,18,Austin Peay,ASun
+2024,19,BYU,B12
+2024,20,Ball St.,MAC
+2024,21,Baylor,B12
+2024,22,Bellarmine,ASun
+2024,23,Belmont,MVC
+2024,24,Bethune Cookman,SWAC
+2024,25,Binghamton,AE
+2024,26,Boise St.,MWC
+2024,27,Boston College,ACC
+2024,28,Boston University,Pat
+2024,29,Bowling Green,MAC
+2024,30,Bradley,MVC
+2024,31,Brown,Ivy
+2024,32,Bryant,AE
+2024,33,Bucknell,Pat
+2024,34,Buffalo,MAC
+2024,35,Butler,BE
+2024,36,Cal Baptist,WAC
+2024,37,Cal Poly,BW
+2024,38,Cal St. Bakersfield,BW
+2024,39,Cal St. Fullerton,BW
+2024,40,Cal St. Northridge,BW
+2024,41,California,P12
+2024,42,Campbell,CAA
+2024,43,Canisius,MAAC
+2024,44,Central Arkansas,ASun
+2024,45,Central Connecticut,NEC
+2024,46,Central Michigan,MAC
+2024,47,Charleston,CAA
+2024,48,Charleston Southern,BSth
+2024,49,Charlotte,Amer
+2024,50,Chattanooga,SC
+2024,51,Chicago St.,IND
+2024,52,Cincinnati,B12
+2024,53,Clemson,ACC
+2024,54,Cleveland St.,Horz
+2024,55,Coastal Carolina,SB
+2024,56,Colgate,Pat
+2024,57,Colorado,P12
+2024,58,Colorado St.,MWC
+2024,59,Columbia,Ivy
+2024,60,Connecticut,BE
+2024,61,Coppin St.,MEAC
+2024,62,Cornell,Ivy
+2024,63,Creighton,BE
+2024,64,Dartmouth,Ivy
+2024,65,Davidson,A10
+2024,66,Dayton,A10
+2024,67,DePaul,BE
+2024,68,Delaware,CAA
+2024,69,Delaware St.,MEAC
+2024,70,Denver,Sum
+2024,71,Detroit Mercy,Horz
+2024,72,Drake,MVC
+2024,73,Drexel,CAA
+2024,74,Duke,ACC
+2024,75,Duquesne,A10
+2024,76,East Carolina,Amer
+2024,77,East Tennessee St.,SC
+2024,78,East Texas A&M,Slnd
+2024,79,Eastern Illinois,OVC
+2024,80,Eastern Kentucky,ASun
+2024,81,Eastern Mich.,MAC
+2024,82,Eastern Washington,BSky
+2024,83,Elon,CAA
+2024,84,Evansville,MVC
+2024,85,FIU,CUSA
+2024,86,Fairfield,MAAC
+2024,87,Fairleigh Dickinson,NEC
+2024,88,Florida,SEC
+2024,89,Florida A&M,SWAC
+2024,90,Florida Atlantic,Amer
+2024,91,Florida Gulf Coast,ASun
+2024,92,Florida St.,ACC
+2024,93,Fordham,A10
+2024,94,Fresno St.,MWC
+2024,95,Furman,SC
+2024,96,Gardner Webb,BSth
+2024,97,George Mason,A10
+2024,98,George Washington,A10
+2024,99,Georgetown,BE
+2024,100,Georgia,SEC
+2024,101,Georgia Southern,SB
+2024,102,Georgia St.,SB
+2024,103,Georgia Tech,ACC
+2024,104,Gonzaga,WCC
+2024,105,Grambling St.,SWAC
+2024,106,Grand Canyon,WAC
+2024,107,Green Bay,Horz
+2024,108,Hampton,CAA
+2024,109,Harvard,Ivy
+2024,110,Hawaii,BW
+2024,111,High Point,BSth
+2024,112,Hofstra,CAA
+2024,113,Holy Cross,Pat
+2024,114,Houston,B12
+2024,115,Houston Christian,Slnd
+2024,116,Howard,MEAC
+2024,117,IU Indy,Horz
+2024,118,Idaho,BSky
+2024,119,Idaho St.,BSky
+2024,120,Illinois,B10
+2024,121,Illinois Chicago,MVC
+2024,122,Illinois St.,MVC
+2024,123,Incarnate Word,Slnd
+2024,124,Indiana,B10
+2024,125,Indiana St.,MVC
+2024,126,Iona,MAAC
+2024,127,Iowa,B10
+2024,128,Iowa St.,B12
+2024,129,Jackson St.,SWAC
+2024,130,Jacksonville,ASun
+2024,131,Jacksonville St.,CUSA
+2024,132,James Madison,SB
+2024,133,Kansas,B12
+2024,134,Kansas St.,B12
+2024,135,Kennesaw St.,ASun
+2024,136,Kent St.,MAC
+2024,137,Kentucky,SEC
+2024,138,LIU,NEC
+2024,139,LSU,SEC
+2024,140,La Salle,A10
+2024,141,Lafayette,Pat
+2024,142,Lamar,Slnd
+2024,143,Le Moyne,NEC
+2024,144,Lehigh,Pat
+2024,145,Liberty,CUSA
+2024,146,Lindenwood,OVC
+2024,147,Lipscomb,ASun
+2024,148,Little Rock,OVC
+2024,149,Long Beach St.,BW
+2024,150,Longwood,BSth
+2024,151,Louisiana,SB
+2024,152,Louisiana Monroe,SB
+2024,153,Louisiana Tech,CUSA
+2024,154,Louisville,ACC
+2024,155,Loyola Chicago,A10
+2024,156,Loyola MD,Pat
+2024,157,Loyola Marymount,WCC
+2024,158,Maine,AE
+2024,159,Manhattan,MAAC
+2024,160,Marist,MAAC
+2024,161,Marquette,BE
+2024,162,Marshall,SB
+2024,163,Maryland,B10
+2024,164,Maryland Eastern Shore,MEAC
+2024,165,Massachusetts,A10
+2024,166,McNeese,Slnd
+2024,167,Memphis,Amer
+2024,168,Mercer,SC
+2024,170,Merrimack,NEC
+2024,171,Miami (FL),ACC
+2024,172,Miami (OH),MAC
+2024,173,Michigan,B10
+2024,174,Michigan St.,B10
+2024,175,Middle Tennessee,CUSA
+2024,176,Milwaukee,Horz
+2024,177,Minnesota,B10
+2024,178,Mississippi,SEC
+2024,179,Mississippi St.,SEC
+2024,180,Mississippi Valley St.,SWAC
+2024,181,Missouri,SEC
+2024,182,Missouri St.,MVC
+2024,183,Monmouth,CAA
+2024,184,Montana,BSky
+2024,185,Montana St.,BSky
+2024,186,Morehead St.,OVC
+2024,187,Morgan St.,MEAC
+2024,188,Mount St. Mary's,MAAC
+2024,189,Murray St.,MVC
+2024,190,NC State,ACC
+2024,191,NJIT,AE
+2024,192,Navy,Pat
+2024,193,Nebraska,B10
+2024,194,Nebraska Omaha,Sum
+2024,195,Nevada,MWC
+2024,196,New Hampshire,AE
+2024,198,New Mexico,MWC
+2024,199,New Mexico St.,CUSA
+2024,200,New Orleans,Slnd
+2024,201,Niagara,MAAC
+2024,202,Nicholls St.,Slnd
+2024,203,Norfolk St.,MEAC
+2024,204,North Alabama,ASun
+2024,205,North Carolina,ACC
+2024,206,North Carolina A&T,CAA
+2024,207,North Carolina Central,MEAC
+2024,208,North Dakota,Sum
+2024,209,North Dakota St.,Sum
+2024,210,North Florida,ASun
+2024,211,North Texas,Amer
+2024,212,Northeastern,CAA
+2024,213,Northern Arizona,BSky
+2024,214,Northern Colorado,BSky
+2024,215,Northern Illinois,MAC
+2024,216,Northern Iowa,MVC
+2024,217,Northern Kentucky,Horz
+2024,218,Northwestern,B10
+2024,219,Northwestern St.,Slnd
+2024,220,Notre Dame,ACC
+2024,221,Oakland,Horz
+2024,222,Ohio,MAC
+2024,223,Ohio St.,B10
+2024,224,Oklahoma,B12
+2024,225,Oklahoma St.,B12
+2024,226,Old Dominion,SB
+2024,227,Oral Roberts,Sum
+2024,228,Oregon,P12
+2024,229,Oregon St.,P12
+2024,230,Pacific,WCC
+2024,231,Penn,Ivy
+2024,232,Penn St.,B10
+2024,233,Pepperdine,WCC
+2024,234,Pittsburgh,ACC
+2024,235,Portland,WCC
+2024,236,Portland St.,BSky
+2024,237,Prairie View A&M,SWAC
+2024,238,Presbyterian,BSth
+2024,239,Princeton,Ivy
+2024,240,Providence,BE
+2024,241,Purdue,B10
+2024,242,Purdue Fort Wayne,Horz
+2024,243,Queens,ASun
+2024,244,Quinnipiac,MAAC
+2024,245,Radford,BSth
+2024,246,Rhode Island,A10
+2024,247,Rice,Amer
+2024,248,Richmond,A10
+2024,249,Rider,MAAC
+2024,250,Robert Morris,Horz
+2024,251,Rutgers,B10
+2024,252,SIU Edwardsville,OVC
+2024,253,SMU,Amer
+2024,254,Sacramento St.,BSky
+2024,255,Sacred Heart,NEC
+2024,256,Saint Francis,NEC
+2024,257,Saint Joseph's,A10
+2024,258,Saint Louis,A10
+2024,259,Saint Mary's,WCC
+2024,260,Saint Peter's,MAAC
+2024,261,Sam Houston St.,CUSA
+2024,262,Samford,SC
+2024,263,San Diego,WCC
+2024,264,San Diego St.,MWC
+2024,265,San Francisco,WCC
+2024,266,San Jose St.,MWC
+2024,267,Santa Clara,WCC
+2024,268,Seattle,WAC
+2024,269,Seton Hall,BE
+2024,270,Siena,MAAC
+2024,271,South Alabama,SB
+2024,272,South Carolina,SEC
+2024,273,South Carolina St.,MEAC
+2024,274,South Dakota,Sum
+2024,275,South Dakota St.,Sum
+2024,276,South Florida,Amer
+2024,277,Southeast Missouri St.,OVC
+2024,278,Southeastern Louisiana,Slnd
+2024,279,Southern,SWAC
+2024,280,Southern Illinois,MVC
+2024,281,Southern Indiana,OVC
+2024,282,Southern Miss,SB
+2024,283,Southern Utah,WAC
+2024,284,St. Bonaventure,A10
+2024,285,St. John's,BE
+2024,286,St. Thomas,Sum
+2024,287,Stanford,P12
+2024,288,Stephen F. Austin,WAC
+2024,289,Stetson,ASun
+2024,290,Stonehill,NEC
+2024,291,Stony Brook,CAA
+2024,292,Syracuse,ACC
+2024,293,TCU,B12
+2024,294,Tarleton St.,WAC
+2024,295,Temple,Amer
+2024,296,Tennessee,SEC
+2024,297,Tennessee Martin,OVC
+2024,298,Tennessee St.,OVC
+2024,299,Tennessee Tech,OVC
+2024,300,Texas,B12
+2024,301,Texas A&M,SEC
+2024,302,Texas A&M Corpus Chris,Slnd
+2024,303,Texas Southern,SWAC
+2024,304,Texas St.,SB
+2024,305,Texas Tech,B12
+2024,306,The Citadel,SC
+2024,307,Toledo,MAC
+2024,308,Towson,CAA
+2024,309,Troy,SB
+2024,310,Tulane,Amer
+2024,311,Tulsa,Amer
+2024,312,UAB,Amer
+2024,313,UC Davis,BW
+2024,314,UC Irvine,BW
+2024,315,UC Riverside,BW
+2024,316,UC San Diego,BW
+2024,317,UC Santa Barbara,BW
+2024,318,UCF,B12
+2024,319,UCLA,P12
+2024,320,UMBC,AE
+2024,321,UMKC,Sum
+2024,322,UMass Lowell,AE
+2024,323,UNC Asheville,BSth
+2024,324,UNC Greensboro,SC
+2024,325,UNC Wilmington,CAA
+2024,326,UNLV,MWC
+2024,327,USC,P12
+2024,328,USC Upstate,BSth
+2024,329,UT Arlington,WAC
+2024,330,UT Rio Grande Valley,WAC
+2024,331,UTEP,CUSA
+2024,332,UTSA,Amer
+2024,333,Utah,P12
+2024,334,Utah St.,MWC
+2024,335,Utah Tech,WAC
+2024,336,Utah Valley,WAC
+2024,337,VCU,A10
+2024,338,VMI,SC
+2024,339,Valparaiso,MVC
+2024,340,Vanderbilt,SEC
+2024,341,Vermont,AE
+2024,342,Villanova,BE
+2024,343,Virginia,ACC
+2024,344,Virginia Tech,ACC
+2024,345,Wagner,NEC
+2024,346,Wake Forest,ACC
+2024,347,Washington,P12
+2024,348,Washington St.,P12
+2024,349,Weber St.,BSky
+2024,351,West Virginia,B12
+2024,352,Western Carolina,SC
+2024,353,Western Illinois,OVC
+2024,354,Western Kentucky,CUSA
+2024,355,Western Mich.,MAC
+2024,356,Wichita St.,Amer
+2024,357,William & Mary,CAA
+2024,358,Winthrop,BSth
+2024,359,Wisconsin,B10
+2024,360,Wofford,SC
+2024,361,Wright St.,Horz
+2024,362,Wyoming,MWC
+2024,363,Xavier,BE
+2024,364,Yale,Ivy
+2024,365,Youngstown St.,Horz
+2025,1,Abilene Christian,WAC
+2025,2,Air Force,MWC
+2025,3,Akron,MAC
+2025,4,Alabama,SEC
+2025,5,Alabama A&M,SWAC
+2025,6,Alabama St.,SWAC
+2025,7,Albany,AE
+2025,8,Alcorn St.,SWAC
+2025,9,American,Pat
+2025,10,Appalachian St.,SB
+2025,11,Arizona,B12
+2025,12,Arizona St.,B12
+2025,13,Arkansas,SEC
+2025,14,Arkansas Pine Bluff,SWAC
+2025,15,Arkansas St.,SB
+2025,16,Army,Pat
+2025,17,Auburn,SEC
+2025,18,Austin Peay,ASun
+2025,19,BYU,B12
+2025,20,Ball St.,MAC
+2025,21,Baylor,B12
+2025,22,Bellarmine,ASun
+2025,23,Belmont,MVC
+2025,24,Bethune Cookman,SWAC
+2025,25,Binghamton,AE
+2025,26,Boise St.,MWC
+2025,27,Boston College,ACC
+2025,28,Boston University,Pat
+2025,29,Bowling Green,MAC
+2025,30,Bradley,MVC
+2025,31,Brown,Ivy
+2025,32,Bryant,AE
+2025,33,Bucknell,Pat
+2025,34,Buffalo,MAC
+2025,35,Butler,BE
+2025,36,Cal Baptist,WAC
+2025,37,Cal Poly,BW
+2025,38,Cal St. Bakersfield,BW
+2025,39,Cal St. Fullerton,BW
+2025,40,Cal St. Northridge,BW
+2025,41,California,ACC
+2025,42,Campbell,CAA
+2025,43,Canisius,MAAC
+2025,44,Central Arkansas,ASun
+2025,45,Central Connecticut,NEC
+2025,46,Central Michigan,MAC
+2025,47,Charleston,CAA
+2025,48,Charleston Southern,BSth
+2025,49,Charlotte,Amer
+2025,50,Chattanooga,SC
+2025,51,Chicago St.,NEC
+2025,52,Cincinnati,B12
+2025,53,Clemson,ACC
+2025,54,Cleveland St.,Horz
+2025,55,Coastal Carolina,SB
+2025,56,Colgate,Pat
+2025,57,Colorado,B12
+2025,58,Colorado St.,MWC
+2025,59,Columbia,Ivy
+2025,60,Connecticut,BE
+2025,61,Coppin St.,MEAC
+2025,62,Cornell,Ivy
+2025,63,Creighton,BE
+2025,64,Dartmouth,Ivy
+2025,65,Davidson,A10
+2025,66,Dayton,A10
+2025,67,DePaul,BE
+2025,68,Delaware,CAA
+2025,69,Delaware St.,MEAC
+2025,70,Denver,Sum
+2025,71,Detroit Mercy,Horz
+2025,72,Drake,MVC
+2025,73,Drexel,CAA
+2025,74,Duke,ACC
+2025,75,Duquesne,A10
+2025,76,East Carolina,Amer
+2025,77,East Tennessee St.,SC
+2025,78,East Texas A&M,Slnd
+2025,79,Eastern Illinois,OVC
+2025,80,Eastern Kentucky,ASun
+2025,81,Eastern Mich.,MAC
+2025,82,Eastern Washington,BSky
+2025,83,Elon,CAA
+2025,84,Evansville,MVC
+2025,85,FIU,CUSA
+2025,86,Fairfield,MAAC
+2025,87,Fairleigh Dickinson,NEC
+2025,88,Florida,SEC
+2025,89,Florida A&M,SWAC
+2025,90,Florida Atlantic,Amer
+2025,91,Florida Gulf Coast,ASun
+2025,92,Florida St.,ACC
+2025,93,Fordham,A10
+2025,94,Fresno St.,MWC
+2025,95,Furman,SC
+2025,96,Gardner Webb,BSth
+2025,97,George Mason,A10
+2025,98,George Washington,A10
+2025,99,Georgetown,BE
+2025,100,Georgia,SEC
+2025,101,Georgia Southern,SB
+2025,102,Georgia St.,SB
+2025,103,Georgia Tech,ACC
+2025,104,Gonzaga,WCC
+2025,105,Grambling St.,SWAC
+2025,106,Grand Canyon,WAC
+2025,107,Green Bay,Horz
+2025,108,Hampton,CAA
+2025,109,Harvard,Ivy
+2025,110,Hawaii,BW
+2025,111,High Point,BSth
+2025,112,Hofstra,CAA
+2025,113,Holy Cross,Pat
+2025,114,Houston,B12
+2025,115,Houston Christian,Slnd
+2025,116,Howard,MEAC
+2025,117,IU Indy,Horz
+2025,118,Idaho,BSky
+2025,119,Idaho St.,BSky
+2025,120,Illinois,B10
+2025,121,Illinois Chicago,MVC
+2025,122,Illinois St.,MVC
+2025,123,Incarnate Word,Slnd
+2025,124,Indiana,B10
+2025,125,Indiana St.,MVC
+2025,126,Iona,MAAC
+2025,127,Iowa,B10
+2025,128,Iowa St.,B12
+2025,129,Jackson St.,SWAC
+2025,130,Jacksonville,ASun
+2025,131,Jacksonville St.,CUSA
+2025,132,James Madison,SB
+2025,133,Kansas,B12
+2025,134,Kansas St.,B12
+2025,135,Kennesaw St.,CUSA
+2025,136,Kent St.,MAC
+2025,137,Kentucky,SEC
+2025,138,LIU,NEC
+2025,139,LSU,SEC
+2025,140,La Salle,A10
+2025,141,Lafayette,Pat
+2025,142,Lamar,Slnd
+2025,143,Le Moyne,NEC
+2025,144,Lehigh,Pat
+2025,145,Liberty,CUSA
+2025,146,Lindenwood,OVC
+2025,147,Lipscomb,ASun
+2025,148,Little Rock,OVC
+2025,149,Long Beach St.,BW
+2025,150,Longwood,BSth
+2025,151,Louisiana,SB
+2025,152,Louisiana Monroe,SB
+2025,153,Louisiana Tech,CUSA
+2025,154,Louisville,ACC
+2025,155,Loyola Chicago,A10
+2025,156,Loyola MD,Pat
+2025,157,Loyola Marymount,WCC
+2025,158,Maine,AE
+2025,159,Manhattan,MAAC
+2025,160,Marist,MAAC
+2025,161,Marquette,BE
+2025,162,Marshall,SB
+2025,163,Maryland,B10
+2025,164,Maryland Eastern Shore,MEAC
+2025,165,Massachusetts,A10
+2025,166,McNeese,Slnd
+2025,167,Memphis,Amer
+2025,168,Mercer,SC
+2025,169,Mercyhurst,NEC
+2025,170,Merrimack,MAAC
+2025,171,Miami (FL),ACC
+2025,172,Miami (OH),MAC
+2025,173,Michigan,B10
+2025,174,Michigan St.,B10
+2025,175,Middle Tennessee,CUSA
+2025,176,Milwaukee,Horz
+2025,177,Minnesota,B10
+2025,178,Mississippi,SEC
+2025,179,Mississippi St.,SEC
+2025,180,Mississippi Valley St.,SWAC
+2025,181,Missouri,SEC
+2025,182,Missouri St.,MVC
+2025,183,Monmouth,CAA
+2025,184,Montana,BSky
+2025,185,Montana St.,BSky
+2025,186,Morehead St.,OVC
+2025,187,Morgan St.,MEAC
+2025,188,Mount St. Mary's,MAAC
+2025,189,Murray St.,MVC
+2025,190,NC State,ACC
+2025,191,NJIT,AE
+2025,192,Navy,Pat
+2025,193,Nebraska,B10
+2025,194,Nebraska Omaha,Sum
+2025,195,Nevada,MWC
+2025,196,New Hampshire,AE
+2025,198,New Mexico,MWC
+2025,199,New Mexico St.,CUSA
+2025,200,New Orleans,Slnd
+2025,201,Niagara,MAAC
+2025,202,Nicholls St.,Slnd
+2025,203,Norfolk St.,MEAC
+2025,204,North Alabama,ASun
+2025,205,North Carolina,ACC
+2025,206,North Carolina A&T,CAA
+2025,207,North Carolina Central,MEAC
+2025,208,North Dakota,Sum
+2025,209,North Dakota St.,Sum
+2025,210,North Florida,ASun
+2025,211,North Texas,Amer
+2025,212,Northeastern,CAA
+2025,213,Northern Arizona,BSky
+2025,214,Northern Colorado,BSky
+2025,215,Northern Illinois,MAC
+2025,216,Northern Iowa,MVC
+2025,217,Northern Kentucky,Horz
+2025,218,Northwestern,B10
+2025,219,Northwestern St.,Slnd
+2025,220,Notre Dame,ACC
+2025,221,Oakland,Horz
+2025,222,Ohio,MAC
+2025,223,Ohio St.,B10
+2025,224,Oklahoma,SEC
+2025,225,Oklahoma St.,B12
+2025,226,Old Dominion,SB
+2025,227,Oral Roberts,Sum
+2025,228,Oregon,B10
+2025,229,Oregon St.,WCC
+2025,230,Pacific,WCC
+2025,231,Penn,Ivy
+2025,232,Penn St.,B10
+2025,233,Pepperdine,WCC
+2025,234,Pittsburgh,ACC
+2025,235,Portland,WCC
+2025,236,Portland St.,BSky
+2025,237,Prairie View A&M,SWAC
+2025,238,Presbyterian,BSth
+2025,239,Princeton,Ivy
+2025,240,Providence,BE
+2025,241,Purdue,B10
+2025,242,Purdue Fort Wayne,Horz
+2025,243,Queens,ASun
+2025,244,Quinnipiac,MAAC
+2025,245,Radford,BSth
+2025,246,Rhode Island,A10
+2025,247,Rice,Amer
+2025,248,Richmond,A10
+2025,249,Rider,MAAC
+2025,250,Robert Morris,Horz
+2025,251,Rutgers,B10
+2025,252,SIU Edwardsville,OVC
+2025,253,SMU,ACC
+2025,254,Sacramento St.,BSky
+2025,255,Sacred Heart,MAAC
+2025,256,Saint Francis,NEC
+2025,257,Saint Joseph's,A10
+2025,258,Saint Louis,A10
+2025,259,Saint Mary's,WCC
+2025,260,Saint Peter's,MAAC
+2025,261,Sam Houston St.,CUSA
+2025,262,Samford,SC
+2025,263,San Diego,WCC
+2025,264,San Diego St.,MWC
+2025,265,San Francisco,WCC
+2025,266,San Jose St.,MWC
+2025,267,Santa Clara,WCC
+2025,268,Seattle,WAC
+2025,269,Seton Hall,BE
+2025,270,Siena,MAAC
+2025,271,South Alabama,SB
+2025,272,South Carolina,SEC
+2025,273,South Carolina St.,MEAC
+2025,274,South Dakota,Sum
+2025,275,South Dakota St.,Sum
+2025,276,South Florida,Amer
+2025,277,Southeast Missouri St.,OVC
+2025,278,Southeastern Louisiana,Slnd
+2025,279,Southern,SWAC
+2025,280,Southern Illinois,MVC
+2025,281,Southern Indiana,OVC
+2025,282,Southern Miss,SB
+2025,283,Southern Utah,WAC
+2025,284,St. Bonaventure,A10
+2025,285,St. John's,BE
+2025,286,St. Thomas,Sum
+2025,287,Stanford,ACC
+2025,288,Stephen F. Austin,Slnd
+2025,289,Stetson,ASun
+2025,290,Stonehill,NEC
+2025,291,Stony Brook,CAA
+2025,292,Syracuse,ACC
+2025,293,TCU,B12
+2025,294,Tarleton St.,WAC
+2025,295,Temple,Amer
+2025,296,Tennessee,SEC
+2025,297,Tennessee Martin,OVC
+2025,298,Tennessee St.,OVC
+2025,299,Tennessee Tech,OVC
+2025,300,Texas,SEC
+2025,301,Texas A&M,SEC
+2025,302,Texas A&M Corpus Chris,Slnd
+2025,303,Texas Southern,SWAC
+2025,304,Texas St.,SB
+2025,305,Texas Tech,B12
+2025,306,The Citadel,SC
+2025,307,Toledo,MAC
+2025,308,Towson,CAA
+2025,309,Troy,SB
+2025,310,Tulane,Amer
+2025,311,Tulsa,Amer
+2025,312,UAB,Amer
+2025,313,UC Davis,BW
+2025,314,UC Irvine,BW
+2025,315,UC Riverside,BW
+2025,316,UC San Diego,BW
+2025,317,UC Santa Barbara,BW
+2025,318,UCF,B12
+2025,319,UCLA,B10
+2025,320,UMBC,AE
+2025,321,UMKC,Sum
+2025,322,UMass Lowell,AE
+2025,323,UNC Asheville,BSth
+2025,324,UNC Greensboro,SC
+2025,325,UNC Wilmington,CAA
+2025,326,UNLV,MWC
+2025,327,USC,B10
+2025,328,USC Upstate,BSth
+2025,329,UT Arlington,WAC
+2025,330,UT Rio Grande Valley,Slnd
+2025,331,UTEP,CUSA
+2025,332,UTSA,Amer
+2025,333,Utah,B12
+2025,334,Utah St.,MWC
+2025,335,Utah Tech,WAC
+2025,336,Utah Valley,WAC
+2025,337,VCU,A10
+2025,338,VMI,SC
+2025,339,Valparaiso,MVC
+2025,340,Vanderbilt,SEC
+2025,341,Vermont,AE
+2025,342,Villanova,BE
+2025,343,Virginia,ACC
+2025,344,Virginia Tech,ACC
+2025,345,Wagner,NEC
+2025,346,Wake Forest,ACC
+2025,347,Washington,B10
+2025,348,Washington St.,WCC
+2025,349,Weber St.,BSky
+2025,350,West Georgia,ASun
+2025,351,West Virginia,B12
+2025,352,Western Carolina,SC
+2025,353,Western Illinois,OVC
+2025,354,Western Kentucky,CUSA
+2025,355,Western Mich.,MAC
+2025,356,Wichita St.,Amer
+2025,357,William & Mary,CAA
+2025,358,Winthrop,BSth
+2025,359,Wisconsin,B10
+2025,360,Wofford,SC
+2025,361,Wright St.,Horz
+2025,362,Wyoming,MWC
+2025,363,Xavier,BE
+2025,364,Yale,Ivy
+2025,365,Youngstown St.,Horz
+2026,1,Abilene Christian,WAC
+2026,2,Air Force,MWC
+2026,3,Akron,MAC
+2026,4,Alabama,SEC
+2026,5,Alabama A&M,SWAC
+2026,6,Alabama St.,SWAC
+2026,7,Albany,AE
+2026,8,Alcorn St.,SWAC
+2026,9,American,Pat
+2026,10,Appalachian St.,SB
+2026,11,Arizona,B12
+2026,12,Arizona St.,B12
+2026,13,Arkansas,SEC
+2026,14,Arkansas Pine Bluff,SWAC
+2026,15,Arkansas St.,SB
+2026,16,Army,Pat
+2026,17,Auburn,SEC
+2026,18,Austin Peay,ASun
+2026,19,BYU,B12
+2026,20,Ball St.,MAC
+2026,21,Baylor,B12
+2026,22,Bellarmine,ASun
+2026,23,Belmont,MVC
+2026,24,Bethune Cookman,SWAC
+2026,25,Binghamton,AE
+2026,26,Boise St.,MWC
+2026,27,Boston College,ACC
+2026,28,Boston University,Pat
+2026,29,Bowling Green,MAC
+2026,30,Bradley,MVC
+2026,31,Brown,Ivy
+2026,32,Bryant,AE
+2026,33,Bucknell,Pat
+2026,34,Buffalo,MAC
+2026,35,Butler,BE
+2026,36,Cal Baptist,WAC
+2026,37,Cal Poly,BW
+2026,38,Cal St. Bakersfield,BW
+2026,39,Cal St. Fullerton,BW
+2026,40,Cal St. Northridge,BW
+2026,41,California,ACC
+2026,42,Campbell,CAA
+2026,43,Canisius,MAAC
+2026,44,Central Arkansas,ASun
+2026,45,Central Connecticut,NEC
+2026,46,Central Michigan,MAC
+2026,47,Charleston,CAA
+2026,48,Charleston Southern,BSth
+2026,49,Charlotte,Amer
+2026,50,Chattanooga,SC
+2026,51,Chicago St.,NEC
+2026,52,Cincinnati,B12
+2026,53,Clemson,ACC
+2026,54,Cleveland St.,Horz
+2026,55,Coastal Carolina,SB
+2026,56,Colgate,Pat
+2026,57,Colorado,B12
+2026,58,Colorado St.,MWC
+2026,59,Columbia,Ivy
+2026,60,Connecticut,BE
+2026,61,Coppin St.,MEAC
+2026,62,Cornell,Ivy
+2026,63,Creighton,BE
+2026,64,Dartmouth,Ivy
+2026,65,Davidson,A10
+2026,66,Dayton,A10
+2026,67,DePaul,BE
+2026,68,Delaware,CUSA
+2026,69,Delaware St.,MEAC
+2026,70,Denver,Sum
+2026,71,Detroit Mercy,Horz
+2026,72,Drake,MVC
+2026,73,Drexel,CAA
+2026,74,Duke,ACC
+2026,75,Duquesne,A10
+2026,76,East Carolina,Amer
+2026,77,East Tennessee St.,SC
+2026,78,East Texas A&M,Slnd
+2026,79,Eastern Illinois,OVC
+2026,80,Eastern Kentucky,ASun
+2026,81,Eastern Mich.,MAC
+2026,82,Eastern Washington,BSky
+2026,83,Elon,CAA
+2026,84,Evansville,MVC
+2026,85,FIU,CUSA
+2026,86,Fairfield,MAAC
+2026,87,Fairleigh Dickinson,NEC
+2026,88,Florida,SEC
+2026,89,Florida A&M,SWAC
+2026,90,Florida Atlantic,Amer
+2026,91,Florida Gulf Coast,ASun
+2026,92,Florida St.,ACC
+2026,93,Fordham,A10
+2026,94,Fresno St.,MWC
+2026,95,Furman,SC
+2026,96,Gardner Webb,BSth
+2026,97,George Mason,A10
+2026,98,George Washington,A10
+2026,99,Georgetown,BE
+2026,100,Georgia,SEC
+2026,101,Georgia Southern,SB
+2026,102,Georgia St.,SB
+2026,103,Georgia Tech,ACC
+2026,104,Gonzaga,WCC
+2026,105,Grambling St.,SWAC
+2026,106,Grand Canyon,MWC
+2026,107,Green Bay,Horz
+2026,108,Hampton,CAA
+2026,109,Harvard,Ivy
+2026,110,Hawaii,BW
+2026,111,High Point,BSth
+2026,112,Hofstra,CAA
+2026,113,Holy Cross,Pat
+2026,114,Houston,B12
+2026,115,Houston Christian,Slnd
+2026,116,Howard,MEAC
+2026,117,IU Indy,Horz
+2026,118,Idaho,BSky
+2026,119,Idaho St.,BSky
+2026,120,Illinois,B10
+2026,121,Illinois Chicago,MVC
+2026,122,Illinois St.,MVC
+2026,123,Incarnate Word,Slnd
+2026,124,Indiana,B10
+2026,125,Indiana St.,MVC
+2026,126,Iona,MAAC
+2026,127,Iowa,B10
+2026,128,Iowa St.,B12
+2026,129,Jackson St.,SWAC
+2026,130,Jacksonville,ASun
+2026,131,Jacksonville St.,CUSA
+2026,132,James Madison,SB
+2026,133,Kansas,B12
+2026,134,Kansas St.,B12
+2026,135,Kennesaw St.,CUSA
+2026,136,Kent St.,MAC
+2026,137,Kentucky,SEC
+2026,138,LIU,NEC
+2026,139,LSU,SEC
+2026,140,La Salle,A10
+2026,141,Lafayette,Pat
+2026,142,Lamar,Slnd
+2026,143,Le Moyne,NEC
+2026,144,Lehigh,Pat
+2026,145,Liberty,CUSA
+2026,146,Lindenwood,OVC
+2026,147,Lipscomb,ASun
+2026,148,Little Rock,OVC
+2026,149,Long Beach St.,BW
+2026,150,Longwood,BSth
+2026,151,Louisiana,SB
+2026,152,Louisiana Monroe,SB
+2026,153,Louisiana Tech,CUSA
+2026,154,Louisville,ACC
+2026,155,Loyola Chicago,A10
+2026,156,Loyola MD,Pat
+2026,157,Loyola Marymount,WCC
+2026,158,Maine,AE
+2026,159,Manhattan,MAAC
+2026,160,Marist,MAAC
+2026,161,Marquette,BE
+2026,162,Marshall,SB
+2026,163,Maryland,B10
+2026,164,Maryland Eastern Shore,MEAC
+2026,165,Massachusetts,MAC
+2026,166,McNeese,Slnd
+2026,167,Memphis,Amer
+2026,168,Mercer,SC
+2026,169,Mercyhurst,NEC
+2026,170,Merrimack,MAAC
+2026,171,Miami (FL),ACC
+2026,172,Miami (OH),MAC
+2026,173,Michigan,B10
+2026,174,Michigan St.,B10
+2026,175,Middle Tennessee,CUSA
+2026,176,Milwaukee,Horz
+2026,177,Minnesota,B10
+2026,178,Mississippi,SEC
+2026,179,Mississippi St.,SEC
+2026,180,Mississippi Valley St.,SWAC
+2026,181,Missouri,SEC
+2026,182,Missouri St.,CUSA
+2026,183,Monmouth,CAA
+2026,184,Montana,BSky
+2026,185,Montana St.,BSky
+2026,186,Morehead St.,OVC
+2026,187,Morgan St.,MEAC
+2026,188,Mount St. Mary's,MAAC
+2026,189,Murray St.,MVC
+2026,190,NC State,ACC
+2026,191,NJIT,AE
+2026,192,Navy,Pat
+2026,193,Nebraska,B10
+2026,194,Nebraska Omaha,Sum
+2026,195,Nevada,MWC
+2026,196,New Hampshire,AE
+2026,197,New Haven,NEC
+2026,198,New Mexico,MWC
+2026,199,New Mexico St.,CUSA
+2026,200,New Orleans,Slnd
+2026,201,Niagara,MAAC
+2026,202,Nicholls St.,Slnd
+2026,203,Norfolk St.,MEAC
+2026,204,North Alabama,ASun
+2026,205,North Carolina,ACC
+2026,206,North Carolina A&T,CAA
+2026,207,North Carolina Central,MEAC
+2026,208,North Dakota,Sum
+2026,209,North Dakota St.,Sum
+2026,210,North Florida,ASun
+2026,211,North Texas,Amer
+2026,212,Northeastern,CAA
+2026,213,Northern Arizona,BSky
+2026,214,Northern Colorado,BSky
+2026,215,Northern Illinois,MAC
+2026,216,Northern Iowa,MVC
+2026,217,Northern Kentucky,Horz
+2026,218,Northwestern,B10
+2026,219,Northwestern St.,Slnd
+2026,220,Notre Dame,ACC
+2026,221,Oakland,Horz
+2026,222,Ohio,MAC
+2026,223,Ohio St.,B10
+2026,224,Oklahoma,SEC
+2026,225,Oklahoma St.,B12
+2026,226,Old Dominion,SB
+2026,227,Oral Roberts,Sum
+2026,228,Oregon,B10
+2026,229,Oregon St.,WCC
+2026,230,Pacific,WCC
+2026,231,Penn,Ivy
+2026,232,Penn St.,B10
+2026,233,Pepperdine,WCC
+2026,234,Pittsburgh,ACC
+2026,235,Portland,WCC
+2026,236,Portland St.,BSky
+2026,237,Prairie View A&M,SWAC
+2026,238,Presbyterian,BSth
+2026,239,Princeton,Ivy
+2026,240,Providence,BE
+2026,241,Purdue,B10
+2026,242,Purdue Fort Wayne,Horz
+2026,243,Queens,ASun
+2026,244,Quinnipiac,MAAC
+2026,245,Radford,BSth
+2026,246,Rhode Island,A10
+2026,247,Rice,Amer
+2026,248,Richmond,A10
+2026,249,Rider,MAAC
+2026,250,Robert Morris,Horz
+2026,251,Rutgers,B10
+2026,252,SIU Edwardsville,OVC
+2026,253,SMU,ACC
+2026,254,Sacramento St.,BSky
+2026,255,Sacred Heart,MAAC
+2026,256,Saint Francis,NEC
+2026,257,Saint Joseph's,A10
+2026,258,Saint Louis,A10
+2026,259,Saint Mary's,WCC
+2026,260,Saint Peter's,MAAC
+2026,261,Sam Houston St.,CUSA
+2026,262,Samford,SC
+2026,263,San Diego,WCC
+2026,264,San Diego St.,MWC
+2026,265,San Francisco,WCC
+2026,266,San Jose St.,MWC
+2026,267,Santa Clara,WCC
+2026,268,Seattle,WCC
+2026,269,Seton Hall,BE
+2026,270,Siena,MAAC
+2026,271,South Alabama,SB
+2026,272,South Carolina,SEC
+2026,273,South Carolina St.,MEAC
+2026,274,South Dakota,Sum
+2026,275,South Dakota St.,Sum
+2026,276,South Florida,Amer
+2026,277,Southeast Missouri St.,OVC
+2026,278,Southeastern Louisiana,Slnd
+2026,279,Southern,SWAC
+2026,280,Southern Illinois,MVC
+2026,281,Southern Indiana,OVC
+2026,282,Southern Miss,SB
+2026,283,Southern Utah,WAC
+2026,284,St. Bonaventure,A10
+2026,285,St. John's,BE
+2026,286,St. Thomas,Sum
+2026,287,Stanford,ACC
+2026,288,Stephen F. Austin,Slnd
+2026,289,Stetson,ASun
+2026,290,Stonehill,NEC
+2026,291,Stony Brook,CAA
+2026,292,Syracuse,ACC
+2026,293,TCU,B12
+2026,294,Tarleton St.,WAC
+2026,295,Temple,Amer
+2026,296,Tennessee,SEC
+2026,297,Tennessee Martin,OVC
+2026,298,Tennessee St.,OVC
+2026,299,Tennessee Tech,OVC
+2026,300,Texas,SEC
+2026,301,Texas A&M,SEC
+2026,302,Texas A&M Corpus Chris,Slnd
+2026,303,Texas Southern,SWAC
+2026,304,Texas St.,SB
+2026,305,Texas Tech,B12
+2026,306,The Citadel,SC
+2026,307,Toledo,MAC
+2026,308,Towson,CAA
+2026,309,Troy,SB
+2026,310,Tulane,Amer
+2026,311,Tulsa,Amer
+2026,312,UAB,Amer
+2026,313,UC Davis,BW
+2026,314,UC Irvine,BW
+2026,315,UC Riverside,BW
+2026,316,UC San Diego,BW
+2026,317,UC Santa Barbara,BW
+2026,318,UCF,B12
+2026,319,UCLA,B10
+2026,320,UMBC,AE
+2026,321,UMKC,Sum
+2026,322,UMass Lowell,AE
+2026,323,UNC Asheville,BSth
+2026,324,UNC Greensboro,SC
+2026,325,UNC Wilmington,CAA
+2026,326,UNLV,MWC
+2026,327,USC,B10
+2026,328,USC Upstate,BSth
+2026,329,UT Arlington,WAC
+2026,330,UT Rio Grande Valley,Slnd
+2026,331,UTEP,CUSA
+2026,332,UTSA,Amer
+2026,333,Utah,B12
+2026,334,Utah St.,MWC
+2026,335,Utah Tech,WAC
+2026,336,Utah Valley,WAC
+2026,337,VCU,A10
+2026,338,VMI,SC
+2026,339,Valparaiso,MVC
+2026,340,Vanderbilt,SEC
+2026,341,Vermont,AE
+2026,342,Villanova,BE
+2026,343,Virginia,ACC
+2026,344,Virginia Tech,ACC
+2026,345,Wagner,NEC
+2026,346,Wake Forest,ACC
+2026,347,Washington,B10
+2026,348,Washington St.,WCC
+2026,349,Weber St.,BSky
+2026,350,West Georgia,ASun
+2026,351,West Virginia,B12
+2026,352,Western Carolina,SC
+2026,353,Western Illinois,OVC
+2026,354,Western Kentucky,CUSA
+2026,355,Western Mich.,MAC
+2026,356,Wichita St.,Amer
+2026,357,William & Mary,CAA
+2026,358,Winthrop,BSth
+2026,359,Wisconsin,B10
+2026,360,Wofford,SC
+2026,361,Wright St.,Horz
+2026,362,Wyoming,MWC
+2026,363,Xavier,BE
+2026,364,Yale,Ivy
+2026,365,Youngstown St.,Horz

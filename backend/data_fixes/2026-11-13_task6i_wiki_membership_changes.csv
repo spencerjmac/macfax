@@ -1,0 +1,283 @@
+season,wikipedia_school,team_id,team_name,former_conference,new_conference,former_code,new_code
+2006,Boston College Eagles,27,Boston College,Big East Conference,Atlantic Coast Conference,BE,ACC
+2006,Central Florida Knights,318,UCF,Atlantic Sun Conference,Conference USA,ASun,CUSA
+2006,Charlotte 49ers,49,Charlotte,Conference USA,Atlantic 10 Conference,CUSA,A10
+2006,Cincinnati Bearcats,52,Cincinnati,Conference USA,Big East Conference,CUSA,BE
+2006,DePaul Blue Demons,67,DePaul,Conference USA,Big East Conference,CUSA,BE
+2006,East Tennessee State Buccaneers,77,East Tennessee St.,Southern Conference,Atlantic Sun Conference,SC,ASun
+2006,Georgia State Panthers,102,Georgia St.,Atlantic Sun Conference,Colonial Athletic Association,ASun,CAA
+2006,Idaho Vandals,118,Idaho,Big West Conference,Western Athletic Conference,BW,WAC
+2006,Kennesaw State Owls,135,Kennesaw St.,Peach Belt Conference ( D-II ),Atlantic Sun Conference,,ASun
+2006,Louisville Cardinals,154,Louisville,Conference USA,Big East Conference,CUSA,BE
+2006,Marquette Golden Eagles,161,Marquette,Conference USA,Big East Conference,CUSA,BE
+2006,Marshall Thundering Herd,162,Marshall,Mid-American Conference,Conference USA,MAC,CUSA
+2006,New Mexico State Aggies,199,New Mexico St.,Sun Belt Conference,Western Athletic Conference,SB,WAC
+2006,North Florida Ospreys,210,North Florida,Peach Belt Conference ( D-II ),Atlantic Sun Conference,,ASun
+2006,Northeastern Huskies,212,Northeastern,America East Conference,Colonial Athletic Association,AE,CAA
+2006,Rice Owls,247,Rice,Western Athletic Conference,Conference USA,WAC,CUSA
+2006,Saint Louis Billikens,258,Saint Louis,Conference USA,Atlantic 10 Conference,CUSA,A10
+2006,South Florida Bulls,276,South Florida,Conference USA,Big East Conference,CUSA,BE
+2006,SMU Mustangs,253,SMU,Western Athletic Conference,Conference USA,WAC,CUSA
+2006,TCU Horned Frogs,293,TCU,Conference USA,Mountain West Conference,CUSA,MWC
+2006,Texas–El Paso (UTEP) Miners,331,UTEP,Western Athletic Conference,Conference USA,WAC,CUSA
+2006,Troy Trojans,309,Troy,Atlantic Sun Conference,Sun Belt Conference,ASun,SB
+2006,Tulsa Golden Hurricane,311,Tulsa,Western Athletic Conference,Conference USA,WAC,CUSA
+2006,Utah State Aggies,334,Utah St.,Big West Conference,Western Athletic Conference,BW,WAC
+2007,Birmingham–Southern Panthers,828,Birmingham-Southern,Big South Conference,SCAC ( D-II ),BSth,
+2007,Central Arkansas Bears,44,Central Arkansas,Gulf South Conference ( D-II ),Southland Conference,,Slnd
+2007,Chicago State Cougars,51,Chicago St.,Mid-Continent Conference,NCAA Division I independent,Sum,IND
+2007,Florida Atlantic (FAU) Owls,90,Florida Atlantic,Atlantic Sun Conference,Sun Belt Conference,ASun,SB
+2007,Louisiana–Monroe Warhawks,152,Louisiana Monroe,Southland Conference,Sun Belt Conference,Slnd,SB
+2007,NJIT Highlanders,191,NJIT,CACC ( D-II ),NCAA Division I Independent,,IND
+2007,Northern Colorado Bears,214,Northern Colorado,NCAA Division I independent,Big Sky Conference,IND,BSky
+2007,Texas A&M–Corpus Christi Islanders,302,Texas A&M Corpus Chris,NCAA Division I independent,Southland Conference,IND,Slnd
+2007,Winston-Salem State Rams,827,Winston-Salem St.,CIAA ( D-II ),NCAA Division I independent,,IND
+2008,Cal State Bakersfield Roadrunners,38,Cal St. Bakersfield,CCAA ( D-II ),NCAA Division I independent,,IND
+2008,Florida Gulf Coast Eagles,91,Florida Gulf Coast,NCAA Division II independent,Atlantic Sun Conference,,ASun
+2008,Indiana–Purdue Fort Wayne (IPFW) Mastodons,242,Purdue Fort Wayne,NCAA Division I independent,Summit League,IND,Sum
+2008,North Carolina Central Eagles,207,North Carolina Central,CIAA ( D-II ),NCAA Division I independent,,IND
+2008,North Dakota State Bison,209,North Dakota St.,NCAA Division I independent,Summit League,IND,Sum
+2008,Presbyterian Blue Hose,238,Presbyterian,South Atlantic Conference ( D-II ),NCAA Division I independent,,IND
+2008,South Carolina (USC) Upstate Spartans,328,USC Upstate,Peach Belt Conference ( D-II ),Atlantic Sun Conference,,ASun
+2008,South Dakota State Jackrabbits,275,South Dakota St.,NCAA Division I independent,Summit League,IND,Sum
+2008,UC Davis Aggies,313,UC Davis,NCAA Division I independent,Big West Conference,IND,BW
+2008,Valparaiso Crusaders,339,Valparaiso,Summit League,Horizon League,Sum,Horz
+2008,Winston-Salem State Rams,827,Winston-Salem St.,NCAA Division I independent,Mid-Eastern Athletic Conference,IND,MEAC
+2009,Bryant Bulldogs,32,Bryant,Northeast-10 Conference ( D-II ),NCAA Division I Independent,,IND
+2009,Gardner–Webb Runnin' Bulldogs,96,Gardner Webb,Atlantic Sun Conference,Big South Conference,ASun,BSth
+2009,Houston Baptist Huskies,115,Houston Christian,NAIA independent,NCAA Division I Independent,,IND
+2009,North Dakota Fighting Sioux,208,North Dakota,North Central Conference ( D-II ),NCAA Division I Independent,,IND
+2009,Presbyterian Blue Hose,238,Presbyterian,NCAA Division I independent,Big South Conference,IND,BSth
+2009,Samford Bulldogs,262,Samford,Ohio Valley Conference,Southern Conference,OVC,SC
+2009,Seattle Redhawks,268,Seattle,Great Northwest Athletic Conference ( D-II ),NCAA Division I Independent,,IND
+2009,Southern Illinois University (SIU) Edwardsville Cougars,252,SIU Edwardsville,Great Lakes Valley Conference ( D-II ),NCAA Division I Independent,,IND
+2009,South Dakota Coyotes,274,South Dakota,North Central Conference ( D-II ),NCAA Division I Independent,,IND
+2010,Bryant Bulldogs,32,Bryant,NCAA Division I Independent,Northeast Conference,IND,NEC
+2010,Chicago State Cougars,51,Chicago St.,NCAA Division I Independent,Great West Conference,IND,GWC
+2010,Houston Baptist Huskies,115,Houston Christian,NCAA Division I Independent,Great West Conference,IND,GWC
+2010,NJIT Highlanders,191,NJIT,NCAA Division I Independent,Great West Conference,IND,GWC
+2010,North Dakota Fighting Sioux,208,North Dakota,NCAA Division I Independent,Great West Conference,IND,GWC
+2010,South Dakota Coyotes,274,South Dakota,NCAA Division I Independent,Great West Conference,IND,GWC
+2010,Texas–Pan American Broncs,330,UT Rio Grande Valley,NCAA Division I Independent,Great West Conference,IND,GWC
+2010,Utah Valley Wolverines,336,Utah Valley,NCAA Division I Independent,Great West Conference,IND,GWC
+2010,Winston-Salem State Rams,827,Winston-Salem St.,Mid-Eastern Athletic Conference,NCAA Division I Independent,MEAC,IND
+2011,New Orleans Privateers,200,New Orleans,Sun Belt,NCAA Division I independent,SB,IND
+2011,Winston-Salem State Rams,827,Winston-Salem St.,NCAA Division I independent,Central Intercollegiate Athletic Association ( NCAA Division II ),IND,
+2012,Boise State Broncos,26,Boise St.,Western Athletic Conference,Mountain West Conference,WAC,MWC
+2012,BYU Cougars,19,BYU,Mountain West Conference,West Coast Conference,MWC,WCC
+2012,Campbell Fighting Camels,42,Campbell,Atlantic Sun Conference,Big South Conference,ASun,BSth
+2012,Centenary Gentlemen,719,Centenary (LA),The Summit League,American Southwest Conference ( D-III ),Sum,
+2012,Colorado Buffaloes,57,Colorado,Big 12 Conference,Pac-12 Conference,B12,P12
+2012,Nebraska Cornhuskers,193,Nebraska,Big 12 Conference,Big Ten Conference,B12,B10
+2012,New Orleans Privateers,200,New Orleans,NCAA Division I independent,NCAA Division II independent,IND,
+2012,North Carolina Central Eagles,207,North Carolina Central,NCAA Division I independent,Mid-Eastern Athletic Conference,IND,MEAC
+2012,Omaha Mavericks,194,Nebraska Omaha,Mid-America Intercollegiate Athletics Association ( D-II ),NCAA Division I independent,,IND
+2012,Savannah State Tigers,826,Savannah St.,NCAA Division I independent,Mid-Eastern Athletic Conference,IND,MEAC
+2012,South Dakota Coyotes,274,South Dakota,Great West Conference,The Summit League,GWC,Sum
+2012,Southern Illinois University (SIU) Edwardsville Cougars,252,SIU Edwardsville,NCAA Division I Independent,Ohio Valley Conference,IND,OVC
+2012,Utah Utes,333,Utah,Mountain West Conference,Pac-12 Conference,MWC,P12
+2013,Belmont Bruins,23,Belmont,A-Sun,OVC,ASun,OVC
+2013,Butler Bulldogs,35,Butler,Horizon League,Atlantic 10,Horz,A10
+2013,Denver Pioneers,70,Denver,Sun Belt,WAC,SB,WAC
+2013,Fresno State Bulldogs,94,Fresno St.,WAC,Mountain West,WAC,MWC
+2013,Hawaiʻi Rainbow Warriors,110,Hawaii,WAC,Big West,WAC,BW
+2013,Longwood Lancers,150,Longwood,Independent,Big South,IND,BSth
+2013,Missouri Tigers,181,Missouri,Big 12,SEC,B12,SEC
+2013,Nevada Wolf Pack,195,Nevada,WAC,Mountain West,WAC,MWC
+2013,New Orleans Privateers,200,New Orleans,Division II independent,Division I independent,,IND
+2013,North Dakota ( no nickname ),208,North Dakota,Great West,Big Sky,GWC,BSky
+2013,Northern Kentucky Norse,217,Northern Kentucky,GLVC (D-II),A-Sun,,ASun
+2013,Omaha Mavericks,194,Nebraska Omaha,Independent,Summit League,IND,Sum
+2013,Oral Roberts Golden Eagles,227,Oral Roberts,Summit League,Southland,Sum,Slnd
+2013,Seattle Redhawks,268,Seattle,Independent,WAC,IND,WAC
+2013,Southern Utah Thunderbirds,283,Southern Utah,Summit League,Big Sky,Sum,BSky
+2013,TCU Horned Frogs,293,TCU,Mountain West,Big 12,MWC,B12
+2013,Texas A&M Aggies,301,Texas A&M,Big 12,SEC,B12,SEC
+2013,Texas State Bobcats,304,Texas St.,Southland,WAC,Slnd,WAC
+2013,UT Arlington Mavericks,329,UT Arlington,Southland,WAC,Slnd,WAC
+2013,UTSA Roadrunners,332,UTSA,Southland,WAC,Slnd,WAC
+2013,VCU Rams,337,VCU,CAA,Atlantic 10,CAA,A10
+2013,West Virginia Mountaineers,351,West Virginia,Big East,Big 12,BE,B12
+2014,Abilene Christian Wildcats,1,Abilene Christian,Lone Star Conference ( D-II ),Southland Conference,,Slnd
+2014,Boston University Terriers,28,Boston University,America East Conference,Patriot League,AE,Pat
+2014,Butler Bulldogs,35,Butler,Atlantic 10 Conference,Big East Conference,A10,BE
+2014,Charleston Cougars,47,Charleston,Southern Conference,Colonial Athletic Association,SC,CAA
+2014,Charlotte 49ers,49,Charlotte,Atlantic 10 Conference,Conference USA,A10,CUSA
+2014,Chicago State Cougars,51,Chicago St.,Great West Conference,Western Athletic Conference,GWC,WAC
+2014,Cincinnati Bearcats,52,Cincinnati,Original Big East Conference,"American Athletic Conference (""The American"")",BE,Amer
+2014,UConn Huskies,60,Connecticut,Original Big East Conference,"American Athletic Conference (""The American"")",BE,Amer
+2014,Creighton Bluejays,63,Creighton,Missouri Valley Conference,Big East Conference,MVC,BE
+2014,CSU Bakersfield Roadrunners,38,Cal St. Bakersfield,NCAA Division I independent,Western Athletic Conference,IND,WAC
+2014,Denver Pioneers,70,Denver,Western Athletic Conference,The Summit League,WAC,Sum
+2014,DePaul Blue Demons,67,DePaul,Original Big East Conference,Big East Conference,BE,BE
+2014,Florida Atlantic Owls,90,Florida Atlantic,Sun Belt Conference,Conference USA,SB,CUSA
+2014,FIU Panthers,85,FIU,Sun Belt Conference,Conference USA,SB,CUSA
+2014,George Mason Patriots,97,George Mason,Colonial Athletic Association,Atlantic 10,CAA,A10
+2014,Georgetown Hoyas,99,Georgetown,Original Big East Conference,Big East Conference,BE,BE
+2014,Georgia State Panthers,102,Georgia St.,Colonial Athletic Association,Sun Belt Conference,CAA,SB
+2014,Grand Canyon Antelopes,106,Grand Canyon,Pacific West Conference ( D-II ),Western Athletic Conference,,WAC
+2014,Houston Cougars,114,Houston,Conference USA,"American Athletic Conference (""The American"")",CUSA,Amer
+2014,Houston Baptist Huskies,115,Houston Christian,Great West Conference,Southland Conference,GWC,Slnd
+2014,Incarnate Word Cardinals,123,Incarnate Word,Lone Star Conference ( D-II ),Southland Conference,,Slnd
+2014,Louisiana Tech Bulldogs,153,Louisiana Tech,Western Athletic Conference,Conference USA,WAC,CUSA
+2014,Louisville Cardinals,154,Louisville,Original Big East Conference,"American Athletic Conference (""The American"")",BE,Amer
+2014,Loyola Chicago Ramblers,155,Loyola Chicago,Horizon League,Missouri Valley Conference,Horz,MVC
+2014,Loyola Maryland Greyhounds,156,Loyola MD,Metro Atlantic Athletic Conference,Patriot League,MAAC,Pat
+2014,Marquette Golden Eagles,161,Marquette,Original Big East Conference,Big East Conference,BE,BE
+2014,Memphis Tigers,167,Memphis,Conference USA,"American Athletic Conference (""The American"")",CUSA,Amer
+2014,Middle Tennessee Blue Raiders,175,Middle Tennessee,Sun Belt Conference,Conference USA,SB,CUSA
+2014,Monmouth Hawks,183,Monmouth,Northeast Conference,Metro Atlantic Athletic Conference,NEC,MAAC
+2014,New Orleans Privateers,200,New Orleans,NCAA Division I independent,Southland Conference,IND,Slnd
+2014,NJIT Highlanders,191,NJIT,Great West Conference,NCAA Division I independent,GWC,IND
+2014,North Texas Mean Green,211,North Texas,Sun Belt Conference,Conference USA,SB,CUSA
+2014,Notre Dame Fighting Irish,220,Notre Dame,Original Big East Conference,Atlantic Coast Conference,BE,ACC
+2014,Oakland Golden Grizzlies,221,Oakland,The Summit League,Horizon League,Sum,Horz
+2014,Old Dominion Monarchs,226,Old Dominion,Colonial Athletic Association,Conference USA,CAA,CUSA
+2014,Pacific Tigers,230,Pacific,Big West Conference,West Coast Conference,BW,WCC
+2014,Pittsburgh Panthers,234,Pittsburgh,Original Big East Conference,Atlantic Coast Conference,BE,ACC
+2014,Providence Friars,240,Providence,Original Big East Conference,Big East Conference,BE,BE
+2014,Quinnipiac Bobcats,244,Quinnipiac,Northeast Conference,Metro Atlantic Athletic Conference,NEC,MAAC
+2014,Rutgers Scarlet Knights,251,Rutgers,Original Big East Conference,"American Athletic Conference (""The American"")",BE,Amer
+2014,St. John's Red Storm,285,St. John's,Original Big East Conference,Big East Conference,BE,BE
+2014,San Jose State Spartans,266,San Jose St.,Western Athletic Conference,Mountain West Conference,WAC,MWC
+2014,Seton Hall Pirates,269,Seton Hall,Original Big East Conference,Big East Conference,BE,BE
+2014,SMU Mustangs,253,SMU,Conference USA,"American Athletic Conference (""The American"")",CUSA,Amer
+2014,South Florida Bulls,276,South Florida,Original Big East Conference,"American Athletic Conference (""The American"")",BE,Amer
+2014,Syracuse Orange,292,Syracuse,Original Big East Conference,Atlantic Coast Conference,BE,ACC
+2014,Temple Owls,295,Temple,Atlantic 10 Conference,"American Athletic Conference (""The American"")",A10,Amer
+2014,Texas–Arlington Mavericks,329,UT Arlington,Western Athletic Conference,Sun Belt Conference,WAC,SB
+2014,Texas State Bobcats,304,Texas St.,Western Athletic Conference,Sun Belt Conference,WAC,SB
+2014,UCF Knights,318,UCF,Conference USA,"American Athletic Conference (""The American"")",CUSA,Amer
+2014,UMass Lowell River Hawks,322,UMass Lowell,Northeast-10 Conference ( D-II ),America East Conference,,AE
+2014,UMKC Kangaroos,321,UMKC,The Summit League,Western Athletic Conference,Sum,WAC
+2014,Utah State Aggies,334,Utah St.,Western Athletic Conference,Mountain West Conference,WAC,MWC
+2014,Utah Valley Wolverines,336,Utah Valley,Great West Conference,Western Athletic Conference,GWC,WAC
+2014,UTPA Broncs,330,UT Rio Grande Valley,Great West Conference,Western Athletic Conference,GWC,WAC
+2014,UTSA Roadrunners,332,UTSA,Western Athletic Conference,Conference USA,WAC,CUSA
+2014,Villanova Wildcats,342,Villanova,Original Big East Conference,Big East Conference,BE,BE
+2014,Xavier Musketeers,363,Xavier,Atlantic 10 Conference,Big East Conference,A10,BE
+2015,Appalachian State Mountaineers,10,Appalachian St.,Southern Conference,Sun Belt Conference,SC,SB
+2015,Davidson Wildcats,65,Davidson,Southern Conference,Atlantic 10 Conference,SC,A10
+2015,East Carolina Pirates,76,East Carolina,Conference USA,"American Athletic Conference (""The American"")",CUSA,Amer
+2015,East Tennessee State Buccaneers,77,East Tennessee St.,Atlantic Sun Conference,Southern Conference,ASun,SC
+2015,Elon Phoenix,83,Elon,Southern Conference,Colonial Athletic Association,SC,CAA
+2015,Georgia Southern Eagles,101,Georgia Southern,Southern Conference,Sun Belt Conference,SC,SB
+2015,Idaho Vandals,118,Idaho,Western Athletic Conference,Big Sky Conference,WAC,BSky
+2015,Louisville Cardinals,154,Louisville,"American Athletic Conference (""The American"")",Atlantic Coast Conference,Amer,ACC
+2015,Maryland Terrapins,163,Maryland,Atlantic Coast Conference,Big Ten Conference,ACC,B10
+2015,Mercer Bears,168,Mercer,Atlantic Sun Conference,Southern Conference,ASun,SC
+2015,Oral Roberts Golden Eagles,227,Oral Roberts,Southland Conference,Summit League,Slnd,Sum
+2015,Rutgers Scarlet Knights,251,Rutgers,"American Athletic Conference (""The American"")",Big Ten Conference,Amer,B10
+2015,Tulane Green Wave,310,Tulane,Conference USA,"American Athletic Conference (""The American"")",CUSA,Amer
+2015,Tulsa Golden Hurricane,311,Tulsa,Conference USA,"American Athletic Conference (""The American"")",CUSA,Amer
+2015,VMI Keydets,338,VMI,Big South Conference,Southern Conference,BSth,SC
+2015,Western Kentucky Hilltoppers,354,Western Kentucky,Sun Belt Conference,Conference USA,SB,CUSA
+2016,NJIT Highlanders,191,NJIT,NCAA Division I independent,Atlantic Sun Conference,IND,ASun
+2016,Northern Kentucky Norse,217,Northern Kentucky,Atlantic Sun Conference,Horizon League,ASun,Horz
+2017,Coastal Carolina,55,Coastal Carolina,Big South Conference,Sun Belt Conference,BSth,SB
+2018,IUPUI,117,IU Indy,Summit League,Horizon League,Sum,Horz
+2018,Valparaiso,339,Valparaiso,Horizon League,Missouri Valley Conference,Horz,MVC
+2018,Wichita State,356,Wichita St.,Missouri Valley Conference,American Athletic Conference,MVC,Amer
+2019,California Baptist,36,Cal Baptist,Pacific West Conference (D-II),Western Athletic Conference,,WAC
+2019,Hampton,108,Hampton,Mid-Eastern Athletic Conference,Big South Conference,MEAC,BSth
+2019,Liberty,145,Liberty,Big South Conference,ASUN Conference,BSth,ASun
+2019,North Alabama,204,North Alabama,Gulf South Conference (D-II),ASUN Conference,,ASun
+2019,North Dakota,208,North Dakota,Big Sky Conference,Summit League,BSky,Sum
+2019,USC Upstate,328,USC Upstate,ASUN Conference,Big South Conference,ASun,BSth
+2020,Merrimack,170,Merrimack,Northeast-10 Conference (D-II),Northeast Conference,,NEC
+2020,Savannah State,826,Savannah St.,Mid-Eastern Athletic Conference,Southern Intercollegiate Athletic Conference (D-II),MEAC,
+2021,Bellarmine,22,Bellarmine,Great Lakes Valley Conference (D-II),ASUN Conference,,ASun
+2021,Cal State Bakersfield,38,Cal St. Bakersfield,Western Athletic Conference,Big West Conference,WAC,BW
+2021,Dixie State,335,Utah Tech,Rocky Mountain Athletic Conference (D-II),Western Athletic Conference,,WAC
+2021,Kansas City,321,UMKC,Western Athletic Conference,Summit League,WAC,Sum
+2021,NJIT,191,NJIT,ASUN Conference,America East Conference,ASun,AE
+2021,Purdue Fort Wayne,242,Purdue Fort Wayne,Summit League,Horizon League,Sum,Horz
+2021,Robert Morris,250,Robert Morris,Northeast Conference,Horizon League,NEC,Horz
+2021,Tarleton State,294,Tarleton St.,Lone Star Conference (D-II),Western Athletic Conference,,WAC
+2021,UC San Diego,316,UC San Diego,California Collegiate Athletic Association (D-II),Big West Conference,,BW
+2021,UConn,60,Connecticut,American Athletic Conference,Big East Conference,Amer,BE
+2022,Abilene Christian,1,Abilene Christian,Southland Conference,Western Athletic Conference,Slnd,WAC
+2022,Bethune–Cookman,24,Bethune Cookman,Mid-Eastern Athletic Conference,Southwestern Athletic Conference,MEAC,SWAC
+2022,Central Arkansas,44,Central Arkansas,Southland Conference,ASUN Conference,Slnd,ASun
+2022,Eastern Kentucky,80,Eastern Kentucky,Ohio Valley Conference,ASUN Conference,OVC,ASun
+2022,Florida A&M,89,Florida A&M,Mid-Eastern Athletic Conference,Southwestern Athletic Conference,MEAC,SWAC
+2022,Jacksonville State,131,Jacksonville St.,Ohio Valley Conference,ASUN Conference,OVC,ASun
+2022,Lamar,142,Lamar,Southland Conference,Western Athletic Conference,Slnd,WAC
+2022,North Carolina A&T,206,North Carolina A&T,Mid-Eastern Athletic Conference,Big South Conference,MEAC,BSth
+2022,St. Thomas,286,St. Thomas,Minnesota Intercollegiate Athletic Conference (D-III),Summit League,,Sum
+2022,Sam Houston,261,Sam Houston St.,Southland Conference,Western Athletic Conference,Slnd,WAC
+2022,Stephen F. Austin,288,Stephen F. Austin,Southland Conference,Western Athletic Conference,Slnd,WAC
+2023,Austin Peay,18,Austin Peay,Ohio Valley Conference,ASUN Conference,OVC,ASun
+2023,Belmont,23,Belmont,Ohio Valley Conference,Missouri Valley Conference,OVC,MVC
+2023,Bryant,32,Bryant,Northeast Conference,America East Conference,NEC,AE
+2023,Chicago State,51,Chicago St.,Western Athletic Conference,Independent,WAC,IND
+2023,Hampton,108,Hampton,Big South Conference,Colonial Athletic Association,BSth,CAA
+2023,Hartford,824,Hartford,America East Conference,Independent,AE,IND
+2023,James Madison,132,James Madison,Colonial Athletic Association,Sun Belt Conference,CAA,SB
+2023,Lamar,142,Lamar,Western Athletic Conference,Southland Conference,WAC,Slnd
+2023,Lindenwood,146,Lindenwood,Great Lakes Valley Conference (D-II),Ohio Valley Conference,,OVC
+2023,Little Rock,148,Little Rock,Sun Belt Conference,Ohio Valley Conference,SB,OVC
+2023,Loyola Chicago,155,Loyola Chicago,Missouri Valley Conference,Atlantic 10 Conference,MVC,A10
+2023,Marshall,162,Marshall,Conference USA,Sun Belt Conference,CUSA,SB
+2023,Monmouth,183,Monmouth,Metro Atlantic Athletic Conference,Colonial Athletic Association,MAAC,CAA
+2023,Mount St. Mary's,188,Mount St. Mary's,Northeast Conference,Metro Atlantic Athletic Conference,NEC,MAAC
+2023,Murray State,189,Murray St.,Ohio Valley Conference,Missouri Valley Conference,OVC,MVC
+2023,North Carolina A&T,206,North Carolina A&T,Big South Conference,Colonial Athletic Association,BSth,CAA
+2023,Old Dominion,226,Old Dominion,Conference USA,Sun Belt Conference,CUSA,SB
+2023,Queens,243,Queens,South Atlantic Conference (D-II),ASUN Conference,,ASun
+2023,Southern Indiana,281,Southern Indiana,Great Lakes Valley Conference (D-II),Ohio Valley Conference,,OVC
+2023,Southern Miss,282,Southern Miss,Conference USA,Sun Belt Conference,CUSA,SB
+2023,Southern Utah,283,Southern Utah,Big Sky Conference,Western Athletic Conference,BSky,WAC
+2023,Stonehill,290,Stonehill,Northeast-10 Conference (D-II),Northeast Conference,,NEC
+2023,Stony Brook,291,Stony Brook,America East Conference,Colonial Athletic Association,AE,CAA
+2023,Texas A&M–Commerce,78,East Texas A&M,Lone Star Conference (D-II),Southland Conference,,Slnd
+2023,UIC,121,Illinois Chicago,Horizon League,Missouri Valley Conference,Horz,MVC
+2023,UT Arlington,329,UT Arlington,Sun Belt Conference,Western Athletic Conference,SB,WAC
+2024,BYU,19,BYU,WCC,Big 12,WCC,B12
+2024,Campbell,42,Campbell,Big South,CAA,BSth,CAA
+2024,Charlotte,49,Charlotte,CUSA,American,CUSA,Amer
+2024,Cincinnati,52,Cincinnati,American,Big 12,Amer,B12
+2024,Florida Atlantic,90,Florida Atlantic,CUSA,American,CUSA,Amer
+2024,Hartford,824,Hartford,Independent,CCC  ( D-III ),IND,
+2024,Houston,114,Houston,American,Big 12,Amer,B12
+2024,Jacksonville State,131,Jacksonville St.,ASUN,CUSA,ASun,CUSA
+2024,Le Moyne,143,Le Moyne,NE-10 ( D-II ),NEC,,NEC
+2024,Liberty,145,Liberty,ASUN,CUSA,ASun,CUSA
+2024,New Mexico State,199,New Mexico St.,WAC,CUSA,WAC,CUSA
+2024,North Texas,211,North Texas,CUSA,American,CUSA,Amer
+2024,Rice,247,Rice,CUSA,American,CUSA,Amer
+2024,St. Francis Brooklyn,825,St. Francis Brooklyn,NEC,None (dropped athletics),NEC,
+2024,Sam Houston,261,Sam Houston St.,WAC,CUSA,WAC,CUSA
+2024,UAB,312,UAB,CUSA,American,CUSA,Amer
+2024,UCF,318,UCF,American,Big 12,Amer,B12
+2024,UTSA,332,UTSA,CUSA,American,CUSA,Amer
+2024,Western Illinois,353,Western Illinois,Summit,OVC,Sum,OVC
+2025,Arizona,11,Arizona,Pac-12,Big 12,P12,B12
+2025,Arizona State,12,Arizona St.,Pac-12,Big 12,P12,B12
+2025,California,41,California,Pac-12,ACC,P12,ACC
+2025,Chicago State,51,Chicago St.,Independent,NEC,IND,NEC
+2025,Colorado,57,Colorado,Pac-12,Big 12,P12,B12
+2025,Kennesaw State,135,Kennesaw St.,ASUN,CUSA,ASun,CUSA
+2025,Mercyhurst,169,Mercyhurst,PSAC ( D–II ),NEC,,NEC
+2025,Merrimack,170,Merrimack,NEC,MAAC,NEC,MAAC
+2025,Oklahoma,224,Oklahoma,Big 12,SEC,B12,SEC
+2025,Oregon,228,Oregon,Pac-12,Big Ten,P12,B10
+2025,Oregon State,229,Oregon St.,Pac-12,WCC,P12,WCC
+2025,Sacred Heart,255,Sacred Heart,NEC,MAAC,NEC,MAAC
+2025,SMU,253,SMU,AAC,ACC,Amer,ACC
+2025,Stanford,287,Stanford,Pac-12,ACC,P12,ACC
+2025,Stephen F. Austin,288,Stephen F. Austin,WAC,Southland,WAC,Slnd
+2025,Texas,300,Texas,Big 12,SEC,B12,SEC
+2025,UCLA,319,UCLA,Pac-12,Big Ten,P12,B10
+2025,USC,327,USC,Pac-12,Big Ten,P12,B10
+2025,Utah,333,Utah,Pac-12,Big 12,P12,B12
+2025,UTRGV,330,UT Rio Grande Valley,WAC,Southland,WAC,Slnd
+2025,Washington,347,Washington,Pac-12,Big Ten,P12,B10
+2025,Washington State,348,Washington St.,Pac-12,WCC,P12,WCC
+2025,West Georgia,350,West Georgia,Gulf South ( D–II ),ASUN,,ASun
+2026,Delaware,68,Delaware,CAA,CUSA,CAA,CUSA
+2026,Grand Canyon,106,Grand Canyon,Western Athletic,Mountain West,WAC,MWC
+2026,Missouri State,182,Missouri St.,Missouri Valley,CUSA,MVC,CUSA
+2026,New Haven,197,New Haven,Northeast-10 ( D–II ),NEC,,NEC
+2026,Seattle,268,Seattle,Western Athletic,West Coast,WAC,WCC
+2026,UMass,165,Massachusetts,A-10,MAC,A10,MAC
