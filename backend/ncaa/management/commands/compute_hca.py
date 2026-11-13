@@ -8,6 +8,7 @@ from django.db.models import Avg, Count, F, Q
 from ncaa.models import TeamGameStats, NationalAverages, Season, TeamSeasonRatings
 import statistics
 from ncaa.seasons import resolve_season_year
+from ncaa.utils.d1 import d1_q
 
 
 class Command(BaseCommand):
@@ -87,7 +88,7 @@ class Command(BaseCommand):
         
         # Create team stats cache for faster lookup
         team_stats_cache = {}
-        for ts in TeamSeasonRatings.objects.filter(season=season, team__is_d1=True, games_played__gt=0).select_related('team'):
+        for ts in TeamSeasonRatings.objects.filter(d1_q(season, "team"), season=season, games_played__gt=0).select_related('team'):
             team_stats_cache[ts.team.id] = ts
         
         self.stdout.write(f'  Team stats available: {len(team_stats_cache)} teams')

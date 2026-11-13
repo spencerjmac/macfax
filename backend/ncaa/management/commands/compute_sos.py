@@ -22,6 +22,7 @@ from django.db.models import Count
 from ncaa.models import TeamSeasonRatings, TeamGameStats, Season
 import math
 from ncaa.seasons import resolve_season_year
+from ncaa.utils.d1 import d1_q
 
 
 class Command(BaseCommand):
@@ -72,6 +73,7 @@ class Command(BaseCommand):
 
         # Get all teams with ratings for this season
         teams_with_ratings = TeamSeasonRatings.all_objects.filter(
+            d1_q(season, "team"),
             season=season,
             rank_adj_em__isnull=False,
             is_pre_tournament=is_pre_tournament
@@ -88,6 +90,7 @@ class Command(BaseCommand):
             
             # Get all games for this team this season
             games = TeamGameStats.objects.filter(
+                d1_q(season, "opponent"),   # D1-vs-D1 games only (membership that season)
                 team=team,
                 game__season_year=season_year,
                 opponent__isnull=False,

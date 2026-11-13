@@ -7,6 +7,7 @@ historical champion thresholds.
 
 from typing import Dict, List, Optional, Any
 from ncaa.models import TeamSeasonStats
+from ncaa.utils.d1 import d1_q
 from .trapezoid_views import compute_trapezoid_boundaries, is_inside_trapezoid, trapezoid_margin
 import numpy as np
 
@@ -176,7 +177,7 @@ def compute_season_context(season) -> Dict[str, Any]:
             is_pre = first_team.rating.is_pre_tournament
 
     from ncaa.models import TeamSeasonRatings
-    qs = TeamSeasonRatings.objects.filter(season=season, team__is_d1=True, is_pre_tournament=is_pre)
+    qs = TeamSeasonRatings.objects.filter(d1_q(season, "team"), season=season, is_pre_tournament=is_pre)
     efgs = []
     ftrs = []
     rebs = []

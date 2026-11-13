@@ -20,6 +20,7 @@ from django.db.models import Q
 from ncaa.models import Season, TeamSeasonRatings, TeamSeasonStats, TeamGameStats, NationalAverages
 from api.matchup_engine import compute_wab_for_team
 from ncaa.seasons import resolve_season_year
+from ncaa.utils.d1 import d1_q
 
 logger = logging.getLogger(__name__)
 
@@ -70,8 +71,9 @@ class Command(BaseCommand):
             return
 
         # Get all teams with ratings (sorted by adj_em descending)
-        # IMPORTANT: Use ALL D1 teams, never filtered by conference
+        # IMPORTANT: Use ALL D1 teams (membership that season), never filtered by conference
         all_teams = TeamSeasonRatings.all_objects.filter(
+            d1_q(season, "team"),
             season=season,
             is_pre_tournament=is_pre_tournament
         ).select_related('team').order_by('-adj_em')
@@ -106,6 +108,7 @@ class Command(BaseCommand):
                 
                 # Get team's completed games
                 team_games = TeamGameStats.objects.filter(
+                    d1_q(season, "opponent"),   # D1-vs-D1 games only (membership that season)
                     team=team,
                     game__season_year=season_year,
                     game__status='final'

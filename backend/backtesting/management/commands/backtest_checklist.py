@@ -37,6 +37,7 @@ from django.conf import settings
 from django.core.management.base import BaseCommand
 
 from ncaa.models import Season, TeamSeasonRatings, TeamSeasonMetrics
+from ncaa.utils.d1 import d1_q
 from api.crystal_ball_views import (
     _build_season_context,
     _item,
@@ -204,7 +205,7 @@ def _build_extra_ranks(ratings):
     }
 
 
-def load_season_data():
+def load_season_data(exclude_reclassifying: bool = False):
     data = {}
     for year in SEASONS:
         season = Season.objects.filter(year=year).first()
@@ -212,7 +213,8 @@ def load_season_data():
             continue
         ratings = list(
             TeamSeasonRatings.all_objects
-            .filter(season=season, team__is_d1=True, games_played__gt=0, is_pre_tournament=True)
+            .filter(d1_q(season, "team", exclude_reclassifying=exclude_reclassifying),
+                    season=season, games_played__gt=0, is_pre_tournament=True)
             .select_related("team")
         )
         if not ratings:
@@ -243,6 +245,10 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
+            "--exclude-reclassifying", action="store_true",
+            help="Drop programs in an NCAA D1 transition that season (not tournament-eligible). Default off.",
+        )
+        parser.add_argument(
             "--weakness-rank", type=int, default=180,
             help="Rank threshold (out of ~360 D1 teams) for the 'No Glaring Weakness' "
                  "candidate criterion. Default 180 (top half of D1).",
@@ -271,7 +277,7 @@ class Command(BaseCommand):
         ]
 
         self.stdout.write(f"Loading season data ({SEASONS[0]}-{SEASONS[-1]}, skip 2020)...")
-        data_by_season = load_season_data()
+        data_by_season = load_season_data(exclude_reclassifying=options["exclude_reclassifying"])
         self.stdout.write(f"Loaded {len(data_by_season)} seasons.\n")
 
         # Aggregation buckets, keyed by (mode, criterion_key)

@@ -43,6 +43,7 @@ import math
 from django.core.management.base import BaseCommand, CommandError
 
 from ncaa.models import Season, TeamSeasonProjection, TeamSeasonRatings
+from ncaa.utils.d1 import d1_q
 
 
 def _mean(xs):
@@ -167,9 +168,9 @@ class Command(BaseCommand):
         # doing this. Hard one-row-per-team assertion (Phase 2 lesson).
         actual_rows = list(
             TeamSeasonRatings.all_objects.filter(
+                d1_q(tgt, "team"),
                 season=tgt,
                 is_pre_tournament=False,
-                team__is_d1=True,
             ).values("team_id", "adj_o", "adj_d", "adj_em")
         )
         seen: dict[int, int] = {}

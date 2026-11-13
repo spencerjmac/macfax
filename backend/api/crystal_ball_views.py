@@ -15,6 +15,7 @@ from rest_framework import status
 from django.shortcuts import get_object_or_404
 
 from ncaa.models import Season, TeamSeasonRatings, TeamSeasonMetrics
+from ncaa.utils.d1 import d1_q
 from .viz_snapshot import use_pre_tournament_rows
 from .trapezoid_views import compute_trapezoid_boundaries, is_inside_trapezoid, trapezoid_margin
 from .serializers import RankingsSerializer
@@ -424,6 +425,8 @@ class CrystalBallView(APIView):
     def get(self, request):
         season_year   = request.query_params.get("season")
         team_filter   = request.query_params.get("filter", "all").lower()
+        # Tournament eligibility: optionally drop programs in an NCAA D1 transition (default off)
+        exclude_reclassifying = request.query_params.get("exclude_reclassifying", "false").lower() in ("1", "true", "yes")
 
         # Resolve season
         if season_year:
@@ -442,7 +445,8 @@ class CrystalBallView(APIView):
         # All D1 rated teams — used for stable season context
         all_qs = (
             TeamSeasonRatings.all_objects
-            .filter(season=season, team__is_d1=True, games_played__gt=0, is_pre_tournament=is_pre)
+            .filter(d1_q(season, "team", exclude_reclassifying=exclude_reclassifying),
+                    season=season, games_played__gt=0, is_pre_tournament=is_pre)
             .select_related("team")
         )
 

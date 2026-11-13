@@ -12,6 +12,7 @@ from django.db.models import Sum
 
 from ncaa.models import Season, TeamGameStats, NationalAverages
 from ncaa.seasons import resolve_season_year
+from ncaa.utils.d1 import d1_q
 
 logger = logging.getLogger(__name__)
 
@@ -37,8 +38,10 @@ class Command(BaseCommand):
         
         self.stdout.write(f"\nComputing national averages for {season.display_name}...")
         
-        # Get all completed games
+        # Completed D1-vs-D1 games (membership that season); non-D1 opponents would skew the averages
         game_stats = TeamGameStats.objects.filter(
+            d1_q(season, "team"),
+            d1_q(season, "opponent"),
             game__season_year=season_year,
             game__status='final'
         )

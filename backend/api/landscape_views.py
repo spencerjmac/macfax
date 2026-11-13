@@ -13,6 +13,7 @@ from rest_framework import status
 from django.shortcuts import get_object_or_404
 
 from ncaa.models import Season, TeamSeasonRatings
+from ncaa.utils.d1 import d1_q
 from .viz_snapshot import use_pre_tournament_rows
 
 
@@ -86,8 +87,8 @@ class EfficiencyLandscapeView(APIView):
         # Build base queryset - use our computed ratings from TeamSeasonRatings
         # CRITICAL: Only include D1 teams
         queryset = TeamSeasonRatings.all_objects.filter(
+            d1_q(season, "team"),  # Only teams that were D1 that season
             season=season,
-            team__is_d1=True,  # Only D1 teams
             games_played__gt=0,  # Exclude stubs (teams not D1 in this season)
             is_pre_tournament=is_pre,
         ).select_related('team')

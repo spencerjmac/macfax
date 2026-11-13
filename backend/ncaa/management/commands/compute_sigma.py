@@ -14,6 +14,7 @@ from django.core.management.base import BaseCommand
 from api.matchup_engine import forecast_game
 from ncaa.models import Game, NationalAverages, Season, TeamSeasonRatings
 from ncaa.seasons import resolve_season_year
+from ncaa.utils.d1 import d1_q
 
 
 class Command(BaseCommand):
@@ -64,8 +65,8 @@ class Command(BaseCommand):
         team_ratings = {
             r['team_id']: r
             for r in TeamSeasonRatings.objects.filter(
+                d1_q(season, "team"),
                 season=season,
-                team__is_d1=True,
                 adj_o__isnull=False,
                 adj_d__isnull=False,
                 adj_em__isnull=False,
@@ -77,12 +78,12 @@ class Command(BaseCommand):
         # Load completed D1 vs D1 games — one record per game (not TeamGameStats)
         games = list(
             Game.objects.filter(
+                d1_q(season, "home_team"),
+                d1_q(season, "away_team"),
                 season_year=season_year,
                 status='final',
                 home_score__isnull=False,
                 away_score__isnull=False,
-                home_team__is_d1=True,
-                away_team__is_d1=True,
             ).values('home_team_id', 'away_team_id', 'home_score', 'away_score', 'neutral_site')
         )
         self.stdout.write(f'Total D1 vs D1 games: {len(games)}')

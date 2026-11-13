@@ -26,6 +26,7 @@ from ncaa.models import (
     NationalAverages,
 )
 from ncaa.seasons import resolve_season_year
+from ncaa.utils.d1 import d1_q
 
 logger = logging.getLogger(__name__)
 
@@ -198,7 +199,7 @@ class Command(BaseCommand):
             )
 
         # Get all D1 teams with season metrics
-        teams = Team.objects.filter(season_metrics__season=season, season_metrics__is_pre_tournament=is_pre_tournament, is_d1=True)
+        teams = Team.objects.filter(d1_q(season, ""), season_metrics__season=season, season_metrics__is_pre_tournament=is_pre_tournament)
 
         if teams.count() == 0:
             self.stderr.write("No teams found with season metrics")
@@ -230,9 +231,7 @@ class Command(BaseCommand):
         team_games_filters = Q(
             game__season_year=season_year,
             game__status="final",
-            opponent__is_d1=True,
-            team__is_d1=True,
-        )
+        ) & d1_q(season, "opponent") & d1_q(season, "team")
         if is_pre_tournament and season.selection_sunday_date:
             team_games_filters &= Q(game__game_date__lte=season.selection_sunday_date)
 
@@ -309,10 +308,10 @@ class Command(BaseCommand):
             sum_poss: defaultdict = defaultdict(float)
             sum_poss_w: defaultdict = defaultdict(float)
             tgs_qs = TeamGameStats.objects.filter(
+                d1_q(season, "team"),
+                d1_q(season, "opponent"),
                 game__season_year=season_year,
                 game__status="final",
-                team__is_d1=True,
-                opponent__is_d1=True,
             )
             if is_pre_tournament and season.selection_sunday_date:
                 tgs_qs = tgs_qs.filter(game__game_date__lte=season.selection_sunday_date)
@@ -343,14 +342,13 @@ class Command(BaseCommand):
         _tgs_filter = dict(
             game__season_year=season_year,
             game__status="final",
-            team__is_d1=True,
-            opponent__is_d1=True,
         )
+        _tgs_d1 = d1_q(season, "team") & d1_q(season, "opponent")
         if is_pre_tournament and season.selection_sunday_date:
             _tgs_filter["game__game_date__lte"] = season.selection_sunday_date
 
         _all_tgs_rows = list(
-            TeamGameStats.objects.filter(**_tgs_filter).values(
+            TeamGameStats.objects.filter(_tgs_d1, **_tgs_filter).values(
                 "team_id", "opponent_id", "game_id",
                 "fga", "oreb", "tov", "fta", "pts",
                 "home_away", "minutes",
@@ -638,7 +636,7 @@ class Command(BaseCommand):
                 "name": r.team.name,
             }
             for r in TeamSeasonRatings.all_objects.filter(
-                season=season, team__is_d1=True, is_pre_tournament=is_pre_tournament
+                d1_q(season, "team"), season=season, is_pre_tournament=is_pre_tournament
             ).select_related("team")
         }
 
@@ -715,7 +713,7 @@ class Command(BaseCommand):
         # Compute rankings — only among D1 teams so non-D1 stale records don't skew numbers
         self.stdout.write(f"Computing rankings...")
         d1_ratings_qs = TeamSeasonRatings.all_objects.filter(
-            season=season, team__is_d1=True, is_pre_tournament=is_pre_tournament
+            d1_q(season, "team"), season=season, is_pre_tournament=is_pre_tournament
         )
 
         all_ratings = d1_ratings_qs.order_by("-adj_em")

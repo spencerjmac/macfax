@@ -24,6 +24,7 @@ from rest_framework import status
 from django.shortcuts import get_object_or_404
 
 from ncaa.models import Season, TeamSeasonRatings, TeamSeasonMetrics, NationalAverages
+from ncaa.utils.d1 import d1_q
 from .viz_snapshot import use_pre_tournament_rows
 from .serializers import RankingsSerializer
 from .bracket_engine import build_bracket_from_ratings, compute_p_sweet16
@@ -234,6 +235,8 @@ class CinderellaView(APIView):
         min_seed    = request.query_params.get('min_seed')
         max_seed    = request.query_params.get('max_seed')
         show_all    = request.query_params.get('show_all', 'false').lower() == 'true'
+        # Tournament eligibility: optionally drop programs in an NCAA D1 transition (default off)
+        exclude_reclassifying = request.query_params.get('exclude_reclassifying', 'false').lower() in ('1', 'true', 'yes')
 
         if season_year:
             season = get_object_or_404(Season, year=season_year)
@@ -257,7 +260,8 @@ class CinderellaView(APIView):
 
         all_ratings = list(
             TeamSeasonRatings.all_objects
-            .filter(season=season, team__is_d1=True, games_played__gt=0, is_pre_tournament=is_pre)
+            .filter(d1_q(season, 'team', exclude_reclassifying=exclude_reclassifying),
+                    season=season, games_played__gt=0, is_pre_tournament=is_pre)
             .select_related('team')
         )
         if not all_ratings:

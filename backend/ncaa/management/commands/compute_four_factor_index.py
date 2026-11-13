@@ -22,6 +22,7 @@ from django.core.management.base import BaseCommand
 from ncaa.models import Season, TeamSeasonMetrics, TeamSeasonRatings
 import math
 from ncaa.seasons import resolve_season_year
+from ncaa.utils.d1 import d1_q
 
 
 class Command(BaseCommand):
@@ -77,8 +78,8 @@ class Command(BaseCommand):
         self.stdout.write(f"Computing Four Factor Index for {season.display_name}...")
 
         # Get all D1 teams with metrics and ratings
-        teams_with_metrics = TeamSeasonMetrics.all_objects.filter(season=season, team__is_d1=True, is_pre_tournament=is_pre_tournament)
-        teams_with_ratings = TeamSeasonRatings.all_objects.filter(season=season, team__is_d1=True, is_pre_tournament=is_pre_tournament)
+        teams_with_metrics = TeamSeasonMetrics.all_objects.filter(d1_q(season, "team"), season=season, is_pre_tournament=is_pre_tournament)
+        teams_with_ratings = TeamSeasonRatings.all_objects.filter(d1_q(season, "team"), season=season, is_pre_tournament=is_pre_tournament)
 
         if not teams_with_metrics.exists():
             self.stdout.write(self.style.ERROR(

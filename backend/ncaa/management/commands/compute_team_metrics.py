@@ -29,6 +29,7 @@ from ncaa.models import (
     TeamSeasonMetrics,
 )
 from ncaa.seasons import resolve_season_year
+from ncaa.utils.d1 import d1_q
 
 logger = logging.getLogger(__name__)
 
@@ -61,8 +62,8 @@ class Command(BaseCommand):
         except Season.DoesNotExist:
             raise CommandError(f"Season {season_year} not found")
 
-        # Get teams to process (D1 only)
-        teams_qs = Team.objects.filter(is_d1=True)
+        # Get teams to process (D1 that season: TeamSeasonMembership)
+        teams_qs = Team.objects.filter(d1_q(season, ""))
         if team_slugs:
             teams_qs = teams_qs.filter(slug__in=team_slugs)
 
@@ -112,8 +113,7 @@ class Command(BaseCommand):
             team=team,
             game__season_year=season.year,
             game__status="final",
-            opponent__is_d1=True,  # Only include games vs D1 opponents
-        )
+        ) & d1_q(season, "opponent")  # Only games vs opponents that were D1 that season
         
         # Exclude canceled games (where both teams scored 0 points despite 'final' status)
         filters &= ~Q(game__home_score=0, game__away_score=0)
