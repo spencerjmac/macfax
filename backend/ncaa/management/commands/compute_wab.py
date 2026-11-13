@@ -15,6 +15,7 @@ Usage:
 import logging
 from django.core.management.base import BaseCommand
 from django.db import transaction
+from django.db.models import Q
 
 from ncaa.models import Season, TeamSeasonRatings, TeamSeasonStats, TeamGameStats, NationalAverages
 from api.matchup_engine import compute_wab_for_team
@@ -108,8 +109,12 @@ class Command(BaseCommand):
                     team=team,
                     game__season_year=season_year,
                     game__status='final'
+                ).filter(
+                    # Exclude canceled games stored as 'final' with a 0-0 score (same filter
+                    # as compute_adjusted_ratings); otherwise they are scored as losses.
+                    ~Q(game__home_score=0, game__away_score=0)
                 ).select_related('game', 'opponent')
-                
+
                 if is_pre_tournament and season.selection_sunday_date:
                     team_games = team_games.filter(game__game_date__lte=season.selection_sunday_date)
                 
