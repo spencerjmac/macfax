@@ -10,7 +10,8 @@ Scans from Tasks 6b and 7d, so team-identity breaks are caught before they reach
   same_team_same_date   a team in two final games on one US-Eastern date that start < 12 h apart
                         (or lack a start time); 0-0 excluded
   duplicate_games       two games with the same teams on one Eastern date and different ESPN ids
-  multi_espn_ids        one of our teams fed by several ESPN team ids (raw competitors)
+  multi_espn_ids        one of our teams fed by several ESPN team ids (raw competitors); an id that an ESPN-id
+                        override in mappings/team_alias_overrides.yml assigns to the team is a reviewed alias
   null_team_player_rows player-game rows with no team
 
 Start time: Game.start_time_utc when set (a correction: the column is otherwise empty), else
@@ -133,8 +134,12 @@ CHECKS = [
                    case when c->>'homeAway' = 'home' then g.home_team_id else g.away_team_id end team_id
             from jsonb_array_elements(g.raw_json->'_raw'->'competitions'->0->'competitors') c) x
           join core_team tm on tm.id = x.team_id
+          -- a reviewed alias (ESPN-id override assigning this id to this team) counts as the team's primary id
+          cross join lateral (select case when (x.team_id || ':' || x.espn) = any(%(reviewed)s)
+                 then coalesce((select e.external_id from core_teamexternalid e where e.source = 'espn' and e.team_id = x.team_id), x.espn)
+                 else x.espn end espn_key) k
           where g.season_year between %(lo)s and %(hi)s and x.espn is not null
-          group by 1, 2, 3, 4 having count(distinct x.espn) > 1) y
+          group by 1, 2, 3, 4 having count(distinct k.espn_key) > 1) y
     """),
     ("null_team_player_rows", "player-game rows with no team", f"""
         select g.season_year season,
@@ -147,6 +152,17 @@ CHECKS = [
         group by g.season_year, g.id, g.source_game_id, h.name, a.name, h.is_d1, a.is_d1
     """),
 ]
+
+
+def reviewed_espn_aliases() -> list:
+    """'team_id:espn_id' for ESPN ids that mappings/team_alias_overrides.yml assigns to a team by id but that are not
+    the team's TeamExternalId (TeamExternalId holds one ESPN id per team). These are reviewed second ids of one
+    program (e.g. LIU 112358 + 6446, Missouri S&T 2402 + 6760), not a merge."""
+    from ncaa.management.commands.sync_team_season_membership import espn_team_map
+    from ncaa.models import TeamExternalId
+
+    primary = set(TeamExternalId.objects.filter(source="espn").values_list("external_id", flat=True))
+    return [f"{tid}:{eid}" for eid, tid in espn_team_map().items() if eid not in primary]
 
 
 class Command(BaseCommand):
@@ -166,6 +182,7 @@ class Command(BaseCommand):
             hi = opts["season_to"] or 9999
         n_ex = opts["examples"]
         failed = []
+        reviewed = reviewed_espn_aliases()
         with transaction.atomic():
             with connection.cursor() as cur:
                 cur.execute("SET TRANSACTION READ ONLY")
@@ -173,7 +190,7 @@ class Command(BaseCommand):
                 self.stdout.write(f"NCAA integrity checks, {scope}")
                 for name, desc, sql in CHECKS:
                     cur.execute(f"select season, severity, detail from ({sql}) q order by severity, season, detail",
-                                {"lo": lo, "hi": hi})
+                                {"lo": lo, "hi": hi, "reviewed": reviewed})
                     rows = cur.fetchall()
                     n_fail = sum(1 for r in rows if r[1] == "FAIL")
                     n_warn = len(rows) - n_fail

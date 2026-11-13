@@ -1,0 +1,551 @@
+{
+ "289": {
+  "espn_id": "289",
+  "location": "Mount St Mary",
+  "displayName": "Mount St Mary Knights",
+  "abbreviation": "MSMC",
+  "group": "51",
+  "games": [
+   [
+    2023,
+    "401500363"
+   ]
+  ]
+ },
+ "329": {
+  "espn_id": "329",
+  "location": "Mount Saint Vincent",
+  "displayName": "MOUNT SAINT VINCENT",
+  "abbreviation": "UMSV",
+  "group": "51",
+  "games": [
+   [
+    2014,
+    "400498747"
+   ],
+   [
+    2015,
+    "400596032"
+   ],
+   [
+    2016,
+    "400845467"
+   ],
+   [
+    2017,
+    "400919154"
+   ]
+  ]
+ },
+ "380": {
+  "espn_id": "380",
+  "location": "Anderson (SC)",
+  "displayName": "Anderson (SC) Trojans",
+  "abbreviation": "ANSC",
+  "group": "51",
+  "games": [
+   [
+    2007,
+    "263182736"
+   ]
+  ]
+ },
+ "408": {
+  "espn_id": "408",
+  "location": "Washington Adventist",
+  "displayName": "Washington Adventist Shock",
+  "abbreviation": "WASHADV",
+  "group": "51",
+  "games": [
+   [
+    2007,
+    "270412736"
+   ],
+   [
+    2008,
+    "280092736"
+   ],
+   [
+    2009,
+    "290052736"
+   ],
+   [
+    2010,
+    "300042736"
+   ]
+  ]
+ },
+ "466": {
+  "espn_id": "466",
+  "location": "Savannah College Of Art And Design",
+  "displayName": "Savannah College Of Art And Design Bees",
+  "abbreviation": "SCAD",
+  "group": "52",
+  "games": [
+   [
+    2007,
+    "263202542"
+   ]
+  ]
+ },
+ "2019": {
+  "espn_id": "2019",
+  "location": "Allen",
+  "displayName": "Allen Yellow Jackets",
+  "abbreviation": "ALNU",
+  "group": "51",
+  "games": [
+   [
+    2006,
+    "260282542"
+   ],
+   [
+    2007,
+    "270482542"
+   ],
+   [
+    2009,
+    "290282542"
+   ],
+   [
+    2010,
+    "300302542"
+   ],
+   [
+    2013,
+    "330082542"
+   ],
+   [
+    2015,
+    "400601528"
+   ],
+   [
+    2016,
+    "400847392"
+   ]
+  ]
+ },
+ "2023": {
+  "espn_id": "2023",
+  "location": "Anderson (IN)",
+  "displayName": "Anderson (IN) Ravens",
+  "abbreviation": "ANIN",
+  "group": "51",
+  "games": [
+   [
+    2023,
+    "401493818"
+   ]
+  ]
+ },
+ "2077": {
+  "espn_id": "2077",
+  "location": "Brewton Parker",
+  "displayName": "Brewton Parker Wildcats",
+  "abbreviation": "BREW",
+  "group": "51",
+  "games": [
+   [
+    2009,
+    "283192542"
+   ],
+   [
+    2011,
+    "303162542"
+   ]
+  ]
+ },
+ "2221": {
+  "espn_id": "2221",
+  "location": "FDU Florham",
+  "displayName": "FDU Florham Devils",
+  "abbreviation": "FDUF",
+  "group": "51",
+  "games": [
+   [
+    2023,
+    "401499592"
+   ]
+  ]
+ },
+ "2380": {
+  "espn_id": "2380",
+  "location": "Medgar Evers",
+  "displayName": "Medgar Evers Cougars",
+  "abbreviation": "MEC",
+  "group": "51",
+  "games": [
+   [
+    2019,
+    "401087788"
+   ],
+   [
+    2020,
+    "401176430"
+   ],
+   [
+    2022,
+    "401373786"
+   ],
+   [
+    2023,
+    "401500365"
+   ]
+  ]
+ },
+ "2543": {
+  "espn_id": "2543",
+  "location": "South Carolina-Aiken",
+  "displayName": "South Carolina-Aiken Pacers",
+  "abbreviation": "SCAK",
+  "group": null,
+  "games": [
+   [
+    2008,
+    "273172542"
+   ]
+  ]
+ },
+ "2581": {
+  "espn_id": "2581",
+  "location": "Southeastern College",
+  "displayName": "Southeastern College Crusaders",
+  "abbreviation": "SEFL",
+  "group": "51",
+  "games": [
+   [
+    2007,
+    "263232542"
+   ]
+  ]
+ },
+ "2625": {
+  "espn_id": "2625",
+  "location": "Talladega",
+  "displayName": "Talladega Tornadoes",
+  "abbreviation": "TLDG",
+  "group": "51",
+  "games": [
+   [
+    2009,
+    "290122542"
+   ]
+  ]
+ },
+ "2631": {
+  "espn_id": "2631",
+  "location": "Tennessee Temple",
+  "displayName": "Tennessee Temple Crusaders",
+  "abbreviation": "TNTM",
+  "group": "51",
+  "games": [
+   [
+    2014,
+    "400517114"
+   ]
+  ]
+ },
+ "2632": {
+  "espn_id": "2632",
+  "location": "Tennessee Wesleyan",
+  "displayName": "Tennessee Wesleyan Bulldogs",
+  "abbreviation": "TWU",
+  "group": "51",
+  "games": [
+   [
+    2005,
+    "243320003"
+   ],
+   [
+    2006,
+    "253300003"
+   ]
+  ]
+ },
+ "2691": {
+  "espn_id": "2691",
+  "location": "Webber International",
+  "displayName": "Webber International Warriors",
+  "abbreviation": "WINT",
+  "group": "51",
+  "games": [
+   [
+    2006,
+    "253452542"
+   ],
+   [
+    2010,
+    "293172542"
+   ]
+  ]
+ },
+ "2726": {
+  "espn_id": "2726",
+  "location": "Wilberforce",
+  "displayName": "Wilberforce Bulldogs",
+  "abbreviation": "WILB",
+  "group": null,
+  "games": [
+   [
+    2006,
+    "253222542"
+   ]
+  ]
+ },
+ "2805": {
+  "espn_id": "2805",
+  "location": "Clark Atlanta",
+  "displayName": "Clark Atlanta Panthers",
+  "abbreviation": "CKGA",
+  "group": null,
+  "games": [
+   [
+    2007,
+    "263142542"
+   ]
+  ]
+ },
+ "2842": {
+  "espn_id": "2842",
+  "location": "UVA Wise",
+  "displayName": "UVA Wise Cavaliers",
+  "abbreviation": "UVAW",
+  "group": "51",
+  "games": [
+   [
+    2010,
+    "293332542"
+   ]
+  ]
+ },
+ "2893": {
+  "espn_id": "2893",
+  "location": "Shawnee State",
+  "displayName": "Shawnee State Bears",
+  "abbreviation": "SHST",
+  "group": null,
+  "games": [
+   [
+    2025,
+    "401727335"
+   ]
+  ]
+ },
+ "2932": {
+  "espn_id": "2932",
+  "location": "Point",
+  "displayName": "Point Skyhawks",
+  "abbreviation": "PONT",
+  "group": "51",
+  "games": [
+   [
+    2010,
+    "293242736"
+   ]
+  ]
+ },
+ "2951": {
+  "espn_id": "2951",
+  "location": "SUNY Maritime",
+  "displayName": "SUNY Maritime Privateers",
+  "abbreviation": "NYMT",
+  "group": "51",
+  "games": [
+   [
+    2018,
+    "400990767"
+   ]
+  ]
+ },
+ "2990": {
+  "espn_id": "2990",
+  "location": "St. Joseph's Brooklyn",
+  "displayName": "St. Joseph's Brooklyn Bears",
+  "abbreviation": "SJBK",
+  "group": "51",
+  "games": [
+   [
+    2019,
+    "401087792"
+   ]
+  ]
+ },
+ "3105": {
+  "espn_id": "3105",
+  "location": "Southeastern",
+  "displayName": "Southeastern Fires",
+  "abbreviation": "SEU",
+  "group": "51",
+  "games": [
+   [
+    2008,
+    "273252542"
+   ]
+  ]
+ },
+ "3107": {
+  "espn_id": "3107",
+  "location": "East West",
+  "displayName": "East West Phantoms",
+  "abbreviation": "EAWE",
+  "group": "51",
+  "games": [
+   [
+    2024,
+    "401598587"
+   ],
+   [
+    2025,
+    "401727334"
+   ]
+  ]
+ },
+ "3117": {
+  "espn_id": "3117",
+  "location": "Carver College",
+  "displayName": "Carver College Cougars",
+  "abbreviation": "CBC",
+  "group": null,
+  "games": [
+   [
+    2008,
+    "273132542"
+   ],
+   [
+    2009,
+    "290572542"
+   ],
+   [
+    2010,
+    "300572542"
+   ],
+   [
+    2011,
+    "310552542"
+   ],
+   [
+    2018,
+    "400992928"
+   ]
+  ]
+ },
+ "3174": {
+  "espn_id": "3174",
+  "location": "Trinity College of Jacksonville",
+  "displayName": "Trinity College of Jacksonville Eagles",
+  "abbreviation": "TCJ",
+  "group": "51",
+  "games": [
+   [
+    2011,
+    "310482542"
+   ],
+   [
+    2012,
+    "320312542"
+   ],
+   [
+    2013,
+    "323142542"
+   ]
+  ]
+ },
+ "7933": {
+  "espn_id": "7933",
+  "location": "Western New England",
+  "displayName": "Western New England Golden Bears",
+  "abbreviation": "WNE",
+  "group": "51",
+  "games": [
+   [
+    2019,
+    "401086564"
+   ]
+  ]
+ },
+ "107730": {
+  "espn_id": "107730",
+  "location": "Florida National",
+  "displayName": "Florida National Conquistadors",
+  "abbreviation": "FNU",
+  "group": "51",
+  "games": [
+   [
+    2014,
+    "400517356"
+   ],
+   [
+    2016,
+    "400847389"
+   ]
+  ]
+ },
+ "109014": {
+  "espn_id": "109014",
+  "location": "Middle Georgia",
+  "displayName": "Middle Georgia Knights",
+  "abbreviation": "MGA",
+  "group": "51",
+  "games": [
+   [
+    2015,
+    "400609379"
+   ],
+   [
+    2017,
+    "400923505"
+   ],
+   [
+    2018,
+    "400992927"
+   ],
+   [
+    2019,
+    "401094558"
+   ]
+  ]
+ },
+ "111171": {
+  "espn_id": "111171",
+  "location": "College Of New Rochelle",
+  "displayName": "College Of New Rochelle New Roch",
+  "abbreviation": "COLLE",
+  "group": null,
+  "games": [
+   [
+    2018,
+    "400992199"
+   ]
+  ]
+ },
+ "111172": {
+  "espn_id": "111172",
+  "location": "Gordon",
+  "displayName": "Gordon Fighting Scots",
+  "abbreviation": "GRDN",
+  "group": null,
+  "games": [
+   [
+    2018,
+    "400997573"
+   ],
+   [
+    2020,
+    "401170860"
+   ]
+  ]
+ },
+ "126824": {
+  "espn_id": "126824",
+  "location": "Saint Mary of the Woods",
+  "displayName": "Saint Mary of the Woods Pomeroys",
+  "abbreviation": "SMWC",
+  "group": "51",
+  "games": [
+   [
+    2023,
+    "401493819"
+   ]
+  ]
+ }
+}

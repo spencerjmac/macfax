@@ -125,3 +125,4 @@ espn:
   "3087": "Old Westbury"      # ESPN 3087 Old Westbury Panthers (TeamExternalId: 16231)
   "126749": "St. Thomas (TX)" # ESPN 126749 St. Thomas (TX) Celts, Houston (TeamExternalId: 3170). Not St. Thomas (MN), ESPN 2900, D1.
   "108822": "Newbury College" # ESPN 108822 "Newbury College Wolves" (MA); not Newberry (SC), ESPN 2444
+  "6446": "LIU"               # ESPN 6446 "LIU Brooklyn": LIU's MTE, NEC-tournament and 2018 First Four games (2012-19); TeamExternalId holds 112358 (Task 6f.3b)
