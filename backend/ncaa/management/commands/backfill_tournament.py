@@ -16,6 +16,7 @@ import pandas as pd
 from io import StringIO
 from django.core.management.base import BaseCommand, CommandError
 from ncaa.models import Season, Team, TeamSeasonRatings
+from ncaa.utils.d1 import d1_q
 from ncaa.utils.team_mapping import TeamMapper
 
 
@@ -201,7 +202,7 @@ class Command(BaseCommand):
     help = "Backfill historical NCAA Tournament seeds and finish"
 
     @staticmethod
-    def _resolve_team(mapper, as_written, cleaned):
+    def _resolve_team(mapper, as_written, cleaned, season=None):
         """
         Wikipedia school name -> Team.
 
@@ -211,7 +212,10 @@ class Command(BaseCommand):
         which left 6 of 68 teams unseeded every year). Then the NCAA-style mapper.
         """
         for name in (as_written, cleaned):
-            team = Team.objects.filter(name__iexact=name, is_d1=True).first()
+            # D1 in that season (TeamSeasonMembership), not "D1 today": Hartford 2021 and Boston College
+            # 2005-09 are seeded teams whose Team.is_d1 says otherwise (or whose rows were merged before 6c).
+            qs = Team.objects.filter(name__iexact=name)
+            team = (qs.filter(d1_q(season, "")) if season is not None else qs.filter(is_d1=True)).first()
             if team:
                 return team
         team, _conf, _override = mapper.find_team(cleaned, min_confidence=0.85)
@@ -296,7 +300,7 @@ class Command(BaseCommand):
                         # Apply overrides (same Wikipedia-name cleanup for every season)
                         school = clean_school_2005_2013(school)
 
-                        team = self._resolve_team(mapper, school_as_written, school)
+                        team = self._resolve_team(mapper, school_as_written, school, season)
 
                         if team:
                             qs = TeamSeasonRatings.all_objects.filter(season=season, team=team)
@@ -318,7 +322,7 @@ class Command(BaseCommand):
                         if ' State' in team_name and team_name != 'NC State':
                             team_name = team_name.replace(' State', ' St.')
                         
-                        team = self._resolve_team(mapper, team_name, team_name)
+                        team = self._resolve_team(mapper, team_name, team_name, season)
                         if team:
                             qs = TeamSeasonRatings.all_objects.filter(season=season, team=team)
                             if qs.exists():
