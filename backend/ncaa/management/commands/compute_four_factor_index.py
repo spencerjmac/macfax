@@ -9,7 +9,7 @@ The Four Factor Index is a composite metric combining the four factors:
 
 Formula:
 1. Compute z-scores for each margin across all teams
-2. FFI_z = 0.47*z_eFG + 0.24*z_TOV + 0.21*z_REB + 0.08*z_FTR
+2. FFI_z = 0.47*z_eFG + 0.24*z_TOV + 0.21*z_REB + 0.08*z_FTR  (ncaa.constants.FOUR_FACTOR_WEIGHTS)
 3. FFI_100 = clamp(50 + 20*FFI_z, 0, 100)
 
 Computes both raw FFI (from raw margins) and adjusted FFI (from adjusted margins).
@@ -22,6 +22,7 @@ from django.core.management.base import BaseCommand
 from ncaa.models import Season, TeamSeasonMetrics, TeamSeasonRatings
 import math
 from ncaa.seasons import resolve_season_year
+from ncaa.constants import FOUR_FACTOR_WEIGHTS
 from ncaa.utils.d1 import d1_q
 
 
@@ -136,10 +137,10 @@ class Command(BaseCommand):
 
             # Weighted FFI z-score
             ffi_z = (
-                cfg.ffi_weight_efg * z_efg +
-                cfg.ffi_weight_tov * z_tov +
-                cfg.ffi_weight_reb * z_reb +
-                cfg.ffi_weight_ftr * z_ftr
+                FOUR_FACTOR_WEIGHTS["efg"] * z_efg +
+                FOUR_FACTOR_WEIGHTS["tov"] * z_tov +
+                FOUR_FACTOR_WEIGHTS["reb"] * z_reb +
+                FOUR_FACTOR_WEIGHTS["ftr"] * z_ftr
             )
 
             # Scale to 0-100
@@ -194,10 +195,10 @@ class Command(BaseCommand):
 
                 # Weighted FFI z-score
                 ffi_z = (
-                    cfg.ffi_weight_efg * z_efg +
-                    cfg.ffi_weight_tov * z_tov +
-                    cfg.ffi_weight_reb * z_reb +
-                    cfg.ffi_weight_ftr * z_ftr
+                    FOUR_FACTOR_WEIGHTS["efg"] * z_efg +
+                    FOUR_FACTOR_WEIGHTS["tov"] * z_tov +
+                    FOUR_FACTOR_WEIGHTS["reb"] * z_reb +
+                    FOUR_FACTOR_WEIGHTS["ftr"] * z_ftr
                 )
 
                 # Scale to 0-100

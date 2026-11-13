@@ -147,7 +147,7 @@ def run_ffi_pipeline(
         "ftr": statistics.pstdev(margins_ftr),
     }
 
-    w = FOUR_FACTOR_WEIGHTS  # efg=0.45, tov=0.24, reb=0.22, ftr=0.09
+    w = FOUR_FACTOR_WEIGHTS  # ncaa.constants (efg=0.47, tov=0.24, reb=0.21, ftr=0.08)
 
     for pid in qualified_pids:
         d = all_results[pid]

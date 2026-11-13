@@ -317,6 +317,8 @@ class PipelineConfig(models.Model):
     )
 
     # ── Four Factor Index ─────────────────────────────────────────────────────
+    # ffi_weight_*: NOT READ since Task 7c.2 (2026-11-13). Every Four Factor Index uses
+    # ncaa.constants.FOUR_FACTOR_WEIGHTS; these fields stay only to avoid a migration.
     ffi_weight_efg = models.FloatField(
         default=0.47,
         help_text="eFG% margin weight in the FFI composite score",

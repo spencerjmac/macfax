@@ -23,9 +23,9 @@ class FourFactorIndexTests(unittest.TestCase):
               FOUR_FACTOR_WEIGHTS['reb'] * reb_z + 
               FOUR_FACTOR_WEIGHTS['ftr'] * ftr_z)
         
-        # Weights in ncaa/constants.py (March 2026; were Dean Oliver's 0.4069/0.4069/0.1432/0.0428):
-        # 0.45*1.5 + 0.24*2.0 + 0.22*0.5 + 0.09*(-0.5) = 0.675 + 0.48 + 0.11 - 0.045 = 1.22
-        expected_wz = 1.22
+        # ncaa.constants.FOUR_FACTOR_WEIGHTS (0.47/0.24/0.21/0.08 since Task 7c.2):
+        # 0.47*1.5 + 0.24*2.0 + 0.21*0.5 + 0.08*(-0.5) = 0.705 + 0.48 + 0.105 - 0.04 = 1.25
+        expected_wz = 1.25
         
         self.assertAlmostEqual(wz, expected_wz, places=4)
     
@@ -80,19 +80,27 @@ class FourFactorIndexTests(unittest.TestCase):
               FOUR_FACTOR_WEIGHTS['reb'] * reb_z + 
               FOUR_FACTOR_WEIGHTS['ftr'] * ftr_z)
         
-        # With the current weights: 0.45*1.322 + 0.24*3.416 + 0.22*1.766 + 0.09*(-1.887) = 1.63343
-        # (was ~2.1 under Dean Oliver's weights)
-        self.assertAlmostEqual(wz, 1.63343, places=4)
+        # 0.47*1.322 + 0.24*3.416 + 0.21*1.766 + 0.08*(-1.887) = 1.66108 (~2.1 under Dean Oliver's weights)
+        self.assertAlmostEqual(wz, 1.66108, places=4)
 
-        # Convert to 100 scale: 50 + 20*1.63343 = 82.67
+        # Convert to 100 scale: 50 + 20*1.66108 = 83.22
         ffi_100 = max(0, min(100, 50 + FOUR_FACTOR_SCALE * wz))
-        self.assertAlmostEqual(ffi_100, 82.6686, places=3)
+        self.assertAlmostEqual(ffi_100, 83.2216, places=3)
     
     def test_weights_sum_to_one(self):
         """Test that weights approximately sum to 1.0"""
         total = sum(FOUR_FACTOR_WEIGHTS.values())
-        # 0.45 + 0.24 + 0.22 + 0.09 = 1.00
+        # 0.47 + 0.24 + 0.21 + 0.08 = 1.00
         self.assertAlmostEqual(total, 1.0, places=2)
+
+
+    def test_team_index_reads_the_shared_constant(self):
+        """compute_four_factor_index uses ncaa.constants.FOUR_FACTOR_WEIGHTS, not PipelineConfig.ffi_weight_*"""
+        import inspect
+        from ncaa.management.commands import compute_four_factor_index as m
+        src = inspect.getsource(m)
+        self.assertNotIn("cfg.ffi_weight_", src)
+        self.assertIs(m.FOUR_FACTOR_WEIGHTS, FOUR_FACTOR_WEIGHTS)
 
 
 if __name__ == '__main__':

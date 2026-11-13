@@ -81,3 +81,19 @@ class RecordsAndMinutesTests(TestCase):
         self.assertEqual(game_minutes_for(None, False), 40)
         self.assertEqual(TeamGameStats.objects.get(game=self.g2, team=self.c).game_minutes, 50)
         self.assertEqual(TeamGameStats.objects.get(game=self.g1, team=self.a).game_minutes, 40)
+
+
+class RecentFormTests(RecordsAndMinutesTests):
+    """api.matchup_engine.format_recent_form takes W/L and margin from the Game's scores (Task 7c.2)."""
+
+    def test_recent_form_uses_game_scores(self):
+        from api.matchup_engine import format_recent_form
+        a_rows = list(TeamGameStats.objects.filter(team=self.a).select_related("game", "opponent"))   # A beat B 80-70
+        c_rows = list(TeamGameStats.objects.filter(team=self.c, game=self.g2).select_related("game", "opponent"))
+        form = format_recent_form(a_rows + c_rows)        # C beat A 75-72 (A has no box row there)
+        self.assertEqual(form["record"], "2-0")
+        self.assertEqual([g["margin"] for g in form["games"]], [10, 3])
+        self.assertEqual([g["score"] for g in form["games"]], ["80-70", "75-72"])
+        b_row = TeamGameStats.objects.select_related("game", "opponent").get(team=self.b, game=self.g1)
+        lost = format_recent_form([b_row])
+        self.assertEqual((lost["record"], lost["games"][0]["result"], lost["avg_margin"]), ("0-1", "L", -10.0))

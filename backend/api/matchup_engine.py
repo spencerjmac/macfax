@@ -714,18 +714,17 @@ def format_recent_form(recent_games: list) -> Dict:
     games_data = []
     
     for game_stat in recent_games:
-        # Margin (positive = won, negative = lost)
-        margin = game_stat.pts - game_stat.opponent_pts if hasattr(game_stat, 'opponent_pts') else 0
-        
-        # Determine W/L
-        if game_stat.pts > getattr(game_stat, 'opponent_pts', 0):
-            wins += 1
-            result = 'W'
+        # Result and margin from the Game's scores (TeamGameStats.won / score_for / score_against).
+        # Previously read an `opponent_pts` attribute no caller set, so every game was a W with margin 0.
+        won = game_stat.won
+        if won is None:
+            result, margin = '-', None          # 0-0 (canceled) or a missing score: no result
         else:
-            losses += 1
-            result = 'L'
-        
-        margins.append(margin)
+            margin = game_stat.score_for - game_stat.score_against
+            result = 'W' if won else 'L'
+            wins += int(won)
+            losses += int(not won)
+            margins.append(margin)
         
         # Offensive rating (points per 100 possessions)
         if hasattr(game_stat, 'ortg_team') and game_stat.ortg_team:
@@ -736,7 +735,7 @@ def format_recent_form(recent_games: list) -> Dict:
             'date': game_stat.game.game_date.isoformat() if game_stat.game else None,
             'opponent': game_stat.opponent.name if game_stat.opponent else 'Unknown',
             'result': result,
-            'score': f"{game_stat.pts}-{getattr(game_stat, 'opponent_pts', 0)}",
+            'score': f"{game_stat.score_for}-{game_stat.score_against}" if won is not None else None,
             'margin': margin,
         })
     
