@@ -34,6 +34,9 @@ class TeamMapper:
         self.teams = {t.id: t for t in Team.objects.all()}
         self.overrides = {}
         self.unmatched = []
+        # Names that matched only after stripping college/university/state/the, or whose key hits
+        # several teams. Never mapped with confidence; see _match_by_name.
+        self.ambiguous = []
 
         # NCAA source: load comprehensive D1 name mappings (ncaa_name -> canonical name)
         self.ncaa_mappings = {}
@@ -70,34 +73,80 @@ class TeamMapper:
             logger.warning(f"Could not load overrides from {self.override_file}: {e}")
     
     def _build_search_index(self):
-        """Build searchable index of team names and aliases"""
-        self.search_index = {}
+        """Build searchable indexes of team names and aliases.
+
+        literal_index: _literal(name) -> set of team ids (case and punctuation ignored only)
+        stripped_index: _normalize(name) -> set of team ids (also drops college/university/state/the)
+        search_index: unambiguous keys only -> team id. A key that several teams share
+            (e.g. 'boston' for Boston College and Boston University, 'georgia' for Georgia and
+            Georgia College) is left out instead of resolving to whichever team was added last.
+        """
+        self.literal_index: Dict[str, set] = {}
+        self.stripped_index: Dict[str, set] = {}
         for team_id, team in self.teams.items():
-            # Add main name
-            self.search_index[self._normalize(team.name)] = team_id
-            
-            # Add aliases
-            if team.aliases:
-                for alias in team.aliases:
-                    self.search_index[self._normalize(alias)] = team_id
-    
+            for name in [team.name, *(team.aliases or [])]:
+                if not name:
+                    continue
+                self.literal_index.setdefault(self._literal(name), set()).add(team_id)
+                self.stripped_index.setdefault(self._normalize(name), set()).add(team_id)
+        self.search_index = {k: next(iter(v)) for k, v in self.stripped_index.items() if len(v) == 1}
+        self.ambiguous_keys = {k: sorted(v) for k, v in self.stripped_index.items() if len(v) > 1}
+
     @staticmethod
-    def _normalize(name: str) -> str:
-        """Normalize team name for matching"""
+    def _literal(name: str) -> str:
+        """Lowercase, '&' -> 'and', drop other punctuation, collapse spaces. Keeps every word.
+
+        '&' is spelled out so 'Missouri S&T' ('missouri s and t') stays apart from 'Missouri St.'.
+        """
         if not name:
             return ""
-        
-        # Lowercase
-        name = name.lower()
-        
+        name = re.sub(r'[^\w\s]', '', name.lower().replace('&', ' and '))
+        return re.sub(r'\s+', ' ', name).strip()
+
+    @staticmethod
+    def _normalize(name: str) -> str:
+        """Normalize team name for matching (also strips college/university/state/the).
+
+        Lossy: 'Boston College' and 'Boston University' both become 'boston'. Use it only to
+        detect possible matches; a match on this key alone is ambiguous (see _match_by_name).
+        """
+        if not name:
+            return ""
+
+        # Lowercase; spell out '&' (else 'Missouri S&T' collapses to 'missouri st')
+        name = name.lower().replace('&', ' and ')
+
         # Remove common suffixes/prefixes
         name = re.sub(r'\b(university|state|college|the)\b', '', name)
-        
+
         # Remove special chars, extra spaces
         name = re.sub(r'[^\w\s]', '', name)
         name = re.sub(r'\s+', ' ', name)
-        
+
         return name.strip()
+
+    def _match_by_name(self, external_name: str) -> Tuple[Optional[Team], str]:
+        """Exact name match. Returns (team, 'exact'), (None, 'ambiguous') or (None, 'none').
+
+        'exact': the name equals exactly one team's name or alias, ignoring case and punctuation.
+        'ambiguous': the literal name hits several teams, or the name only matches after
+            stripping college/university/state/the. Logged and recorded in self.ambiguous;
+            callers must not save a mapping from it.
+        """
+        literal = self._literal(external_name)
+        hits = self.literal_index.get(literal, set())
+        if len(hits) == 1:
+            return self.teams[next(iter(hits))], 'exact'
+        stripped = self._normalize(external_name)
+        candidates = hits or self.stripped_index.get(stripped, set())
+        if candidates:
+            names = sorted(self.teams[t].name for t in candidates)
+            reason = 'several teams share the name' if len(candidates) > 1 else \
+                'matches only after stripping college/university/state/the'
+            logger.warning(f"AMBIGUOUS team name '{external_name}' ({reason}): candidates {names}; not mapped")
+            self.ambiguous.append({'external_name': external_name, 'reason': reason, 'candidates': names})
+            return None, 'ambiguous'
+        return None, 'none'
     
     def find_team(
         self,
@@ -150,30 +199,41 @@ class TeamMapper:
             else:
                 logger.warning(f"Override '{canonical_name}' not found in Team table")
         
-        # PRIORITY 3: Try exact normalized match
-        normalized = self._normalize(external_name)
-        if normalized in self.search_index:
-            team_id = self.search_index[normalized]
-            logger.debug(f"Exact normalized match: '{external_name}' -> '{self.teams[team_id].name}'")
-            return (self.teams[team_id], 1.0, False)
-        
-        # PRIORITY 4: Fuzzy match against all team names (LAST RESORT)
-        all_names = [(self._normalize(t.name), t.id) for t in self.teams.values()]
-        
+        # PRIORITY 3: Exact name match (case/punctuation-insensitive). A match that needs
+        # college/university/state/the stripped, or hits several teams, is ambiguous: no team.
+        team, status = self._match_by_name(external_name)
+        if status == 'exact':
+            logger.debug(f"Exact name match: '{external_name}' -> '{team.name}'")
+            return (team, 1.0, False)
+        if status == 'ambiguous':
+            return (None, 0.0, False)
+
+        # PRIORITY 4: Fuzzy match against all team names (LAST RESORT), on literal names so the
+        # stripped words still count. A best score shared by several teams is not a match.
+        literal = self._literal(external_name)
+        all_names = [(self._literal(t.name), t.id) for t in self.teams.values()]
+
         # Use rapidfuzz to find best match
         result = process.extractOne(
-            normalized,
+            literal,
             [name for name, _ in all_names],
             scorer=fuzz.ratio
         )
-        
+
         if result:
             match_name, score, _ = result
             confidence = score / 100.0  # Convert to 0.0-1.0
-            
+
             if confidence >= min_confidence:
                 # Find the team ID
-                team_id = next(tid for name, tid in all_names if name == match_name)
+                tied = {tid for name, tid in all_names if name == match_name}
+                if len(tied) > 1:
+                    names = sorted(self.teams[t].name for t in tied)
+                    logger.warning(f"AMBIGUOUS fuzzy match for '{external_name}': {names}; not mapped")
+                    self.ambiguous.append({'external_name': external_name,
+                                           'reason': 'fuzzy tie', 'candidates': names})
+                    return (None, 0.0, False)
+                team_id = next(iter(tied))
                 logger.warning(
                     f"FUZZY MATCH (last resort): '{external_name}' -> '{self.teams[team_id].name}' "
                     f"(confidence={confidence:.2f})"
@@ -205,10 +265,20 @@ class TeamMapper:
         Returns:
             TeamExternalId object or None if no match
         """
+        n_ambiguous = len(self.ambiguous)
         team, confidence, is_override = self.find_team(
             external_name, external_id, min_confidence
         )
-        
+
+        if team is None and len(self.ambiguous) > n_ambiguous:
+            # Ambiguous name: never save a mapping or create a team from it.
+            self.unmatched.append({
+                'external_id': external_id,
+                'external_name': external_name,
+                'reason': 'ambiguous',
+            })
+            return None
+
         if team is None:
             # For NCAA source, create non-D1 team if allowed
             if self.source == 'ncaa' and allow_non_d1 and not dry_run:
@@ -227,6 +297,7 @@ class TeamMapper:
                 self.unmatched.append({
                     'external_id': external_id,
                     'external_name': external_name,
+                    'reason': 'no match',
                 })
                 return None
         

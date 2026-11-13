@@ -113,4 +113,11 @@ espn:
   # These fix cases where fuzzy name matching chose the wrong team.
   # The key is the ESPN numeric team ID as returned in scoreboard/boxscore data.
   "61": "Georgia"     # ESPN "Georgia Bulldogs" (id=61) was fuzzy-matching to "Georgia College"
-  "104": "Boston University"  # ESPN uses id=104 in some contexts; our DB uses id=103
+  "103": "Boston College"     # ESPN 103 = Boston College Eagles (was stored under Boston University via the "boston" name collision)
+  "104": "Boston University"  # ESPN 104 = Boston University Terriers (ESPN 103 is Boston College, not BU)
+  # Non-D1 schools whose names collided with D1 teams ("Missouri S&T" -> "missouri st", "Texas College" -> "texas").
+  # TeamExternalId holds one ESPN id per team, so Missouri S&T's second id (6760) lives only here.
+  "2402": "Missouri S&T"      # ESPN 2402 Missouri S&T Miners (D2), was stored as Missouri St.
+  "6760": "Missouri S&T"      # ESPN 6760 Missouri S&T Miners (second ESPN id)
+  "2637": "Texas Col."        # ESPN 2637 Texas College Steers (NAIA), was stored as Texas
+  "130189": "VTSU Randolph"   # ESPN 130189 Vermont State - Randolph Knights, was stored as Vermont
