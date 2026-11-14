@@ -1,5 +1,5 @@
 """
-Player-centric models: Player, PlayerRecruitingProfile, PlayerGameStats,
+Player-centric models: Player, PlayerRecruitingProfile, PlayerGameStats, MissingPlayerGameStats,
 PlayerSeasonStats, PlayerSeasonProjection, PlayerGameStint,
 BPRModelArtifact, PlaceholderArchetype
 """
@@ -184,6 +184,64 @@ class PlayerGameStats(models.Model):
 
     def __str__(self):
         return f"{self.player.display_name} @ {self.game}"
+
+
+class MissingPlayerGameStats(models.Model):
+    """A player's line in one game that ESPN's box score leaves out (missing or blanked) but another source has.
+
+    Side table: PlayerGameStats (ESPN) is never changed. One row per (game, team, source, external_id).
+    player is set only when the row links to a core_player by ESPN athlete id, or by exact display name for a
+    player with a PlayerGameStats row on the same team in the same season; otherwise NULL (not guessed).
+    Stats are NULL when the source doesn't give them.
+    """
+
+    SOURCE_NCAA = "ncaa"
+    SOURCE_ESPN_ROSTER = "espn_roster"
+    SOURCE_CHOICES = [
+        (SOURCE_NCAA, "ncaa.com box score (via the NCAA API client)"),
+        (SOURCE_ESPN_ROSTER, "ESPN roster"),
+    ]
+
+    game = models.ForeignKey("core.Game", on_delete=models.CASCADE, related_name="missing_player_stats")
+    team = models.ForeignKey(Team, on_delete=models.CASCADE, related_name="missing_player_stats")
+    player = models.ForeignKey(Player, on_delete=models.SET_NULL, null=True, blank=True,
+                               related_name="missing_game_stats")
+    source = models.CharField(max_length=20, choices=SOURCE_CHOICES)
+    external_game_id = models.CharField(max_length=32, blank=True, default="",
+                                        help_text="Source game id (ncaa.com contest id)")
+    external_id = models.CharField(max_length=64, help_text="Source player id (ncaa.com: box row id in that contest)")
+    name = models.CharField(max_length=150)
+    jersey = models.CharField(max_length=5, blank=True, default="")
+    position = models.CharField(max_length=10, blank=True, default="")
+    starter = models.BooleanField(null=True, blank=True)
+    minutes = models.FloatField(null=True, blank=True)
+    points = models.IntegerField(null=True, blank=True)
+    fg_made = models.IntegerField(null=True, blank=True)
+    fg_attempted = models.IntegerField(null=True, blank=True)
+    fg3_made = models.IntegerField(null=True, blank=True)
+    fg3_attempted = models.IntegerField(null=True, blank=True)
+    ft_made = models.IntegerField(null=True, blank=True)
+    ft_attempted = models.IntegerField(null=True, blank=True)
+    rebounds = models.IntegerField(null=True, blank=True)
+    offensive_rebounds = models.IntegerField(null=True, blank=True)
+    defensive_rebounds = models.IntegerField(null=True, blank=True)
+    assists = models.IntegerField(null=True, blank=True)
+    turnovers = models.IntegerField(null=True, blank=True)
+    steals = models.IntegerField(null=True, blank=True)
+    blocks = models.IntegerField(null=True, blank=True)
+    fouls = models.IntegerField(null=True, blank=True)
+    note = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["game", "team", "source", "external_id"],
+                                    name="unique_missing_player_game_source"),
+        ]
+        indexes = [models.Index(fields=["game", "team"])]
+
+    def __str__(self):
+        return f"{self.name} ({self.source}) @ {self.game_id}"
 
 
 class PlayerSeasonStats(models.Model):
