@@ -192,7 +192,8 @@ class MissingPlayerGameStats(models.Model):
     Side table: PlayerGameStats (ESPN) is never changed. One row per (game, team, source, external_id).
     player is set only when the row links to a core_player by ESPN athlete id, or by exact display name for a
     player with a PlayerGameStats row on the same team in the same season; otherwise NULL (not guessed).
-    Stats are NULL when the source doesn't give them.
+    Stats are NULL when the source doesn't give them. espn_athlete_id is set only when the player's ESPN id is known
+    (Task 10B: exact name on ESPN's season roster). ESPN's rosters omit most of the players its box scores blank.
     """
 
     SOURCE_NCAA = "ncaa"
@@ -209,7 +210,10 @@ class MissingPlayerGameStats(models.Model):
     source = models.CharField(max_length=20, choices=SOURCE_CHOICES)
     external_game_id = models.CharField(max_length=32, blank=True, default="",
                                         help_text="Source game id (ncaa.com contest id)")
-    external_id = models.CharField(max_length=64, help_text="Source player id (ncaa.com: box row id in that contest)")
+    external_id = models.CharField(max_length=64, help_text="Source player id (ncaa.com: box row id in that contest; "
+                                                         "espn_roster: ESPN athlete id)")
+    espn_athlete_id = models.CharField(max_length=20, blank=True, default="", db_index=True,
+                                       help_text="ESPN athlete id when known (from the ESPN season roster)")
     name = models.CharField(max_length=150)
     jersey = models.CharField(max_length=5, blank=True, default="")
     position = models.CharField(max_length=10, blank=True, default="")
