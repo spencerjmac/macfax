@@ -24,3 +24,5 @@ PASS: (1) beats (2) and (3) pooled by > 2 game-clustered SEs each.
 Informational: whether (1)'s pooled gain falls in 24.75-40.05.
 
 Report pooled and per-season gains, (1)-(2) and (1)-(3) with SEs, PASS/FAIL.
+
+Nov 15: birth dates backfilled for 2006-2015 before the run; no setting changed.
