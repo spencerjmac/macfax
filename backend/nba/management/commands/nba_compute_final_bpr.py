@@ -100,6 +100,20 @@ LEBRON_LAMBDA_SCALE  = 0.7   # scales λ UP for low-LEBRON role players: lam = b
 LEBRON_LAMBDA_CAP    = 7.0   # LEBRON total above which no extra λ applied (true stars)
 
 
+# bpr_model labels: what this command writes, and the native model it must never overwrite.
+BPR_MODEL = "lebron"
+NATIVE_BPR_MODEL = "native-1"
+
+
+def refuse_if_native(season_year: int) -> None:
+    """CommandError when the season has any row written by nba_compute_native_bpr."""
+    n = NBAPlayerSeasonStats.objects.filter(season__year=season_year, bpr_model=NATIVE_BPR_MODEL).count()
+    if n:
+        raise CommandError(
+            f"{season_year} holds {n} native BPR rows (bpr_model='{NATIVE_BPR_MODEL}'); "
+            f"nba_compute_final_bpr will not overwrite them. Use nba_compute_native_bpr.")
+
+
 # Minutes-stratified lambda tiers: (≥2000, ≥1200, ≥600, <600)
 LAMBDA_TIERS: dict[str, tuple[float, float, float, float]] = {
     "A_conservative": (400.0,  700.0, 1000.0, 1400.0),
@@ -346,6 +360,10 @@ class Command(BaseCommand):
         lebron_prior_w: float = options.get("lebron_prior_weight", LEBRON_PRIOR_W)
         lebron_prior_def_w: float = options.get("lebron_prior_def_weight", LEBRON_PRIOR_DEF_W)
         lebron_lambda_scale: float = options.get("lebron_lambda_scale", LEBRON_LAMBDA_SCALE)
+
+        # Never overwrite native BPR (checked again at write time). --sweep writes even with --dry-run.
+        if not dry_run or sweep:
+            refuse_if_native(season_year)
 
         # ── LEBRON freshness gate ─────────────────────────────────────────────
         # Only when LEBRON feeds the prior or the lambda: with all three
@@ -789,6 +807,7 @@ class Command(BaseCommand):
     def _write_to_db(
         self, final_obpr: dict[int, float], final_dbpr: dict[int, float], season_year: int
     ) -> None:
+        refuse_if_native(season_year)
         stats_qs = NBAPlayerSeasonStats.objects.filter(
             season__year=season_year, season_type="regular"
         ).select_related("player")
@@ -806,6 +825,7 @@ class Command(BaseCommand):
             row.dbpr = round(d, 3)
             row.bpr  = round(total_bpr, 3)
             row.bpr_last_updated = now
+            row.bpr_model = BPR_MODEL
             # wins_added = (bpr + 2.0) × (mpg / 48) × (gp / WINS_ADDED_DENOMINATOR)
             # replacement level = BPR -2.0 (freely available player), denominator tunable
             mpg = row.mpg or 0.0
@@ -816,7 +836,7 @@ class Command(BaseCommand):
                 )
             else:
                 row.wins_added = None
-            row.save(update_fields=["obpr", "dbpr", "bpr", "bpr_last_updated", "wins_added"])
+            row.save(update_fields=["obpr", "dbpr", "bpr", "bpr_last_updated", "bpr_model", "wins_added"])
             updated += 1
         self.stdout.write(self.style.SUCCESS(
             f"[OK] Final BPR written: {updated} updated, {skipped} skipped"
