@@ -1,15 +1,27 @@
 """
 Management command: nba_fit_box_pooled
 
-Box BPR fitted on pooled past seasons, read-only (writes JSON files only).
+Box BPR fitted on pooled past seasons. With --seasons it is read-only (writes
+JSON files only); with --season Y --write it is the production box BPR.
+
+Defaults are the final recipe (Phase 4/T.1): --features box_only, a 3-season
+pooled RAPM target (--target-window 3) at --target-lambda 300, alphas up to
+--alpha-max 1000, the opp_quality team feature, and history start and career
+floor 2006. Every option below can still be set the other way.
 
 For each season Y in --seasons: one offense and one defense ridge model are
-trained on the seasons BEFORE Y only (from --history-start, default 2016), on
+trained on the seasons BEFORE Y only (from --history-start, default 2006), on
 the same features and targets as nba_compute_box_bpr at --lebron-blend-w 0
-(baseline RAPM targets, players with both baseline O and D; no LEBRON). Then
-season Y is predicted and written to OUT_DIR/box_<Y>.json as
+(no LEBRON). Then season Y is predicted and written to OUT_DIR/box_<Y>.json as
 {nba_id: [box_obpr, box_dbpr]}, the format nba_experiment_final_bpr
 --box-json-dir reads.
+
+--season Y --write fits Y the same way, then clears box_obpr, box_dbpr,
+box_bpr and nba_archetype on Y's regular-season rows and writes this fit's
+values (box_bpr = box_obpr + box_dbpr; nba_archetype from the existing
+archetype assignment in box_bpr) to every row of each predicted player.
+--season Y --dry-run fits Y and prints the top 20 without writing; its values
+are the ones --seasons Y --out-dir DIR writes to DIR/box_<Y>.json.
 
 Alpha is chosen from ALPHAS up to --alpha-max (default 1000, the grid task 3.5b
 used; up to 30000 is available) separately for offense and defense with the
@@ -24,13 +36,13 @@ nba_compute_box_bpr does), with alpha from 5-fold CV over players.
 mean over the training rows (weights average 1), in the fits and in the CV
 error. OUT_DIR/alphas.json records each season's plan, alphas and CV errors.
 
---target-window K trains on pooled RAPM over seasons s-K+1..s (from
+--target-window K (default 3) trains on pooled RAPM over seasons s-K+1..s (from
 --history-start on; one column per player, rapm.fit_pooled_player_rapm) as season
-s's target, instead of s's single-season baseline RAPM. --target window3 is an
-alias for --target-window 3. --target-lambda X fixes that pooled RAPM's lambda
-at X instead of choosing it by game CV. Season Y's model still trains on
-seasons before Y only, so nothing from Y enters it (the history-start season
-fits itself, on its own one-season window).
+s's target. --target window3 is an alias for --target-window 3; --target baseline
+trains on s's single-season baseline RAPM instead. --target-lambda X (default 300)
+fixes that pooled RAPM's lambda at X; --target-lambda cv chooses it by game CV.
+Season Y's model still trains on seasons before Y only, so nothing from Y enters
+it (the history-start season fits itself, on its own one-season window).
 
 --newcomer-means (window targets only; default off) also writes
 OUT_DIR/newcomer_means.json: for each season Y, the possession-weighted mean
@@ -45,23 +57,24 @@ the opp_quality column holds: the mean opponent adj_net (as today), the
 player's own team's season adj_net, or nothing (the column is dropped, offense
 and defense).
 
---features box_only drops every feature built from on-court results (NBA.com's
-E_OFF/E_DEF/E_NET ratings: on_court_adj_*, d_mpir and what is derived from
-them) instead of the player's own box score. That includes the three archetype
-one-hots whose split depends on d_mpir (three_and_d / stretch / connector);
-creator, scorer and interior depend on box inputs only and stay.
+--features box_only (default) drops every feature built from on-court results
+(NBA.com's E_OFF/E_DEF/E_NET ratings: on_court_adj_*, d_mpir and what is derived
+from them) instead of the player's own box score. That includes the three
+archetype one-hots whose split depends on d_mpir (three_and_d / stretch /
+connector); creator, scorer and interior depend on box inputs only and stay.
+--features all keeps them.
 
 Usage:
-  python manage.py nba_fit_box_pooled --seasons 2016 2017 2018 --out-dir box_pooled
-  python manage.py nba_fit_box_pooled --seasons 2025 --weight-by-poss --out-dir box_pooled_w
-  python manage.py nba_fit_box_pooled --seasons 2025 --features box_only --out-dir box_pooled_bo
-  python manage.py nba_fit_box_pooled --seasons 2025 --features box_only --target window3 --out-dir box_w3
-  python manage.py nba_fit_box_pooled --seasons 2025 --features box_only --target-window 5 --out-dir box_w5
-  python manage.py nba_fit_box_pooled --seasons 2025 --features box_only --target-window 3 --target-lambda 600 --out-dir box_w3_l600
+  python manage.py nba_fit_box_pooled --season 2026 --dry-run
+  python manage.py nba_fit_box_pooled --season 2026 --write
+  python manage.py nba_fit_box_pooled --seasons 2006 2007 2008 --out-dir box_recipe
+  python manage.py nba_fit_box_pooled --seasons 2025 --target baseline --features all --out-dir box_pooled
+  python manage.py nba_fit_box_pooled --seasons 2025 --target-window 5 --target-lambda cv --out-dir box_w5
 """
 
 from __future__ import annotations
 
+import argparse
 import json
 from pathlib import Path
 
@@ -88,7 +101,10 @@ ALPHAS = [1.0, 3.0, 10.0, 30.0, 100.0, 300.0, 1000.0, 3000.0, 10000.0, 30000.0]
 DEFAULT_ALPHA_MAX = 1000.0
 TARGETS = ("baseline", "window3")
 WINDOW = 3
-HISTORY_START = 2016
+DEFAULT_TARGET_LAMBDA = 300.0
+HISTORY_START = 2006
+DEFAULT_FEATURES = "box_only"
+TOP_N = 20
 MIN_LOSO_SEASONS = 3
 PLAYER_FOLDS = 5
 
@@ -170,15 +186,57 @@ def window_years(season: int, history_start: int = HISTORY_START, k: int = WINDO
     return list(range(max(history_start, season - k + 1), season + 1))
 
 
-def resolve_window(target: str, target_window: int | None) -> int | None:
-    """Window length K for the training target, or None for single-season baseline RAPM."""
+def resolve_window(target: str | None, target_window: int | None) -> int | None:
+    """
+    Window length K for the training target, or None for single-season baseline RAPM.
+    target None (the default) is the recipe's window of WINDOW seasons unless --target-window says otherwise.
+    """
     if target == "window3":
         if target_window not in (None, WINDOW):
             raise CommandError(f"--target window3 conflicts with --target-window {target_window}")
         return WINDOW
     if target_window is not None and target_window < 1:
         raise CommandError("--target-window must be at least 1")
+    if target is None and target_window is None:
+        return WINDOW
     return target_window
+
+
+def target_lambda_arg(value: str) -> float | str:
+    """--target-lambda: a number, or 'cv' for game-CV lambda."""
+    if value.strip().lower() == "cv":
+        return "cv"
+    try:
+        return float(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"expected a number or 'cv', got {value!r}")
+
+
+def resolve_target_lambda(k: int | None, given: float | str | None) -> float | None:
+    """Fixed pooled-RAPM lambda for window targets (default DEFAULT_TARGET_LAMBDA), or None for game CV."""
+    if k is None:
+        if given is not None:
+            raise CommandError("--target-lambda needs a window target (--target-window K) and a positive value")
+        return None
+    if given is None:
+        return DEFAULT_TARGET_LAMBDA
+    if given == "cv":
+        return None
+    if given <= 0:
+        raise CommandError("--target-lambda needs a window target (--target-window K) and a positive value")
+    return float(given)
+
+
+def top_lines(preds: dict[int, dict], labels: dict[int, tuple[str, int]], n: int = TOP_N) -> list[str]:
+    """The n highest box_obpr + box_dbpr, one line each (labels: pk -> (name, NBA.com id))."""
+    ranked = sorted(preds.items(), key=lambda kv: kv[1]["box_obpr"] + kv[1]["box_dbpr"], reverse=True)
+    lines = []
+    for rank, (pk, p) in enumerate(ranked[:n], start=1):
+        name, nba_id = labels.get(pk, (f"pk={pk}", None))
+        lines.append(f"  {rank:2d}. {name:28s} nba_id={nba_id!s:<8} obpr={p['box_obpr']:+.4f}  "
+                     f"dbpr={p['box_dbpr']:+.4f}  box_bpr={p['box_obpr'] + p['box_dbpr']:+.4f}  "
+                     f"[{p['archetype']}]")
+    return lines
 
 
 def poss_weights(poss: np.ndarray) -> np.ndarray:
@@ -391,48 +449,104 @@ def nba_ids_for(pks) -> dict[int, int]:
     return dict(NBAPlayer.objects.filter(pk__in=list(pks)).values_list("pk", "player_id"))
 
 
+def player_labels(pks) -> dict[int, tuple[str, int]]:
+    from nba.models import NBAPlayer
+
+    return {pk: (name, nba_id) for pk, name, nba_id in
+            NBAPlayer.objects.filter(pk__in=list(pks)).values_list("pk", "name", "player_id")}
+
+
+def write_season_box(season: int, preds: dict[int, dict]) -> dict:
+    """
+    Clear box_obpr, box_dbpr, box_bpr and nba_archetype on season's regular rows, then write
+    preds (keyed by NBAPlayer pk) to every row of each predicted player. One transaction.
+    """
+    from django.db import transaction
+    from nba.models import NBAPlayerSeasonStats
+
+    qs = NBAPlayerSeasonStats.objects.filter(season__year=season, season_type="regular")
+    updated = skipped = 0
+    with transaction.atomic():
+        cleared = qs.update(box_obpr=None, box_dbpr=None, box_bpr=None, nba_archetype=None)
+        for row in qs:
+            p = preds.get(row.player_id)
+            if p is None:
+                skipped += 1
+                continue
+            row.box_obpr = p["box_obpr"]
+            row.box_dbpr = p["box_dbpr"]
+            row.box_bpr = round(p["box_obpr"] + p["box_dbpr"], 3)
+            row.nba_archetype = p["archetype"]
+            row.save(update_fields=["box_obpr", "box_dbpr", "box_bpr", "nba_archetype"])
+            updated += 1
+    return {"cleared": cleared, "updated": updated, "skipped": skipped}
+
+
 class Command(BaseCommand):
-    help = "Box BPR from pooled past seasons with CV-chosen alpha; writes JSON only (no DB writes)."
+    help = ("Box BPR from pooled past seasons with CV-chosen alpha (final recipe by default): "
+            "--seasons writes JSON only; --season Y --write writes Y's box fields.")
 
     def add_arguments(self, parser):
-        parser.add_argument("--seasons", nargs="+", type=int, required=True)
+        which = parser.add_mutually_exclusive_group(required=True)
+        which.add_argument("--seasons", nargs="+", type=int,
+                           help="Seasons to fit; writes OUT_DIR/box_<Y>.json (no DB writes)")
+        which.add_argument("--season", type=int,
+                           help="One season to fit for --write or --dry-run")
+        parser.add_argument("--write", action="store_true",
+                            help="With --season Y: clear and write box_obpr/box_dbpr/box_bpr/nba_archetype "
+                                 "on Y's regular rows")
+        parser.add_argument("--dry-run", action="store_true",
+                            help="With --season Y: fit and print the top 20, write nothing")
         parser.add_argument("--weight-by-poss", action="store_true",
                             help="Weight rows by on_court_poss / its mean over the training rows")
         parser.add_argument("--team-feature", choices=TEAM_FEATURES, default="opp_quality",
                             help="What the opp_quality column holds: opponents' mean adj_net "
                                  "(default), the team's own adj_net, or none (dropped)")
-        parser.add_argument("--features", choices=FEATURE_SETS, default="all",
-                            help="box_only drops the features built from on-court results")
-        parser.add_argument("--target", choices=TARGETS, default="baseline",
-                            help="window3: pooled RAPM over seasons s-2..s as season s's target "
-                                 "(alias for --target-window 3)")
+        parser.add_argument("--features", choices=FEATURE_SETS, default=DEFAULT_FEATURES,
+                            help=f"box_only (default) drops the features built from on-court results; all keeps them")
+        parser.add_argument("--target", choices=TARGETS, default=None,
+                            help="baseline: single-season baseline RAPM; window3: alias for --target-window 3 "
+                                 f"(default: --target-window, {WINDOW} seasons)")
         parser.add_argument("--target-window", type=int, default=None, metavar="K",
-                            help="Pooled RAPM over seasons s-K+1..s as season s's target")
-        parser.add_argument("--target-lambda", type=float, default=None, metavar="X",
-                            help="Fix the window target's pooled RAPM lambda at X (default: game CV)")
+                            help=f"Pooled RAPM over seasons s-K+1..s as season s's target (default {WINDOW})")
+        parser.add_argument("--target-lambda", type=target_lambda_arg, default=None, metavar="X",
+                            help=f"Window target's pooled RAPM lambda (default {DEFAULT_TARGET_LAMBDA:g}; "
+                                 "'cv' chooses it by game CV)")
         parser.add_argument("--newcomer-means", action="store_true",
                             help="Also write newcomer_means.json (window targets only)")
         parser.add_argument("--alpha-max", type=float, default=DEFAULT_ALPHA_MAX,
                             help=f"Largest alpha in the grid (default {DEFAULT_ALPHA_MAX:g}; up to {ALPHAS[-1]:g})")
-        parser.add_argument("--out-dir", type=str, required=True,
-                            help="Writes box_<Y>.json per season and alphas.json")
+        parser.add_argument("--out-dir", type=str, default=None,
+                            help="With --seasons (required): writes box_<Y>.json per season and alphas.json")
         parser.add_argument("--history-start", type=int, default=HISTORY_START,
                             help=f"First season training may use (default {HISTORY_START})")
-        parser.add_argument("--career-floor", type=int, default=2016,
-                            help="Oldest season in the career-stabilized stats window (default 2016)")
+        parser.add_argument("--career-floor", type=int, default=HISTORY_START,
+                            help=f"Oldest season in the career-stabilized stats window (default {HISTORY_START})")
 
     def handle(self, *args, **opts):
-        out_dir = Path(opts["out_dir"])
-        out_dir.mkdir(parents=True, exist_ok=True)
+        single = opts.get("season")
+        write, dry_run = opts.get("write", False), opts.get("dry_run", False)
+        want_newcomers = opts.get("newcomer_means", False)
+        if single is None:
+            if write or dry_run:
+                raise CommandError("--write and --dry-run take --season Y")
+            if not opts.get("out_dir"):
+                raise CommandError("--seasons needs --out-dir")
+        else:
+            if write == dry_run:
+                raise CommandError("--season Y needs exactly one of --write or --dry-run")
+            if opts.get("out_dir") or want_newcomers:
+                raise CommandError("--season Y takes neither --out-dir nor --newcomer-means "
+                                   "(use --seasons Y --out-dir DIR for the JSON)")
+        out_dir = Path(opts["out_dir"]) if single is None else None
+        if out_dir is not None:
+            out_dir.mkdir(parents=True, exist_ok=True)
         weighted = opts["weight_by_poss"]
         start = opts["history_start"]
         alphas = alpha_grid(opts["alpha_max"])
-        k = resolve_window(opts["target"], opts.get("target_window"))
-        target_lambda = opts.get("target_lambda")
-        if target_lambda is not None and (k is None or target_lambda <= 0):
-            raise CommandError("--target-lambda needs a window target (--target-window K) and a positive value")
+        k = resolve_window(opts.get("target"), opts.get("target_window"))
+        target_lambda = resolve_target_lambda(k, opts.get("target_lambda"))
         target = "baseline" if k is None else f"window{k}"
-        want_newcomers = opts.get("newcomer_means", False)
         if want_newcomers and k is None:
             raise CommandError("--newcomer-means needs a window target (--target-window K)")
         newcomer_by_season: dict[int, dict] = {}
@@ -460,8 +574,10 @@ class Command(BaseCommand):
                                       f"O {st['obpr']:+.3f} D {st['dbpr']:+.3f}")
             return cache[season]
 
+        seasons = [single] if single is not None else sorted(opts["seasons"])
         all_info = []
-        for season in sorted(opts["seasons"]):
+        preds = {}
+        for season in seasons:
             if season < start:
                 raise CommandError(f"Season {season} is before --history-start {start}")
             train, _ = plan_training(season, start)
@@ -480,17 +596,38 @@ class Command(BaseCommand):
                 stats, opp, team, career = load_season(season, opts["career_floor"],
                                                        team_feature=opts["team_feature"])["inputs"]
             preds = predict_nba_box_bpr(stats, opp, team, artifacts, career)
-            nba_ids = nba_ids_for(preds)
-            out = {str(nba_ids[pk]): [p["box_obpr"], p["box_dbpr"]] for pk, p in preds.items()}
-            path = out_dir / f"box_{season}.json"
-            with open(path, "w") as f:
-                json.dump(out, f)
-            info["n_predicted"] = len(out)
+            info["n_predicted"] = len(preds)
             all_info.append(info)
+            if out_dir is not None:
+                nba_ids = nba_ids_for(preds)
+                out = {str(nba_ids[pk]): [p["box_obpr"], p["box_dbpr"]] for pk, p in preds.items()}
+                path = out_dir / f"box_{season}.json"
+                with open(path, "w") as f:
+                    json.dump(out, f)
+                dest = str(path)
+            else:
+                dest = "dry run" if dry_run else "database"
             self.stdout.write(
                 f"  {season}: train {train[0]}-{train[-1]} ({info['method']}, n={info['n_train']}"
                 f"{', weighted' if weighted else ''}, features={opts['features']}, target={target})  off alpha={info['off_alpha']:g}  "
-                f"def alpha={info['def_alpha']:g}  → {len(out)} players {path}")
+                f"def alpha={info['def_alpha']:g}  → {len(preds)} players {dest}")
+
+        if single is not None:
+            self.stdout.write(f"\nTop {TOP_N} by box_bpr, {single}:")
+            for line in top_lines(preds, player_labels(preds.keys())):
+                self.stdout.write(line)
+            counts: dict[str, int] = {}
+            for p in preds.values():
+                counts[p["archetype"]] = counts.get(p["archetype"], 0) + 1
+            self.stdout.write("Archetypes: " + ", ".join(f"{a} {n}" for a, n in sorted(counts.items(), key=lambda x: -x[1])))
+            if dry_run:
+                self.stdout.write(self.style.SUCCESS(f"Dry run: {len(preds)} players, no DB writes."))
+                return
+            res = write_season_box(single, preds)
+            self.stdout.write(self.style.SUCCESS(
+                f"[OK] {single} box written: cleared {res['cleared']} regular rows, "
+                f"{res['updated']} updated, {res['skipped']} rows without a prediction left null"))
+            return
 
         with open(out_dir / "alphas.json", "w") as f:
             json.dump(all_info, f, indent=2)

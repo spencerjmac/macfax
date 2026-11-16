@@ -5,6 +5,11 @@ seasons before Y only, picks alpha by CV with the one-standard-error rule
 otherwise; the first season fits itself), optionally weights rows by
 on_court_poss / mean, and writes {nba_id: [box_obpr, box_dbpr]} JSON.
 No database: loading and prediction inputs are stood in for.
+
+Task 5.2 made the final recipe the defaults (box_only, window 3 at lambda 300,
+history start and career floor 2006). The mechanism tests below pin the
+pre-5.2 settings they were written for (OLD: history start 2016, all features,
+baseline target) so they keep testing the same thing.
 """
 
 import json
@@ -21,6 +26,8 @@ from django.test import SimpleTestCase
 from nba.management.commands import nba_fit_box_pooled as pooled
 
 MOD = "nba.management.commands.nba_fit_box_pooled"
+H16 = 2016   # history start the mechanism tests' synthetic seasons begin at
+OLD = ("--history-start", "2016", "--features", "all")
 
 
 def _season_data(season, n=60, seed=None):
@@ -36,11 +43,18 @@ def _season_data(season, n=60, seed=None):
 class PlanTests(SimpleTestCase):
 
     def test_training_seasons_are_before_y(self):
-        self.assertEqual(pooled.plan_training(2016), ([2016], "player_5fold"))   # no history: itself
-        self.assertEqual(pooled.plan_training(2017), ([2016], "player_5fold"))
-        self.assertEqual(pooled.plan_training(2018), ([2016, 2017], "player_5fold"))
-        self.assertEqual(pooled.plan_training(2019), ([2016, 2017, 2018], "loso"))
-        self.assertEqual(pooled.plan_training(2025)[0], list(range(2016, 2025)))
+        self.assertEqual(pooled.plan_training(2016, H16), ([2016], "player_5fold"))   # no history: itself
+        self.assertEqual(pooled.plan_training(2017, H16), ([2016], "player_5fold"))
+        self.assertEqual(pooled.plan_training(2018, H16), ([2016, 2017], "player_5fold"))
+        self.assertEqual(pooled.plan_training(2019, H16), ([2016, 2017, 2018], "loso"))
+        self.assertEqual(pooled.plan_training(2025, H16)[0], list(range(2016, 2025)))
+
+    def test_default_history_starts_2006(self):
+        self.assertEqual(pooled.HISTORY_START, 2006)
+        self.assertEqual(pooled.plan_training(2006), ([2006], "player_5fold"))
+        self.assertEqual(pooled.plan_training(2008), ([2006, 2007], "player_5fold"))
+        self.assertEqual(pooled.plan_training(2009), ([2006, 2007, 2008], "loso"))
+        self.assertEqual(pooled.plan_training(2026)[0], list(range(2006, 2026)))
 
 
 class OneSeRuleTests(SimpleTestCase):
@@ -86,27 +100,27 @@ class FitSeasonTests(SimpleTestCase):
         self.data = {s: _season_data(s) for s in range(2016, 2021)}
 
     def test_only_seasons_before_y_are_used(self):
-        _, info = pooled.fit_season(2020, self.data, False)
+        _, info = pooled.fit_season(2020, self.data, False, H16)
         self.assertEqual(info["train_seasons"], [2016, 2017, 2018, 2019])
         self.assertEqual(info["n_train"], 4 * 60)
         # Changing season Y's own (or later) data does not change Y's model.
-        a1, _ = pooled.fit_season(2019, self.data, False)
+        a1, _ = pooled.fit_season(2019, self.data, False, H16)
         changed = dict(self.data)
         changed[2019] = _season_data(2019, seed=99)
         changed[2020] = _season_data(2020, seed=98)
-        a2, _ = pooled.fit_season(2019, changed, False)
+        a2, _ = pooled.fit_season(2019, changed, False, H16)
         X = np.ones((1, 4))
         self.assertEqual(a1["off_pipeline"].predict(X)[0], a2["off_pipeline"].predict(X)[0])
 
     def test_alpha_from_grid_and_loso_folds(self):
-        _, info = pooled.fit_season(2020, self.data, False)
+        _, info = pooled.fit_season(2020, self.data, False, H16)
         self.assertEqual(info["method"], "loso")
         self.assertIn(info["off_alpha"], pooled.alpha_grid())
         self.assertIn(info["def_alpha"], pooled.alpha_grid())
         self.assertEqual(len(info["off_cv_mean"]), len(pooled.alpha_grid()))
 
     def test_first_season_fits_itself(self):
-        _, info = pooled.fit_season(2016, self.data, False)
+        _, info = pooled.fit_season(2016, self.data, False, H16)
         self.assertEqual((info["train_seasons"], info["method"]), ([2016], "player_5fold"))
 
     def test_weighting_passes_normalized_poss(self):
@@ -118,14 +132,14 @@ class FitSeasonTests(SimpleTestCase):
             return real(X, y, w, alpha)
 
         with mock.patch.object(pooled, "fit_ridge", spy):
-            pooled.fit_season(2018, self.data, True)
+            pooled.fit_season(2018, self.data, True, H16)
         final_w = calls[-1]   # the last fit is the final defense model on all training rows
         expected = pooled.poss_weights(np.concatenate([self.data[2016]["poss"], self.data[2017]["poss"]]))
         np.testing.assert_allclose(final_w, expected)
         self.assertAlmostEqual(final_w.mean(), 1.0)
         with mock.patch.object(pooled, "fit_ridge", spy):
             calls.clear()
-            pooled.fit_season(2018, self.data, False)
+            pooled.fit_season(2018, self.data, False, H16)
         self.assertTrue(all(w is None for w in calls))
 
 
@@ -153,7 +167,7 @@ class CommandTests(SimpleTestCase):
 
     def test_writes_json_per_season_and_alphas(self):
         call_command("nba_fit_box_pooled", "--seasons", "2017", "2016", "--out-dir", str(self.out),
-                     stdout=StringIO())
+                     "--target", "baseline", *OLD, stdout=StringIO())
         self.assertEqual(json.loads((self.out / "box_2017.json").read_text()),
                          {"201939": [1.5, -0.25], "2544": [0.0, 0.75]})
         self.assertTrue((self.out / "box_2016.json").exists())
@@ -165,7 +179,10 @@ class CommandTests(SimpleTestCase):
     def test_season_before_history_start_is_an_error(self):
         with self.assertRaises(CommandError):
             call_command("nba_fit_box_pooled", "--seasons", "2015", "--out-dir", str(self.out),
-                         stdout=StringIO())
+                         "--target", "baseline", *OLD, stdout=StringIO())
+        with self.assertRaises(CommandError):   # default history start 2006
+            call_command("nba_fit_box_pooled", "--seasons", "2005", "--out-dir", str(self.out),
+                         "--target", "baseline", "--features", "all", stdout=StringIO())
 
 
 def _wide_season(season, n=60):
@@ -195,7 +212,7 @@ class BoxOnlyFeatureTests(SimpleTestCase):
 
     def test_box_only_fit_ignores_on_court_columns(self):
         data = {s: _wide_season(s) for s in range(2016, 2020)}
-        art, info = pooled.fit_season(2019, data, False, features="box_only")
+        art, info = pooled.fit_season(2019, data, False, H16, features="box_only")
         self.assertEqual(info["off_n_features"], len(pooled.feature_index("off", "box_only")))
         self.assertEqual(info["def_n_features"], len(pooled.feature_index("def", "box_only")))
         # Prediction takes full-width rows; changing a dropped column changes nothing.
@@ -207,9 +224,9 @@ class BoxOnlyFeatureTests(SimpleTestCase):
         self.assertEqual(art["off_pipeline"].predict(row_o)[0], base_o)
         self.assertEqual(art["def_pipeline"].predict(row_d)[0], base_d)
 
-    def test_default_uses_every_feature(self):
+    def test_all_uses_every_feature(self):
         data = {s: _wide_season(s) for s in range(2016, 2020)}
-        art, info = pooled.fit_season(2019, data, False)
+        art, info = pooled.fit_season(2019, data, False, H16, features="all")
         self.assertEqual((info["features"], info["off_n_features"], info["def_n_features"]),
                          ("all", len(pooled.OFF_FEATURES), len(pooled.DEF_FEATURES)))
         row = np.ones((1, len(pooled.OFF_FEATURES)))
@@ -232,7 +249,7 @@ class BoxOnlyFeatureTests(SimpleTestCase):
              mock.patch(f"{MOD}.nba_ids_for", lambda pks: {}), \
              mock.patch(f"{MOD}.fit_season", spy):
             call_command("nba_fit_box_pooled", "--seasons", "2017", "--features", "box_only",
-                         "--out-dir", tmp.name, stdout=StringIO())
+                         "--history-start", "2016", "--target", "baseline", "--out-dir", tmp.name, stdout=StringIO())
         self.assertEqual(seen, ["box_only"])
         self.assertEqual(json.loads((Path(tmp.name) / "alphas.json").read_text())[0]["features"], "box_only")
 
@@ -253,11 +270,11 @@ class AlphaGridTests(SimpleTestCase):
             d["y_off"] = rng.normal(size=len(d["pids"]))
             d["y_def"] = rng.normal(size=len(d["pids"]))
             data[s] = d
-        _, info = pooled.fit_season(2019, data, False, alphas=pooled.alpha_grid(30000))
+        _, info = pooled.fit_season(2019, data, False, H16, alphas=pooled.alpha_grid(30000))
         self.assertEqual((info["off_alpha"], info["def_alpha"]), (30000.0, 30000.0))
         self.assertEqual(len(info["off_cv_mean"]), 10)
         # Default grid (task 3.6): capped at 1000.
-        _, info = pooled.fit_season(2019, data, False)
+        _, info = pooled.fit_season(2019, data, False, H16)
         self.assertEqual((info["off_alpha"], info["def_alpha"]), (1000.0, 1000.0))
         self.assertEqual(len(info["off_cv_mean"]), 7)
 
@@ -292,7 +309,7 @@ class _CommandRunMixin:
         with mock.patch(f"{MOD}.load_season", load), mock.patch(f"{MOD}.window_targets", window), \
              mock.patch(f"{MOD}.predict_nba_box_bpr", lambda *a: {}), \
              mock.patch(f"{MOD}.nba_ids_for", lambda pks: {}), mock.patch(f"{MOD}.fit_season", spy):
-            call_command("nba_fit_box_pooled", "--out-dir", str(self.out), *args, stdout=StringIO())
+            call_command("nba_fit_box_pooled", "--out-dir", str(self.out), *OLD, *args, stdout=StringIO())
         return json.loads((self.out / "alphas.json").read_text())
 
 
@@ -308,9 +325,10 @@ class AlphaMaxAndWindow3Tests(_CommandRunMixin, SimpleTestCase):
             pooled.alpha_grid(0.5)
 
     def test_window_years(self):
-        self.assertEqual(pooled.window_years(2016), [2016])
-        self.assertEqual(pooled.window_years(2017), [2016, 2017])
-        self.assertEqual(pooled.window_years(2020), [2018, 2019, 2020])
+        self.assertEqual(pooled.window_years(2016, H16), [2016])
+        self.assertEqual(pooled.window_years(2017, H16), [2016, 2017])
+        self.assertEqual(pooled.window_years(2020, H16), [2018, 2019, 2020])
+        self.assertEqual(pooled.window_years(2006), [2006])   # default history start
 
     def test_window3_targets_only_for_training_seasons(self):
         info = self._run("--seasons", "2019", "--target", "window3")
@@ -321,14 +339,15 @@ class AlphaMaxAndWindow3Tests(_CommandRunMixin, SimpleTestCase):
         self.assertEqual(info[0]["target_windows"]["2018"]["years"], [2016, 2017, 2018])
 
     def test_baseline_target_never_fits_windows(self):
-        info = self._run("--seasons", "2019")
+        info = self._run("--seasons", "2019", "--target", "baseline")
         self.assertEqual(self.windows, [])
         self.assertEqual(info[0]["target"], "baseline")
+        self.assertIsNone(info[0]["target_lambda_fixed"])
 
     def test_alpha_max_reaches_the_fit(self):
-        self._run("--seasons", "2019")
+        self._run("--seasons", "2019", "--target", "baseline")
         self.assertEqual(self.fits[-1][-1], 1000.0)
-        self._run("--seasons", "2019", "--alpha-max", "30000")
+        self._run("--seasons", "2019", "--target", "baseline", "--alpha-max", "30000")
         self.assertEqual(self.fits[-1], pooled.ALPHAS)
 
 
@@ -337,16 +356,18 @@ class TargetWindowTests(_CommandRunMixin, SimpleTestCase):
     """Task 3.6b: --target-window K; window3 is an alias for K=3."""
 
     def test_window_years_k(self):
-        self.assertEqual(pooled.window_years(2020, k=2), [2019, 2020])
-        self.assertEqual(pooled.window_years(2020, k=5), [2016, 2017, 2018, 2019, 2020])
-        self.assertEqual(pooled.window_years(2021, k=5), [2017, 2018, 2019, 2020, 2021])
-        self.assertEqual(pooled.window_years(2018, k=1), [2018])
+        self.assertEqual(pooled.window_years(2020, H16, k=2), [2019, 2020])
+        self.assertEqual(pooled.window_years(2020, H16, k=5), [2016, 2017, 2018, 2019, 2020])
+        self.assertEqual(pooled.window_years(2021, H16, k=5), [2017, 2018, 2019, 2020, 2021])
+        self.assertEqual(pooled.window_years(2018, H16, k=1), [2018])
 
     def test_resolve_window(self):
         self.assertIsNone(pooled.resolve_window("baseline", None))
         self.assertEqual(pooled.resolve_window("window3", None), 3)
         self.assertEqual(pooled.resolve_window("window3", 3), 3)
         self.assertEqual(pooled.resolve_window("baseline", 5), 5)
+        self.assertEqual(pooled.resolve_window(None, None), 3)   # default: the recipe's window
+        self.assertEqual(pooled.resolve_window(None, 5), 5)
         with self.assertRaises(CommandError):
             pooled.resolve_window("window3", 4)
         with self.assertRaises(CommandError):
@@ -376,15 +397,21 @@ class TargetLambdaTests(_CommandRunMixin, SimpleTestCase):
         self.assertEqual(self.lams, [600.0, 600.0, 600.0])
         self.assertEqual(info[0]["target_lambda_fixed"], 600.0)
 
-    def test_default_is_cv(self):
+    def test_default_is_300(self):
         self.lams = []
         info = self._run("--seasons", "2019", "--target-window", "3")
+        self.assertEqual(self.lams, [300.0, 300.0, 300.0])
+        self.assertEqual(info[0]["target_lambda_fixed"], 300.0)
+
+    def test_cv_chooses_by_game_cv(self):
+        self.lams = []
+        info = self._run("--seasons", "2019", "--target-window", "3", "--target-lambda", "cv")
         self.assertEqual(self.lams, [None, None, None])
         self.assertIsNone(info[0]["target_lambda_fixed"])
 
     def test_needs_a_window_target(self):
         with self.assertRaises(CommandError):
-            self._run("--seasons", "2019", "--target-lambda", "600")
+            self._run("--seasons", "2019", "--target", "baseline", "--target-lambda", "600")
         with self.assertRaises(CommandError):
             self._run("--seasons", "2019", "--target-window", "3", "--target-lambda", "0")
 
@@ -426,14 +453,14 @@ class NewcomerMeansTests(_CommandRunMixin, SimpleTestCase):
         stats = {2016: {"n": 2, "poss": 100.0, "sum_o": -100.0, "sum_d": -50.0},
                  2017: {"n": 3, "poss": 300.0, "sum_o": -150.0, "sum_d": 0.0},
                  2018: {"n": 9, "poss": 9e9, "sum_o": 9e9, "sum_d": 9e9}}
-        first = pooled.newcomer_mean_for(2016, stats)
+        first = pooled.newcomer_mean_for(2016, stats, H16)
         self.assertEqual((first["n"], first["obpr"], first["dbpr"], first["from_seasons"]), (0, 0.0, 0.0, []))
-        y18 = pooled.newcomer_mean_for(2018, stats)
+        y18 = pooled.newcomer_mean_for(2018, stats, H16)
         self.assertEqual((y18["n"], y18["from_seasons"]), (5, [2016, 2017]))
         self.assertAlmostEqual(y18["obpr"], -250.0 / 400)
         self.assertAlmostEqual(y18["dbpr"], -50.0 / 400)
         with self.assertRaises(ValueError):
-            pooled.newcomer_mean_for(2018, {2016: stats[2016]})
+            pooled.newcomer_mean_for(2018, {2016: stats[2016]}, H16)
 
     def _run_nc(self, *args):
         def load(season, career_floor, targets=None, **_):
@@ -453,7 +480,7 @@ class NewcomerMeansTests(_CommandRunMixin, SimpleTestCase):
              mock.patch(f"{MOD}.prev_minute_ids", lambda season: {3}), \
              mock.patch(f"{MOD}.predict_nba_box_bpr", lambda *a: {}), \
              mock.patch(f"{MOD}.nba_ids_for", lambda pks: {}):
-            call_command("nba_fit_box_pooled", "--out-dir", str(self.out), *args, stdout=StringIO())
+            call_command("nba_fit_box_pooled", "--out-dir", str(self.out), *OLD, *args, stdout=StringIO())
 
     def test_command_writes_means_from_earlier_seasons(self):
         self._run_nc("--seasons", "2016", "2018", "--target-window", "3", "--target-lambda", "300", "--newcomer-means")
@@ -470,7 +497,7 @@ class NewcomerMeansTests(_CommandRunMixin, SimpleTestCase):
         self._run_nc("--seasons", "2018", "--target-window", "3")
         self.assertFalse((self.out / "newcomer_means.json").exists())
         with self.assertRaises(CommandError):
-            self._run_nc("--seasons", "2018", "--newcomer-means")
+            self._run_nc("--seasons", "2018", "--target", "baseline", "--newcomer-means")
 
 
 
@@ -520,7 +547,7 @@ class TeamFeatureTests(_CommandRunMixin, SimpleTestCase):
         with mock.patch(f"{MOD}.load_season", load), mock.patch(f"{MOD}.fit_season", spy), \
              mock.patch(f"{MOD}.predict_nba_box_bpr", lambda *a: {}), mock.patch(f"{MOD}.nba_ids_for", lambda pks: {}):
             call_command("nba_fit_box_pooled", "--seasons", "2018", "--team-feature", "none",
-                         "--out-dir", str(self.out), stdout=StringIO())
+                         "--target", "baseline", *OLD, "--out-dir", str(self.out), stdout=StringIO())
         self.assertEqual(seen_fit, ["none"])
         self.assertTrue(seen_load and all(t == "none" for t in seen_load))
         self.assertEqual(json.loads((self.out / "alphas.json").read_text())[0]["team_feature"], "none")
