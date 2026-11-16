@@ -788,6 +788,19 @@ class ESPNAPIClient:
                         out[tid] = out.get(tid, 0) + 1
         return out
 
+    @staticmethod
+    def idless_athletes(data: Dict[str, Any]) -> Dict[str, int]:
+        """ESPN team id -> box entries with no athlete id and no stat line (ESPN blanked the player: only a
+        short name is left, usually marked didNotPlay). parse_player_box_score cannot store them."""
+        out: Dict[str, int] = {}
+        for team_entry in (data.get("boxscore") or {}).get("players", []):
+            tid = str((team_entry.get("team") or {}).get("id", ""))
+            for group in team_entry.get("statistics", [])[:1]:
+                for a in group.get("athletes", []):
+                    if not (a.get("athlete") or {}).get("id") and not a.get("stats"):
+                        out[tid] = out.get(tid, 0) + 1
+        return out
+
     def get_player_box_score(self, game_id: str, data: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         """Per-player rows for one ESPN game (fetches the summary unless `data` is given)."""
         if data is None:

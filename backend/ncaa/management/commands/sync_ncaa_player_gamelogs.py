@@ -20,9 +20,18 @@ Usage:
 
     # Only games involving some teams (Team primary keys), e.g. after fixing their ESPN ids:
     python manage.py sync_ncaa_player_gamelogs --season 2026 --teams 27,28 --sleep 1.1
+
+    # Historical backfill (2005-2014): D1-vs-D1 games only, one request per second:
+    python manage.py sync_ncaa_player_gamelogs --season 2014 --d1-vs-d1 --sleep 1.0
+
+Canceled 0-0 games are never fetched. Games stored with an ESPN event id (source 'espn', and every 2005-2008 game,
+which the NCAA ingest stored with ESPN's event id and ESPN raw data) use it directly; only other NCAA-sourced games
+are looked up on ESPN's scoreboard (by game_date, which is a UTC date for 2005-2008, so that lookup would miss them).
+Box entries ESPN blanked (no athlete id, no stats) are counted per game and reported, not stored.
 """
 import time
 import logging
+import threading
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -32,6 +41,34 @@ from django.db.models import Q
 
 from ncaa.models import Game, Player, PlayerGameStats, Team, TeamExternalId
 from ncaa.seasons import resolve_season_year
+from ncaa.utils.d1 import d1_q
+
+# Seasons whose NCAA-sourced games were stored with ESPN's event id as source_game_id (and ESPN raw data).
+ESPN_ID_THROUGH_SEASON = 2008
+PGS_FIELDS = ("starter", "did_not_play", "minutes", "points", "fg_made", "fg_attempted", "fg3_made", "fg3_attempted",
+              "ft_made", "ft_attempted", "rebounds", "offensive_rebounds", "defensive_rebounds", "assists",
+              "turnovers", "steals", "blocks", "fouls")
+PLAYER_FIELDS = ("display_name", "short_name", "jersey", "position", "headshot_url")
+
+
+def select_games(season_year: int, *, teams=None, d1_vs_d1: bool = False, skip_done: bool = False):
+    """Finished games to fetch for a season (canceled 0-0 games never; optionally D1 vs D1 only)."""
+    qs = Game.objects.filter(season_year=season_year, status="final").exclude(home_score=0, away_score=0)
+    if d1_vs_d1:
+        qs = qs.filter(d1_q(season_year, "home_team") & d1_q(season_year, "away_team"))
+    if teams:
+        qs = qs.filter(Q(home_team_id__in=teams) | Q(away_team_id__in=teams))
+    if skip_done:
+        done_game_ids = set(PlayerGameStats.objects.filter(game__season_year=season_year)
+                            .values_list("game_id", flat=True).distinct())
+        # A game with player rows but no period_count is not done: re-fetch it so its periods
+        # get recorded (otherwise --skip-done would leave it NULL forever).
+        qs = qs.exclude(id__in=done_game_ids, period_count__isnull=False)
+    return list(qs.select_related("home_team", "away_team").order_by("game_date", "id"))
+
+
+def has_espn_event_id(game) -> bool:
+    return game.source == "espn" or (game.season_year <= ESPN_ID_THROUGH_SEASON and bool(game.source_game_id))
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +110,11 @@ class Command(BaseCommand):
             help="Comma-separated Team primary keys: only games where one of them is home or away.",
         )
         parser.add_argument(
+            "--d1-vs-d1",
+            action="store_true",
+            help="Only games between two teams that were D1 that season (TeamSeasonMembership)",
+        )
+        parser.add_argument(
             "--limit",
             type=int,
             default=0,
@@ -97,27 +139,9 @@ class Command(BaseCommand):
         # Build Team pk → ESPN team id (reverse lookup for ncaa-sourced games)
         team_pk_to_espn_id = {v.pk: k for k, v in espn_team_map.items()}
 
-        # --- Gather all finished games for the season ---
-        games_qs = Game.objects.filter(
-            season_year=season_year,
-            status="final",
-        ).select_related("home_team", "away_team").order_by("game_date")
-
-        if options.get("teams"):
-            team_pks = [int(x) for x in options["teams"].split(",") if x.strip()]
-            games_qs = games_qs.filter(Q(home_team_id__in=team_pks) | Q(away_team_id__in=team_pks))
-
-        if skip_done:
-            done_game_ids = set(
-                PlayerGameStats.objects.filter(
-                    game__season_year=season_year,
-                ).values_list("game_id", flat=True).distinct()
-            )
-            # A game with player rows but no period_count is not done: re-fetch it so its periods
-            # get recorded (otherwise --skip-done would leave it NULL forever).
-            games_qs = games_qs.exclude(id__in=done_game_ids, period_count__isnull=False)
-
-        all_games = list(games_qs)
+        # --- Gather finished games for the season ---
+        team_pks = [int(x) for x in options["teams"].split(",") if x.strip()] if options.get("teams") else None
+        all_games = select_games(season_year, teams=team_pks, d1_vs_d1=options["d1_vs_d1"], skip_done=skip_done)
         if limit:
             all_games = all_games[:limit]
 
@@ -125,8 +149,8 @@ class Command(BaseCommand):
         # game_id → espn_event_id
         game_espn_map: dict[int, str] = {}
 
-        espn_direct = [g for g in all_games if g.source == "espn"]
-        ncaa_sourced = [g for g in all_games if g.source != "espn"]
+        espn_direct = [g for g in all_games if has_espn_event_id(g)]
+        ncaa_sourced = [g for g in all_games if not has_espn_event_id(g)]
 
         for g in espn_direct:
             game_espn_map[g.pk] = g.source_game_id
@@ -199,12 +223,23 @@ class Command(BaseCommand):
             return
 
         # --- Fetch phase (parallel) ---
+        # One client per worker thread, so --sleep spaces that worker's requests (a client per game never waited).
+        local = threading.local()
+        blanks = {}      # game_id -> blanked box entries (no athlete id, no stats)
+        failed = []      # game ids whose summary request failed
+
         def fetch_one(game_id, espn_game_id):
-            c = ESPNAPIClient(rate_limit_delay=sleep_secs)
-            rows = c.get_player_box_score(espn_game_id)
-            return game_id, rows
+            if not hasattr(local, "client"):
+                local.client = ESPNAPIClient(rate_limit_delay=sleep_secs)
+            data = local.client.get_summary(espn_game_id)
+            if data is None:
+                failed.append(game_id)
+                return game_id, []
+            blanks[game_id] = sum(ESPNAPIClient.idless_athletes(data).values())
+            return game_id, local.client.parse_player_box_score(data)
 
         fetched = {}  # game_id → rows list
+        t_fetch = time.time()
 
         if workers > 1:
             with ThreadPoolExecutor(max_workers=workers) as pool:
@@ -226,7 +261,9 @@ class Command(BaseCommand):
                 if idx % 100 == 0 or idx == total:
                     self.stdout.write(f"  Fetched {idx}/{total}...")
 
-        self.stdout.write("Fetch phase complete. Writing to database...")
+        secs = time.time() - t_fetch
+        self.stdout.write(f"Fetch phase complete: {total} requests in {secs:.0f}s ({total / secs:.2f} req/s, "
+                          f"{secs / total:.2f} s/game); failed {len(failed)}. Writing to database...")
 
         # --- Write phase (serial) ---
         total_players = 0
@@ -253,11 +290,16 @@ class Command(BaseCommand):
                 f"period_count set: {periods_set}"
             )
         )
+        with_blanks = {g: n for g, n in blanks.items() if n}
+        self.stdout.write(f"Blanked box entries (not stored): {sum(with_blanks.values())} in {len(with_blanks)} games"
+                          + (f"; max {max(with_blanks.values())} in one game" if with_blanks else ""))
+        if failed:
+            self.stdout.write(self.style.WARNING(f"Failed summary requests (game ids): {sorted(failed)[:50]}"))
 
 
 def write_player_rows(game_id: int, rows: list, team_by_espn: dict, force: bool = False):
-    """Upsert Player and PlayerGameStats rows for one game from ESPNAPIClient.parse_player_box_score rows,
-    and record the game's periods into a NULL period_count.
+    """Upsert Player and PlayerGameStats rows for one game from ESPNAPIClient.parse_player_box_score rows (two bulk
+    upserts), and record the game's periods into a NULL period_count.
 
     team_by_espn: ESPN team id -> Team pk (an unmapped team leaves the row's team NULL).
     Returns (new players, new PlayerGameStats rows, period_count set 0/1).
@@ -273,33 +315,25 @@ def write_player_rows(game_id: int, rows: list, team_by_espn: dict, force: bool 
         period_set = Game.objects.filter(pk=game_id, period_count__isnull=True).update(
             period_count=period, went_to_ot=period > 2)
 
+    # one row per athlete (the last one wins, as with the old row-by-row upsert)
+    rows = list({r["espn_athlete_id"]: r for r in rows if r.get("espn_athlete_id")}.values())
+    if not rows:
+        return new_players, new_stats, period_set
     with transaction.atomic():
-        for row in rows:
-            espn_athlete_id = row.get("espn_athlete_id", "")
-            if not espn_athlete_id:
-                continue
-            player, created = Player.objects.update_or_create(
-                espn_athlete_id=espn_athlete_id,
-                defaults={
-                    "display_name": row["display_name"],
-                    "short_name": row["short_name"],
-                    "jersey": row["jersey"],
-                    "position": row["position"],
-                    "headshot_url": row["headshot_url"],
-                },
-            )
-            new_players += int(created)
-            _, created = PlayerGameStats.objects.update_or_create(
-                player=player,
-                game_id=game_id,
-                defaults={
-                    "team_id": team_by_espn.get(row["espn_team_id"]),
-                    **{k: row[k] for k in (
-                        "starter", "did_not_play", "minutes", "points", "fg_made", "fg_attempted",
-                        "fg3_made", "fg3_attempted", "ft_made", "ft_attempted", "rebounds",
-                        "offensive_rebounds", "defensive_rebounds", "assists", "turnovers",
-                        "steals", "blocks", "fouls")},
-                },
-            )
-            new_stats += int(created)
+        ids = [r["espn_athlete_id"] for r in rows]
+        existing = set(Player.objects.filter(espn_athlete_id__in=ids).values_list("espn_athlete_id", flat=True))
+        players = Player.objects.bulk_create(
+            [Player(espn_athlete_id=r["espn_athlete_id"], **{f: r[f] for f in PLAYER_FIELDS}) for r in rows],
+            update_conflicts=True, unique_fields=["espn_athlete_id"], update_fields=list(PLAYER_FIELDS))
+        new_players = len(set(ids) - existing)
+        pid = {p.espn_athlete_id: p.pk for p in players}
+        if any(v is None for v in pid.values()):   # backends that don't return ids on upsert
+            pid = dict(Player.objects.filter(espn_athlete_id__in=ids).values_list("espn_athlete_id", "pk"))
+        had = set(PlayerGameStats.objects.filter(game_id=game_id).values_list("player_id", flat=True))
+        PlayerGameStats.objects.bulk_create(
+            [PlayerGameStats(player_id=pid[r["espn_athlete_id"]], game_id=game_id,
+                             team_id=team_by_espn.get(r["espn_team_id"]), **{k: r[k] for k in PGS_FIELDS})
+             for r in rows],
+            update_conflicts=True, unique_fields=["player", "game"], update_fields=["team"] + list(PGS_FIELDS))
+        new_stats = len({pid[i] for i in ids} - had)
     return new_players, new_stats, period_set
