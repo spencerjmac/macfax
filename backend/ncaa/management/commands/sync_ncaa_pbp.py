@@ -151,13 +151,45 @@ def _fetch_plays(espn_game_id: str, sleep: float) -> tuple:
     return client.get_plays_with_home(espn_game_id)
 
 
-def espn_sides(home_espn: str, away_espn: str, espn_home: Optional[str]) -> tuple:
-    """(home, away) ESPN team ids in ESPN's orientation, which the plays' homeScore/awayScore follow.
+def plays_orientation(plays: list, home_espn: str, away_espn: str) -> Optional[bool]:
+    """Which way the plays' homeScore/awayScore run, read from the plays themselves.
+
+    True: homeScore is home_espn's score. False: homeScore is away_espn's. None: no evidence (no
+    scoring play with a team id). Each scoring play whose team is one of the two ids votes by which
+    running score went up."""
+    same = flipped = 0
+    prev_h = prev_a = 0
+    for play in plays:
+        try:
+            h, a = int(play.get("homeScore")), int(play.get("awayScore"))
+        except (TypeError, ValueError):
+            continue
+        dh, da = h - prev_h, a - prev_a
+        prev_h, prev_a = h, a
+        team = str((play.get("team") or {}).get("id", ""))
+        if (dh > 0) == (da > 0) or team not in (home_espn, away_espn):
+            continue          # no change, both changed (a correction), or no team
+        if (dh > 0) == (team == home_espn):
+            same += 1
+        else:
+            flipped += 1
+    if same == flipped:
+        return None
+    return same > flipped
+
+
+def espn_sides(home_espn: str, away_espn: str, espn_home: Optional[str], plays: Optional[list] = None) -> tuple:
+    """(home, away) ESPN team ids in the orientation the plays' homeScore/awayScore follow.
 
     home_espn/away_espn come from our Game. An NCAA-sourced game's home can be ESPN's away (neutral
     sites); reading homeScore as our home team's score then swapped every stint's pts_scored and
-    pts_allowed (2026: 86 games). When ESPN's home is not one of the two ids (an alias ESPN id, or
-    no header), our orientation is kept."""
+    pts_allowed (2026: 86 games). The plays decide first (plays_orientation): ESPN's summary header
+    can name the other team home than its own plays' homeScore (2026 North Dakota-Coastal Carolina,
+    2027 UAB-McNeese). Without evidence from the plays, ESPN's header home decides; when that is not
+    one of the two ids either (an alias ESPN id, or no header), our orientation is kept."""
+    same = plays_orientation(plays or [], home_espn, away_espn)
+    if same is not None:
+        return (home_espn, away_espn) if same else (away_espn, home_espn)
     if espn_home and espn_home == away_espn:
         return away_espn, home_espn
     return home_espn, away_espn
@@ -662,7 +694,7 @@ class Command(BaseCommand):
                 if not home_espn or not away_espn:
                     games_skipped += 1
                     continue
-                home_espn, away_espn = espn_sides(home_espn, away_espn, fetched_home.get(game_obj.pk))
+                home_espn, away_espn = espn_sides(home_espn, away_espn, fetched_home.get(game_obj.pk), plays)
 
                 local_team_map: dict[str, Optional[Team]] = {
                     home_espn: espn_team_map.get(home_espn),

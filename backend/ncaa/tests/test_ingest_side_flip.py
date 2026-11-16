@@ -16,7 +16,7 @@ Invariants pinned here:
 - A recent final (RECHECK_FINAL_DAYS) is skipped only while the scoreboard still agrees with it (teams and
   score); otherwise re-processed. Older finals are skipped as before.
 - A tied non-0-0 "final" is stored in progress, so the next run fetches it again.
-- Stints read homeScore/awayScore in ESPN's orientation.
+- Stints read homeScore/awayScore the way the plays run (scoring plays decide; ESPN's header can disagree).
 - check_ncaa_integrity reports flipped games, tied finals and swapped stints.
 """
 
@@ -28,7 +28,7 @@ from django.core.management import call_command
 from django.test import TestCase
 
 from ncaa.management.commands.ingest_gamelogs import Command as Ingest
-from ncaa.management.commands.sync_ncaa_pbp import espn_sides
+from ncaa.management.commands.sync_ncaa_pbp import espn_sides, plays_orientation
 from ncaa.models import Game, Season, Team, TeamGameStats
 from ncaa.utils.ncaa_api import ESPNAPIClient
 from ncaa.utils.team_mapping import TeamMapper
@@ -123,6 +123,23 @@ class EspnOrientationTests(TestCase):
         self.assertEqual(espn_sides("2305", "96", "2305"), ("2305", "96"))
         self.assertEqual(espn_sides("2305", "96", None), ("2305", "96"))   # unknown: keep ours
         self.assertEqual(espn_sides("2305", "96", "999"), ("2305", "96"))  # alias id: keep ours
+
+    @staticmethod
+    def plays(*events):
+        """Scoring plays: (team id, home score, away score) after each."""
+        return [{"team": {"id": t}, "homeScore": h, "awayScore": a} for t, h, a in events]
+
+    def test_plays_decide_over_the_header(self):
+        # ESPN's header names North Dakota (155) home, but its plays' homeScore is Coastal's (324): 2026 game 1125.
+        plays = self.plays(("324", 2, 0), ("155", 2, 3), ("324", 4, 3), ("155", 4, 5))
+        self.assertTrue(plays_orientation(plays, "324", "155"))
+        self.assertEqual(espn_sides("324", "155", "155", plays), ("324", "155"))
+        self.assertEqual(espn_sides("155", "324", "155", plays), ("324", "155"))
+
+    def test_no_scoring_evidence_falls_back_to_header(self):
+        plays = [{"homeScore": 0, "awayScore": 0}, {"team": {"id": "999"}, "homeScore": 2, "awayScore": 0}]
+        self.assertIsNone(plays_orientation(plays, "324", "155"))
+        self.assertEqual(espn_sides("324", "155", "155", plays), ("155", "324"))
 
     def test_home_team_id_from_summary_header(self):
         data = {"header": {"competitions": [{"competitors": [
