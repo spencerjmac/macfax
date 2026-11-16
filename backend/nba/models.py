@@ -582,6 +582,9 @@ class NBAPlayerSeasonStats(models.Model):
     obpr = models.FloatField(null=True, blank=True, help_text="Final offensive BPR (prior-informed RAPM)")
     dbpr = models.FloatField(null=True, blank=True, help_text="Final defensive BPR (prior-informed RAPM)")
     bpr  = models.FloatField(null=True, blank=True, help_text="Final total BPR (obpr + dbpr)")
+    bpr_model = models.CharField(
+        max_length=16, null=True, blank=True,
+        help_text="Model that wrote obpr/dbpr/bpr: 'native-1' (nba_compute_native_bpr); null = earlier LEBRON-prior model")
 
     # Wins above replacement — derived from BPR at write time, never fed back into model
     # Formula: (bpr + 2.0) × (mpg / 48) × (gp / 56)  — replacement level = BPR -2.0
