@@ -36,6 +36,9 @@ logger = logging.getLogger(__name__)
 # Scoreboard statuses with no box score to fetch yet
 NO_BOXSCORE_STATUSES = frozenset({"scheduled", "canceled", "postponed"})
 
+# A stored final this recent is re-processed when its scoreboard row no longer agrees with it.
+RECHECK_FINAL_DAYS = 14
+
 
 def _init_worker():
     """Run once per worker process: ensure Django is set up (spawn) and do not reuse parent DB connection."""
@@ -621,9 +624,16 @@ class Command(BaseCommand):
         existing_game = Game.objects.filter(source_game_id=game_id).first()
 
         if existing_game and not refresh:
-            # Smart skip: only skip if game is already final
-            # This allows in-progress and scheduled games to be updated on subsequent runs
-            if existing_game.status == "final":
+            # Smart skip: only skip if game is already final. This allows in-progress and scheduled
+            # games to be updated on subsequent runs. A recent final is skipped only while the
+            # scoreboard still agrees with it (same teams on the same sides, same score), so a final
+            # the source has since corrected (a swapped side, a score posted before overtime) is
+            # re-processed. Older finals are left alone (hand-corrected games, data_fixes/); use
+            # --refresh to re-fetch them.
+            recent = existing_game.game_date >= date.today() - timedelta(days=RECHECK_FINAL_DAYS)
+            if existing_game.status == "final" and not (
+                recent and not self._matches_scoreboard(existing_game, home_team, away_team, game_data)
+            ):
                 return {
                     "created": False,
                     "updated": False,
@@ -754,10 +764,15 @@ class Command(BaseCommand):
                 print(f"Filtering out non-D1 school: '{team_name}'")
             return None
 
-        # Check if already mapped
-        existing = mapper.get_team_by_external_id(team_id)
-        if existing:
-            return existing
+        # Check if already mapped. Not for the NCAA source: its team ids are per game and per side
+        # ("<gameID>_home"), so a cached id names whichever team held that side when the game was
+        # first seen. The NCAA API swaps home/away on some neutral-site games between the scheduled
+        # and the final listing; trusting the cached id then put each team on the other's side and
+        # gave the loser the winner's score (Kansas-Kentucky, 2026-11-10). Map NCAA games by name.
+        if mapper.source != "ncaa":
+            existing = mapper.get_team_by_external_id(team_id)
+            if existing:
+                return existing
 
         # Create new mapping (allow non-D1 teams to be created as opponents)
         mapping = mapper.map_and_save(
@@ -827,25 +842,19 @@ class Command(BaseCommand):
         else:
             game_date = date.today()
 
-        home_score = game_data.get("home", {}).get("score")
-        away_score = game_data.get("away", {}).get("score")
+        home_score = self._parse_score(game_data.get("home", {}).get("score"))
+        away_score = self._parse_score(game_data.get("away", {}).get("score"))
 
-        # Convert scores to int, handle empty strings
-        if home_score not in (None, "", " "):
-            try:
-                home_score = int(home_score)
-            except (ValueError, TypeError):
-                home_score = None
-        else:
-            home_score = None
-
-        if away_score not in (None, "", " "):
-            try:
-                away_score = int(away_score)
-            except (ValueError, TypeError):
-                away_score = None
-        else:
-            away_score = None
+        # A basketball game cannot end tied. The NCAA scoreboard has marked a game final at the end of
+        # regulation before overtime was played (Northwestern St. @ Little Rock, 2026-11-14: stored 70-70,
+        # final 83-84); stored as final, the smart skip never fetched it again. Keep it in progress so the
+        # next run re-fetches it. 0-0 "finals" are a known placeholder (excluded downstream), left as is.
+        if status == "final" and home_score is not None and home_score == away_score and home_score > 0:
+            logger.warning(
+                f"Game {game_id}: source says final but the score is tied {home_score}-{away_score}; "
+                f"storing as in_progress until the source posts a final score"
+            )
+            status = "in_progress"
 
         neutral = game_data.get("neutralSite", False) or game_data.get(
             "neutral_site", False
@@ -869,6 +878,27 @@ class Command(BaseCommand):
         )
 
         return game
+
+    @staticmethod
+    def _parse_score(value) -> Optional[int]:
+        """Scoreboard score as int; None when missing or blank."""
+        if value in (None, "", " "):
+            return None
+        try:
+            return int(value)
+        except (ValueError, TypeError):
+            return None
+
+    def _matches_scoreboard(self, game: Game, home_team: Team, away_team: Team, game_data: Dict) -> bool:
+        """True when a stored game still agrees with its scoreboard row: same teams on the same sides and,
+        when the scoreboard has both scores, the same score."""
+        if game.home_team_id != home_team.id or game.away_team_id != away_team.id:
+            return False
+        home_score = self._parse_score(game_data.get("home", {}).get("score"))
+        away_score = self._parse_score(game_data.get("away", {}).get("score"))
+        if home_score is None or away_score is None:
+            return True
+        return (game.home_score, game.away_score) == (home_score, away_score)
 
     def _extract_team_stats(self, game: Game, game_data: Dict) -> int:
         """Extract and store TeamGameStats for both teams"""

@@ -13,6 +13,12 @@ Scans from Tasks 6b and 7d, so team-identity breaks are caught before they reach
   multi_espn_ids        one of our teams fed by several ESPN team ids (raw competitors); an id that an ESPN-id
                         override in mappings/team_alias_overrides.yml assigns to the team is a reviewed alias
   null_team_player_rows player-game rows with no team
+  tied_final            a final game with a tied non-0-0 score (the NCAA scoreboard has posted end-of-regulation
+                        scores as final; Northwestern St. @ Little Rock 2026-11-14)
+  stint_score_swap      a team-game whose stints add up to the opponent's score: the plays' homeScore was read
+                        as our home team's when ESPN's home was our away team (2026, neutral sites)
+  source_side_mismatch  an NCAA-sourced game whose stored home/away teams are not the ones its scoreboard row
+                        names (per-game NCAA team ids cached across a home/away swap: Kansas-Kentucky 2026-11-10)
 
 Start time: Game.start_time_utc when set (a correction: the column is otherwise empty), else
 Game.raw_json "date" (ISO UTC, ESPN-sourced games) or _raw.startTimeEpoch (NCAA-sourced);
@@ -151,6 +157,87 @@ CHECKS = [
         where g.season_year between %(lo)s and %(hi)s and p.team_id is null
         group by g.season_year, g.id, g.source_game_id, h.name, a.name, h.is_d1, a.is_d1
     """),
+    ("tied_final", "a final game with a tied score other than 0-0 (basketball games cannot end tied)", f"""
+        select g.season_year season, 'FAIL' severity,
+               'game ' || g.id || ' (' || g.source_game_id || ') ' || g.game_date || ' ' || a.name || ' @ ' || h.name
+               || ' ' || g.away_score || '-' || g.home_score detail
+        from core_game g join core_team h on h.id = g.home_team_id join core_team a on a.id = g.away_team_id
+        where g.season_year between %(lo)s and %(hi)s and g.status = 'final'
+          and g.home_score = g.away_score and g.home_score > 0
+    """),
+    ("stint_score_swap", "a team-game whose stints add up to the opponent's score (home/away read the wrong way)", f"""
+        with s as (select st.game_id, st.team_id, sum(st.pts_scored) / 5.0 ps, sum(st.pts_allowed) / 5.0 pa
+                   from core_playergamestint st join core_game g on g.id = st.game_id
+                   where g.season_year between %(lo)s and %(hi)s group by 1, 2),
+             x as (select g.season_year, g.id, g.source_game_id, tm.name, s.ps, s.pa,
+                          case when s.team_id = g.home_team_id then g.home_score else g.away_score end tp,
+                          case when s.team_id = g.home_team_id then g.away_score else g.home_score end op
+                   from s join core_game g on g.id = s.game_id join core_team tm on tm.id = s.team_id
+                   where {PLAYED})
+        select season_year season, 'FAIL' severity,
+               'game ' || id || ' (' || source_game_id || ') ' || name || ': scored ' || tp || ', allowed ' || op
+               || '; stints say scored ' || round(ps, 1) || ', allowed ' || round(pa, 1) detail
+        from x where abs(tp - op) > 3 and abs(ps - op) <= 3 and abs(pa - tp) <= 3
+                 and abs(ps - op) < abs(ps - tp) and abs(pa - tp) < abs(pa - op)
+    """),
+]
+
+
+def source_side_mismatches(lo: int, hi: int) -> list:
+    """(season, severity, detail) for NCAA-sourced games whose stored home/away teams are not the teams the
+    stored scoreboard row (raw_json home/away name) names. FLIPPED (each team on the other's side, so the
+    scores belong to the wrong teams) is always FAIL; any other mismatch is FAIL when a D1 team is involved.
+    Names resolve as at ingest: the NCAA name mappings, then overrides (by id, then name), exact and fuzzy match."""
+    import logging
+
+    from ncaa.models import Game, Team
+    from ncaa.utils.team_mapping import TeamMapper
+
+    ncaa_map = TeamMapper(source="ncaa").ncaa_mappings
+    fallback = TeamMapper(source="espn")
+    teams = {t.id: t for t in Team.objects.only("id", "name", "is_d1")}
+    d1_by_name = {t.name: t.is_d1 for t in teams.values()}
+    memo = {}
+
+    def resolve(name, ext_id):
+        key = (name, ext_id)
+        if key not in memo:
+            if name in ncaa_map:
+                memo[key] = ncaa_map[name]
+            else:
+                logging.disable(logging.WARNING)
+                try:
+                    team, _, _ = fallback.find_team(name, str(ext_id) if ext_id else None)
+                finally:
+                    logging.disable(logging.NOTSET)
+                memo[key] = team.name if team else name
+        return memo[key]
+
+    out = []
+    games = (Game.objects.filter(source="ncaa", season_year__gte=lo, season_year__lte=hi)
+             .values_list("id", "season_year", "game_date", "source_game_id", "home_team_id", "away_team_id",
+                          "home_score", "away_score", "raw_json"))
+    for gid, season, gdate, sid, hid, aid, hs, as_, raw in games.iterator(chunk_size=2000):
+        rh, ra = (raw or {}).get("home") or {}, (raw or {}).get("away") or {}
+        if not rh.get("name") or not ra.get("name"):
+            continue
+        want_h, want_a = resolve(rh["name"], rh.get("id")), resolve(ra["name"], ra.get("id"))
+        got_h, got_a = teams[hid].name, teams[aid].name
+        if (want_h, want_a) == (got_h, got_a):
+            continue
+        flipped = (want_h, want_a) == (got_a, got_h)
+        d1 = any(d1_by_name.get(n, False) for n in {want_h, want_a, got_h, got_a} - ({want_h, want_a} & {got_h, got_a}))
+        sev = "FAIL" if flipped or d1 else "WARN"
+        kind = "FLIPPED" if flipped else "mismatch"
+        out.append((season, sev, f"game {gid} ({sid}) {gdate} {kind}: stored {got_a} {as_} @ {got_h} {hs}, "
+                                 f"source {ra['name']} @ {rh['name']}"))
+    return out
+
+
+# Checks computed in Python (name resolution); same row shape as the SQL checks.
+PY_CHECKS = [
+    ("source_side_mismatch", "NCAA-sourced game whose stored home/away teams differ from its scoreboard row",
+     source_side_mismatches),
 ]
 
 
@@ -188,10 +275,13 @@ class Command(BaseCommand):
                 cur.execute("SET TRANSACTION READ ONLY")
                 scope = f"season {lo}" if lo == hi else f"seasons {lo if lo else 'first'}-{hi if hi < 9999 else 'last'}"
                 self.stdout.write(f"NCAA integrity checks, {scope}")
-                for name, desc, sql in CHECKS:
-                    cur.execute(f"select season, severity, detail from ({sql}) q order by severity, season, detail",
-                                {"lo": lo, "hi": hi, "reviewed": reviewed})
-                    rows = cur.fetchall()
+                for name, desc, sql in CHECKS + PY_CHECKS:
+                    if callable(sql):
+                        rows = sorted(sql(lo, hi), key=lambda r: (r[1], r[0], r[2]))
+                    else:
+                        cur.execute(f"select season, severity, detail from ({sql}) q order by severity, season, detail",
+                                    {"lo": lo, "hi": hi, "reviewed": reviewed})
+                        rows = cur.fetchall()
                     n_fail = sum(1 for r in rows if r[1] == "FAIL")
                     n_warn = len(rows) - n_fail
                     status = "FAIL" if n_fail else ("WARN" if n_warn else "ok")

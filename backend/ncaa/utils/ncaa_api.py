@@ -935,6 +935,14 @@ class ESPNAPIClient:
         Substitution plays (type.id == '584') are the ones used for lineup
         reconstruction; scoring plays also update homeScore/awayScore.
         """
+        return self.get_plays_with_home(game_id)[0]
+
+    def get_plays_with_home(self, game_id: str) -> tuple:
+        """(plays, ESPN home team id) from one summary request; ([], None) on failure.
+
+        The plays' homeScore/awayScore are ESPN's home and away. For an NCAA-sourced game ESPN's home
+        can be our away team (neutral sites), so callers need ESPN's home team id to read them.
+        The id is None when the summary header does not name a home competitor."""
         self._rate_limit()
         url = f"{self.BASE_URL}/summary"
         try:
@@ -945,5 +953,15 @@ class ESPNAPIClient:
             data = response.json()
         except Exception as e:  # noqa: BLE001
             logger.error("ESPN summary fetch failed for %s: %s", game_id, e)
-            return []
-        return data.get("plays", [])
+            return [], None
+        return data.get("plays", []), self.home_team_id(data)
+
+    @staticmethod
+    def home_team_id(data: Dict[str, Any]) -> Optional[str]:
+        """ESPN team id of the home competitor in a summary, or None."""
+        comps = (data.get("header") or {}).get("competitions") or [{}]
+        for c in comps[0].get("competitors") or []:
+            if c.get("homeAway") == "home":
+                tid = (c.get("team") or {}).get("id") or c.get("id")
+                return str(tid) if tid else None
+        return None
