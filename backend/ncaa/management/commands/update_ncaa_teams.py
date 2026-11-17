@@ -20,6 +20,8 @@ from ncaa.models import PipelineConfig
 from ncaa.seasons import resolve_season_year
 
 TOTAL_STEPS = 14
+# backfill_neutral_flags also covers scheduled games this many days ahead (upcoming tournament games)
+NEUTRAL_LOOKAHEAD_DAYS = 2
 
 
 class Command(BasePipelineCommand):
@@ -93,6 +95,21 @@ class Command(BasePipelineCommand):
                 steps,
                 fatal=False,
                 label=f"[1/{TOTAL_STEPS}]",
+            )
+            # Neutral sites from ESPN: the NCAA scoreboard has none, so without this every
+            # NCAA-sourced game counts as a home game in ratings (HCA). Ingest window through
+            # NEUTRAL_LOOKAHEAD_DAYS ahead, so the next days' scheduled (tournament) games carry it too.
+            neutral_kwargs = {"season": season_year}
+            if days is not None:
+                neutral_kwargs["start"] = ingest_kwargs["start"]
+                neutral_kwargs["end"] = (today + timedelta(days=NEUTRAL_LOOKAHEAD_DAYS)).strftime("%Y-%m-%d")
+            self._run_step(
+                "Neutral-site flags (ESPN)",
+                "backfill_neutral_flags",
+                neutral_kwargs,
+                steps,
+                fatal=False,
+                label=f"[1a/{TOTAL_STEPS}]",
             )
         else:
             self._skip_step(

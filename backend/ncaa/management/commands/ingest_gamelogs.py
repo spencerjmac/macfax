@@ -860,21 +860,31 @@ class Command(BaseCommand):
             "neutral_site", False
         )
 
+        defaults = {
+            "season_year": season.year,
+            "game_date": game_date,
+            "home_team": home_team,
+            "away_team": away_team,
+            "status": status,
+            "home_score": home_score,
+            "away_score": away_score,
+            "source": source,
+            "raw_json": game_data,
+        }
+        # The NCAA scoreboard has no neutral-site field (the client always says False); neutral_site
+        # comes from ESPN (backfill_neutral_flags, a step of update_ncaa_teams). Set it only when the
+        # game is created, so re-processing a game (scheduled -> final) never clears ESPN's flag.
+        create_defaults = None
+        if source == "ncaa":
+            create_defaults = {**defaults, "neutral_site": neutral}
+        else:
+            defaults["neutral_site"] = neutral
+
         # Upsert
         game, created = Game.objects.update_or_create(
             source_game_id=game_id,
-            defaults={
-                "season_year": season.year,
-                "game_date": game_date,
-                "home_team": home_team,
-                "away_team": away_team,
-                "status": status,
-                "home_score": home_score,
-                "away_score": away_score,
-                "neutral_site": neutral,
-                "source": source,
-                "raw_json": game_data,
-            },
+            defaults=defaults,
+            create_defaults=create_defaults,
         )
 
         return game
