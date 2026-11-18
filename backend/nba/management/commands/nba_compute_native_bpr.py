@@ -11,7 +11,18 @@ Per season Y, offense and defense separately:
            seasons before Y, weighted by each season's on-court possessions
   prior  = native_prior(stored box_obpr / box_dbpr for Y, prev, 0.5, 1.0)
   fit    = Y's stints only (RAPM window 1), within-season half-life 90 days,
-           lambda = minutes tiers (A_conservative, full-season regular minutes) x 8
+           lambda = minutes tiers (A_conservative) x 8, from every player's
+           full-season regular minutes (sum of mpg x gp over his team rows),
+           box row or not
+
+Stored ratings are read in NBA.com id order, the order the fit returns them, so
+the aging fit sees its pairs in one fixed order and a rerun is bit-identical to
+the in-memory chain.
+
+Possessions for the aging weights come from a per-season cache
+(POSS_CACHE_DIR/<season>.json), keyed by a fingerprint of that season's stint
+rows (count, total seconds, largest id): a season is loaded from stints only the
+first time, or after its stints change.
 
 The fit is the harness's own code (nba_experiment_final_bpr: _aging_curve,
 _fit_chain_season; nba_compute_final_bpr: _load_priors, _load_stints), so a
@@ -37,7 +48,9 @@ Usage:
 
 from __future__ import annotations
 
-from collections import Counter
+import json
+from collections import Counter, defaultdict
+from pathlib import Path
 
 from django.core.management.base import BaseCommand, CommandError
 
@@ -56,6 +69,8 @@ TIER = "A_conservative"
 HALF_LIFE = 90.0
 RAPM_WINDOW = 1
 TOP_N = 20
+# Per-season on-court possession totals for the aging weights (gitignored, as data/nba/pbp_cache/).
+POSS_CACHE_DIR = Path(__file__).resolve().parents[4] / "data" / "nba" / "native_poss_cache"
 
 
 # ── stored inputs ─────────────────────────────────────────────────────────────
@@ -63,7 +78,8 @@ TOP_N = 20
 def stored_ratings(season: int) -> tuple[dict[int, float], dict[int, float], Counter]:
     """
     Y's stored regular-season obpr / dbpr keyed by NBA.com id (one value per player: every
-    team row of a traded player carries the same rating), and a count of rows per bpr_model.
+    team row of a traded player carries the same rating), in id order, and a count of rows
+    per bpr_model.
     """
     from nba.models import NBAPlayerSeasonStats
 
@@ -72,7 +88,7 @@ def stored_ratings(season: int) -> tuple[dict[int, float], dict[int, float], Cou
     models: Counter = Counter()
     for nba_id, obpr, dbpr, model in NBAPlayerSeasonStats.objects.filter(
             season__year=season, season_type="regular", obpr__isnull=False,
-    ).values_list("player__player_id", "obpr", "dbpr", "bpr_model"):
+    ).order_by("player__player_id", "id").values_list("player__player_id", "obpr", "dbpr", "bpr_model"):
         models[model] += 1
         o[nba_id] = obpr
         d[nba_id] = dbpr if dbpr is not None else 0.0
@@ -86,6 +102,46 @@ def native_seasons_before(season: int) -> list[int]:
     return sorted(set(NBAPlayerSeasonStats.objects.filter(
         season__year__lt=season, season_type="regular", bpr_model=NATIVE_MODEL,
     ).values_list("season__year", flat=True)))
+
+
+def full_season_minutes(season: int) -> dict[int, float]:
+    """Every player's regular-season minutes, summed over his team rows (mpg x gp), box row or not."""
+    from nba.models import NBAPlayerSeasonStats
+
+    minutes: dict[int, float] = defaultdict(float)
+    for nba_id, mpg, gp in NBAPlayerSeasonStats.objects.filter(
+            season__year=season, season_type="regular").values_list("player__player_id", "mpg", "gp"):
+        minutes[nba_id] += (mpg or 0.0) * (gp or 0)
+    return dict(minutes)
+
+
+def stint_fingerprint(season: int) -> dict:
+    """Count, total seconds and largest id of the season's stint rows: changes whenever they are re-synced."""
+    from django.db.models import Count, Max, Sum
+    from nba.models import NBAPlayerGameStint
+
+    agg = NBAPlayerGameStint.objects.filter(game__season__year=season).aggregate(
+        n=Count("id"), secs=Sum("secs_on"), max_id=Max("id"))
+    return {"n": agg["n"], "secs": agg["secs"], "max_id": agg["max_id"]}
+
+
+def cached_season_possessions(season: int, cache_dir: Path | None = None) -> tuple[dict[int, float], bool]:
+    """
+    season_possessions(season), from the cache when its fingerprint matches the stints; else
+    computed and stored. Returns (possessions, came from cache).
+    """
+    path = Path(cache_dir or POSS_CACHE_DIR) / f"{season}.json"
+    fp = stint_fingerprint(season)
+    if path.exists():
+        cached = json.loads(path.read_text())
+        if cached.get("fingerprint") == fp:
+            return {int(k): v for k, v in cached["poss"].items()}, True
+    poss = season_possessions(season)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(json.dumps({"season": season, "fingerprint": fp, "poss": poss}))
+    tmp.replace(path)
+    return poss, False
 
 
 def season_possessions(season: int) -> dict[int, float]:
@@ -190,15 +246,19 @@ class Command(BaseCommand):
         poss_hist: dict[int, dict] = {}
         dobs: dict = {}
         if prev_o:
+            n_cached = 0
             for s in native_seasons_before(season):
                 hist_o[s], hist_d[s], _ = stored_ratings(s)
-                poss_hist[s] = season_possessions(s)
+                poss_hist[s], hit = cached_season_possessions(s)
+                n_cached += hit
             dobs = Harness._load_birth_dates()
-            self.stdout.write(f"  aging history: native seasons {min(hist_o)}-{max(hist_o)} ({len(hist_o)})")
+            self.stdout.write(f"  aging history: native seasons {min(hist_o)}-{max(hist_o)} ({len(hist_o)}); "
+                              f"possessions: {n_cached} cached, {len(hist_o) - n_cached} loaded from stints")
 
         loader = FinalBprCommand()
         loader.stdout, loader.stderr = self.stdout, self.stderr
-        box_o, box_d, minutes = loader._load_priors(season)
+        box_o, box_d, _box_minutes = loader._load_priors(season)
+        minutes = full_season_minutes(season)
         o, d, info = native_season(loader, season, box_o, box_d, minutes, prev_o, prev_d,
                                    hist_o, hist_d, poss_hist, dobs)
         c = info["curve"]

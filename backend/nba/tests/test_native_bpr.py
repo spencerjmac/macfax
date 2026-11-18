@@ -11,6 +11,13 @@ Task 5.3: nba_compute_native_bpr, the production native BPR.
   Y's regular rows (every team row of a traded player), leaving wins_added,
   other seasons and playoff rows alone. --dry-run writes nothing.
 
+Task 5.4e:
+- The lambda tiers get every player's full-season minutes (mpg x gp summed over
+  team rows), box row or not.
+- Stored ratings come back in NBA.com id order whatever the row order.
+- Aging-weight possessions are cached per season and reloaded from stints only
+  when the season's stint fingerprint changes.
+
 Stint loading and the RAPM fit are stood in for; the write tests use the real
 test database.
 """
@@ -157,14 +164,25 @@ class CommandTests(TestCase):
 
         def native(loader, season, box_o, box_d, minutes, prev_o, prev_d, hist_o, hist_d, poss_hist, dobs):
             self.native_calls.append({"season": season, "box_o": box_o, "prev_o": prev_o, "prev_d": prev_d,
-                                      "hist": sorted(hist_o), "poss": sorted(poss_hist)})
+                                      "hist": sorted(hist_o), "poss": sorted(poss_hist), "minutes": minutes,
+                                      "poss_hist": poss_hist})
             return self.ratings[0], self.ratings[1], {"curve": {"n_pairs": 0, "o": None, "d": None},
                                                       "n_prior": 1, "n_box_prev": 0, "n_box_only": 1,
                                                       "n_prev_only": 0, "n_rated": 25}
 
+        cache = tempfile.TemporaryDirectory()
+        self.addCleanup(cache.cleanup)
+        self.cache_dir = Path(cache.name)
+        self.poss_loads = []
+
+        def possessions(s):
+            self.poss_loads.append(s)
+            return {1: float(s)}
+
         for target, value in {
             f"{MOD}.native_season": native,
-            f"{MOD}.season_possessions": lambda s: {1: float(s)},
+            f"{MOD}.season_possessions": possessions,
+            f"{MOD}.POSS_CACHE_DIR": self.cache_dir,
             f"{MOD}.FinalBprCommand._load_priors": lambda self_, s: ({100: 1.0}, {100: 0.0}, {100: 2000.0}),
         }.items():
             patcher = mock.patch(target, value)
@@ -239,3 +257,41 @@ class CommandTests(TestCase):
     def test_needs_a_mode(self):
         with self.assertRaises(CommandError):
             call_command("nba_compute_native_bpr", "--season", "2010", stdout=StringIO())
+
+    def test_lambda_minutes_are_full_season_for_every_player(self):
+        self._call("--dry-run")
+        c, = self.native_calls
+        self.assertEqual(c["minutes"][self.players[0].player_id], 2 * 60 * 25.0)   # both team rows
+        self.assertEqual(c["minutes"][self.players[5].player_id], 60 * 25.0)       # no box row
+        self.assertEqual(c["minutes"][999], 60 * 25.0)
+        self.assertEqual(len(c["minutes"]), 26)
+
+    def test_aging_possessions_cached_across_runs(self):
+        self._rate(2008, "native-1")
+        self._rate(2009, "native-1")
+        self._call("--dry-run")
+        self.assertEqual(sorted(self.poss_loads), [2008, 2009])
+        self.assertEqual(sorted(p.name for p in self.cache_dir.iterdir()), ["2008.json", "2009.json"])
+        self.poss_loads.clear()
+        self._call("--dry-run")
+        self.assertEqual(self.poss_loads, [])                                     # all from the cache
+        self.assertEqual(self.native_calls[1]["poss_hist"], {2008: {1: 2008.0}, 2009: {1: 2009.0}})
+
+    def test_cache_reloads_a_season_whose_stints_changed(self):
+        self._rate(2008, "native-1")
+        self._rate(2009, "native-1")
+        self._call("--dry-run")
+        self.poss_loads.clear()
+        fp = {2008: {"n": 0, "secs": None, "max_id": None}, 2009: {"n": 5, "secs": 100, "max_id": 7}}
+        with mock.patch(f"{MOD}.stint_fingerprint", lambda s: fp[s]):
+            self._call("--dry-run")
+        self.assertEqual(self.poss_loads, [2009])
+
+    def test_stored_ratings_in_id_order(self):
+        s9 = self.seasons[2009]
+        for p in reversed(self.players[:6]):
+            _row(p, s9, obpr=0.01 * p.player_id, dbpr=0.0, bpr=0.0, bpr_model="native-1")
+        o, d, models = nb.stored_ratings(2009)
+        self.assertEqual(list(o), sorted(o))
+        self.assertEqual(list(d), sorted(d))
+        self.assertEqual(models, {"native-1": 6})
