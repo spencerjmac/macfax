@@ -37,7 +37,7 @@ function Skeleton() {
 
 function BackLink({ league }: { league: 'ncaa' | 'nba' }) {
   const href = league === 'ncaa' ? '/ncaa/rankings' : '/nba/rankings';
-  const label = league === 'ncaa' ? 'NCAA Rankings' : 'NBA Rankings';
+  const label = league === 'ncaa' ? 'NCAA Ratings' : 'NBA Ratings';
   return (
     <Link
       href={href}

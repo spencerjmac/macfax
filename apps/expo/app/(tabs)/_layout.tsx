@@ -34,7 +34,7 @@ export default function TabsLayout() {
       />
       <Tabs.Screen
         name="rankings"
-        options={{ title: 'Rankings', tabBarIcon: ({ color, size }) => <Trophy color={color} size={size} strokeWidth={1.5} /> }}
+        options={{ title: 'Ratings', tabBarIcon: ({ color, size }) => <Trophy color={color} size={size} strokeWidth={1.5} /> }}
       />
       <Tabs.Screen
         name="methodology"

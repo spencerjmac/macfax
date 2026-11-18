@@ -25,7 +25,7 @@ export default function TeamHeader({ team }: TeamHeaderProps) {
           className="inline-flex items-center gap-[7px] text-ink-fg2 hover:text-brand2 font-semibold text-[13px] pb-[22px] transition-colors"
         >
           <ChevronLeft className="w-4 h-4" strokeWidth={1.5} />
-          Back to rankings
+          Back to ratings
         </Link>
 
         {/* header row */}

@@ -130,7 +130,7 @@ export default function SportHubPage({
                   href={config.rankingsHref}
                   className="inline-flex items-center gap-2 bg-brand hover:bg-brand-hover border border-brand text-white font-display font-semibold text-sm tracking-[0.04em] uppercase rounded-lg px-5 py-2.5 transition-colors"
                 >
-                  Full rankings <ArrowRight className="w-4 h-4" strokeWidth={1.5} />
+                  Full ratings <ArrowRight className="w-4 h-4" strokeWidth={1.5} />
                 </Link>
                 <Link
                   href={config.secondaryCtaHref}

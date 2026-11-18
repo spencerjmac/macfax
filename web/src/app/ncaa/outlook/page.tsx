@@ -35,7 +35,7 @@ export default async function OutlookLandingPage() {
 
       <div className="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
         <a href="#projected-top-10" className="bg-ui-surface border border-ui-border rounded-xl p-5 hover:border-brand transition-colors">
-          <div className="text-2xl font-bold text-brand mb-1">Rankings</div>
+          <div className="text-2xl font-bold text-brand mb-1">Ratings</div>
           <div className="text-sm text-text-muted">Projected AdjEM, AdjO, AdjD with likely ranges</div>
         </a>
         <Link href={top?.teams?.[0] ? `/ncaa/outlook/${top.teams[0].team_slug}` : '#projected-top-10'} className="bg-ui-surface border border-ui-border rounded-xl p-5 hover:border-brand transition-colors">

@@ -738,7 +738,7 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
 
       {activeTab === 'impact' && (
         <div className="flex flex-wrap gap-2 items-center">
-          <span className="text-xs text-text-muted font-medium">Rankings:</span>
+          <span className="text-xs text-text-muted font-medium">Ratings:</span>
           {(
             [
               { id: 'strict_bpr',    label: 'Strict BPR',     title: 'Only players with full RAPM on both sides' },

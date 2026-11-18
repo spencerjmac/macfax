@@ -9,8 +9,8 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export const metadata: Metadata = {
-  title: 'NBA Rankings | macfax',
-  description: 'NBA team rankings by adjusted offensive, defensive, and net rating with Four Factor Index.',
+  title: 'NBA Ratings | macfax',
+  description: 'NBA team ratings by adjusted offensive, defensive, and net rating with Four Factor Index.',
 };
 
 interface NBAPageProps {
@@ -46,7 +46,7 @@ export default async function NBARankingsPage({ searchParams }: NBAPageProps) {
         <div className="max-w-[1240px] mx-auto px-8 py-10 pb-[34px]">
           <p className="kicker-sport text-brand mb-[9px]">NBA · {currentSeason?.display_name ?? 'Current season'}</p>
           <h1 className="font-display font-bold text-[clamp(32px,4vw,48px)] leading-none uppercase tracking-[0.005em] m-0 mb-[14px]">
-            NBA Rankings
+            NBA Ratings
           </h1>
           <div className="flex items-center gap-[14px] flex-wrap">
             <p className="text-[15px] text-muted m-0">Opponent-adjusted efficiency for all 30 teams</p>
@@ -65,7 +65,7 @@ export default async function NBARankingsPage({ searchParams }: NBAPageProps) {
         <div className="border-b border-ui-border mb-6">
           <div className="flex gap-0">
             {[
-              { id: 'teams', label: 'Team Rankings', icon: BarChart3 },
+              { id: 'teams', label: 'Team Ratings', icon: BarChart3 },
               { id: 'players', label: 'Player Stats', icon: Users },
             ].map(({ id, label, icon: Icon }) => (
               <Link
@@ -88,9 +88,9 @@ export default async function NBARankingsPage({ searchParams }: NBAPageProps) {
         /* Empty state — DB not yet populated */
         <div className="text-center py-20 bg-ui-card border border-ui-border rounded-lg">
           <BarChart3 className="w-12 h-12 mx-auto mb-4 text-brand/30" strokeWidth={1} />
-          <p className="font-medium text-text-primary mb-2">No rankings data yet</p>
+          <p className="font-medium text-text-primary mb-2">No ratings data yet</p>
           <p className="text-sm text-text-muted max-w-md mx-auto">
-            Run the following management commands to populate rankings:
+            Run the following management commands to populate ratings:
           </p>
           <div className="mt-4 flex flex-col items-center gap-2 text-sm font-mono">
             <code className="bg-gray-100 px-3 py-1 rounded">python manage.py nba_sync_teams</code>

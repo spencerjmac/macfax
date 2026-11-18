@@ -143,10 +143,10 @@ export default function RankingsScreen() {
           <Text className="font-display-semibold text-[13px] uppercase tracking-[2px] text-brand">
             College Basketball{seasonLabel ? ` · ${seasonLabel}` : ''}
           </Text>
-          <Text className="font-display text-3xl uppercase text-text-onDark md:text-5xl">NCAA Rankings</Text>
+          <Text className="font-display text-3xl uppercase text-text-onDark md:text-5xl">NCAA Ratings</Text>
           <View className="flex-row flex-wrap items-center gap-3">
             <Text className="hidden font-sans text-[15px] text-ink-fg2 md:flex">
-              Team rankings powered by opponent-adjusted ratings, with season, search and sorting.
+              Team ratings powered by opponent-adjusted ratings, with season, search and sorting.
             </Text>
             {updated ? (
               <View className="flex-row items-center gap-2 rounded-md border border-ink-line bg-ink-2 px-2.5 py-1">
@@ -161,10 +161,10 @@ export default function RankingsScreen() {
       <Container className="flex-1 pt-4">
         <AsyncView
           state={rankings}
-          loadingLabel="Loading rankings…"
-          errorTitle="Could not load rankings"
+          loadingLabel="Loading ratings…"
+          errorTitle="Could not load ratings"
           isEmpty={(data) => data.teams.length === 0}
-          emptyTitle="No rankings for this season"
+          emptyTitle="No ratings for this season"
           emptyMessage="Ratings have not been computed for the selected season."
         >
           {(data) => (

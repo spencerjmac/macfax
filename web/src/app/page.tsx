@@ -70,7 +70,7 @@ export default async function HomePage() {
                   href="/ncaa/rankings"
                   className="inline-flex items-center gap-2 bg-brand hover:bg-brand-hover border border-brand hover:border-brand-hover text-white font-display font-semibold text-[16px] tracking-[0.04em] uppercase rounded-lg px-6 py-3.5 transition-colors"
                 >
-                  View rankings <ArrowRight className="w-[18px] h-[18px]" strokeWidth={1.5} />
+                  View ratings <ArrowRight className="w-[18px] h-[18px]" strokeWidth={1.5} />
                 </Link>
                 <Link
                   href="/nba/rankings"
@@ -127,7 +127,7 @@ export default async function HomePage() {
                   </Link>
                 ))
               ) : (
-                <div className="px-4 py-6 text-ink-fg2 text-sm text-center">Rankings loading…</div>
+                <div className="px-4 py-6 text-ink-fg2 text-sm text-center">Ratings loading…</div>
               )}
 
               <div className="px-4 py-3">
@@ -135,7 +135,7 @@ export default async function HomePage() {
                   href="/ncaa/rankings"
                   className="text-[#b6c2d6] hover:text-brand2 font-display font-semibold text-[13px] tracking-[0.08em] uppercase inline-flex items-center gap-1.5 transition-colors"
                 >
-                  Full rankings <ArrowRight className="w-4 h-4" strokeWidth={1.5} />
+                  Full ratings <ArrowRight className="w-4 h-4" strokeWidth={1.5} />
                 </Link>
               </div>
             </div>
@@ -158,7 +158,7 @@ export default async function HomePage() {
             <LeagueCard
               title="College Basketball"
               sub="Adjusted efficiency ratings for every Division I team"
-              feats={feats([['Rankings', '/ncaa/rankings'], ['Matchup', '/ncaa/matchup'], ['Roster Outlook', '/ncaa/outlook'], ['Visualizations', '/ncaa/viz']])}
+              feats={feats([['Ratings', '/ncaa/rankings'], ['Matchup', '/ncaa/matchup'], ['Roster Outlook', '/ncaa/outlook'], ['Visualizations', '/ncaa/viz']])}
               href="/ncaa/rankings"
               btnLabel="Enter NCAA"
               icon={<BasketballIcon className="w-16 h-16 shrink-0" />}
@@ -174,7 +174,7 @@ export default async function HomePage() {
             <LeagueCard
               title="NBA"
               sub="Model projections for all 30 NBA franchises"
-              feats={feats([['Rankings', '/nba/rankings'], ['Team Outlooks', '/nba/teams'], ['Visualizations', '/nba/viz']])}
+              feats={feats([['Ratings', '/nba/rankings'], ['Team Outlooks', '/nba/teams'], ['Visualizations', '/nba/viz']])}
               href="/nba"
               btnLabel="Enter NBA"
               icon={<BasketballIcon className="w-16 h-16 shrink-0" />}

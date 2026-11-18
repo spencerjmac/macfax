@@ -52,7 +52,7 @@ const NCAA_HUB_ALL: HubConfig = {
   secondaryCtaTarget: web('/ncaa/matchup'),
   allVizTarget: web('/ncaa/viz'),
   tools: [
-    { icon: Trophy, title: 'Rankings', body: 'Complete NCAA team and player rankings with AdjEM, adjusted efficiency, four factors, sorting, search, season, conference, and tournament filters.', target: RANKINGS },
+    { icon: Trophy, title: 'Ratings', body: 'Complete NCAA team and player ratings with AdjEM, adjusted efficiency, four factors, sorting, search, season, conference, and tournament filters.', target: RANKINGS },
     { icon: Swords, title: 'Matchup', body: 'Head-to-head forecasts for any two teams, including projected score, margin, win probability, four-factor edges, key drivers, volatility, and recent form.', target: web('/ncaa/matchup') },
     { icon: Sparkles, title: 'Outlook', body: 'Next-season roster projections built from player talent, minutes, fit, continuity, uncertainty, and editable roster scenarios.', target: web('/ncaa/outlook') },
     { icon: ScatterChart, title: 'Visualizations', body: 'Interactive charts like Trapezoid of Excellence, Efficiency Landscape, Crystal Ball, Cinderella Index, and custom scatterplots.', target: web('/ncaa/viz') },

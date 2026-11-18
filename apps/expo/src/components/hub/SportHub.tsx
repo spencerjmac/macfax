@@ -149,7 +149,7 @@ export function SportHub({ config, rankings }: SportHubProps) {
                 accessibilityRole="link"
                 className="flex-row items-center gap-2 rounded-lg border border-brand bg-brand px-5 py-2.5 active:bg-brand-hover"
               >
-                <Text className="font-display-semibold text-sm uppercase tracking-wider text-text-onDark">Full rankings</Text>
+                <Text className="font-display-semibold text-sm uppercase tracking-wider text-text-onDark">Full ratings</Text>
                 <ArrowRight color={palette.textOnDark} size={16} strokeWidth={1.5} />
               </Pressable>
               <Pressable
@@ -180,10 +180,10 @@ export function SportHub({ config, rankings }: SportHubProps) {
         />
         <AsyncView
           state={rankings}
-          loadingLabel="Loading rankings…"
-          errorTitle="Could not load rankings"
+          loadingLabel="Loading ratings…"
+          errorTitle="Could not load ratings"
           isEmpty={(teams) => teams.length === 0}
-          emptyTitle="No rankings yet"
+          emptyTitle="No ratings yet"
           emptyMessage="Ratings for this season have not been computed."
         >
           {(teams) => <TopFive teams={teams.slice(0, 5)} />}

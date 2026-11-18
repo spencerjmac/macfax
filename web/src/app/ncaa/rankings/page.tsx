@@ -11,8 +11,8 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export const metadata: Metadata = {
-  title: 'Rankings | macfax',
-  description: 'Complete NCAA Division I men\'s basketball rankings with adjusted efficiency metrics, four factors, and advanced statistics.',
+  title: 'Ratings | macfax',
+  description: 'Complete NCAA Division I men\'s basketball team ratings with adjusted efficiency metrics, four factors, and advanced statistics.',
 };
 
 interface RankingsPageProps {
@@ -36,10 +36,10 @@ export default async function RankingsPage({ searchParams }: RankingsPageProps) 
 
   const seasonParam = seasonYear ? `&season=${seasonYear}` : '';
   const preTourneyParam = isPreTournament ? `&pre_tournament=true` : '';
-  const pageTitle = activeTab === 'players' ? 'NCAA Player Rankings' : 'NCAA Rankings';
+  const pageTitle = activeTab === 'players' ? 'NCAA Player Ratings' : 'NCAA Ratings';
   const pageSubtitle = activeTab === 'players'
     ? 'Player leaderboards across BPR impact, traditional production, and four-factor impact, with filters for season, minutes, conference, and ranking mode.'
-    : 'Complete team and player rankings powered by opponent-adjusted ratings, four factors, resume metrics, and sortable season filters.';
+    : 'Complete team and player ratings powered by opponent-adjusted ratings, four factors, resume metrics, and sortable season filters.';
 
   return (
     <div>
@@ -67,8 +67,8 @@ export default async function RankingsPage({ searchParams }: RankingsPageProps) 
         <div className="border-b border-ui-border mb-6">
           <div className="flex gap-0">
             {[
-              { id: 'teams',   label: 'Team Rankings', icon: BarChart3 },
-              { id: 'players', label: 'Player Rankings', icon: Users    },
+              { id: 'teams',   label: 'Team Ratings', icon: BarChart3 },
+              { id: 'players', label: 'Player Ratings', icon: Users    },
             ].map(({ id, label, icon: Icon }) => (
               <Link
                 key={id}

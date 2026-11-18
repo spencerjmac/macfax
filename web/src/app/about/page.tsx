@@ -30,7 +30,7 @@ export default function AboutPage() {
           <div className="p-6 bg-ui-card border border-ui-border rounded-lg flex gap-4">
             <BarChart3 className="w-8 h-8 text-brand shrink-0 mt-0.5" strokeWidth={1.5} />
             <div>
-              <h3 className="font-bold mb-1">Team Rankings</h3>
+              <h3 className="font-bold mb-1">Team Ratings</h3>
               <p className="text-text-muted text-sm">
                 Adjusted efficiency ratings, four factors, and sorting across all 365 D1 teams.
                 Find who's actually good, not just who has the easy schedule.
@@ -166,7 +166,7 @@ export default function AboutPage() {
           href="/ncaa/rankings"
           className="px-6 py-3 bg-brand text-white rounded-lg hover:bg-brand-hover transition-colors font-medium"
         >
-          View Rankings
+          View Ratings
         </Link>
         <Link
           href="/ncaa/matchup"
