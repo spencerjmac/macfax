@@ -152,3 +152,25 @@ class TexasTests(MapperTestBase):
         mapping = m.map_and_save("Texas", "251")
         self.assertEqual(mapping.team, self.texas)
         self.assertEqual(mapping.confidence, 1.0)
+
+
+class NcaaRenamedTeamTests(TestCase):
+    """2026-27: the NCAA scoreboard renamed New Orleans to "LSU New Orleans " (trailing space). The name
+    missed ncaa_team_name_mappings.yml, so map_and_save created a non-D1 "LSU New Orleans " team, its
+    games went there, and New Orleans (D1) fell out of the rankings with no games."""
+
+    def setUp(self):
+        self.uno = make("New Orleans")
+
+    def test_lsu_new_orleans_maps_to_new_orleans(self):
+        m = TeamMapper(source="ncaa")
+        for name in ("LSU New Orleans ", "LSU New Orleans", " New Orleans "):
+            found, conf, _ = m.find_team(name)
+            self.assertEqual(found, self.uno, repr(name))
+            self.assertEqual(conf, 1.0)
+
+    def test_no_non_d1_team_created(self):
+        m = TeamMapper(source="ncaa")
+        mapping = m.map_and_save("LSU New Orleans ", "6652878_home")
+        self.assertEqual(mapping.team, self.uno)
+        self.assertEqual(Team.objects.count(), 1)

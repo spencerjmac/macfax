@@ -166,6 +166,10 @@ class TeamMapper:
             (Team, confidence, is_manual_override)
             Returns (None, 0.0, False) if no good match found
         """
+        # Sources pad names: the NCAA scoreboard sends "LSU New Orleans " (2026-27), which missed
+        # the mapping and became a separate non-D1 team. Every lookup below uses the trimmed name.
+        external_name = (external_name or '').strip()
+
         # PRIORITY 1: Check comprehensive NCAA mappings (for NCAA source)
         if self.source == 'ncaa':
             if external_name in self.ncaa_mappings:
