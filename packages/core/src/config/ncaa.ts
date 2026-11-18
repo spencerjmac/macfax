@@ -10,7 +10,7 @@ export const NCAA_SPORT_CONFIG = {
   label: 'NCAA Basketball',
   shortLabel: 'NCAA',
   baseRoute: '/',
-  rankingsRoute: '/rankings',
+  rankingsRoute: '/ncaa/ratings',
   teamRoute: (slug: string) => `/team/${slug}`,
   vizRoute: '/viz',
 } as const;

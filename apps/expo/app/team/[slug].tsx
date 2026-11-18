@@ -115,7 +115,7 @@ export default function TeamScreen() {
         errorTitle="Could not load team"
         isEmpty={(data) => data === null}
         emptyTitle="Team not found"
-        emptyMessage={`No team with the id "${slug}" is in the ${seasonYear ? 'selected season' : 'current'} rankings.`}
+        emptyMessage={`No team with the id "${slug}" is in the ${seasonYear ? 'selected season' : 'current'} ratings.`}
       >
         {(data) =>
           data ? (

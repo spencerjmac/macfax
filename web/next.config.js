@@ -29,6 +29,10 @@ const nextConfig = {
   async redirects() {
     return [
       { source: '/world-cup/:path*', destination: '/', permanent: false },
+      // Rankings pages renamed to Ratings (2026-11-18); old links and bookmarks keep working.
+      { source: '/ncaa/rankings', destination: '/ncaa/ratings', permanent: true },
+      { source: '/nba/rankings', destination: '/nba/ratings', permanent: true },
+      { source: '/rankings', destination: '/ncaa/ratings', permanent: true },
       ...hiddenRoutes.map((r) => ({
         source: `${r.path}/:path*`,
         destination: r.redirectTo,

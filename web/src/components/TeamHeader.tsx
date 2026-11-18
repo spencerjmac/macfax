@@ -21,7 +21,7 @@ export default function TeamHeader({ team }: TeamHeaderProps) {
       <div className="max-w-[1240px] mx-auto px-8 pt-[30px] relative">
         {/* back */}
         <Link
-          href="/ncaa/rankings"
+          href="/ncaa/ratings"
           className="inline-flex items-center gap-[7px] text-ink-fg2 hover:text-brand2 font-semibold text-[13px] pb-[22px] transition-colors"
         >
           <ChevronLeft className="w-4 h-4" strokeWidth={1.5} />

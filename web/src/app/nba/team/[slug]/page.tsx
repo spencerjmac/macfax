@@ -42,7 +42,7 @@ export default async function NBATeamPage({ params, searchParams }: NBATeamPageP
     return (
       <div className="container mx-auto px-4 py-12">
         <Link
-          href="/nba/rankings"
+          href="/nba/ratings"
           className="inline-flex items-center gap-2 text-text-muted hover:text-brand text-sm mb-8 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -70,7 +70,7 @@ export default async function NBATeamPage({ params, searchParams }: NBATeamPageP
         />
         <div className="max-w-[1240px] mx-auto px-8 pt-[30px] relative">
           <Link
-            href="/nba/rankings"
+            href="/nba/ratings"
             className="inline-flex items-center gap-[7px] text-ink-fg2 hover:text-brand2 font-semibold text-[13px] pb-[22px] transition-colors"
           >
             <ArrowLeft className="w-4 h-4" strokeWidth={1.5} />

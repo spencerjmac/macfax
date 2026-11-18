@@ -18,7 +18,7 @@ export async function generateMetadata({ params }: OutlookPageProps): Promise<Me
   if (!data) return { title: 'Roster Outlook | macfax' };
   return {
     title: `${data.team.name} Roster Outlook ${data.season.projected_season_year} | macfax`,
-    description: `${data.team.name} projected ${data.season.projected_season_year} roster outlook: rankings, player projections, fit grades, and scenario editing.`,
+    description: `${data.team.name} projected ${data.season.projected_season_year} roster outlook: ratings, player projections, fit grades, and scenario editing.`,
   };
 }
 

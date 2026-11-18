@@ -39,7 +39,7 @@ export interface HubConfig {
 }
 
 const web = (path: string): LinkTarget => ({ kind: 'web', path });
-const RANKINGS: LinkTarget = { kind: 'app', href: '/rankings' };
+const RANKINGS: LinkTarget = { kind: 'app', href: '/ratings' };
 
 const NCAA_HUB_ALL: HubConfig = {
   label: 'NCAA',

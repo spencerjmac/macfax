@@ -357,7 +357,7 @@ export default function NBARankingsTable({
               onChange={(e) => {
                 const val = e.target.value;
                 const stParam = selectedSeasonType === 'playoffs' ? '&season_type=playoffs' : '';
-                router.push(val ? `/nba/rankings?season=${val}${stParam}` : '/nba/rankings');
+                router.push(val ? `/nba/ratings?season=${val}${stParam}` : '/nba/ratings');
               }}
               className="px-3 py-2 bg-ui-surface border border-ui-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand/50 font-medium"
             >
@@ -376,7 +376,7 @@ export default function NBARankingsTable({
             onChange={(e) => {
               const stParam = e.target.value === 'playoffs' ? '&season_type=playoffs' : '';
               const sParam = selectedSeason ? `&season=${selectedSeason}` : '';
-              router.push(`/nba/rankings?${sParam}${stParam}`.replace('?&', '?'));
+              router.push(`/nba/ratings?${sParam}${stParam}`.replace('?&', '?'));
             }}
             className="px-3 py-2 bg-ui-surface border border-ui-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand/50 font-medium"
           >

@@ -431,7 +431,7 @@ export default function RankingsTable({ data, seasons = [], selectedSeason, isPr
               value={selectedSeason ?? ''}
               onChange={(e) => {
                 const val = e.target.value;
-                router.push(val ? `/ncaa/rankings?season=${val}` : '/ncaa/rankings');
+                router.push(val ? `/ncaa/ratings?season=${val}` : '/ncaa/ratings');
               }}
               className="px-3 py-2 bg-ui-surface border border-ui-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand/50 font-medium"
             >

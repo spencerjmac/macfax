@@ -36,7 +36,7 @@ function Skeleton() {
 }
 
 function BackLink({ league }: { league: 'ncaa' | 'nba' }) {
-  const href = league === 'ncaa' ? '/ncaa/rankings' : '/nba/rankings';
+  const href = league === 'ncaa' ? '/ncaa/ratings' : '/nba/ratings';
   const label = league === 'ncaa' ? 'NCAA Ratings' : 'NBA Ratings';
   return (
     <Link

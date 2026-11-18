@@ -21,7 +21,7 @@ export default async function PlayerScoutingPage({ params, searchParams }: Props
   return (
     <main className="max-w-2xl mx-auto px-4 py-8">
       <div className="mb-6">
-        <a href="/nba/rankings?tab=players" className="text-xs text-slate-500 hover:text-teal-400 transition-colors">
+        <a href="/nba/ratings?tab=players" className="text-xs text-slate-500 hover:text-teal-400 transition-colors">
           ← Back to ratings
         </a>
       </div>

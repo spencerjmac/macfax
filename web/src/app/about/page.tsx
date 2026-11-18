@@ -163,7 +163,7 @@ export default function AboutPage() {
       {/* CTA Links */}
       <section className="flex flex-wrap gap-4">
         <Link
-          href="/ncaa/rankings"
+          href="/ncaa/ratings"
           className="px-6 py-3 bg-brand text-white rounded-lg hover:bg-brand-hover transition-colors font-medium"
         >
           View Ratings

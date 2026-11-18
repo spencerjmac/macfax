@@ -213,7 +213,7 @@ export default function SportHubPage({
           <div className="flex items-end justify-between gap-6 mb-[30px]">
             <div>
               <p className="kicker-sport text-brand mb-2">This week</p>
-              <h2 className="head-sport text-text-primary m-0">Top of the {config.label} rankings</h2>
+              <h2 className="head-sport text-text-primary m-0">Top of the {config.label} ratings</h2>
             </div>
             <Link
               href={config.rankingsHref}

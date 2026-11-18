@@ -70,7 +70,7 @@ export default async function NBARankingsPage({ searchParams }: NBAPageProps) {
             ].map(({ id, label, icon: Icon }) => (
               <Link
                 key={id}
-                href={`/nba/rankings?tab=${id}${seasonParam}${seasonTypeParam}`}
+                href={`/nba/ratings?tab=${id}${seasonParam}${seasonTypeParam}`}
                 className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
                   activeTab === id
                     ? 'border-brand text-brand'
@@ -129,7 +129,7 @@ export default async function NBARankingsPage({ searchParams }: NBAPageProps) {
           <h2 className="font-display font-bold text-[16px] uppercase tracking-[0.02em] mb-[14px]">Metric Definitions</h2>
           <div className="grid md:grid-cols-2 gap-3 text-[13.5px]">
             {[
-              { k: 'Adj Net',  v: 'Opponent-adjusted net efficiency (pts/100 poss above or below average). Primary ranking metric.' },
+              { k: 'Adj Net',  v: 'Opponent-adjusted net efficiency (pts/100 poss above or below average). Primary rating metric.' },
               { k: 'Adj Off',  v: 'Opponent-adjusted offensive efficiency — points scored per 100 possessions.' },
               { k: 'Adj Def',  v: 'Opponent-adjusted defensive efficiency — points allowed per 100 possessions.' },
               { k: 'Pace',     v: 'Estimated possessions per 48 minutes after opponent adjustment.' },

@@ -33,7 +33,7 @@ export default function TabsLayout() {
         options={{ title: 'Home', tabBarIcon: ({ color, size }) => <House color={color} size={size} strokeWidth={1.5} /> }}
       />
       <Tabs.Screen
-        name="rankings"
+        name="ratings"
         options={{ title: 'Ratings', tabBarIcon: ({ color, size }) => <Trophy color={color} size={size} strokeWidth={1.5} /> }}
       />
       <Tabs.Screen

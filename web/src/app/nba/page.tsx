@@ -18,11 +18,11 @@ const NBA_CONFIG: Omit<HubConfig, 'facts'> = {
   title: 'NBA',
   teamCount: 30,
   lede: 'Adjusted efficiency, roster value, and development curves applied to all 30 NBA franchises — built to show what teams actually project to, not just what they\'ve done so far.',
-  rankingsHref: '/nba/rankings',
+  rankingsHref: '/nba/ratings',
   secondaryCta: 'Visualizations',
   secondaryCtaHref: '/nba/viz',
   tools: [
-    { icon: Trophy,       title: 'Ratings',        body: 'Net-rating table for all 30 teams with offense and defense splits, sortable by any column.',      href: '/nba/rankings' },
+    { icon: Trophy,       title: 'Ratings',        body: 'Net-rating table for all 30 teams with offense and defense splits, sortable by any column.',      href: '/nba/ratings' },
     { icon: ScatterChart, title: 'Visualizations', body: 'Efficiency Landscape and team-trend charts built on the NBA model.',                              href: '/nba/viz' },
     { icon: Gauge,        title: 'Model Health',   body: 'Calibration and accuracy for the NBA model this season.',                                         href: '/nba/model-health' },
     { icon: Users,        title: 'Player Compare', body: 'Side-by-side player comparison across impact metrics.',                                            href: '/nba/compare', soon: true },

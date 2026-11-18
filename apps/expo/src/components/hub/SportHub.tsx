@@ -175,7 +175,7 @@ export function SportHub({ config, rankings }: SportHubProps) {
       <Container className="py-10 md:py-14">
         <SectionHead
           kicker="This week"
-          title={`Top of the ${config.label} rankings`}
+          title={`Top of the ${config.label} ratings`}
           link={{ label: `All ${config.teamCount} teams`, target: config.rankingsTarget }}
         />
         <AsyncView

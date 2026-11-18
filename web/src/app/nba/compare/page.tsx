@@ -36,7 +36,7 @@ function ComparePageInner() {
   return (
     <main className="max-w-5xl mx-auto px-4 py-8">
       <div className="mb-6">
-        <a href="/nba/rankings?tab=players" className="text-xs text-slate-500 hover:text-teal-400 transition-colors">
+        <a href="/nba/ratings?tab=players" className="text-xs text-slate-500 hover:text-teal-400 transition-colors">
           ← Back to ratings
         </a>
         <h1 className="text-2xl font-semibold text-slate-100 mt-2 font-mono">Player Compare</h1>

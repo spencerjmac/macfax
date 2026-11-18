@@ -10,7 +10,7 @@ export default function TeamNotFound() {
           We couldn't find data for this team. It may not be in our database or the link may be incorrect.
         </p>
         <Link 
-          href="/rankings"
+          href="/ncaa/ratings"
           className="inline-block px-6 py-3 bg-brand-orange text-white rounded-lg hover:bg-brand-orange-hover transition-colors"
         >
           View All Teams

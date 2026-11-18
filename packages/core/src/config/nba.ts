@@ -12,7 +12,7 @@ export const NBA_SPORT_CONFIG = {
   label: 'NBA',
   shortLabel: 'NBA',
   baseRoute: '/nba',
-  rankingsRoute: '/nba/rankings',
+  rankingsRoute: '/nba/ratings',
   teamRoute: (slug: string) => `/nba/team/${slug}`,
   vizRoute: '/nba/viz',
 } as const;
@@ -53,7 +53,7 @@ export const NBA_METRIC_DEFINITIONS: Record<string, NBAMetricMeta> = {
   adj_net: {
     key: 'adj_net',
     label: 'Adj Net',
-    tooltip: 'Adjusted Net Rating (Adj Off − Adj Def). The primary NBA efficiency ranking metric.',
+    tooltip: 'Adjusted Net Rating (Adj Off − Adj Def). The primary NBA efficiency rating.',
     format: 'number1',
     better: 'higher',
     showRank: true,

@@ -38,7 +38,7 @@ export default async function RankingsPage({ searchParams }: RankingsPageProps) 
   const preTourneyParam = isPreTournament ? `&pre_tournament=true` : '';
   const pageTitle = activeTab === 'players' ? 'NCAA Player Ratings' : 'NCAA Ratings';
   const pageSubtitle = activeTab === 'players'
-    ? 'Player leaderboards across BPR impact, traditional production, and four-factor impact, with filters for season, minutes, conference, and ranking mode.'
+    ? 'Player leaderboards across BPR impact, traditional production, and four-factor impact, with filters for season, minutes, conference, and rating mode.'
     : 'Complete team and player ratings powered by opponent-adjusted ratings, four factors, resume metrics, and sortable season filters.';
 
   return (
@@ -72,7 +72,7 @@ export default async function RankingsPage({ searchParams }: RankingsPageProps) 
             ].map(({ id, label, icon: Icon }) => (
               <Link
                 key={id}
-                href={`/ncaa/rankings?tab=${id}${seasonParam}${preTourneyParam}`}
+                href={`/ncaa/ratings?tab=${id}${seasonParam}${preTourneyParam}`}
                 className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
                   activeTab === id
                     ? 'border-brand text-brand'

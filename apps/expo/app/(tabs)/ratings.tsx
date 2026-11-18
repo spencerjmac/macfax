@@ -106,7 +106,7 @@ function formatUpdated(iso: string | null): string | null {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-/** Rankings tab: NCAA team rankings (the "Efficiency" view of web's /ncaa/rankings). */
+/** Rankings tab: NCAA team rankings (the "Efficiency" view of web's /ncaa/ratings). */
 export default function RankingsScreen() {
   // undefined = the API's current season, same as web without ?season=.
   const [season, setSeason] = useState<number | undefined>(undefined);

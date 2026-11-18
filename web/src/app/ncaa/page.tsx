@@ -18,11 +18,11 @@ const NCAA_CONFIG: Omit<HubConfig, 'facts'> = {
   title: 'College Basketball',
   teamCount: 365,
   lede: 'Adjusted efficiency, four factors, player impact, and matchup projections for every Division I team — built to show how teams actually play, not just who they\'ve beaten.',
-  rankingsHref: '/ncaa/rankings',
+  rankingsHref: '/ncaa/ratings',
   secondaryCta: 'Matchup tool',
   secondaryCtaHref: '/ncaa/matchup',
   tools: [
-    { icon: Trophy,      title: 'Ratings',        body: 'Complete NCAA team and player ratings with AdjEM, adjusted efficiency, four factors, sorting, search, season, conference, and tournament filters.', href: '/ncaa/rankings' },
+    { icon: Trophy,      title: 'Ratings',        body: 'Complete NCAA team and player ratings with AdjEM, adjusted efficiency, four factors, sorting, search, season, conference, and tournament filters.', href: '/ncaa/ratings' },
     { icon: Swords,      title: 'Matchup',        body: 'Head-to-head forecasts for any two teams, including projected score, margin, win probability, four-factor edges, key drivers, volatility, and recent form.', href: '/ncaa/matchup' },
     { icon: Sparkles,    title: 'Outlook',        body: 'Next-season roster projections built from player talent, minutes, fit, continuity, uncertainty, and editable roster scenarios.', href: '/ncaa/outlook' },
     { icon: ScatterChart,title: 'Visualizations', body: 'Interactive charts like Trapezoid of Excellence, Efficiency Landscape, Crystal Ball, Cinderella Index, and custom scatterplots.', href: '/ncaa/viz' },
