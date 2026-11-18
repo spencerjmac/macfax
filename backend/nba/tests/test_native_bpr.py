@@ -18,6 +18,14 @@ Task 5.4e:
 - Aging-weight possessions are cached per season and reloaded from stints only
   when the season's stint fingerprint changes.
 
+Task 5.6:
+- The chain reads Y-1's obpr_raw / dbpr_raw; it refuses a native Y-1 row with
+  no raw values (written before centring).
+- --write stores the fit as obpr_raw / dbpr_raw, obpr / dbpr = raw minus the
+  minutes-weighted league means (so they average 0), bpr = obpr + dbpr, and
+  wins_added = (bpr + 1.918) x row minutes / 48 / 37.73 on every rated row;
+  unrated rows get null wins_added.
+
 Stint loading and the RAPM fit are stood in for; the write tests use the real
 test database.
 """
@@ -194,9 +202,11 @@ class CommandTests(TestCase):
         call_command("nba_compute_native_bpr", "--season", "2010", *args, stdout=out)
         return out.getvalue()
 
-    def _rate(self, season, model):
+    def _rate(self, season, model, raw=True):
         for n, p in enumerate(self.players[:5]):
-            _row(p, self.seasons[season], obpr=0.1 * n, dbpr=-0.1 * n, bpr=0.0, bpr_model=model)
+            kw = {"obpr_raw": 0.1 * n, "dbpr_raw": -0.1 * n} if model == "native-1" and raw else {}
+            _row(p, self.seasons[season], obpr=0.1 * n - 1.0, dbpr=-0.1 * n + 0.25, bpr=0.0,
+                 bpr_model=model, **kw)
 
     def test_refuses_when_previous_season_is_not_native(self):
         self._rate(2009, None)
@@ -229,24 +239,51 @@ class CommandTests(TestCase):
         self.assertFalse(NBAPlayerSeasonStats.objects.filter(
             season=self.seasons[2010], season_type="regular", player__player_id__lt=200, obpr__isnull=False).exists())
 
+    def _means(self):
+        """Expected centring: minutes-weighted means over the rated players (players[0] has two team rows)."""
+        o, d = self.ratings
+        m = {p: 1500.0 for p in o} | {self.players[0].player_id: 3000.0}
+        w = sum(m.values())
+        return sum(m[p] * v for p, v in o.items()) / w, sum(m[p] * v for p, v in d.items()) / w
+
     def test_write(self):
         self._call("--write")
         o, d = self.ratings
+        c_o, c_d = self._means()
         for p in self.players:
             for row in NBAPlayerSeasonStats.objects.filter(player=p, season=self.seasons[2010], season_type="regular"):
-                self.assertEqual((row.obpr, row.dbpr), (o[p.player_id], d[p.player_id]))
-                self.assertEqual(row.bpr, o[p.player_id] + d[p.player_id])
+                self.assertEqual((row.obpr_raw, row.dbpr_raw), (o[p.player_id], d[p.player_id]))
+                self.assertAlmostEqual(row.obpr, o[p.player_id] - c_o, places=12)
+                self.assertAlmostEqual(row.dbpr, d[p.player_id] - c_d, places=12)
+                self.assertEqual(row.bpr, row.obpr + row.dbpr)
+                self.assertAlmostEqual(row.wins_added, (row.bpr + 1.918) * 60 * 25.0 / 48.0 / 37.73, places=12)
                 self.assertEqual(row.bpr_model, "native-1")
                 self.assertIsNotNone(row.bpr_last_updated)
-        for row, wa in zip(self.traded, (0.5, 0.25)):          # both team rows; wins_added kept
+        for row in self.traded:                                # both team rows, each its own minutes
             row.refresh_from_db()
-            self.assertEqual((row.bpr_model, row.wins_added), ("native-1", wa))
-        self.unrated.refresh_from_db()                         # cleared, wins_added kept
-        self.assertEqual((self.unrated.obpr, self.unrated.dbpr, self.unrated.bpr, self.unrated.bpr_model,
-                          self.unrated.bpr_last_updated, self.unrated.wins_added),
-                         (None, None, None, None, None, 3.0))
+            self.assertEqual(row.bpr_model, "native-1")
+            self.assertAlmostEqual(row.wins_added, (row.bpr + 1.918) * 1500.0 / 48.0 / 37.73, places=12)
+        self.unrated.refresh_from_db()                         # everything cleared, wins_added too
+        self.assertEqual((self.unrated.obpr, self.unrated.dbpr, self.unrated.obpr_raw, self.unrated.dbpr_raw,
+                          self.unrated.bpr, self.unrated.bpr_model, self.unrated.bpr_last_updated,
+                          self.unrated.wins_added),
+                         (None, None, None, None, None, None, None, None))
         self.playoff.refresh_from_db()
         self.assertEqual((self.playoff.obpr, self.playoff.bpr, self.playoff.bpr_model), (0.5, 1.0, None))
+
+    def test_written_ratings_average_zero(self):
+        self._call("--write")
+        rows = NBAPlayerSeasonStats.objects.filter(season=self.seasons[2010], season_type="regular",
+                                                   obpr__isnull=False)
+        m = sum(r.mpg * r.gp for r in rows)
+        self.assertAlmostEqual(sum(r.obpr * r.mpg * r.gp for r in rows) / m, 0.0, places=12)
+        self.assertAlmostEqual(sum(r.dbpr * r.mpg * r.gp for r in rows) / m, 0.0, places=12)
+
+    def test_refuses_native_previous_season_without_raw(self):
+        self._rate(2009, "native-1", raw=False)
+        with self.assertRaisesRegex(CommandError, "without obpr_raw"):
+            self._call("--dry-run")
+        self.assertEqual(self.native_calls, [])
 
     def test_write_leaves_other_seasons_alone(self):
         self._rate(2009, "native-1")
@@ -290,7 +327,8 @@ class CommandTests(TestCase):
     def test_stored_ratings_in_id_order(self):
         s9 = self.seasons[2009]
         for p in reversed(self.players[:6]):
-            _row(p, s9, obpr=0.01 * p.player_id, dbpr=0.0, bpr=0.0, bpr_model="native-1")
+            _row(p, s9, obpr=0.01 * p.player_id, dbpr=0.0, bpr=0.0, bpr_model="native-1",
+                 obpr_raw=0.01 * p.player_id, dbpr_raw=0.0)
         o, d, models = nb.stored_ratings(2009)
         self.assertEqual(list(o), sorted(o))
         self.assertEqual(list(d), sorted(d))

@@ -6,14 +6,25 @@ nba_experiment_final_bpr's native chain (w_box 0.5, rho 1.0, lambda tiers x8,
 age-mult 1), run on stored values instead of an in-memory chain.
 
 Per season Y, offense and defense separately:
-  prev   = Y-1's stored obpr / dbpr (native only) + aging curve(age at Y), the
-           curve fitted (nba.analytics.aging) on stored native ratings of the
-           seasons before Y, weighted by each season's on-court possessions
+  prev   = Y-1's stored obpr_raw / dbpr_raw (native only) + aging curve(age at
+           Y), the curve fitted (nba.analytics.aging) on the stored raw native
+           ratings of the seasons before Y, weighted by each season's on-court
+           possessions
   prior  = native_prior(stored box_obpr / box_dbpr for Y, prev, 0.5, 1.0)
   fit    = Y's stints only (RAPM window 1), within-season half-life 90 days,
            lambda = minutes tiers (A_conservative) x 8, from every player's
            full-season regular minutes (sum of mpg x gp over his team rows),
            box row or not
+
+Centring (task 5.6): the fit is stored as obpr_raw / dbpr_raw, and obpr / dbpr =
+raw minus Y's minutes-weighted league mean (full-season minutes, every rated
+player), so each averages 0 and bpr 0 is a league-average player. Constant
+shifts do not change lineup predictions, so the centred ratings predict exactly
+as the raw ones. The chain itself runs on the raw values.
+
+Wins Added (task 5.5c fit 2): on every rated regular row,
+  wins_added = (bpr - WA_REPLACEMENT) x row minutes / 48 / WA_DIVISOR,
+replacement level -1.918, divisor 37.73; rows without a rating get null.
 
 Stored ratings are read in NBA.com id order, the order the fit returns them, so
 the aging fit sees its pairs in one fixed order and a rerun is bit-identical to
@@ -33,11 +44,12 @@ Refuses when Y-1 holds ratings written by another model (bpr_model other than
 'native-1'): the chain must run in order. With no Y-1 ratings (the chain's
 first season, 2006) the prior is box only.
 
---write: one transaction. Clears obpr, dbpr, bpr, bpr_last_updated and
-bpr_model on Y's regular rows, then writes this fit (bpr = obpr + dbpr,
-bpr_model 'native-1') to every row of each rated player (every team row of a
-traded player). obpr and dbpr are stored unrounded, since the next season reads
-them back as its previous ratings. wins_added is left alone.
+--write: one transaction. Clears obpr, dbpr, obpr_raw, dbpr_raw, bpr,
+bpr_last_updated, bpr_model and wins_added on Y's regular rows, then writes this
+fit to every row of each rated player (every team row of a traded player):
+obpr_raw / dbpr_raw (unrounded: the next season reads them back as its previous
+ratings), the centred obpr / dbpr, bpr = obpr + dbpr, wins_added, and bpr_model
+'native-1'.
 
 --dry-run: prints the top 20 and writes nothing.
 
@@ -69,6 +81,9 @@ TIER = "A_conservative"
 HALF_LIFE = 90.0
 RAPM_WINDOW = 1
 TOP_N = 20
+# Wins Added, task 5.5c fit 2 on centred ratings (team wins per game on sum(bpr x minutes/48) per game).
+WA_REPLACEMENT = -1.918
+WA_DIVISOR = 37.73
 # Per-season on-court possession totals for the aging weights (gitignored, as data/nba/pbp_cache/).
 POSS_CACHE_DIR = Path(__file__).resolve().parents[4] / "data" / "nba" / "native_poss_cache"
 
@@ -77,22 +92,40 @@ POSS_CACHE_DIR = Path(__file__).resolve().parents[4] / "data" / "nba" / "native_
 
 def stored_ratings(season: int) -> tuple[dict[int, float], dict[int, float], Counter]:
     """
-    Y's stored regular-season obpr / dbpr keyed by NBA.com id (one value per player: every
-    team row of a traded player carries the same rating), in id order, and a count of rows
-    per bpr_model.
+    Y's stored regular-season ratings as the chain sees them, keyed by NBA.com id (one value
+    per player: every team row of a traded player carries the same rating), in id order, and
+    a count of rated rows per bpr_model. Native rows give obpr_raw / dbpr_raw (the fit before
+    centring); rows of other models give obpr / dbpr (the command refuses those seasons).
+    A native row without raw values was written before centring: rerun that season first.
     """
     from nba.models import NBAPlayerSeasonStats
 
     o: dict[int, float] = {}
     d: dict[int, float] = {}
     models: Counter = Counter()
-    for nba_id, obpr, dbpr, model in NBAPlayerSeasonStats.objects.filter(
+    for nba_id, obpr, dbpr, obpr_raw, dbpr_raw, model in NBAPlayerSeasonStats.objects.filter(
             season__year=season, season_type="regular", obpr__isnull=False,
-    ).order_by("player__player_id", "id").values_list("player__player_id", "obpr", "dbpr", "bpr_model"):
+    ).order_by("player__player_id", "id").values_list(
+            "player__player_id", "obpr", "dbpr", "obpr_raw", "dbpr_raw", "bpr_model"):
         models[model] += 1
+        if model == NATIVE_MODEL:
+            if obpr_raw is None:
+                raise CommandError(f"{season} holds native ratings without obpr_raw (written before centring); "
+                                   f"run nba_compute_native_bpr --season {season} --write first")
+            obpr, dbpr = obpr_raw, dbpr_raw
         o[nba_id] = obpr
         d[nba_id] = dbpr if dbpr is not None else 0.0
     return o, d, models
+
+
+def league_means(o: dict[int, float], d: dict[int, float], minutes: dict[int, float]) -> tuple[float, float]:
+    """Minutes-weighted league means of obpr and dbpr over every rated player (full-season minutes)."""
+    w = sum(minutes.get(p, 0.0) for p in o)
+    if w <= 0:
+        raise CommandError("no minutes for the rated players: cannot centre")
+    c_o = sum(minutes.get(p, 0.0) * v for p, v in o.items()) / w
+    c_d = sum(minutes.get(p, 0.0) * v for p, v in d.items()) / w
+    return c_o, c_d
 
 
 def native_seasons_before(season: int) -> list[int]:
@@ -186,10 +219,12 @@ def native_season(loader, season: int, box_o: dict, box_d: dict, minutes: dict,
     return o, d, info
 
 
-def write_native(season: int, o: dict[int, float], d: dict[int, float]) -> dict:
+def write_native(season: int, o: dict[int, float], d: dict[int, float], c_o: float, c_d: float) -> dict:
     """
-    One transaction: clear obpr, dbpr, bpr, bpr_last_updated and bpr_model on Y's regular rows,
-    then write the ratings (keyed by NBA.com id) to every row of each rated player.
+    One transaction: clear obpr, dbpr, obpr_raw, dbpr_raw, bpr, bpr_last_updated, bpr_model and
+    wins_added on Y's regular rows, then write to every row of each rated player (keyed by NBA.com
+    id): the raw fit, obpr / dbpr = raw - (c_o, c_d), bpr = obpr + dbpr, and wins_added from the
+    row's own minutes.
     """
     from django.db import transaction
     from django.utils import timezone
@@ -199,18 +234,23 @@ def write_native(season: int, o: dict[int, float], d: dict[int, float]) -> dict:
     now = timezone.now()
     updated = skipped = 0
     with transaction.atomic():
-        cleared = qs.update(obpr=None, dbpr=None, bpr=None, bpr_last_updated=None, bpr_model=None)
+        cleared = qs.update(obpr=None, dbpr=None, obpr_raw=None, dbpr_raw=None, bpr=None,
+                            bpr_last_updated=None, bpr_model=None, wins_added=None)
         for row in qs.select_related("player"):
             nba_id = row.player.player_id
             if nba_id not in o:
                 skipped += 1
                 continue
-            row.obpr = o[nba_id]
-            row.dbpr = d.get(nba_id, 0.0)
+            row.obpr_raw = o[nba_id]
+            row.dbpr_raw = d.get(nba_id, 0.0)
+            row.obpr = row.obpr_raw - c_o
+            row.dbpr = row.dbpr_raw - c_d
             row.bpr = row.obpr + row.dbpr
+            row.wins_added = (row.bpr - WA_REPLACEMENT) * (row.mpg or 0.0) * (row.gp or 0) / 48.0 / WA_DIVISOR
             row.bpr_last_updated = now
             row.bpr_model = NATIVE_MODEL
-            row.save(update_fields=["obpr", "dbpr", "bpr", "bpr_last_updated", "bpr_model"])
+            row.save(update_fields=["obpr", "dbpr", "obpr_raw", "dbpr_raw", "bpr", "wins_added",
+                                    "bpr_last_updated", "bpr_model"])
             updated += 1
     return {"cleared": cleared, "updated": updated, "skipped": skipped}
 
@@ -223,7 +263,8 @@ class Command(BaseCommand):
         mode = parser.add_mutually_exclusive_group(required=True)
         mode.add_argument("--dry-run", action="store_true", help="Fit and print the top 20; write nothing")
         mode.add_argument("--write", action="store_true",
-                          help="Clear and write obpr/dbpr/bpr/bpr_last_updated/bpr_model on Y's regular rows")
+                          help="Clear and write the raw and centred ratings, bpr, wins_added, bpr_last_updated "
+                               "and bpr_model on Y's regular rows")
 
     def handle(self, *args, **opts):
         season = opts["season"]
@@ -266,17 +307,21 @@ class Command(BaseCommand):
         self.stdout.write(f"  prior: {info['n_prior']} players ({info['n_box_prev']} box+prev, "
                           f"{info['n_box_only']} box only, {info['n_prev_only']} prev only)")
         self.stdout.write(f"  rated: {info['n_rated']} players")
+        c_o, c_d = league_means(o, d, minutes)
+        self.stdout.write(f"  centring: minutes-weighted league means obpr {c_o:+.4f}, dbpr {c_d:+.4f}")
 
         names = loader._load_name_map(list(o))
-        self.stdout.write(f"\nTop {TOP_N} by bpr, {season}:")
+        self.stdout.write(f"\nTop {TOP_N} by bpr (centred), {season}:")
         ranked = sorted(o, key=lambda p: o[p] + d.get(p, 0.0), reverse=True)
         for rank, p in enumerate(ranked[:TOP_N], start=1):
-            self.stdout.write(f"  {rank:2d}. {names.get(p, str(p)):28s} nba_id={p:<8d} obpr={o[p]:+.3f}  "
-                              f"dbpr={d.get(p, 0.0):+.3f}  bpr={o[p] + d.get(p, 0.0):+.3f}")
+            co, cd = o[p] - c_o, d.get(p, 0.0) - c_d
+            wa = (co + cd - WA_REPLACEMENT) * minutes.get(p, 0.0) / 48.0 / WA_DIVISOR
+            self.stdout.write(f"  {rank:2d}. {names.get(p, str(p)):28s} nba_id={p:<8d} obpr={co:+.3f}  "
+                              f"dbpr={cd:+.3f}  bpr={co + cd:+.3f}  wins_added={wa:5.1f}")
         if opts["dry_run"]:
             self.stdout.write(self.style.SUCCESS(f"Dry run: {len(o)} players, no DB writes."))
             return
-        res = write_native(season, o, d)
+        res = write_native(season, o, d, c_o, c_d)
         self.stdout.write(self.style.SUCCESS(
             f"[OK] {season} native BPR written: cleared {res['cleared']} regular rows, {res['updated']} updated, "
             f"{res['skipped']} rows without a rating left null"))

@@ -582,12 +582,20 @@ class NBAPlayerSeasonStats(models.Model):
     obpr = models.FloatField(null=True, blank=True, help_text="Final offensive BPR (prior-informed RAPM)")
     dbpr = models.FloatField(null=True, blank=True, help_text="Final defensive BPR (prior-informed RAPM)")
     bpr  = models.FloatField(null=True, blank=True, help_text="Final total BPR (obpr + dbpr)")
+    # native-1: the chain's fit before centring; obpr / dbpr = raw minus the season's
+    # minutes-weighted league mean. The next season's prior is built from these.
+    obpr_raw = models.FloatField(null=True, blank=True,
+        help_text="native-1 offensive fit before centring on the season's minutes-weighted league mean")
+    dbpr_raw = models.FloatField(null=True, blank=True,
+        help_text="native-1 defensive fit before centring on the season's minutes-weighted league mean")
     bpr_model = models.CharField(
         max_length=16, null=True, blank=True,
         help_text="Model that wrote obpr/dbpr/bpr: 'native-1' (nba_compute_native_bpr); null = earlier LEBRON-prior model")
 
     # Wins above replacement — derived from BPR at write time, never fed back into model
-    # Formula: (bpr + 2.0) × (mpg / 48) × (gp / 56)  — replacement level = BPR -2.0
+    # native-1 (nba_compute_native_bpr): (bpr + 1.918) × minutes / 48 / 37.73 per team row,
+    # bpr centred (league mean 0), replacement level -1.918 (docs: task 5.5c fit 2).
+    # Earlier LEBRON-prior rows: (bpr + 2.0) × (mpg / 48) × (gp / 56).
     wins_added = models.FloatField(null=True, blank=True, help_text="Wins above replacement player")
 
     # ── Projection Value (docs/bpr_audit/09) ──────────────────────────────────
