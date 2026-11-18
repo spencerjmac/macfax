@@ -34,6 +34,7 @@ from nba.models import (
     TeamOutseasonMove,
     NBAProjectedRosterSlot,
 )
+from nba.rating_scale import NATIVE_MODEL, native_scale, native_scale_by_season_id, row_is_native
 from nba.utils.name_utils import normalize_name
 
 logger = logging.getLogger(__name__)
@@ -363,6 +364,17 @@ class Command(BaseCommand):
             f"League avg adj_o={nba_avg_adj_o:.1f}, adj_d={nba_avg_adj_d:.1f}"
         )
 
+        # Rating scale of the source season (task 5.10b): native-1 seasons are centred, so a
+        # player with no rating is worth the scale's unknown rating (not 0) and replacement
+        # level is R. None = earlier scale: every constant below behaves exactly as before.
+        self.native_scale = native_scale(source_season)
+        self._scale_cache = {}
+        if self.native_scale is not None:
+            self.stdout.write(
+                f"Rating scale native-1: unknown player ({self.native_scale.unknown_obpr:+.3f}, "
+                f"{self.native_scale.unknown_dbpr:+.3f}), replacement {self.native_scale.replacement:+.3f}"
+            )
+
         # BPR league averages (shrinkage targets)
         bpr_qs = NBAPlayerSeasonStats.objects.filter(
             season=source_season,
@@ -424,7 +436,7 @@ class Command(BaseCommand):
                        else SHRINKAGE_ACQUISITION)
                 pv = slot.get("projection_value")
                 if pv is None:
-                    pv = ((slot.get("projected_bpr") or 0.0) - league_bpr_avg) / league_bpr_sd
+                    pv = (self._or_unknown(slot.get("projected_bpr"), "b") - league_bpr_avg) / league_bpr_sd
                     slot["pv_source"] = "bpr_fallback"
                 else:
                     pv = pv * (1.0 - lam)
@@ -601,6 +613,7 @@ class Command(BaseCommand):
                 projected_bpr=slot.get("projected_bpr"),
                 projected_minutes_share=slot.get("minutes_share"),
                 projected_wins_added=slot.get("wins_added"),
+                rating_scale=NATIVE_MODEL if getattr(self, "native_scale", None) is not None else None,
                 confidence=slot.get("confidence", "medium"),
                 pipeline_version=PIPELINE_VERSION,
             )
@@ -829,9 +842,9 @@ class Command(BaseCommand):
                     "player_obj": stats.player,
                     "stats_obj": stats,
                     "mpg": stats.mpg or 0.0,
-                    "obpr": stats.obpr or 0.0,
-                    "dbpr": stats.dbpr or 0.0,
-                    "bpr": stats.bpr or 0.0,
+                    "obpr": self._or_unknown(stats.obpr, "o"),
+                    "dbpr": self._or_unknown(stats.dbpr, "d"),
+                    "bpr": self._or_unknown(stats.bpr, "b"),
                     "projection_value": stats.projection_value,
                     "archetype": stats.nba_archetype,
                     "acquisition_type": "returner",
@@ -861,9 +874,9 @@ class Command(BaseCommand):
                     "player_obj": bpr_data.get("player_obj"),
                     "stats_obj": bpr_data.get("stats_obj"),
                     "mpg": bpr_data.get("mpg", 20.0),
-                    "obpr": bpr_data.get("obpr", 0.0),
-                    "dbpr": bpr_data.get("dbpr", 0.0),
-                    "bpr": bpr_data.get("bpr", 0.0),
+                    "obpr": bpr_data.get("obpr", self._unknown_rating()[0]),
+                    "dbpr": bpr_data.get("dbpr", self._unknown_rating()[1]),
+                    "bpr": bpr_data.get("bpr", self._unknown_rating()[2]),
                     "projection_value": (
                         bpr_data["stats_obj"].projection_value
                         if bpr_data.get("stats_obj") is not None else None
@@ -994,11 +1007,28 @@ class Command(BaseCommand):
             "player_obj": player,
             "stats_obj": stats,
             "mpg": stats.mpg or 20.0,
-            "obpr": stats.obpr or 0.0,
-            "dbpr": stats.dbpr or 0.0,
-            "bpr": stats.bpr or 0.0,
+            "obpr": self._or_unknown(stats.obpr, "o"),
+            "dbpr": self._or_unknown(stats.dbpr, "d"),
+            "bpr": self._or_unknown(stats.bpr, "b"),
             "archetype": stats.nba_archetype,
         }
+
+    # ── Rating scale helpers (task 5.10b) ─────────────────────────────────────
+
+    def _unknown_rating(self) -> tuple[float, float, float]:
+        """(obpr, dbpr, bpr) for a player with no rating: the native scale's, else 0.0 as before."""
+        sc = getattr(self, "native_scale", None)
+        if sc is None:
+            return 0.0, 0.0, 0.0
+        return sc.unknown_obpr, sc.unknown_dbpr, sc.unknown_bpr
+
+    def _or_unknown(self, value, side: str) -> float:
+        """Earlier scale: `value or 0.0`, unchanged. Native: value, or the unknown rating when None."""
+        if getattr(self, "native_scale", None) is None:
+            return value or 0.0
+        if value is not None:
+            return value
+        return self._unknown_rating()["odb".index(side)]
 
     # ── BPR projection ─────────────────────────────────────────────────────────
 
@@ -1056,9 +1086,16 @@ class Command(BaseCommand):
                 )
             else:
                 box_bpr_val = box_obpr + box_dbpr
-                rapm_gap_bpr  = proj_bpr  - box_bpr_val
-                rapm_gap_obpr = proj_obpr - box_obpr
-                rapm_gap_dbpr = proj_dbpr - box_dbpr
+                # native-1 rows are centred and box values are not: compare on the raw scale
+                # (add back that season's centre). Earlier-scale rows: offsets 0, as before.
+                c_o = c_d = 0.0
+                if row_is_native(stats_obj):
+                    rs = native_scale_by_season_id(stats_obj.season_id, self.__dict__.setdefault("_scale_cache", {}))
+                    if rs is not None:
+                        c_o, c_d = rs.centre_obpr, rs.centre_dbpr
+                rapm_gap_bpr  = proj_bpr + c_o + c_d - box_bpr_val
+                rapm_gap_obpr = proj_obpr + c_o - box_obpr
+                rapm_gap_dbpr = proj_dbpr + c_d - box_dbpr
                 cap_threshold = 1.6 * self.rapm_gap_sigma
 
                 if rapm_gap_bpr > cap_threshold:
@@ -1210,7 +1247,12 @@ class Command(BaseCommand):
         # demand → power → clamp → water-fill path (target = remaining_pool).
         demands = []
         for slot in competitive:
-            bpr_above_repl = max(0.0, (slot.get("projected_bpr") or 0.0) + REPLACEMENT_LEVEL)
+            if getattr(self, "native_scale", None) is not None:
+                # native-1: replacement level R on the centred scale (R = -1.918)
+                bpr_above_repl = max(0.0, self._or_unknown(slot.get("projected_bpr"), "b")
+                                     - self.native_scale.replacement)
+            else:
+                bpr_above_repl = max(0.0, (slot.get("projected_bpr") or 0.0) + REPLACEMENT_LEVEL)
             mpg_component = (slot.get("mpg") or 15.0) / 36.0
             demands.append(bpr_above_repl + mpg_component)
 

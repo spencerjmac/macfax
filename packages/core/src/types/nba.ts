@@ -471,6 +471,9 @@ export interface NBATeamColors {
   secondary: string;
 }
 
+/** Scale a row's NBA ratings are on: 'native-1' = centred native BPR (task 5.10b); else the earlier scale. */
+export type RatingScale = 'native-1' | 'legacy' | null;
+
 export interface NBAPlayerSeasonStats {
   id: number;
   player: number;
@@ -536,6 +539,8 @@ export interface NBAPlayerSeasonStats {
   dbpr_replacement_adjusted: number | null;
   // Wins above replacement player — derived at compute time
   wins_added: number | null;
+  // Scale of obpr/dbpr/bpr/wins_added: 'native-1' (centred, task 5.10b) or 'legacy'
+  rating_scale?: RatingScale;
   // Box BPR (intermediate)
   box_obpr: number | null;
   box_dbpr: number | null;
@@ -575,6 +580,7 @@ export interface DevelopmentWatchPlayer {
   age: number | null;
   acquisition_type: 'returner' | 'signed' | 'traded_in' | 'drafted' | 'extended';
   projected_bpr: number | null;
+  rating_scale?: RatingScale;
   projected_minutes_share: number | null;
   archetype: string | null;
   mps_score: number | null;
@@ -634,6 +640,8 @@ export interface NBAProjectedRosterSlot {
   projected_bpr: number | null;
   projected_minutes_share: number | null;
   projected_wins_added: number | null;
+  // 'native-1' when projected from a native-1 (centred) source season; null = earlier scale
+  rating_scale?: RatingScale;
 }
 
 export type CapStatusTier =

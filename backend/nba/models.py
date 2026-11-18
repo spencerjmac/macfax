@@ -625,6 +625,31 @@ class NBAPlayerSeasonStats(models.Model):
         return f"{self.player.name} {self.season.display_name} averages"
 
 
+class NBASeasonRatingScale(models.Model):
+    """
+    The scale of a season's native-1 player ratings (task 5.10b), written by
+    nba_compute_native_bpr with the ratings. obpr / dbpr are centred: raw minus
+    (centre_obpr, centre_dbpr), the season's minutes-weighted league means. A player
+    with no rating is worth (-centre_obpr, -centre_dbpr) on that scale (raw 0);
+    replacement level is `replacement` (offense 0.8 of it, defense 0.2); Wins Added
+    = (bpr - replacement) x minutes / 48 / wins_divisor. A season without a row (or
+    without native-1 rows) is on the earlier scale and keeps the old constants.
+    """
+    season = models.OneToOneField(NBASeason, on_delete=models.CASCADE, related_name="rating_scale")
+    bpr_model = models.CharField(max_length=16, default="native-1")
+    centre_obpr = models.FloatField(help_text="Minutes-weighted league mean of raw obpr (subtracted)")
+    centre_dbpr = models.FloatField(help_text="Minutes-weighted league mean of raw dbpr (subtracted)")
+    wins_divisor = models.FloatField(help_text="D in wins_added = (bpr - R) x minutes/48 / D")
+    replacement = models.FloatField(help_text="R: replacement-level bpr on the centred scale")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "NBA season rating scale"
+
+    def __str__(self):
+        return f"{self.season.year} {self.bpr_model}: c=({self.centre_obpr:+.3f}, {self.centre_dbpr:+.3f})"
+
+
 class NBAModelCalibration(models.Model):
     """
     Per-season validation / calibration results written by:
@@ -1155,6 +1180,10 @@ class NBAProjectedRosterSlot(models.Model):
         ),
     )
     projected_wins_added = models.FloatField(null=True, blank=True)
+    rating_scale = models.CharField(
+        max_length=16, null=True, blank=True,
+        help_text="bpr_model of the source season's scale when projected ('native-1'); null = earlier scale",
+    )
     confidence = models.CharField(max_length=10, choices=CONFIDENCE_CHOICES, default="medium")
     pipeline_version = models.CharField(
         max_length=20, default="", blank=True,

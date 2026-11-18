@@ -3,6 +3,8 @@ NBA DRF Serializers — macfax NBA app
 """
 
 from rest_framework import serializers
+
+from .rating_scale import REPLACEMENT_OFFENSE_SHARE, WA_REPLACEMENT, row_is_native
 from .models import (
     NBASeason,
     NBATeam,
@@ -95,21 +97,37 @@ class NBAPlayerSeasonStatsSerializer(serializers.ModelSerializer):
     rapm_o = serializers.FloatField(source="baseline_obpr", read_only=True, allow_null=True)
     rapm_d = serializers.FloatField(source="baseline_dbpr", read_only=True, allow_null=True)
 
-    # Replacement-adjusted BPR — computed at serialization time, never stored
-    # Replacement level = BPR -2.0 (freely available player, industry standard)
-    # Displayed as 0 = replacement, positive = above replacement
+    # Replacement-adjusted BPR — computed at serialization time, never stored.
+    # Displayed as 0 = replacement, positive = above replacement.
+    # native-1 rows (centred, task 5.10b): replacement R = -1.918, offense 0.8 R, defense 0.2 R.
+    # Earlier rows: replacement level = BPR -2.0 (offense -1.0, defense -1.0), unchanged.
     bpr_replacement_adjusted  = serializers.SerializerMethodField()
     obpr_replacement_adjusted = serializers.SerializerMethodField()
     dbpr_replacement_adjusted = serializers.SerializerMethodField()
+    # Which scale the row's obpr / dbpr / bpr / wins_added are on: "native-1" or "legacy".
+    rating_scale = serializers.SerializerMethodField()
+
+    def get_rating_scale(self, obj) -> str:
+        return "native-1" if row_is_native(obj) else "legacy"
 
     def get_bpr_replacement_adjusted(self, obj) -> float | None:
-        return round(obj.bpr + 2.0, 3) if obj.bpr is not None else None
+        if obj.bpr is None:
+            return None
+        return round(obj.bpr - WA_REPLACEMENT, 3) if row_is_native(obj) else round(obj.bpr + 2.0, 3)
 
     def get_obpr_replacement_adjusted(self, obj) -> float | None:
-        return round(obj.obpr + 1.0, 3) if obj.obpr is not None else None
+        if obj.obpr is None:
+            return None
+        if row_is_native(obj):
+            return round(obj.obpr - REPLACEMENT_OFFENSE_SHARE * WA_REPLACEMENT, 3)
+        return round(obj.obpr + 1.0, 3)
 
     def get_dbpr_replacement_adjusted(self, obj) -> float | None:
-        return round(obj.dbpr + 1.0, 3) if obj.dbpr is not None else None
+        if obj.dbpr is None:
+            return None
+        if row_is_native(obj):
+            return round(obj.dbpr - (1.0 - REPLACEMENT_OFFENSE_SHARE) * WA_REPLACEMENT, 3)
+        return round(obj.dbpr + 1.0, 3)
 
     class Meta:
         model = NBAPlayerSeasonStats
@@ -138,6 +156,7 @@ class NBAPlayerSeasonStatsSerializer(serializers.ModelSerializer):
             "bpr_replacement_adjusted", "obpr_replacement_adjusted", "dbpr_replacement_adjusted",
             # Wins above replacement — derived at compute time from BPR + playing time
             "wins_added",
+            "rating_scale",
             # Box BPR (intermediate — not displayed directly)
             "box_obpr", "box_dbpr", "box_bpr", "nba_archetype",
             # Baseline RAPM (raw, no prior) — also exposed as rapm_o/rapm_d aliases
@@ -227,6 +246,7 @@ class NBAProjectedRosterSlotSerializer(serializers.ModelSerializer):
             "acquisition_type", "confidence",
             "projected_obpr", "projected_dbpr", "projected_bpr",
             "projected_minutes_share", "projected_wins_added",
+            "rating_scale",
         ]
 
 
@@ -343,6 +363,7 @@ class TeamSeasonOutlookDetailSerializer(serializers.ModelSerializer):
                 "mps_score": move.mps_score if move else None,
                 "round_number": move.round_number if move else None,
                 "overall_pick": move.overall_pick if move else None,
+                "rating_scale": slot.rating_scale,
             }
 
             if slot.acquisition_type == "drafted":

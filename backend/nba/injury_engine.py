@@ -16,7 +16,11 @@ Formula
 
 BPR is in pts/100 possessions relative to league average. Minute share converts
 it to a per-game impact. Status weight (0–1) reflects expected unavailability.
-Replacement value = 0 BPR (league average), so no offset is needed.
+Earlier-scale seasons: replacement value = 0 BPR, so no offset is applied.
+native-1 seasons (task 5.10b): the absent minutes are filled at replacement level
+(nba.rating_scale: offense 0.8 R, defense 0.2 R, R = -1.918), so
+  off_adj_i = (obpr - 0.8 R) × minute_share × status_weight
+  def_adj_i = (dbpr - 0.2 R) × minute_share × status_weight
 
 Adjustments are capped at ±MAX_ADJ_PTS to guard against bad data.
 """
@@ -99,8 +103,11 @@ def compute_nba_injury_adjustment(
         team=team,
         season=season,
         season_type="regular",
-    ).order_by(F("obpr").asc(nulls_first=True)).values("player_id", "obpr", "dbpr", "mpg")
+    ).order_by(F("obpr").asc(nulls_first=True)).values("player_id", "obpr", "dbpr", "mpg", "bpr_model")
     stats_map = {s["player_id"]: s for s in stats_qs}
+
+    from nba.rating_scale import native_scale, row_is_native
+    scale = native_scale(season)
 
     total_off = 0.0
     total_def = 0.0
@@ -134,8 +141,13 @@ def compute_nba_injury_adjustment(
 
         w = report.weight  # STATUS_WEIGHTS lookup on model
 
-        off_adj = float(obpr) * minute_share * w
-        def_adj = float(dbpr) * minute_share * w
+        if scale is not None and row_is_native(stats):
+            # Absent minutes are filled at replacement level, not at league average (0).
+            off_adj = (float(obpr) - scale.replacement_obpr) * minute_share * w
+            def_adj = (float(dbpr) - scale.replacement_dbpr) * minute_share * w
+        else:
+            off_adj = float(obpr) * minute_share * w
+            def_adj = float(dbpr) * minute_share * w
 
         total_off += off_adj
         total_def += def_adj

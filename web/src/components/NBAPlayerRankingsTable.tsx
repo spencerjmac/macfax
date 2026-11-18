@@ -18,6 +18,7 @@ import clsx from 'clsx';
 import HeaderWithTooltip from './HeaderWithTooltip';
 import { computeRanks, heatStyleFromPercentile } from '@macfax/core/lib/rankingUtils';
 import { getBPRTier, fmtSigned } from '@macfax/core/lib/bprTiers';
+import { winsAddedFormula } from '@macfax/core/lib/ratingScale';
 import { AUTO_THRESHOLD, autoNbaMinPoss } from '@macfax/core/lib/playerThresholds';
 import {
   PLAYER_TRADITIONAL_METRICS,
@@ -308,6 +309,9 @@ export default function NBAPlayerRankingsTable({ data, seasonDisplay, seasonType
   });
 
   // ── Full column set per tab ──────────────────────────────────────────────
+  // native-1 rows: new Wins Added formula (task 5.10b); earlier rows keep the old text
+  const wa_formula = useMemo(() => winsAddedFormula(data), [data]);
+
   const columns = useMemo((): ColumnDef<NBAPlayerSeasonStats>[] => {
     const activeSortKey = sorting[0]?.id;
     const rankColumn: ColumnDef<NBAPlayerSeasonStats> = {
@@ -361,13 +365,13 @@ export default function NBAPlayerRankingsTable({ data, seasonDisplay, seasonType
           <HeaderWithTooltip
             label="W.Add"
             better="higher"
-            tooltip="Wins Added above replacement · (BPR + 2.0) × MPG/48 × GP/56 · Replacement level = BPR −2.0"
+            tooltip={`Wins Added above replacement · ${wa_formula}`}
           />
         ),
         cell: (info) => {
           const v = info.getValue<number | null>();
           if (v == null) return <span className="text-text-muted font-mono text-xs">—</span>;
-          const tier = getBPRTier(v);
+          const tier = getBPRTier(v, info.row.original.rating_scale);
           return (
             <span className={clsx('font-mono text-xs font-semibold tabular-nums', tier.color)}>
               {fmtSigned(v, 1)}
@@ -405,7 +409,7 @@ export default function NBAPlayerRankingsTable({ data, seasonDisplay, seasonType
       activeTab === 'traditional' ? [...NBA_TRAD_PRIMARY, 'plus_minus'] : NBA_ADV_PRIMARY;
 
     return [rankColumn, ...baseColumns, ...[...primaryKeys, ...visibleExtras].map(createMetricColumn)];
-  }, [activeTab, metricRanks, sorting, pagination.pageIndex, optionalCols]);
+  }, [activeTab, metricRanks, sorting, pagination.pageIndex, optionalCols, wa_formula]);
 
   const isGroupedTab = activeTab === 'impact';
 

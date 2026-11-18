@@ -16,7 +16,7 @@ interface Props {
 }
 
 export function PlayerScoutingCard({ player, peakBpr, careerBpr, className }: Props) {
-  const tier = getBPRTier(player.wins_added);
+  const tier = getBPRTier(player.wins_added, player.rating_scale);
   const headshotUrl = player.player_id
     ? `https://cdn.nba.com/headshots/nba/latest/1040x760/${player.player_id}.png`
     : null;

@@ -2,6 +2,7 @@
 
 import type { NBAPlayerSeasonStats } from "@macfax/core/types/nba";
 import { getBPRTier, fmtSigned } from "@macfax/core/lib/bprTiers";
+import { replacementAdjustText } from "@macfax/core/lib/ratingScale";
 import { clsx } from "clsx";
 
 interface Props {
@@ -73,7 +74,7 @@ export function PlayerCompareView({ players, className }: Props) {
                 {players.map((p, i) => {
                   const v = values[i];
                   const isBest = v !== null && v === best && validValues.length > 1;
-                  const tier = row.key === "wins_added" ? getBPRTier(v) : null;
+                  const tier = row.key === "wins_added" ? getBPRTier(v, p.rating_scale) : null;
                   return (
                     <td key={p.id} className="px-4 py-3 text-center">
                       <span
@@ -98,7 +99,7 @@ export function PlayerCompareView({ players, className }: Props) {
           <tr className="bg-slate-800/20">
             <td className="px-4 py-3 text-xs uppercase tracking-wider text-slate-500">Tier</td>
             {players.map((p) => {
-              const tier = getBPRTier(p.wins_added);
+              const tier = getBPRTier(p.wins_added, p.rating_scale);
               return (
                 <td key={p.id} className="px-4 py-3 text-center">
                   <span
@@ -128,7 +129,7 @@ export function PlayerCompareView({ players, className }: Props) {
       </table>
 
       <div className="px-4 py-2 text-xs text-slate-700 border-t border-slate-800">
-        BPR adj = stored BPR + 2.0 (replacement offset) · ▲ = leads category
+        {replacementAdjustText(players)} · ▲ = leads category
       </div>
     </div>
   );

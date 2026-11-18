@@ -22,6 +22,9 @@ player), so each averages 0 and bpr 0 is a league-average player. Constant
 shifts do not change lineup predictions, so the centred ratings predict exactly
 as the raw ones. The chain itself runs on the raw values.
 
+The season's centring and Wins Added constants are also written to
+NBASeasonRatingScale (task 5.10b), which consumers read through nba.rating_scale.
+
 Wins Added (task 5.5c fit 2): on every rated regular row,
   wins_added = (bpr - WA_REPLACEMENT) x row minutes / 48 / WA_DIVISOR,
 replacement level -1.918, divisor 37.73; rows without a rating get null.
@@ -71,6 +74,7 @@ from nba.analytics.native_prior import native_prior
 from nba.analytics.rapm import build_nba_observations
 from nba.management.commands.nba_compute_final_bpr import Command as FinalBprCommand
 from nba.management.commands.nba_experiment_final_bpr import Command as Harness
+from nba.rating_scale import WA_DIVISOR, WA_REPLACEMENT
 
 NATIVE_MODEL = "native-1"
 W_BOX = 0.5
@@ -81,9 +85,7 @@ TIER = "A_conservative"
 HALF_LIFE = 90.0
 RAPM_WINDOW = 1
 TOP_N = 20
-# Wins Added, task 5.5c fit 2 on centred ratings (team wins per game on sum(bpr x minutes/48) per game).
-WA_REPLACEMENT = -1.918
-WA_DIVISOR = 37.73
+# Wins Added constants (task 5.5c fit 2 on centred ratings) live in nba.rating_scale.
 # Per-season on-court possession totals for the aging weights (gitignored, as data/nba/pbp_cache/).
 POSS_CACHE_DIR = Path(__file__).resolve().parents[4] / "data" / "nba" / "native_poss_cache"
 
@@ -224,11 +226,11 @@ def write_native(season: int, o: dict[int, float], d: dict[int, float], c_o: flo
     One transaction: clear obpr, dbpr, obpr_raw, dbpr_raw, bpr, bpr_last_updated, bpr_model and
     wins_added on Y's regular rows, then write to every row of each rated player (keyed by NBA.com
     id): the raw fit, obpr / dbpr = raw - (c_o, c_d), bpr = obpr + dbpr, and wins_added from the
-    row's own minutes.
+    row's own minutes; and Y's NBASeasonRatingScale row (c_o, c_d, D, R) for the consumers.
     """
     from django.db import transaction
     from django.utils import timezone
-    from nba.models import NBAPlayerSeasonStats
+    from nba.models import NBAPlayerSeasonStats, NBASeason, NBASeasonRatingScale
 
     qs = NBAPlayerSeasonStats.objects.filter(season__year=season, season_type="regular")
     now = timezone.now()
@@ -252,6 +254,10 @@ def write_native(season: int, o: dict[int, float], d: dict[int, float], c_o: flo
             row.save(update_fields=["obpr", "dbpr", "obpr_raw", "dbpr_raw", "bpr", "wins_added",
                                     "bpr_last_updated", "bpr_model"])
             updated += 1
+        NBASeasonRatingScale.objects.update_or_create(
+            season=NBASeason.objects.get(year=season),
+            defaults={"bpr_model": NATIVE_MODEL, "centre_obpr": c_o, "centre_dbpr": c_d,
+                      "wins_divisor": WA_DIVISOR, "replacement": WA_REPLACEMENT})
     return {"cleared": cleared, "updated": updated, "skipped": skipped}
 
 

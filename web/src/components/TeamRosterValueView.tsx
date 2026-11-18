@@ -2,6 +2,7 @@
 
 import type { NBAPlayerSeasonStats } from "@macfax/core/types/nba";
 import { getBPRTier, fmtSigned } from "@macfax/core/lib/bprTiers";
+import { isNativeScale, winsAddedFormula } from "@macfax/core/lib/ratingScale";
 import { clsx } from "clsx";
 import Link from "next/link";
 
@@ -26,6 +27,9 @@ export function TeamRosterValueView({
   const sorted = [...players].sort(
     (a, b) => (b.wins_added ?? -Infinity) - (a.wins_added ?? -Infinity),
   );
+
+  // Scale of the roster's ratings (task 5.10b): native-1 when any row is native
+  const rosterScale = players.some((p) => isNativeScale(p.rating_scale)) ? "native-1" as const : "legacy" as const;
 
   // Max wins_added for bar scaling
   const maxWins = Math.max(...sorted.map((p) => Math.abs(p.wins_added ?? 0)), 1);
@@ -59,7 +63,7 @@ export function TeamRosterValueView({
             <div
               className={clsx(
                 "text-3xl font-bold tabular-nums",
-                getBPRTier(totalWinsAdded / Math.max(players.length, 1)).color,
+                getBPRTier(totalWinsAdded / Math.max(players.length, 1), rosterScale).color,
               )}
             >
               {fmtSigned(totalWinsAdded, 1)}
@@ -71,7 +75,7 @@ export function TeamRosterValueView({
       {/* Player rows */}
       <div className="divide-y divide-slate-800">
         {sorted.map((player) => {
-          const tier = getBPRTier(player.wins_added);
+          const tier = getBPRTier(player.wins_added, player.rating_scale);
           const barWidth =
             player.wins_added != null
               ? Math.min(100, Math.abs(player.wins_added / maxWins) * 100)
@@ -112,7 +116,7 @@ export function TeamRosterValueView({
       </div>
 
       <div className="px-5 py-2 text-xs text-slate-600 border-t border-slate-800">
-        Wins added = (BPR + 2.0) × MPG/48 × GP/56 · Replacement level = BPR −2.0
+        Wins added = {winsAddedFormula(players)}
       </div>
     </div>
   );

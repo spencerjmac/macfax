@@ -8,6 +8,7 @@ import type {
   DevelopmentWatchPlayer,
   NBAProjectedRosterSlot,
   ProjectedStarter,
+  RatingScale,
   TeamOutseasonMove,
   TeamSeasonOutlookDetail,
 } from '@macfax/core/types/nba';
@@ -603,6 +604,8 @@ type CorePlayer = {
   name: string;
   position: string;
   bpr: number | null;
+  // Scale of bpr: projected slots carry it; editorial starters are on the earlier scale
+  scale?: RatingScale;
   archetype: string | null;
   roleNote: string;
   keyQuestion?: string;
@@ -634,6 +637,7 @@ function getCoreFive(detail: TeamSeasonOutlookDetail): { title: string; players:
         name: slot.player_name,
         position: slot.position || formatArchetype(slot.archetype),
         bpr: slot.projected_bpr,
+        scale: slot.rating_scale,
         archetype: slot.archetype,
         roleNote: getPlayerRoleLabel(slot),
       })),
@@ -652,7 +656,7 @@ function ProjectedCoreFiveSection({ detail }: { detail: TeamSeasonOutlookDetail 
           <div key={player.id} className="rounded-lg border border-ui-border bg-ui-card p-4">
             <div className="mb-4 flex items-center justify-between gap-2">
               <span className="kicker-sport text-brand text-[11px]">{player.position || 'Core'}</span>
-              <span className={`font-mono text-[12px] font-semibold ${getBprTier(player.bpr).className}`}>
+              <span className={`font-mono text-[12px] font-semibold ${getBprTier(player.bpr, player.scale).className}`}>
                 {formatSignedNumber(player.bpr)} BPR
               </span>
             </div>
@@ -680,13 +684,13 @@ function RotationRow({ slot }: { slot: NBAProjectedRosterSlot }) {
       <td className="px-3 py-3 text-[12px] text-text-muted">{formatArchetype(slot.archetype)}</td>
       {/* Phase 7 item 7: rookie-prior BPR values are an empirical population
           mean, not an observed stat — render muted, never red. */}
-      <td className={`px-3 py-3 text-center font-mono text-[13px] font-semibold ${slot.acquisition_type === 'drafted' ? 'text-text-muted' : getBprTier(slot.projected_bpr).className}`}>
+      <td className={`px-3 py-3 text-center font-mono text-[13px] font-semibold ${slot.acquisition_type === 'drafted' ? 'text-text-muted' : getBprTier(slot.projected_bpr, slot.rating_scale).className}`}>
         {formatSignedNumber(slot.projected_bpr)}
       </td>
-      <td className={`px-3 py-3 text-center font-mono text-[13px] ${slot.acquisition_type === 'drafted' ? 'text-text-muted' : getBprTier(slot.projected_obpr).className}`}>
+      <td className={`px-3 py-3 text-center font-mono text-[13px] ${slot.acquisition_type === 'drafted' ? 'text-text-muted' : getBprTier(slot.projected_obpr, slot.rating_scale).className}`}>
         {formatSignedNumber(slot.projected_obpr)}
       </td>
-      <td className={`px-3 py-3 text-center font-mono text-[13px] ${slot.acquisition_type === 'drafted' ? 'text-text-muted' : getBprTier(slot.projected_dbpr).className}`}>
+      <td className={`px-3 py-3 text-center font-mono text-[13px] ${slot.acquisition_type === 'drafted' ? 'text-text-muted' : getBprTier(slot.projected_dbpr, slot.rating_scale).className}`}>
         {formatSignedNumber(slot.projected_dbpr)}
       </td>
       <td className="px-3 py-3 text-center font-mono text-[13px] text-text-muted">{formatMinutesShare(slot.projected_minutes_share)}</td>
@@ -801,7 +805,7 @@ function DevelopmentWatchSection({ players }: { players: DevelopmentWatchPlayer[
                         Age {player.age ?? '-'} · {formatArchetype(player.archetype)}
                       </p>
                     </div>
-                    <span className={`font-mono text-[13px] font-semibold ${getBprTier(player.projected_bpr).className}`}>
+                    <span className={`font-mono text-[13px] font-semibold ${getBprTier(player.projected_bpr, player.rating_scale).className}`}>
                       {formatSignedNumber(player.projected_bpr)}
                     </span>
                   </div>

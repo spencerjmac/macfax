@@ -2,9 +2,11 @@ import type {
   DevelopmentWatchPlayer,
   NBAProjectedRosterSlot,
   OutlookTier,
+  RatingScale,
   TeamOutseasonMove,
   TeamSeasonOutlookSummary,
 } from '../types/nba';
+import { bprCutoff } from './ratingScale';
 
 export type OutlookTierLabel =
   | 'Title Favorite'
@@ -219,11 +221,12 @@ export function getStarConcentrationLabel(value: number | null | undefined): { l
   return { label: 'Top-heavy', text: 'A large share of value comes from the top two players.', className: 'text-orange-600', barClass: 'bg-orange-500', percent: pct };
 }
 
-export function getBprTier(bpr: number | null | undefined): { label: string; className: string } {
+/** BPR tier; native-1 rows use cutoffs with the same share of qualified players (task 5.10b). */
+export function getBprTier(bpr: number | null | undefined, scale?: RatingScale): { label: string; className: string } {
   if (bpr === null || bpr === undefined) return { label: 'Unknown', className: 'text-text-muted' };
-  if (bpr >= 5) return { label: 'All-Star', className: 'text-positive' };
-  if (bpr >= 2) return { label: 'Starter', className: 'text-brand' };
-  if (bpr >= 0) return { label: 'Rotation', className: 'text-text-primary' };
+  if (bpr >= bprCutoff(5, scale)) return { label: 'All-Star', className: 'text-positive' };
+  if (bpr >= bprCutoff(2, scale)) return { label: 'Starter', className: 'text-brand' };
+  if (bpr >= bprCutoff(0, scale)) return { label: 'Rotation', className: 'text-text-primary' };
   return { label: 'Drag', className: 'text-negative' };
 }
 
@@ -303,13 +306,16 @@ export function formatArchetype(archetype: string | null | undefined): string {
     .join(' ');
 }
 
-export function getPlayerRoleLabel(player: Pick<NBAProjectedRosterSlot, 'projected_bpr' | 'archetype'>): string {
+export function getPlayerRoleLabel(
+  player: Pick<NBAProjectedRosterSlot, 'projected_bpr' | 'archetype'> & { rating_scale?: RatingScale },
+): string {
   const bpr = player.projected_bpr;
+  const scale = player.rating_scale;
   if (bpr !== null && bpr !== undefined) {
-    if (bpr >= 5) return 'Primary engine';
-    if (bpr >= 3) return 'Top-end starter';
-    if (bpr >= 1.5) return 'Plus starter';
-    if (bpr >= 0) return 'Rotation piece';
+    if (bpr >= bprCutoff(5, scale)) return 'Primary engine';
+    if (bpr >= bprCutoff(3, scale)) return 'Top-end starter';
+    if (bpr >= bprCutoff(1.5, scale)) return 'Plus starter';
+    if (bpr >= bprCutoff(0, scale)) return 'Rotation piece';
     return 'Depth swing';
   }
   return formatArchetype(player.archetype);
