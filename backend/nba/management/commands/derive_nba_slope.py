@@ -43,10 +43,10 @@ from nba.management.commands.compute_nba_team_outlooks import (
     MINUTES_CEIL,
     MINUTES_FLOOR,
     POWER_EXPONENT,
-    REPLACEMENT_LEVEL,
-    SHRINKAGE_RETURNER,
     TOTAL_SHARES,
 )
+# Calibration constants: one source (task 5.10).
+from nba.outlook_constants import REPLACEMENT_LEVEL, SHRINKAGE_RETURNER
 
 EXCLUDED_PAIRS = {(2025, 2026)}
 
@@ -69,10 +69,13 @@ def _water_fill(shares, target, max_iter=25):
     return shares
 
 
-def _allocate_minutes(players):
+def _allocate_minutes(players, replacement_offset=None):
+    """Demand allocator (mirrors the pipeline). replacement_offset: added to proj_bpr before the
+    max(0, .) — REPLACEMENT_LEVEL (2.0) on the earlier scale; -R (1.918) on native-1 seasons."""
+    offset = REPLACEMENT_LEVEL if replacement_offset is None else replacement_offset
     demands = []
     for p in players:
-        bpr_above_repl = max(0.0, p["proj_bpr"] + REPLACEMENT_LEVEL)
+        bpr_above_repl = max(0.0, p["proj_bpr"] + offset)
         mpg_component = (p["mpg"] or 15.0) / 36.0
         demands.append(bpr_above_repl + mpg_component)
     powered = [d ** POWER_EXPONENT for d in demands]
@@ -184,6 +187,53 @@ class Command(BaseCommand):
     # ── Lineage check ──────────────────────────────────────────────────────────
 
     def _lineage_check(self, season_year: int, sample_size: int) -> bool:
+        from nba.rating_scale import native_scale
+        if native_scale(season_year) is not None:
+            return self._native_lineage_check(season_year, sample_size)
+        return self._lebron_lineage_check(season_year, sample_size)
+
+    def _native_lineage_check(self, season_year: int, sample_size: int) -> bool:
+        """
+        native-1 seasons: freshly fit the season with nba_compute_native_bpr's own code (stored
+        box, stored raw previous ratings and aging history, no writes) and compare the
+        top-minutes players' stored raw bpr (obpr_raw + dbpr_raw) with the fresh fit.
+        """
+        from nba.management.commands import nba_compute_native_bpr as nb
+        from nba.management.commands.nba_compute_final_bpr import Command as FinalBprCommand
+        from nba.management.commands.nba_experiment_final_bpr import Command as Harness
+
+        self.stdout.write(f"\nLineage check — source season {season_year} "
+                          f"(fresh native-1 fit, no writes)…")
+        prev_o, prev_d, _ = nb.stored_ratings(season_year - 1)
+        hist_o, hist_d, poss, dobs = {}, {}, {}, {}
+        if prev_o:
+            for s in nb.native_seasons_before(season_year):
+                hist_o[s], hist_d[s], _ = nb.stored_ratings(s)
+                poss[s], _ = nb.cached_season_possessions(s)
+            dobs = Harness._load_birth_dates()
+        loader = FinalBprCommand()
+        loader.stdout, loader.stderr = self.stdout, self.stderr
+        box_o, box_d, _ = loader._load_priors(season_year)
+        minutes = nb.full_season_minutes(season_year)
+        fresh_o, fresh_d, _ = nb.native_season(loader, season_year, box_o, box_d, minutes,
+                                               prev_o, prev_d, hist_o, hist_d, poss, dobs)
+        stored_o, stored_d, _ = nb.stored_ratings(season_year)
+        sample = sorted((p for p in stored_o if p in fresh_o), key=lambda p: minutes.get(p, 0.0),
+                        reverse=True)[:sample_size]
+        if not sample:
+            self.stdout.write(self.style.ERROR("  no comparable players — FAIL"))
+            return False
+        devs = [abs((stored_o[p] + stored_d[p]) - (fresh_o[p] + fresh_d.get(p, 0.0))) for p in sample]
+        mad = sum(devs) / len(devs)
+        verdict = mad <= LINEAGE_MAD_THRESHOLD
+        style = self.style.SUCCESS if verdict else self.style.ERROR
+        self.stdout.write(style(
+            f"  {season_year}: mean |Δ| raw = {mad:.3g} over {len(devs)} players → "
+            f"{'PASS' if verdict else f'FAIL (> {LINEAGE_MAD_THRESHOLD})'}"
+        ))
+        return verdict
+
+    def _lebron_lineage_check(self, season_year: int, sample_size: int) -> bool:
         """
         Freshly solve final BPR for the source season with the CURRENT pipeline
         (same code path as nba_compute_final_bpr, no writes) and compare the
@@ -305,6 +355,13 @@ class Command(BaseCommand):
         gaps = [float(r.bpr) - (float(r.box_obpr) + float(r.box_dbpr)) for r in gap_qs]
         cap_threshold = 1.6 * (statistics.stdev(gaps) if len(gaps) >= 20 else 3.5)
 
+        # native-1 source season (mirrors the pipeline, task 5.10b): the cap compares raw
+        # ratings (centred + centre) with box values, and the allocator's replacement is R.
+        from nba.rating_scale import native_scale
+        sc = native_scale(src)
+        c_o, c_d = (sc.centre_obpr, sc.centre_dbpr) if sc else (0.0, 0.0)
+        repl_offset = -sc.replacement if sc else None
+
         # Per-team returner rosters (backtest has no historical offseason moves)
         rows = NBAPlayerSeasonStats.objects.filter(
             season=src, season_type="regular", mpg__gte=MIN_MPG, bpr__isnull=False,
@@ -326,12 +383,12 @@ class Command(BaseCommand):
             # RAPM-inflation cap (asymmetric, mirrors pipeline)
             if row.box_obpr is not None and row.box_dbpr is not None:
                 box_bpr = float(row.box_obpr) + float(row.box_dbpr)
-                gap = p["proj_bpr"] - box_bpr
+                gap = p["proj_bpr"] + c_o + c_d - box_bpr
                 if gap > cap_threshold:
                     excess = gap - cap_threshold
                     if abs(gap) > 0:
-                        p["proj_obpr"] -= excess * (p["proj_obpr"] - float(row.box_obpr)) / gap
-                        p["proj_dbpr"] -= excess * (p["proj_dbpr"] - float(row.box_dbpr)) / gap
+                        p["proj_obpr"] -= excess * (p["proj_obpr"] + c_o - float(row.box_obpr)) / gap
+                        p["proj_dbpr"] -= excess * (p["proj_dbpr"] + c_d - float(row.box_dbpr)) / gap
                     p["proj_bpr"] -= excess
             # PV path: stored PV shrunk toward 0; fallback z(projected_bpr)
             if p["projection_value"] is None:
@@ -341,7 +398,7 @@ class Command(BaseCommand):
             team_players.setdefault(row.team_id, []).append(p)
 
         for players in team_players.values():
-            _allocate_minutes(players)
+            _allocate_minutes(players, repl_offset)
 
         # Two-pass centering (mirrors pipeline)
         base_off = {t: sum(p["minutes_share"] * p["proj_obpr"] for p in ps)

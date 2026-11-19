@@ -43,14 +43,17 @@ from nba.management.commands.compute_nba_team_outlooks import (
     MIN_MPG,
     MINUTES_FLOOR,
     MINUTES_CEIL,
-    SHRINKAGE_RETURNER,
-    SHRINKAGE_ACQUISITION,
-    REPLACEMENT_LEVEL,
     POWER_EXPONENT,
-    PV_SLOPE,
-    ROOKIE_PRIOR_OBPR,
-    ROOKIE_PRIOR_DBPR,
     rookie_eff_mpg,
+)
+# Calibration constants: one source (task 5.10).
+from nba.outlook_constants import (
+    PV_SLOPE,
+    REPLACEMENT_LEVEL,
+    ROOKIE_PRIOR_DBPR,
+    ROOKIE_PRIOR_OBPR,
+    SHRINKAGE_ACQUISITION,
+    SHRINKAGE_RETURNER,
 )
 
 ROOKIE_PRIOR_BPR = ROOKIE_PRIOR_OBPR + ROOKIE_PRIOR_DBPR

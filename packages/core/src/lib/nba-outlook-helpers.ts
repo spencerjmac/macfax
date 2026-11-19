@@ -321,11 +321,13 @@ export function getPlayerRoleLabel(
   return formatArchetype(player.archetype);
 }
 
+/** Reads a projected BPR level, so native-1 rows use the share-preserving cutoffs (task 5.10). */
 export function getDevelopmentRead(player: DevelopmentWatchPlayer): string {
   if (player.acquisition_type === 'drafted') return 'Development bet';
   const bpr = player.projected_bpr;
-  if (bpr !== null && bpr !== undefined && bpr >= 2) return 'Core growth piece';
-  if (bpr !== null && bpr !== undefined && bpr >= 0) return 'Rotation upside';
+  const scale = player.rating_scale;
+  if (bpr !== null && bpr !== undefined && bpr >= bprCutoff(2, scale)) return 'Core growth piece';
+  if (bpr !== null && bpr !== undefined && bpr >= bprCutoff(0, scale)) return 'Rotation upside';
   return 'Needs a leap';
 }
 

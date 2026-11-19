@@ -188,3 +188,60 @@ class EarlierScaleUnchangedTests(Fixture):
 class _Null:
     def write(self, *a, **k):
         pass
+
+
+class NativeConstantsTests(Fixture):
+    """Task 5.10: native-1 seasons use the approved native constants; the earlier scale keeps the old."""
+
+    def _slots(self):
+        return [{"minutes_share": 1.5, "projected_obpr": 3.0, "projected_dbpr": 1.0, "projected_bpr": 4.0,
+                 "pv_effective": 0.5, "acquisition_type": "returner", "age": 27},
+                {"minutes_share": 1.0, "projected_obpr": -1.0, "projected_dbpr": 0.0, "projected_bpr": -1.0,
+                 "pv_effective": -0.2, "acquisition_type": "signed", "age": 31}]
+
+    def test_native_slope_rookie_prior_and_wins_added(self):
+        from nba import outlook_constants as oc
+        cmd = OutlookCommand()
+        cmd.native_scale = native_scale(self.native)
+        self.assertEqual(cmd._rookie_prior(), (oc.NATIVE_ROOKIE_PRIOR_OBPR, oc.NATIVE_ROOKIE_PRIOR_DBPR))
+        slots = self._slots()
+        res = cmd._project_team(slots, 115.0, 115.0, 0.0, 0.0)
+        # base_off 3.5, base_def 1.5 (league bases 0): legacy EM = SLOPE x 5.0
+        self.assertAlmostEqual(res["legacy_adj_em"], oc.NATIVE_SLOPE * 5.0)
+        self.assertAlmostEqual(slots[0]["wins_added"], 1.5 * (4.0 - R) * oc.NATIVE_WINS_ADDED_PER_SHARE)
+        self.assertAlmostEqual(oc.NATIVE_WINS_ADDED_PER_SHARE, 20 * 82 / 48 / 37.73)
+
+    def test_native_slot_and_player_wins_added_agree_at_equal_minutes(self):
+        from nba import outlook_constants as oc
+        share, bpr = 1.4, 3.3
+        minutes = share * 20 * 82
+        self.assertAlmostEqual(share * (bpr - R) * oc.NATIVE_WINS_ADDED_PER_SHARE,
+                               (bpr - R) * minutes / 48 / 37.73)
+
+    def test_native_age_offset_in_development_delta(self):
+        from nba.management.commands.compute_nba_team_outlooks import age_bpr_delta
+        stats = self.rows[(2026, 1630000)]
+        slot = {"acquisition_type": "returner", "obpr": -0.5, "dbpr": 0.3, "bpr": -0.2, "stats_obj": None,
+                "player_obj": None, "age": 21, "player_name": "Role Guard"}
+        for scale, age in ((native_scale(self.native), 20), (None, 21)):
+            cmd = OutlookCommand()
+            cmd.native_scale = scale
+            cmd.source_year = 2026
+            cmd._project_bpr(dict(slot), 0.0, 0.0, 0.0)
+            s = dict(slot)
+            cmd._project_bpr(s, 0.0, 0.0, 0.0)
+            self.assertEqual(s["dev_delta"], age_bpr_delta(age))
+        self.assertIsNotNone(stats)
+
+    def test_earlier_scale_keeps_the_old_constants(self):
+        from nba import outlook_constants as oc
+        cmd = OutlookCommand()
+        cmd.native_scale = None
+        self.assertEqual(cmd._rookie_prior(), (oc.ROOKIE_PRIOR_OBPR, oc.ROOKIE_PRIOR_DBPR))
+        self.assertEqual((oc.ROOKIE_PRIOR_OBPR, oc.ROOKIE_PRIOR_DBPR, oc.SLOPE, oc.WINS_ADDED_SCALAR,
+                          oc.PV_SLOPE, oc.PV_SIGMA_EM, oc.SIGMA_EM, oc.WINS_PER_EM),
+                         (-0.8662, -0.2714, 0.453, 0.38, 10.1, 4.0, 4.7, 2.46))
+        slots = self._slots()
+        res = cmd._project_team(slots, 115.0, 115.0, 0.0, 0.0)
+        self.assertAlmostEqual(res["legacy_adj_em"], 0.453 * 5.0)
+        self.assertEqual(slots[0]["wins_added"], 1.5 * 4.0 * 0.38)

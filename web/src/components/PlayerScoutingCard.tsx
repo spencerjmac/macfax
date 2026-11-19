@@ -2,6 +2,8 @@
 
 import type { NBAPlayerSeasonStats } from "@macfax/core/types/nba";
 import { getBPRTier, fmtSigned } from "@macfax/core/lib/bprTiers";
+import { getBprTier } from "@macfax/core/lib/nba-outlook-helpers";
+import type { RatingScale } from "@macfax/core/types/nba";
 import { BPRConfidenceBadge } from "./BPRConfidenceBadge";
 import { clsx } from "clsx";
 import Image from "next/image";
@@ -86,17 +88,23 @@ export function PlayerScoutingCard({ player, peakBpr, careerBpr, className }: Pr
         <BPRCell
           label="BPR (adj)"
           value={player.bpr_replacement_adjusted}
+          tierValue={player.bpr}
+          scale={player.rating_scale}
           tooltip="BPR replacement-adjusted — 0 = replacement level"
           primary
         />
         <BPRCell
           label="Off BPR"
           value={player.obpr_replacement_adjusted}
+          tierValue={player.obpr}
+          scale={player.rating_scale}
           tooltip="Offensive BPR replacement-adjusted"
         />
         <BPRCell
           label="Def BPR"
           value={player.dbpr_replacement_adjusted}
+          tierValue={player.dbpr}
+          scale={player.rating_scale}
           tooltip="Defensive BPR replacement-adjusted"
         />
       </div>
@@ -106,12 +114,14 @@ export function PlayerScoutingCard({ player, peakBpr, careerBpr, className }: Pr
         <BPRCell
           label="Career BPR"
           value={careerBpr ?? null}
+          scale={player.rating_scale}
           tooltip="Minutes-weighted career average BPR (qualifying seasons ≥500 min)"
           small
         />
         <BPRCell
           label="Peak BPR"
           value={peakBpr ?? null}
+          scale={player.rating_scale}
           tooltip="Best single-season BPR (qualifying seasons ≥500 min)"
           small
         />
@@ -144,20 +154,28 @@ export function PlayerScoutingCard({ player, peakBpr, careerBpr, className }: Pr
   );
 }
 
+/**
+ * A BPR value cell, coloured by the BPR tiers (getBprTier) of the underlying, unadjusted rating
+ * (`tierValue`, default `value`) on the row's scale (task 5.10).
+ */
 function BPRCell({
   label,
   value,
+  tierValue,
+  scale,
   tooltip,
   primary = false,
   small = false,
 }: {
   label: string;
   value: number | null | undefined;
+  tierValue?: number | null;
+  scale?: RatingScale;
   tooltip?: string;
   primary?: boolean;
   small?: boolean;
 }) {
-  const tier = getBPRTier(value);
+  const tier = getBprTier(tierValue !== undefined ? tierValue : value, scale);
   return (
     <div className="px-4 py-3 flex flex-col gap-0.5" title={tooltip}>
       <span className="text-xs uppercase tracking-wider text-slate-500">{label}</span>
@@ -165,7 +183,7 @@ function BPRCell({
         className={clsx(
           "tabular-nums font-semibold",
           primary ? "text-2xl" : small ? "text-base" : "text-xl",
-          tier.color,
+          tier.className,
         )}
       >
         {fmtSigned(value, 2)}

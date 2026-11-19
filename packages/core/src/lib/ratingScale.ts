@@ -20,9 +20,13 @@ const NATIVE_BPR_CUTOFF: Record<string, number> = {
   '5': 5.7, '3': 3.2, '2': 1.9, '1.5': 1.3, '1': 0.8, '0': -0.4,
 };
 
-/** Old Wins Added cutoff → native cutoff (same share of qualified players). */
+/**
+ * Old Wins Added cutoff → native cutoff (same share of qualified players), except 0: the
+ * "Below Replacement" line is a definition (Wins Added < 0 means below a replacement-level
+ * player), so it stays exactly 0 on every scale (task 5.10).
+ */
 const NATIVE_WINS_ADDED_CUTOFF: Record<string, number> = {
-  '8': 12.2, '5': 7.5, '2': 2.4, '0': -0.5,
+  '8': 12.2, '5': 7.5, '2': 2.4, '0': 0,
 };
 
 /** BPR tier cutoff for a row's scale: the old value on the earlier scale. */

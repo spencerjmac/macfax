@@ -34,6 +34,26 @@ from nba.models import (
     TeamOutseasonMove,
     NBAProjectedRosterSlot,
 )
+from nba.outlook_constants import (  # calibration constants: one source (task 5.10)
+    AGE_CURVE_KNOTS,
+    NATIVE_DEV_AGE_OFFSET,
+    NATIVE_ROOKIE_PRIOR_DBPR,
+    NATIVE_ROOKIE_PRIOR_OBPR,
+    NATIVE_SLOPE,
+    NATIVE_WINS_ADDED_PER_SHARE,
+    PICK_DEV_KNOTS,
+    PV_SIGMA_EM,
+    PV_SLOPE,
+    REPLACEMENT_LEVEL,
+    ROOKIE_PRIOR_DBPR,
+    ROOKIE_PRIOR_OBPR,
+    SHRINKAGE_ACQUISITION,
+    SHRINKAGE_RETURNER,
+    SIGMA_EM,
+    SLOPE,
+    WINS_ADDED_SCALAR,
+    WINS_PER_EM,
+)
 from nba.rating_scale import NATIVE_MODEL, native_scale, native_scale_by_season_id, row_is_native
 from nba.utils.name_utils import normalize_name
 
@@ -48,23 +68,7 @@ logger = logging.getLogger(__name__)
 # additive effective-MPG model (bin effect + wins slope, clamped).
 PIPELINE_VERSION = "2.3"
 
-# ── Calibration constants ──────────────────────────────────────────────────────
-REPLACEMENT_LEVEL = 2.0        # BPR units added above zero to form demand signal
-SHRINKAGE_RETURNER = 0.10      # 10% regression to league mean for returning players
-SHRINKAGE_ACQUISITION = 0.20   # 20% for trades/signings (higher projection uncertainty)
 
-# AGE_CURVE — HUMAN-REVIEWED CONSTANT, do not auto-update.
-# Empirical BPR aging curve: mean bpr(Y+1)−bpr(Y) by age at Y, derived 2026-08-03
-# on pairs 2022:2023/2023:2024/2024:2025 (2025→2026 lineage-excluded), FULL
-# population N=1321. Buckets: ≤20 +0.61, 21-30 ≈0 (flat prime), 31-33 −0.50, 34+
-# −0.17 (survivorship-masked → regularized toward the 31-33 decline). Piecewise-
-# linear knots (age, delta); clamp beyond the ends.
-#   CAVEAT: per-player LOYO barely beats zero (age Δ is small vs BPR noise SD ~2.4).
-#   This term is here for correct veteran-decline / young-development DIRECTION and
-#   to drive the development-watch — NOT a large r lift. The dominant young
-#   high-pick development (+2.69 for young bad-team players) is NOT captured here;
-#   that is the separate team-agnostic PICK-CONDITIONAL curve (next task).
-AGE_CURVE_KNOTS = [(20.0, 0.60), (21.0, 0.00), (28.0, 0.00), (32.0, -0.50)]
 
 
 def age_bpr_delta(age):
@@ -82,17 +86,6 @@ def age_bpr_delta(age):
     return 0.0
 
 
-# PICK_DEV_CURVE — HUMAN-REVIEWED CONSTANT, do not auto-update.
-# Early-career development bonus by DRAFT PICK, ON TOP OF the age curve. Derived
-# 2026-09-10 on pairs 2022:2023/2023:2024/2024:2025 (2025→2026 lineage-excluded),
-# all teams (team-agnostic), RESIDUAL after the age curve so it does not
-# double-count general aging. Fires only in years_of_experience ≤ 3 (the signal is
-# concentrated there; later-career pick effect ≈ 0). Early-career residuals by
-# pick: 1-3 +0.52, 4-9 +0.34, 10-20 +0.16, 21-30 −0.06, 31-60 −0.25 (strongly
-# monotone). This is the decomposed +2.08 young-bad-team development — high picks
-# develop, late picks fade — keyed on PICK, not team (so it does not re-absorb the
-# P3 tanking-context effect).
-PICK_DEV_KNOTS = [(2.0, 0.52), (6.5, 0.34), (15.0, 0.16), (25.0, -0.06), (45.0, -0.25)]
 
 
 def pick_dev_bonus(pick, yrs_exp):
@@ -108,59 +101,6 @@ def pick_dev_bonus(pick, yrs_exp):
         if p0 <= pick <= p1:
             return v0 + (v1 - v0) * (pick - p0) / (p1 - p0)
     return 0.0
-# SLOPE — HUMAN-REVIEWED CONSTANT, do not auto-update.
-# Derivation: `manage.py derive_nba_slope --pairs 2022:2023,2023:2024,2024:2025`
-# (Phase 2 Stage 2, 2026-07-07, operator-approved decision tree).
-#   Pooled through-origin OLS, actual adj_net(Y+1) ~ (excess_off + excess_def),
-#   N=90 (3 pairs × 30), r=0.456, RMSE=4.63. Allocator: MINUTES_CEIL=1.80.
-#   Pairs included: 2022→23, 2023→24, 2024→25 — each passed the fresh-BPR
-#   lineage check (mean |stored − fresh| = 0.109/0.084/0.115, threshold 0.5).
-#   2025→2026 excluded: stored 2025 BPR predates the current BPR pipeline
-#   (e.g. Amen Thompson stored ≈5.7 vs freshly-computed 9.43).
-#   History: 0.48 (2024→25 single pair, old allocator CEIL=1.20; its target
-#   ratings were also corrupted by a missing season_type='regular' filter —
-#   playoff rows overwrote 16 teams' actual adj_net).
-SLOPE = 0.453
-WINS_PER_EM = 2.46             # wins per 1 pt of adj_em (OLS-calibrated from 2025-26 season)
-# WINS_INTERCEPT (legacy, removed Phase 2): 44.3 was OLS-fit on an uncentered
-# legacy scale whose league-mean EM was ~-1.34. A fixed intercept cannot
-# guarantee league closure (Σ wins = 1230). Wins now use a self-centering
-# effective intercept computed per run: 41.0 - WINS_PER_EM × league_mean_em.
-SIGMA_EM = 4.7                 # pooled forward RMSE 4.63 (legacy BPR path, N=90, same
-                               # derive_nba_slope run as SLOPE above), rounded up to
-                               # one decimal. History: 5.5 (single pair, old allocator).
-WINS_ADDED_SCALAR = 0.38       # converts (minutes_share × bpr) → wins added
-
-# ── Projection Value wiring (docs/bpr_audit/09) ───────────────────────────────
-# Team forecasts consume projection_value (0.25·z(BPR)+0.75·z(BPM)), NOT raw
-# BPR — forward-validated: pooled r=0.601 vs 0.583 pure BPR (3 pairs).
-# Centered (two-pass league-baseline) form — no intercept. The legacy BPR
-# projection is still computed and logged for comparison; projected_* DB
-# fields carry the PV-based numbers.
-#
-# PV_SLOPE — HUMAN-REVIEWED CONSTANT, do not auto-update.
-# Derivation: LOYO out-of-sample re-fit under the CURRENT pipeline (2026-07-30,
-# operator-approved). The old 5.591 was fit for the PRE-K1, PRE-trim allocator;
-# roster trim sharpened the team_pv distribution, leaving 5.591 ~2x too small
-# (compression diagnostic: projected AdjEM SD 2.55 vs actual 5.39, ratio 0.47).
-#   Through-origin OLS, actual adj_net(Y+1) ~ (team_pv − league_pv_mean),
-#   team_pv = minutes-share-weighted mean pv_effective under MINUTES_CEIL=1.80.
-#   Pairs 2022:2023,2023:2024,2024:2025 (2025→2026 lineage-excluded, as before).
-#   LOYO folds: demand 11.72/9.84/9.00 → pooled 10.10 (r 0.683); persistence
-#   12.10/10.23/9.37 → pooled 10.52 (r 0.712). Nearly identical across allocators
-#   → one value serves both (not overfit). OOS wins MAE 7.76→6.96; r INVARIANT
-#   (pure scale re-fit — the ordering ceiling 0.68-0.71 is the values problem,
-#   injury/tanking-deflation, untouched here by design).
-#   History: 3.58 (old allocator CEIL=1.20) → 5.591 (Phase 2, 2026-07-07,
-#   pre-trim) → 10.1 (LOYO under K1+trim+pool-12, 2026-07-30).
-PV_SLOPE = 10.1
-PV_SIGMA_EM = 4.0             # LOYO pooled forward RMSE 3.94 (demand) / 3.82
-                              # (persistence), rounded up. Band coverage: 73-77%
-                              # of actuals inside ±1σ (≥68% target, mildly
-                              # conservative). History: 4.5 → 4.6 → 4.0.
-# PV_WINS_INTERCEPT (removed Phase 2): the fixed 41.0 assumed projected EM is
-# exactly mean-zero. handle() now computes effective_intercept =
-# 41.0 − WINS_PER_EM × league_mean_em each full-league run, guaranteeing closure.
 MIN_MPG = 5.0                  # minimum MPG to include player in source roster
 MINUTES_FLOOR = 0.02           # minimum projected minutes share (~0.4 MPG equiv)
 MINUTES_CEIL = 1.80            # NBA star ceiling (~36 MPG equiv). Replaces the
@@ -181,22 +121,6 @@ KEEP_ROTATION = 10             # non-rookie slots kept before minutes allocation
                                # overflow the pool and water-fill dilute everyone.
                                # Ranked by prior MPG, NOT BPR (see _trim_roster).
 
-# ── Rookie priors (HUMAN-REVIEWED CONSTANTS, Phase 4 Stage 2, 2026-07-13) ─────
-# Drafted players have no NBA stat to project from; before Phase 4 they were
-# hardcoded obpr/dbpr 0.0 and mpg 12.0. Derivation:
-#   `manage.py derive_rookie_priors --draft-years 2021,2022,2023,2024`
-#   187 rookie outcomes / 4 draft classes, joined NBA.com DraftHistory PERSON_ID
-#   → rookie-season stats (draft year D → season D+1), multi-team splits
-#   collapsed minutes-weighted, one row per player asserted.
-#
-# BPR prior is FLAT (pick-independent) — operator decision D1. LOYO
-# (leave-one-class-out) pooled BPR MAE: pick-binned map 1.69 beats the old
-# hardcoded 0.0 (1.90) but LOSES to a flat global-rookie-mean (1.66). Pick
-# carries no rookie-BPR signal, so we use the pooled minutes-weighted mean and
-# reject pick-binned BPR. (The old 0.0 was, ironically, only ~1.1 pts off.)
-ROOKIE_PRIOR_OBPR = -0.8662    # pooled minutes-weighted rookie obpr, N=187
-ROOKIE_PRIOR_DBPR = -0.2714    # pooled minutes-weighted rookie dbpr, N=187
-# (total rookie BPR prior = -1.1376; rookies are net-negative players — honest.)
 
 # RETIRED (Phase 4.6 conviction — do not restore): the Phase 4.5 per-game
 # pick bins {(1,5): 27.9, (6,14): 20.9, (15,30): 16.4, (31,60): 13.0}.
@@ -902,9 +826,9 @@ class Command(BaseCommand):
                         move.overall_pick,
                         self._prior_team_wins(source_season).get(outlook.team_abbr),
                     ),
-                    "obpr": ROOKIE_PRIOR_OBPR,
-                    "dbpr": ROOKIE_PRIOR_DBPR,
-                    "bpr": ROOKIE_PRIOR_OBPR + ROOKIE_PRIOR_DBPR,
+                    "obpr": self._rookie_prior()[0],
+                    "dbpr": self._rookie_prior()[1],
+                    "bpr": self._rookie_prior()[0] + self._rookie_prior()[1],
                     "projection_value": None,
                     "archetype": None,
                     "acquisition_type": "drafted",
@@ -1022,6 +946,12 @@ class Command(BaseCommand):
             return 0.0, 0.0, 0.0
         return sc.unknown_obpr, sc.unknown_dbpr, sc.unknown_bpr
 
+    def _rookie_prior(self) -> tuple[float, float]:
+        """Drafted-rookie (obpr, dbpr) prior: the native-1 values on native seasons (task 5.10)."""
+        if getattr(self, "native_scale", None) is not None:
+            return NATIVE_ROOKIE_PRIOR_OBPR, NATIVE_ROOKIE_PRIOR_DBPR
+        return ROOKIE_PRIOR_OBPR, ROOKIE_PRIOR_DBPR
+
     def _or_unknown(self, value, side: str) -> float:
         """Earlier scale: `value or 0.0`, unchanged. Native: value, or the unknown rating when None."""
         if getattr(self, "native_scale", None) is None:
@@ -1059,7 +989,12 @@ class Command(BaseCommand):
         pick = getattr(player_obj, "draft_overall_pick", None)
         dyear = getattr(player_obj, "draft_year", None)
         yrs_exp = (self.source_year - dyear - 1) if dyear is not None else None
-        dev_delta = age_bpr_delta(slot.get("age")) + pick_dev_bonus(pick, yrs_exp)
+        age = slot.get("age")
+        if age is not None and getattr(self, "native_scale", None) is not None:
+            # native-1 (task 5.10): the knots were fitted on age at the start of the source
+            # season; the slot age is one year later.
+            age = age - NATIVE_DEV_AGE_OFFSET
+        dev_delta = age_bpr_delta(age) + pick_dev_bonus(pick, yrs_exp)
         slot["dev_delta"] = dev_delta
         if dev_delta:
             mag = abs(proj_obpr) + abs(proj_dbpr)
@@ -1380,8 +1315,9 @@ class Command(BaseCommand):
         )
 
         # ── Legacy BPR-based projection (kept for comparison logging) ─────────
-        adj_o = nba_avg_adj_o + SLOPE * (base_off - league_base_off)
-        adj_d = nba_avg_adj_d - SLOPE * (base_def - league_base_def)
+        slope = NATIVE_SLOPE if getattr(self, "native_scale", None) is not None else SLOPE
+        adj_o = nba_avg_adj_o + slope * (base_off - league_base_off)
+        adj_d = nba_avg_adj_d - slope * (base_def - league_base_def)
         legacy_adj_em = adj_o - adj_d
 
         # ── PRIMARY: Projection Value path (docs/bpr_audit/09) ────────────────
@@ -1406,8 +1342,14 @@ class Command(BaseCommand):
         # Wins added per player
         for slot in slots:
             share = slot.get("minutes_share") or 0.0
-            bpr   = slot.get("projected_bpr") or 0.0
-            slot["wins_added"] = share * bpr * WINS_ADDED_SCALAR
+            if getattr(self, "native_scale", None) is not None:
+                # native-1: Wins Added over replacement R, on the player Wins Added scale (D = 37.73)
+                bpr = self._or_unknown(slot.get("projected_bpr"), "b")
+                slot["wins_added"] = (share * (bpr - self.native_scale.replacement)
+                                      * NATIVE_WINS_ADDED_PER_SHARE)
+            else:
+                bpr   = slot.get("projected_bpr") or 0.0
+                slot["wins_added"] = share * bpr * WINS_ADDED_SCALAR
 
         # Continuity: fraction of projected minutes from returning players
         returner_share = sum(
