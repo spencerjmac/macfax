@@ -191,7 +191,7 @@ class CommandTests(TestCase):
             f"{MOD}.native_season": native,
             f"{MOD}.season_possessions": possessions,
             f"{MOD}.POSS_CACHE_DIR": self.cache_dir,
-            f"{MOD}.FinalBprCommand._load_priors": lambda self_, s: ({100: 1.0}, {100: 0.0}, {100: 2000.0}),
+            f"{MOD}.load_box": lambda loader, s: ({100: 1.0}, {100: 0.0}),
         }.items():
             patcher = mock.patch(target, value)
             patcher.start()
@@ -333,3 +333,23 @@ class CommandTests(TestCase):
         self.assertEqual(list(o), sorted(o))
         self.assertEqual(list(d), sorted(d))
         self.assertEqual(models, {"native-1": 6})
+
+
+class EarlySeasonTests(TestCase):
+    """Task 5.8: a season in progress with no player yet meeting the box rule still rates."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.season = NBASeason.objects.create(year=2027, display_name="2026-27")
+        cls.player = NBAPlayer.objects.create(player_id=101, name="Early")
+        _row(cls.player, cls.season)                                   # no box values yet
+
+    def test_load_box_is_empty_without_box_rows(self):
+        self.assertEqual(nb.load_box(None, 2027), ({}, {}))
+
+    def test_load_box_reads_box_rows(self):
+        NBAPlayerSeasonStats.objects.filter(season=self.season).update(box_obpr=1.5, box_dbpr=-0.5)
+        from nba.management.commands.nba_compute_final_bpr import Command as FinalBprCommand
+        loader = FinalBprCommand()
+        loader.stdout = loader.stderr = StringIO()
+        self.assertEqual(nb.load_box(loader, 2027), ({101: 1.5}, {101: -0.5}))

@@ -43,6 +43,11 @@ _fit_chain_season; nba_compute_final_bpr: _load_priors, _load_stints), so a
 season computed here equals that season of the harness's native chain given
 the same box values and previous ratings.
 
+Mid-season (task 5.8): the same command runs on a season in progress. Box values exist only for
+players who already meet the box rule (none early in a season), the lambda tiers use minutes so
+far, everyone else is on last season's raw + aging (newcomers at raw 0), and the centring and Wins
+Added use the minutes so far.
+
 Refuses when Y-1 holds ratings written by another model (bpr_model other than
 'native-1'): the chain must run in order. With no Y-1 ratings (the chain's
 first season, 2006) the prior is box only.
@@ -148,6 +153,20 @@ def full_season_minutes(season: int) -> dict[int, float]:
             season__year=season, season_type="regular").values_list("player__player_id", "mpg", "gp"):
         minutes[nba_id] += (mpg or 0.0) * (gp or 0)
     return dict(minutes)
+
+
+def load_box(loader, season: int) -> tuple[dict[int, float], dict[int, float]]:
+    """
+    Y's stored box_obpr / box_dbpr keyed by NBA.com id. Empty early in a season, before any player
+    meets the box rule (the prior is then last season's raw + aging; newcomers at raw 0).
+    """
+    from nba.models import NBAPlayerSeasonStats
+
+    if not NBAPlayerSeasonStats.objects.filter(season__year=season, season_type="regular",
+                                               box_obpr__isnull=False).exists():
+        return {}, {}
+    box_o, box_d, _ = loader._load_priors(season)
+    return box_o, box_d
 
 
 def stint_fingerprint(season: int) -> dict:
@@ -304,7 +323,10 @@ class Command(BaseCommand):
 
         loader = FinalBprCommand()
         loader.stdout, loader.stderr = self.stdout, self.stderr
-        box_o, box_d, _box_minutes = loader._load_priors(season)
+        box_o, box_d = load_box(loader, season)
+        if not box_o:
+            self.stdout.write(f"  box: no player meets the box rule in {season} yet; prior is last season "
+                              f"+ aging (newcomers at raw 0)")
         minutes = full_season_minutes(season)
         o, d, info = native_season(loader, season, box_o, box_d, minutes, prev_o, prev_d,
                                    hist_o, hist_d, poss_hist, dobs)
