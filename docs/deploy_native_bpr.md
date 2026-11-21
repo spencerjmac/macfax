@@ -6,8 +6,18 @@ Plan written 2026-11-21 (task D.2). The prerequisites were added in D.3 (2026-11
 - a `.dockerignore` covers the cache directories (§6);
 - the deploy scripts are in `tools/deploy_native/` (Appendix A).
 
-Nothing in this plan has been run on prod. The only prod access so far is the read-only survey of 2026-11-21
-(`macfax-runs/d2/prod_readonly.sh`; output in `macfax-runs/d2/prod/`).
+Amendments approved with the plan (2026-11-21):
+- P1 lists the commits P3 deploys outside `nba/`, `tools/deploy_native` and `docs`, and records prod's HEAD for §7.5;
+- L1 and P3 check that the local DB, `main` and prod have the same latest `nba` migration;
+- P7 also checks that `nba_stage`'s columns match `public`'s `nba_*` (`check_columns.sql`);
+- P5 checks that the seeded files are writable by the app's user;
+- §7.4 adds NCAA row counts against P9, Embiid 2017 (31 games, 20.2 points), a native player page and the NCAA home page.
+
+**Status (2026-11-21):** Go 1 is done (L1–L5 and P1–P3, `TS=20261121_152551`; outputs in `macfax-runs/deploy/`).
+Prod runs `eb7fbd1` with `nba` migration `0033_rating_scale`, still on the legacy path; the dump, cache seed and
+scripts are in prod's `backups/`, next to the full backup `pre-native-swap-20261121_152551.dump`. Go 2 (P4–P16)
+is set for 2026-11-22, after the 03:00 MST run. The read-only survey of 2026-11-21 is in
+`macfax-runs/d2/prod_readonly.sh` (output in `macfax-runs/d2/prod/`).
 Every prod step below needs an explicit go in chat. That includes `fab deploy` and every
 `docker compose exec`/`run` that writes.
 
@@ -338,6 +348,10 @@ cd /home/spencer/Workspace/macfax-deploy/backend
 PY=/home/spencer/Workspace/macfax/backend/.venv/bin/python
 T=/home/spencer/Workspace/macfax-deploy/tools/deploy_native
 OUT=/home/spencer/Workspace/macfax-runs/deploy; mkdir -p $OUT; TS=$(date +%Y%m%d_%H%M%S)
+# Same latest nba migration in main and the local DB, nothing unapplied (P3 checks prod against this value)
+ls nba/migrations/0*.py | sort | tail -1                                                  # 0033_rating_scale.py
+psql -d macfax -XAtc "SELECT max(name) FROM django_migrations WHERE app='nba'" | tee $OUT/nba_migration.txt   # 0033_rating_scale
+$PY manage.py migrate nba --plan | tail -1                                                # No planned migration operations.
 
 # L2. Bring local up to today on the native path (WRITE: backup first)
 pg_dump -Fc -d macfax -f /home/spencer/Workspace/macfax/backups/macfax_${TS}_pre_deploy_catchup.dump
@@ -355,8 +369,8 @@ bash $T/make_check_counts.sh $OUT/nba_full_counts_$TS.txt > $OUT/check_counts.sq
 tar czf $OUT/nba_cache_seed_$TS.tgz -C ~/.cache/macfax/nba pbp_cache native_poss_cache box_model_cache
 tar tzf $OUT/nba_cache_seed_$TS.tgz | grep -c box_model_cache/      # includes 2027.pkl
 
-# L5. Upload (to prod's backups/, which git ignores)
-scp -P 42222 $OUT/nba_full_$TS.sql.gz $OUT/nba_cache_seed_$TS.tgz $OUT/check_counts.sql \
+# L5. Upload (to prod's backups/: untracked, and fab deploy's `git reset --hard` leaves untracked files alone)
+scp -P 42222 $OUT/nba_full_$TS.sql.gz $OUT/nba_cache_seed_$TS.tgz $OUT/check_counts.sql $T/check_columns.sql \
     $T/to_stage.awk $T/carry.sql $T/swap.sql $T/rollback.sql $T/verify.sql macfax@sands.usu.edu:/opt/macfax/backups/
 ```
 
@@ -373,13 +387,13 @@ PSQL="docker compose exec -T db psql -X -U cbb_user -d cbb_analytics -v ON_ERROR
 
 | # | Step | Command | Pass when |
 |---|---|---|---|
-| P1 | Pre-flight (read-only) | `git log -1 --oneline; docker compose ps; df -h /; free -g; docker compose logs --since 12h scheduler \| grep -E "starting update_daily\|update_daily (finished\|FAILED)"` | HEAD `2333608`; all 5 services up; ≥ 20 GB free; today's run shows `finished` |
+| P1 | Pre-flight (read-only) | On prod: `git rev-parse HEAD; git log -1 --oneline; docker compose ps; df -h /; free -g; docker compose logs --since 14h scheduler \| grep -E "starting update_daily\|update_daily (finished\|FAILED)"`. Record the hash as `PROD_HEAD` (in `$OUT/prod_head.txt` and in §7.5's code rollback). Then locally, the commits P3 will deploy outside `nba/`, `tools/deploy_native` and `docs`: `git log --reverse --format='%h %ad %s' --date=short --name-only $PROD_HEAD..origin/main -- . ':(exclude,glob)**/nba/**' ':(exclude)tools/deploy_native' ':(exclude)docs'` | HEAD as surveyed (`2333608`); all 5 services up; ≥ 20 GB free; today's run shows `finished`. Every listed commit is finished work; **stop if any looks unfinished**. |
 | P2 | **Full backup** (named outside db-push's `prod-*` prune pattern) | `docker compose exec -T db pg_dump -U cbb_user -Fc cbb_analytics > backups/pre-native-swap-$TS.dump && ls -lh backups/pre-native-swap-$TS.dump && docker compose exec -T db pg_restore -l < backups/pre-native-swap-$TS.dump \| grep -c "TABLE DATA"` | ≈370 MB; TABLE DATA count = 61 (prod has 61 tables before 0033) |
-| P3 | **Deploy code + migrate to 0033** (from local: `fab deploy`) | `fab deploy` runs `git reset --hard origin/main`, `build`, `up -d`; the backend command runs `migrate`. Then on prod: `$PSQL -Atc "SELECT max(name) FROM django_migrations WHERE app='nba'"` and `curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:7001/api/nba/health/` | `0033_rating_scale`; 200. If macfax.usu.edu returns 502: `docker exec swag nginx -t && docker exec swag nginx -s reload`. Prod still runs the **legacy** path (2026 has no native rows), which is safe if the swap is postponed. |
+| P3 | **Deploy code + migrate to 0033** (from local: `fab deploy`) | `fab deploy` runs `git reset --hard origin/main`, `build`, `up -d`; the backend command runs `migrate`. Then on prod: `$PSQL -Atc "SELECT max(name) FROM django_migrations WHERE app='nba'"` and `curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:7001/api/nba/health/` | `0033_rating_scale`, the same as main and the local DB (L1's `$OUT/nba_migration.txt`); 200. If macfax.usu.edu returns 502: `docker exec swag nginx -t && docker exec swag nginx -s reload`. Prod still runs the **legacy** path (2026 has no native rows), which is safe if the swap is postponed. |
 | P4 | Stop the scheduler | `docker compose stop scheduler && docker compose ps scheduler` | exited |
-| P5 | Seed the cache volume | `docker volume ls \| grep nba_cache` then `docker compose run --rm --no-deps -v /opt/macfax/backups:/seed:ro scheduler sh -c "tar xzf /seed/nba_cache_seed_$TS.tgz -C /cache/nba && du -sh /cache/nba/* && ls /cache/nba/pbp_cache \| wc -l"` | `macfax_macfax_nba_cache` exists; ≈283 MB pbp, ≈356 KB possessions, box_model_cache with `2027.pkl`; file count as in L4 |
+| P5 | Seed the cache volume | `docker volume ls \| grep nba_cache; docker compose exec -T backend id -un` then `docker compose run --rm --no-deps -v /opt/macfax/backups:/seed:ro scheduler sh -c "id -un && tar --no-same-owner -xzf /seed/nba_cache_seed_$TS.tgz -C /cache/nba && du -sh /cache/nba/* && ls /cache/nba/pbp_cache \| wc -l && find /cache/nba ! -user \$(id -u) \| wc -l && touch /cache/nba/box_model_cache/.w && rm /cache/nba/box_model_cache/.w && echo WRITABLE"` | `macfax_macfax_nba_cache` exists; ≈283 MB pbp, ≈356 KB possessions, box_model_cache with `2027.pkl`; file count as in L4. **Writable by the app's user:** both `id -un` print `root` (`backend/Dockerfile` has no `USER` and compose sets no `user:`, so backend and scheduler run as root); 0 files owned by anyone else (`--no-same-owner` drops local's uid 1000); `WRITABLE`. |
 | P6 | **Load staging** (site stays up) | `zcat backups/nba_full_$TS.sql.gz \| awk -f backups/to_stage.awk \| $PSQL -q -1 > backups/stage_load_$TS.log 2>&1; echo rc=$?` | rc=0 (one transaction: a failure leaves no `nba_stage`). Estimate 5–10 min; disk +≈2.7 GB |
-| P7 | **Count check** | `$PSQL -q -v schema=nba_stage -f - < backups/check_counts.sql` | `COUNTS OK: 18 tables, every count matches local` (any mismatch errors out, so stop there) |
+| P7 | **Count and column check** | `$PSQL -q -v schema=nba_stage -f - < backups/check_counts.sql` then `$PSQL -q -f - < backups/check_columns.sql` | `COUNTS OK: 18 tables, every count matches local`, then `COLUMNS OK: 18 tables, every column matches public`: nba_stage's columns equal public's `nba_*` (at 0033 after P3) in name, type, NOT NULL, identity and default. Either check lists what differs and errors out, so stop there. Column order is listed but does not fail. |
 | P8 | **Carry prod-only NBA values** | `$PSQL -f - < backups/carry.sql \| tee backups/carry_$TS.log` | `unmatched` 0, `unmapped_must_be_0` 0, `missing` 0; review the listed differences. Expected today: 0 outlook diffs, 0 manual moves, ≈1,800 injury rows inserted. |
 | P9 | Pre-swap snapshot | `$PSQL -f - < backups/verify.sql > backups/verify_pre_$TS.txt 2>&1` | – |
 | P10 | Stop backend + web; confirm no other sessions | `docker compose stop backend web && $PSQL -Atc "SELECT pid, application_name, state FROM pg_stat_activity WHERE datname = current_database() AND pid <> pg_backend_pid()"` | no rows |
@@ -403,22 +417,37 @@ PSQL="docker compose exec -T db psql -X -U cbb_user -d cbb_analytics -v ON_ERROR
    - The 2027 top 10 matches local's list at dump time: on 2026-11-20 that was Wembanyama 13.28, Jokić 11.65, Gilgeous-Alexander 8.21, and so on.
    - Non-NBA counts are unchanged: `diff <(sed -n '/non-NBA/,$p' backups/verify_pre_$TS.txt) <(sed -n '/non-NBA/,$p' backups/verify_post_$TS.txt)` prints nothing.
      The NCAA daily job does not run while the scheduler is stopped, so nothing should move.
+   - NCAA row counts (app `core`, 29 tables) are unchanged from P9:
+     `diff <(grep -E '^ *core_' backups/verify_pre_$TS.txt) <(grep -E '^ *core_' backups/verify_post_$TS.txt) && grep -cE '^ *core_' backups/verify_post_$TS.txt`
+     prints no diff, then `29`.
 2. **API** on prod: `for u in health/ "rankings/?season=2027" "players/?season=2027" "players/?season=2016" "outlook/" "outlook/utah-jazz/" "team/boston-celtics/players/?season=2027" "matchup/?teamA=boston-celtics&teamB=utah-jazz&season=2027"; do echo "$(curl -s -o /dev/null -w '%{http_code} %{size_download}' "http://127.0.0.1:7001/api/nba/$u") $u"; done`.
    - Every URL returns 200.
    - 2016 now returns ratings; it had none before.
-3. **Pages** (browser, macfax.usu.edu and macfax.org):
+   - Embiid 2017 (the GP bug's test case) and one native 2027 player:
+     ```bash
+     for q in "2017 203954" "2027 1641705"; do set -- $q
+       curl -s "http://127.0.0.1:7001/api/nba/players/?season=$1" | docker compose exec -T backend python -c \
+         "import json,sys; p=[x for x in json.load(sys.stdin) if x['player_id']==$2][0]; print($1, p['player_name'], p['gp'], round(p['pts'], 1), p['rating_scale'], round(p['bpr'], 2))"
+     done
+     ```
+     Pass: `2017 Joel Embiid 31 20.2 native-1 …` and `2027 Victor Wembanyama … native-1 …` (local on 2026-11-21: 6.97 and 13.28).
+3. **Pages via curl** (web container): `for u in "nba/players/203954?season=2017" "nba/players/1641705" "ncaa"; do echo "$(curl -s -o /dev/null -w '%{http_code} %{size_download}' "http://127.0.0.1:7000/$u") $u"; done; curl -s "http://127.0.0.1:7000/nba/players/203954?season=2017" | grep -oE "Joel Embiid|31(<!-- -->)? GP" | sort -u`.
+   - All three return 200: Embiid's 2017 page, a native player page (Wembanyama 2027) and the NCAA home page.
+   - The Embiid page contains `Joel Embiid` and `31 GP`.
+4. **Pages** (browser, macfax.usu.edu and macfax.org):
    - `/nba` and `/nba/ratings`: 2027 shows BPR values. Also check 2016 and 2010, which are new on prod.
+   - `/nba/players/203954?season=2017`: Embiid, 31 games, 20.2 points. `/nba/players/1641705`: a native player page.
    - A team page, `/nba/outlook` and one outlook detail.
    - Model health.
-   - An NCAA ratings page: unchanged.
+   - `/ncaa` (NCAA home) and an NCAA ratings page: unchanged.
    - Favourites still work.
-4. **Logs:** `docker compose logs --since 10m backend | grep -iE "error|traceback" | head` prints nothing new.
+5. **Logs:** `docker compose logs --since 10m backend | grep -iE "error|traceback" | head` prints nothing new.
 
 ### 7.5 Rollback
 
 | When | Do |
 |---|---|
-| P3 fails (build or migrate) | `fab deploy` failed before `up -d`: prod still runs the old containers, so stop and diagnose. Failed after: redeploy the old code on prod: `git reset --hard 2333608 && docker compose build && docker compose up -d` (not `fab deploy`, which resets to `origin/main`). Migrations 0032/0033 can stay. The old code ignores the extra nullable columns and the extra table, so don't migrate backwards. |
+| P3 fails (build or migrate) | `fab deploy` failed before `up -d`: prod still runs the old containers, so stop and diagnose. Failed after: redeploy the old code on prod: `git reset --hard 2333608161af460b602a98fb20ae4376c322fb0b && docker compose build && docker compose up -d` (`PROD_HEAD`, recorded in P1 on 2026-11-21; also in `macfax-runs/deploy/prod_head.txt`) (not `fab deploy`, which resets to `origin/main`). Migrations 0032/0033 can stay. The old code ignores the extra nullable columns and the extra table, so don't migrate backwards. |
 | P5–P9 fail | `$PSQL -c "DROP SCHEMA IF EXISTS nba_stage CASCADE"`, then `docker compose start scheduler`. Prod is unchanged apart from the new code, which runs the legacy path. |
 | P11 fails | It rolls back by itself (one transaction). Check `$PSQL -Atc "SELECT nspname FROM pg_namespace WHERE nspname LIKE 'nba%'"` shows only `nba_stage`, then start backend and web. |
 | P13–P17 show a problem | `docker compose stop backend web scheduler`, then `$PSQL -q -f - < backups/rollback.sql` (one transaction: the swapped-in tables go to `nba_failed`, `nba_old` returns to `public`, sequences are reset), then P12 (cache), then `docker compose up -d backend web` and `docker compose start scheduler`. Prod is back to its pre-swap NBA data, with migrations at 0033 and the new code on the legacy path. Add the code rollback above if needed. Keep `nba_failed` for diagnosis. |
@@ -465,6 +494,7 @@ Not rehearsed:
 |---|---|---|
 | `to_stage.awk` | P6 | Rewrites a plain `pg_dump -t 'nba_*'` so every object lands in schema `nba_stage`: DDL and COPY headers change from `public.` to `nba_stage.`, data rows pass through untouched. |
 | `make_check_counts.sh` | L3 | Builds `check_counts.sql` from the dump's per-table row counts. Run it with `psql -v schema=nba_stage`: it errors out unless all 18 tables exist and every count matches. |
+| `check_columns.sql` | P7 | Compares every `nba_stage` column with `public`'s `nba_*` (name, type, NOT NULL, identity, default with the schema name removed). Errors out on any difference; column order is listed only. Tested 2026-11-21 in a throwaway container on local's schema: identical schemas pass, and a changed type, a dropped column and an added column are all listed and fail. |
 | `carry.sql` | P8 | Copies prod's outlook text and publish state, manual moves and injury reports into `nba_stage` by natural key, listing every difference. It also reports games that differ and players missing. One transaction; writes only `nba_stage`. |
 | `swap.sql` | P11 | One transaction: `public.nba_*` → `nba_old`, `nba_stage.nba_*` → `public`, then every identity sequence is reset to `max(id)+1`, `public` is asserted to hold 18 NBA tables, and the empty `nba_stage` is dropped. ANALYZE follows. |
 | `rollback.sql` | §7.5 | The reverse: `public.nba_*` → `nba_failed`, `nba_old` → `public`, sequences reset, assert. |
