@@ -39,6 +39,8 @@ services:
     environment:
       REDIS_URL: "redis://redis:6379/1"
       RUNNING_IN_DOCKER: "1"
+      # Play-by-play and native BPR possession caches (settings.NBA_CACHE_DIR)
+      NBA_CACHE_DIR: /cache/nba
     depends_on:
       db:
         condition: service_healthy
@@ -50,6 +52,7 @@ services:
           - macfax_api
     volumes:
       - macfax_static:/app/staticfiles
+      - macfax_nba_cache:/cache/nba
     ports:
       - "127.0.0.1:7001:7001"
     command: ["sh", "-c", "python manage.py migrate && python manage.py collectstatic --noinput && python manage.py import_logos && python manage.py nba_sync_teams && gunicorn config.asgi:application -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:7001 --workers 2 --timeout 600 --access-logfile - --error-logfile - --log-level debug"]
@@ -69,6 +72,8 @@ services:
       RUNNING_IN_DOCKER: "1"
       # Daily run time, HH:MM UTC (10:00 UTC = 06:00 ET, after West Coast finals)
       DAILY_UPDATE_AT: "10:00"
+      # Play-by-play and native BPR possession caches, shared with the backend
+      NBA_CACHE_DIR: /cache/nba
     depends_on:
       db:
         condition: service_healthy
@@ -81,6 +86,8 @@ services:
         aliases:
           - macfax_scheduler
     restart: unless-stopped
+    volumes:
+      - macfax_nba_cache:/cache/nba
     command: ["python", "manage.py", "run_scheduler"]
 
   web:
@@ -113,3 +120,5 @@ volumes:
   postgres_data:
   macfax_static:
     external: true
+  # NBA file caches (pbp responses, native possession totals); created by compose
+  macfax_nba_cache:

@@ -21,6 +21,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
 
+from django.conf import settings
+
 from .base import (
     NBADataProvider,
     ProviderHealthResult,
@@ -34,9 +36,9 @@ from .base import (
 
 logger = logging.getLogger(__name__)
 
-# Raw PlayByPlayV3 / GameRotation responses, one file per game and endpoint
-# (gitignored). Project-root data/nba in a checkout, /data/nba in Docker.
-PBP_CACHE_DIR = Path(__file__).resolve().parents[3] / "data" / "nba" / "pbp_cache"
+# Raw PlayByPlayV3 / GameRotation responses, one file per game and endpoint, under
+# settings.NBA_CACHE_DIR (outside the checkout; a Docker volume on prod).
+PBP_CACHE_DIR = settings.NBA_CACHE_DIR / "pbp_cache"
 ROTATION_FETCH_TRIES = 8          # GameRotation's HTTP 500s are often transient
 GAME_FETCH_MAX_BACKOFF = 30.0     # seconds
 FAILED_RECORD_TTL = timedelta(hours=24)   # some 500s last hours; retry after this

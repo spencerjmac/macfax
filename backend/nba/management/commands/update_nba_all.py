@@ -21,6 +21,23 @@ NBA PIPELINE
    10. nba_compute_player_stats (Playoffs)
    11. nba_sync_injury_report — today's ESPN injury report → NBAPlayerAvailability
 
+  NATIVE PATH (task 5.9): when the season before --season holds native ratings
+  (bpr_model 'native-1'), steps 3-11 above are replaced, after the same ingest, by
+    N3  nba_compute_player_stats (Regular Season)
+    N4  minutes vs game logs check (nba.native_pipeline): any mismatch is logged; over
+        1% of players mismatching skips N8-N10 and keeps yesterday's ratings
+    N5  nba_compute_ratings (Regular Season)    -- the box fit reads team ratings
+    N6  nba_sync_player_advanced                -- and NBA.com rate stats
+    N7  nba_sync_play_by_play (resumes: games already synced are skipped)
+    N8  nba_compute_baseline_rapm
+    N9  nba_fit_box_pooled --write              -- box rows only for players meeting the box rule
+    N10 nba_compute_native_bpr --write          -- one transaction: on failure yesterday's
+                                                   ratings stay, and the run logs it
+    N11 nba_compute_career_bpr, then the playoff steps and the injury report as today.
+  nba_compute_box_bpr and nba_compute_final_bpr do not run on the native path, and
+  --with-pbp is ignored there (play-by-play always runs). Otherwise the steps are
+  today's, unchanged.
+
   PBP + RAPM (only when --with-pbp, takes hours on first run)
     7. nba_sync_play_by_play  — PBP ingestion into NBAPlayerGameStint
     8. nba_compute_baseline_rapm — fit baseline RAPM, write baseline_obpr/dbpr
@@ -37,6 +54,7 @@ Usage
 """
 
 import sys
+import time
 from datetime import date
 
 from django.core.management.base import BaseCommand
@@ -46,9 +64,13 @@ from django.utils import timezone
 from config.season_calendar import season_in_play
 from nba.analytics.lebron_utils import lebron_csv_path
 from nba.models import NBAGame, NBAPlayerSeasonStats
+from nba.native_pipeline import MAX_MISMATCH_SHARE, last_season_is_native, minutes_check
 from nba.seasons import activate_latest_season, resolve_season_year
 
 TOTAL_STEPS = 11
+NATIVE_TOTAL_STEPS = 14
+# Mismatching players printed by the minutes check (all are counted)
+MISMATCH_LINES = 10
 
 # nba_compute_box_bpr trains on RAPM targets and refuses to run with fewer than this many players
 MIN_RAPM_TARGETS = 20
@@ -145,6 +167,31 @@ class Command(BaseCommand):
             self.stdout.write(f"[SKIP] [2/{TOTAL_STEPS}] Skipping NBA player box score ingest\n")
             steps.append(("NBA sync player box scores", True, "Skipped (--skip-ingest)"))
 
+        if last_season_is_native(season_year):
+            if with_pbp:
+                self.stdout.write("[NATIVE] --with-pbp ignored: the native path always syncs play-by-play\n")
+            self._run_native_steps(season_year, steps, skip_ingest, pbp_workers)
+        else:
+            self._run_legacy_steps(season_year, steps, with_pbp, pbp_workers)
+
+        # Show the new season once it has a final regular-season game
+        self._activate_latest_season(steps)
+
+        # Summary
+        end_time = timezone.now()
+        duration = (end_time - start_time).total_seconds()
+        failed = any(not s[1] for s in steps)
+        self._print_summary(start_time, end_time, duration, steps, failed)
+
+        if failed:
+            sys.exit(1)
+
+    # ──────────────────────────────────────────────────────────────────────────
+    # Rating paths
+    # ──────────────────────────────────────────────────────────────────────────
+
+    def _run_legacy_steps(self, season_year, steps, with_pbp, pbp_workers):
+        """Steps 3-11 and the optional PBP block: the pipeline before native BPR, unchanged."""
         self._run_step(
             "NBA compute ratings (Regular Season)",
             "nba_compute_ratings",
@@ -255,17 +302,134 @@ class Command(BaseCommand):
                 label="[PBP-5/5]",
             )
 
-        # Show the new season once it has a final regular-season game
-        self._activate_latest_season(steps)
+    def _run_native_steps(self, season_year, steps, skip_ingest, pbp_workers):
+        """Steps N3-N11 (see the module docstring): native BPR for a season whose previous season is native."""
+        total = NATIVE_TOTAL_STEPS
+        self.stdout.write(f"[NATIVE] {season_year - 1} holds native ratings: native rating steps for {season_year}\n")
+        self._run_step(
+            "NBA compute player stats (Regular Season)",
+            "nba_compute_player_stats",
+            {"season": season_year, "season_type": "regular"},
+            steps,
+            label=f"[N3/{total}]",
+        )
+        ratings_ok = self._minutes_check(season_year, steps, label=f"[N4/{total}]")
+        self._run_step(
+            "NBA compute ratings (Regular Season)",
+            "nba_compute_ratings",
+            {"season": season_year, "season_type": "regular"},
+            steps,
+            label=f"[N5/{total}]",
+        )
+        self._run_step(
+            "NBA sync player advanced",
+            "nba_sync_player_advanced",
+            {"season": season_year},
+            steps,
+            label=f"[N6/{total}]",
+        )
+        self._run_unless(
+            "--skip-ingest" if skip_ingest else None,
+            "NBA sync play-by-play (resume)",
+            "nba_sync_play_by_play",
+            {"season": season_year, "workers": pbp_workers},
+            steps,
+            label=f"[N7/{total}]",
+        )
+        skip_ratings = None if ratings_ok else "minutes check failed; yesterday's ratings kept"
+        self._run_unless(
+            skip_ratings,
+            "NBA compute baseline RAPM",
+            "nba_compute_baseline_rapm",
+            {"season": season_year},
+            steps,
+            label=f"[N8/{total}]",
+        )
+        self._run_unless(
+            skip_ratings,
+            "NBA fit box BPR (pooled)",
+            "nba_fit_box_pooled",
+            {"season": season_year, "write": True},
+            steps,
+            label=f"[N9/{total}]",
+        )
+        self._run_unless(
+            skip_ratings,
+            "NBA compute native BPR",
+            "nba_compute_native_bpr",
+            {"season": season_year, "write": True},
+            steps,
+            label=f"[N10/{total}]",
+        )
+        name, ok, note = steps[-1]
+        if not ok:
+            self.stderr.write(self.style.ERROR(
+                f"[KEEP] native BPR failed for {season_year}; its write is one transaction, so yesterday's "
+                f"ratings stay: {note}\n"))
+        self._run_step(
+            "NBA compute career BPR (peak + career averages)",
+            "nba_compute_career_bpr",
+            {},
+            steps,
+            label=f"[N11/{total}]",
+        )
+        playoffs_skip = self._skip_reason_playoffs(season_year)
+        self._run_unless(
+            playoffs_skip,
+            "NBA compute ratings (Playoffs)",
+            "nba_compute_ratings",
+            {"season": season_year, "season_type": "playoffs"},
+            steps,
+            fatal=False,
+            label=f"[N12/{total}]",
+        )
+        self._run_unless(
+            playoffs_skip,
+            "NBA compute player stats (Playoffs)",
+            "nba_compute_player_stats",
+            {"season": season_year, "season_type": "playoffs"},
+            steps,
+            fatal=False,
+            label=f"[N13/{total}]",
+        )
+        self._run_step(
+            "NBA sync injury report (ESPN)",
+            "nba_sync_injury_report",
+            {"season": season_year},
+            steps,
+            fatal=False,
+            label=f"[N14/{total}]",
+        )
 
-        # Summary
-        end_time = timezone.now()
-        duration = (end_time - start_time).total_seconds()
-        failed = any(not s[1] for s in steps)
-        self._print_summary(start_time, end_time, duration, steps, failed)
-
-        if failed:
-            sys.exit(1)
+    def _minutes_check(self, season_year, steps, label) -> bool:
+        """Season rows vs game logs; logs every mismatch. False (step failed) when over the share limit."""
+        name = "Minutes vs game logs check"
+        self.stdout.write(f"{label} {name}...")
+        t0 = time.monotonic()
+        try:
+            check = minutes_check(season_year)
+        except Exception as e:
+            steps.append((name, False, str(e)))
+            self.stderr.write(self.style.ERROR(f"[FAIL] {name}: {e}\n"))
+            return False
+        n = len(check.mismatches)
+        for m in check.mismatches[:MISMATCH_LINES]:
+            self.stdout.write(self.style.WARNING(
+                f"  [WARN] {m['name'] or m['nba_id']}: season rows {m['row_gp']} games / {m['row_min']} min, "
+                f"game logs {m['log_gp']} games / {m['log_min']} min"))
+        if n > MISMATCH_LINES:
+            self.stdout.write(self.style.WARNING(f"  [WARN] ... and {n - MISMATCH_LINES} more"))
+        summary = f"{n} of {check.players} players mismatch ({check.share:.1%})"
+        secs = time.monotonic() - t0
+        if check.too_many:
+            note = f"{summary}, over {MAX_MISMATCH_SHARE:.0%}: rating steps skipped, yesterday's ratings kept"
+            steps.append((name, False, note))
+            self.stderr.write(self.style.ERROR(f"[FAIL] {name}: {note} ({secs:.1f}s)\n"))
+            return False
+        steps.append((name, True, None))
+        style = self.style.WARNING if n else self.style.SUCCESS
+        self.stdout.write(style(f"[{'WARN' if n else 'OK'}] {name}: {summary} ({secs:.1f}s)\n"))
+        return True
 
     # ──────────────────────────────────────────────────────────────────────────
     # Prerequisite checks: a step whose input doesn't exist yet is skipped with a
@@ -353,13 +517,14 @@ class Command(BaseCommand):
     def _run_step(self, name, cmd, kwargs, steps, fatal=False, label=None):
         prefix = label or f"[--/{TOTAL_STEPS}]"
         self.stdout.write(f"{prefix} {name}...")
+        t0 = time.monotonic()
         try:
             call_command(cmd, **kwargs)
             steps.append((name, True, None))
-            self.stdout.write(self.style.SUCCESS(f"[OK] {name}\n"))
+            self.stdout.write(self.style.SUCCESS(f"[OK] {name} ({time.monotonic() - t0:.1f}s)\n"))
         except Exception as e:
             steps.append((name, False, str(e)))
-            self.stderr.write(self.style.ERROR(f"[FAIL] {name}: {e}\n"))
+            self.stderr.write(self.style.ERROR(f"[FAIL] {name}: {e} ({time.monotonic() - t0:.1f}s)\n"))
             if fatal:
                 self._print_summary(timezone.now(), timezone.now(), 0, steps, True)
                 sys.exit(1)

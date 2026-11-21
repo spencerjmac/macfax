@@ -113,6 +113,10 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 # Default primary key field type
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+# NBA file caches (raw play-by-play responses, native BPR possession totals), outside the
+# checkout so a fresh worktree or image keeps them. In Docker a named volume (docker-compose.yml).
+NBA_CACHE_DIR = Path(os.getenv("NBA_CACHE_DIR", str(Path.home() / ".cache" / "macfax" / "nba"))).expanduser()
+
 # Caching
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/1")
 

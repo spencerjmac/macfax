@@ -34,9 +34,10 @@ the aging fit sees its pairs in one fixed order and a rerun is bit-identical to
 the in-memory chain.
 
 Possessions for the aging weights come from a per-season cache
-(POSS_CACHE_DIR/<season>.json), keyed by a fingerprint of that season's stint
-rows (count, total seconds, largest id): a season is loaded from stints only the
-first time, or after its stints change.
+(POSS_CACHE_DIR/<season>.json, under settings.NBA_CACHE_DIR), keyed by a
+fingerprint of that season's stint rows (count, total seconds, largest id, and
+on Postgres a sum of per-row hashes, so an edit in place also counts): a season
+is loaded from stints only the first time, or after its stints change.
 
 The fit is the harness's own code (nba_experiment_final_bpr: _aging_curve,
 _fit_chain_season; nba_compute_final_bpr: _load_priors, _load_stints), so a
@@ -72,6 +73,7 @@ import json
 from collections import Counter, defaultdict
 from pathlib import Path
 
+from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
 from nba.analytics import aging
@@ -91,8 +93,9 @@ HALF_LIFE = 90.0
 RAPM_WINDOW = 1
 TOP_N = 20
 # Wins Added constants (task 5.5c fit 2 on centred ratings) live in nba.rating_scale.
-# Per-season on-court possession totals for the aging weights (gitignored, as data/nba/pbp_cache/).
-POSS_CACHE_DIR = Path(__file__).resolve().parents[4] / "data" / "nba" / "native_poss_cache"
+# Per-season on-court possession totals for the aging weights, beside the pbp cache under
+# settings.NBA_CACHE_DIR (outside the checkout; a Docker volume on prod).
+POSS_CACHE_DIR = settings.NBA_CACHE_DIR / "native_poss_cache"
 
 
 # ── stored inputs ─────────────────────────────────────────────────────────────
@@ -170,13 +173,28 @@ def load_box(loader, season: int) -> tuple[dict[int, float], dict[int, float]]:
 
 
 def stint_fingerprint(season: int) -> dict:
-    """Count, total seconds and largest id of the season's stint rows: changes whenever they are re-synced."""
+    """
+    Count, total seconds and largest id of the season's stint rows (they change whenever the stints
+    are re-synced), plus a content hash: on Postgres the sum of hashtextextended over every row's
+    text, so a row edited in place also changes it (about 0.5 s for a full season). Elsewhere
+    (no hashtextextended) the hash is None.
+    """
+    from django.db import connection
     from django.db.models import Count, Max, Sum
-    from nba.models import NBAPlayerGameStint
+    from nba.models import NBAGame, NBAPlayerGameStint, NBASeason
 
     agg = NBAPlayerGameStint.objects.filter(game__season__year=season).aggregate(
         n=Count("id"), secs=Sum("secs_on"), max_id=Max("id"))
-    return {"n": agg["n"], "secs": agg["secs"], "max_id": agg["max_id"]}
+    content = None
+    if connection.vendor == "postgresql":
+        with connection.cursor() as cur:
+            cur.execute(
+                f"SELECT COALESCE(SUM(hashtextextended(t::text, 0)::numeric), 0)::text "
+                f"FROM {NBAPlayerGameStint._meta.db_table} t "
+                f"JOIN {NBAGame._meta.db_table} g ON g.id = t.game_id "
+                f"JOIN {NBASeason._meta.db_table} s ON s.id = g.season_id WHERE s.year = %s", [season])
+            content = cur.fetchone()[0]
+    return {"n": agg["n"], "secs": agg["secs"], "max_id": agg["max_id"], "content": content}
 
 
 def cached_season_possessions(season: int, cache_dir: Path | None = None) -> tuple[dict[int, float], bool]:

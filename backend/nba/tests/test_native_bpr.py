@@ -319,7 +319,8 @@ class CommandTests(TestCase):
         self._rate(2009, "native-1")
         self._call("--dry-run")
         self.poss_loads.clear()
-        fp = {2008: {"n": 0, "secs": None, "max_id": None}, 2009: {"n": 5, "secs": 100, "max_id": 7}}
+        fp = {2008: {"n": 0, "secs": None, "max_id": None, "content": "0"},   # unchanged (no stints)
+              2009: {"n": 5, "secs": 100, "max_id": 7, "content": "123"}}
         with mock.patch(f"{MOD}.stint_fingerprint", lambda s: fp[s]):
             self._call("--dry-run")
         self.assertEqual(self.poss_loads, [2009])
