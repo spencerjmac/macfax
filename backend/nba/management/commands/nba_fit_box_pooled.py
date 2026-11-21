@@ -64,6 +64,15 @@ archetype one-hots whose split depends on d_mpir (three_and_d / stretch /
 connector); creator, scorer and interior depend on box inputs only and stay.
 --features all keeps them.
 
+--season Y (write or dry run) caches the trained model: BOX_CACHE_DIR/<Y>.pkl under
+settings.NBA_CACHE_DIR holds the offense and defense pipelines and their info, keyed by a
+SHA-256 over this command's settings, the library versions and a database-side content hash of
+everything training reads (box_model_inputs_fingerprint): the stints of seasons history start..
+Y-1 and the game, player-season (the columns used), team-rating, player and team rows behind
+them. A matching key skips the targets, loading and fitting of every training season; season
+Y's own inputs are always read fresh. Anything else refits and replaces the file. --no-cache
+neither reads nor writes it. --seasons never uses it.
+
 Usage:
   python manage.py nba_fit_box_pooled --season 2026 --dry-run
   python manage.py nba_fit_box_pooled --season 2026 --write
@@ -75,10 +84,16 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import os
+import pickle
+import time
 from pathlib import Path
 
 import numpy as np
+import sklearn
+from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 from sklearn.linear_model import Ridge
 from sklearn.model_selection import GroupKFold
@@ -117,6 +132,10 @@ ON_COURT_FEATURES = {
 FEATURE_NAMES = {"off": OFF_FEATURES, "def": DEF_FEATURES}
 FEATURE_SETS = ("all", "box_only")
 TEAM_FEATURES = ("opp_quality", "team_adj_net", "none")
+
+# Trained models for --season Y, under settings.NBA_CACHE_DIR (a Docker volume on prod).
+BOX_CACHE_DIR = settings.NBA_CACHE_DIR / "box_model_cache"
+BOX_CACHE_VERSION = 1           # bump when training code changes what a key's inputs produce
 
 # The same per-season fields nba_compute_box_bpr loads.
 STATS_FIELDS = (
@@ -482,6 +501,93 @@ def write_season_box(season: int, preds: dict[int, dict]) -> dict:
     return {"cleared": cleared, "updated": updated, "skipped": skipped}
 
 
+# ── trained-model cache (--season Y) ──────────────────────────────────────────
+
+# Player-season columns training reads: load_season's STATS_FIELDS plus build_career_stats_map's.
+CAREER_FIELDS = ("gp", "mpg", "on_court_poss", "ts_pct", "efg_pct", "fg3_pct", "ft_pct", "ast_pct",
+                 "stl_pct", "blk_pct", "oreb_pct", "usg_pct", "tov_pct", "dreb_pct", "pts", "ast", "stl",
+                 "blk", "tov", "oreb_pg", "dreb_pg", "fga_pg", "fg3a_pg", "fta_pg")
+FINGERPRINT_STATS_COLUMNS = tuple(sorted(set(STATS_FIELDS) | set(CAREER_FIELDS)))
+
+
+def box_model_inputs_fingerprint(lo: int, hi: int) -> dict | None:
+    """
+    Content hash of every row training for seasons lo..hi reads: per season, the count and the sum
+    of hashtextextended over the row text of its stints (whole rows), games (the columns the RAPM
+    observations and opponent quality use), regular player-season rows (FINGERPRINT_STATS_COLUMNS)
+    and regular team ratings (team, adj_net); plus the players in those seasons (pk -> NBA.com id)
+    and all teams (pk -> NBA.com id). None off Postgres (no hashtextextended): the cache is then not used.
+    """
+    from django.db import connection
+
+    if connection.vendor != "postgresql":
+        return None
+    h = "COALESCE(SUM(hashtextextended({}::text, 0)::numeric), 0)::text"
+    stats_cols = ", ".join(f"p.{c}" for c in FINGERPRINT_STATS_COLUMNS)
+    per_season = {
+        "stints": (f"SELECT s.year, count(*), {h.format('t')} FROM nba_nbaplayergamestint t "
+                   "JOIN nba_nbagame g ON g.id = t.game_id JOIN nba_nbaseason s ON s.id = g.season_id "
+                   "WHERE s.year BETWEEN %s AND %s GROUP BY 1"),
+        "games": (f"SELECT s.year, count(*), "
+                  f"{h.format('row(g.id, g.game_id, g.date, g.home_team_id, g.away_team_id, g.pbp_quality_flag, g.counts_toward_regular_season, g.status)')} "
+                  "FROM nba_nbagame g JOIN nba_nbaseason s ON s.id = g.season_id "
+                  "WHERE s.year BETWEEN %s AND %s GROUP BY 1"),
+        "player_seasons": (f"SELECT s.year, count(*), {h.format(f'row({stats_cols})')} "
+                           "FROM nba_nbaplayerseasonstats p JOIN nba_nbaseason s ON s.id = p.season_id "
+                           "WHERE p.season_type = 'regular' AND s.year BETWEEN %s AND %s GROUP BY 1"),
+        "team_ratings": (f"SELECT s.year, count(*), {h.format('row(r.team_id, r.adj_net)')} "
+                         "FROM nba_nbateamseasonratings r JOIN nba_nbaseason s ON s.id = r.season_id "
+                         "WHERE r.season_type = 'regular' AND s.year BETWEEN %s AND %s GROUP BY 1"),
+    }
+    out: dict = {}
+    with connection.cursor() as cur:
+        for name, sql in per_season.items():
+            cur.execute(sql, [lo, hi])
+            out[name] = {str(y): [n, v] for y, n, v in sorted(cur.fetchall())}
+        # Only players in seasons lo..hi: a player added later (a new season's rookie) leaves the key alone.
+        cur.execute(f"SELECT count(*), {h.format('row(id, player_id)')} FROM nba_nbaplayer WHERE id IN ("
+                    "SELECT t.player_id FROM nba_nbaplayergamestint t JOIN nba_nbagame g ON g.id = t.game_id "
+                    "JOIN nba_nbaseason s ON s.id = g.season_id WHERE s.year BETWEEN %s AND %s "
+                    "UNION SELECT p.player_id FROM nba_nbaplayerseasonstats p JOIN nba_nbaseason s "
+                    "ON s.id = p.season_id WHERE s.year BETWEEN %s AND %s)", [lo, hi, lo, hi])
+        out["players"] = list(cur.fetchone())
+        cur.execute(f"SELECT count(*), {h.format('row(id, nba_team_id)')} FROM nba_nbateam")
+        out["teams"] = list(cur.fetchone())
+    return out
+
+
+def box_cache_key(season: int, train: list[int], fit_settings: dict, fingerprint: dict) -> str:
+    """SHA-256 over everything that decides season's trained model."""
+    payload = {"version": BOX_CACHE_VERSION, "season": season, "train": train, "settings": fit_settings,
+               "sklearn": sklearn.__version__, "numpy": np.__version__, "inputs": fingerprint}
+    return hashlib.sha256(json.dumps(payload, sort_keys=True, default=str).encode()).hexdigest()
+
+
+def load_cached_model(season: int, key: str, cache_dir: Path | None = None) -> tuple[dict, dict] | None:
+    """(artifacts, info) stored for season under key; None when missing, stale or unreadable."""
+    path = Path(cache_dir or BOX_CACHE_DIR) / f"{season}.pkl"
+    try:
+        with open(path, "rb") as f:
+            blob = pickle.load(f)
+    except (OSError, EOFError, pickle.UnpicklingError, AttributeError, ImportError):
+        return None
+    if not isinstance(blob, dict) or blob.get("key") != key:
+        return None
+    return blob["artifacts"], blob["info"]
+
+
+def store_cached_model(season: int, key: str, artifacts: dict, info: dict, cache_dir: Path | None = None) -> Path:
+    """Write season's model under key (atomically: a temp file, then rename)."""
+    d = Path(cache_dir or BOX_CACHE_DIR)
+    d.mkdir(parents=True, exist_ok=True)
+    path = d / f"{season}.pkl"
+    tmp = d / f".{season}.pkl.{os.getpid()}.tmp"
+    with open(tmp, "wb") as f:
+        pickle.dump({"key": key, "artifacts": artifacts, "info": info}, f, protocol=pickle.HIGHEST_PROTOCOL)
+    os.replace(tmp, path)
+    return path
+
+
 class Command(BaseCommand):
     help = ("Box BPR from pooled past seasons with CV-chosen alpha (final recipe by default): "
             "--seasons writes JSON only; --season Y --write writes Y's box fields.")
@@ -518,6 +624,8 @@ class Command(BaseCommand):
                             help=f"Largest alpha in the grid (default {DEFAULT_ALPHA_MAX:g}; up to {ALPHAS[-1]:g})")
         parser.add_argument("--out-dir", type=str, default=None,
                             help="With --seasons (required): writes box_<Y>.json per season and alphas.json")
+        parser.add_argument("--no-cache", action="store_true",
+                            help="--season Y: fit from scratch; neither read nor write the trained-model cache")
         parser.add_argument("--history-start", type=int, default=HISTORY_START,
                             help=f"First season training may use (default {HISTORY_START})")
         parser.add_argument("--career-floor", type=int, default=HISTORY_START,
@@ -581,14 +689,33 @@ class Command(BaseCommand):
             if season < start:
                 raise CommandError(f"Season {season} is before --history-start {start}")
             train, _ = plan_training(season, start)
-            data = {s: get(s) for s in train}
-            artifacts, info = fit_season(season, data, weighted, start, alphas=alphas,
-                                         features=opts["features"], team_feature=opts["team_feature"])
-            info["target"] = target
-            info["target_lambda_fixed"] = target_lambda
-            info["alpha_max"] = alphas[-1]
-            if k is not None:
-                info["target_windows"] = {str(s): window_info[s] for s in train}
+            artifacts = info = key = None
+            if single is not None and not opts.get("no_cache"):
+                t0 = time.monotonic()
+                fp = box_model_inputs_fingerprint(min(start, opts["career_floor"]), max(train))
+                if fp is not None:
+                    key = box_cache_key(season, train, {
+                        "features": opts["features"], "team_feature": opts["team_feature"], "target": target,
+                        "target_lambda": target_lambda, "weighted": weighted, "alphas": alphas,
+                        "history_start": start, "career_floor": opts["career_floor"]}, fp)
+                    hit = load_cached_model(season, key)
+                    if hit is not None:
+                        artifacts, info = hit
+                    self.stdout.write(f"  box model cache {'hit' if hit else 'miss'} for {season} "
+                                      f"(key {key[:12]}, inputs hashed in {time.monotonic() - t0:.1f}s)")
+            if artifacts is None:
+                data = {s: get(s) for s in train}
+                artifacts, info = fit_season(season, data, weighted, start, alphas=alphas,
+                                             features=opts["features"], team_feature=opts["team_feature"])
+                info["target"] = target
+                info["target_lambda_fixed"] = target_lambda
+                info["alpha_max"] = alphas[-1]
+                if k is not None:
+                    info["target_windows"] = {str(s): window_info[s] for s in train}
+                if key is not None:
+                    path = store_cached_model(season, key, artifacts, info)
+                    self.stdout.write(f"  box model stored: {path}")
+            info = dict(info)
             # Season Y's own inputs only (features); its targets are never needed.
             if season in cache:
                 stats, opp, team, career = cache[season]["inputs"]

@@ -10,6 +10,13 @@ at the start or end of a season. Both leagues ingest the season IN PLAY (see
 config.season_calendar), then the pipelines move ``is_current`` forward once the
 new season has a final game (see nba.seasons / ncaa.seasons).
 
+Order: NCAA first (in this process), then NBA in a subprocess
+(``manage.py update_nba_all``) with a timeout of NBA_TIMEOUT_MIN minutes (env
+NBA_TIMEOUT_MIN, default 120). The native NBA chain is the long, memory-heavy
+part (box fit ~2.5 GB), so a hang, a timeout or a crash there (an OOM kill
+included) is logged as a failed NBA step after NCAA is already done, and the
+subprocess hands its memory back when it exits.
+
 Usage
 ─────
   python manage.py update_daily
@@ -20,9 +27,12 @@ Usage
 """
 
 import argparse
+import os
+import subprocess
 import sys
 from datetime import date
 
+from django.conf import settings
 from django.core.management import call_command
 from django.utils import timezone
 
@@ -32,6 +42,17 @@ from ncaa import seasons as ncaa_seasons
 from nba import seasons as nba_seasons
 
 RECENT_DAYS = 14
+NBA_TIMEOUT_MIN = 120   # default; env NBA_TIMEOUT_MIN overrides
+
+
+def nba_timeout_minutes() -> float:
+    """Minutes the NBA subprocess may run: env NBA_TIMEOUT_MIN, else NBA_TIMEOUT_MIN."""
+    raw = os.getenv("NBA_TIMEOUT_MIN")
+    try:
+        value = float(raw) if raw else NBA_TIMEOUT_MIN
+    except ValueError:
+        value = NBA_TIMEOUT_MIN
+    return value if value > 0 else NBA_TIMEOUT_MIN
 
 
 def decide(league: str, today: date, skip: bool, force: bool) -> tuple[bool, str]:
@@ -92,11 +113,6 @@ class Command(BasePipelineCommand):
         start_time = timezone.now()
         steps: list = []
 
-        if nba_run:
-            self._run("NBA pipeline", "update_nba_all", {"season": season, "workers": workers}, steps)
-        else:
-            self._skip_step("NBA pipeline", steps, f"Skipped ({nba_why})")
-
         if ncaa_run:
             self._run(
                 "NCAA team pipeline",
@@ -116,12 +132,46 @@ class Command(BasePipelineCommand):
         else:
             self._skip_step("NCAA pipeline", steps, f"Skipped ({ncaa_why})")
 
+        if nba_run:
+            self._run_nba_subprocess(season, workers, steps)
+        else:
+            self._skip_step("NBA pipeline", steps, f"Skipped ({nba_why})")
+
         end_time = timezone.now()
         self._print_summary(
             start_time, end_time, (end_time - start_time).total_seconds(), steps, title="DAILY UPDATE"
         )
         if any(not s[1] for s in steps):
             sys.exit(1)
+
+    def _run_nba_subprocess(self, season: int, workers: int, steps: list):
+        """
+        update_nba_all in a child process with a timeout. A timeout (the child is killed), a
+        non-zero exit or a death by signal is a failed step; nothing here raises.
+        """
+        name = "NBA pipeline"
+        minutes = nba_timeout_minutes()
+        cmd = [sys.executable, "manage.py", "update_nba_all", "--season", str(season), "--workers", str(workers)]
+        self.stdout.write(f"[RUN] {name} (subprocess, timeout {minutes:g} min)...")
+        self.stdout.flush()
+        sys.stdout.flush()
+        try:
+            result = subprocess.run(cmd, cwd=settings.BASE_DIR, timeout=minutes * 60)
+        except subprocess.TimeoutExpired:
+            reason = f"timed out after {minutes:g} min (killed)"
+        except OSError as e:
+            reason = f"could not start: {e}"
+        else:
+            if result.returncode == 0:
+                steps.append((name, True, None))
+                self.stdout.write(self.style.SUCCESS(f"[OK] {name}\n"))
+                return
+            if result.returncode < 0:
+                reason = f"killed by signal {-result.returncode}"
+            else:
+                reason = f"exited with status {result.returncode}"
+        steps.append((name, False, reason))
+        self.stderr.write(self.style.ERROR(f"[FAIL] {name}: {reason}\n"))
 
     def _run(self, name: str, cmd: str, kwargs: dict, steps: list):
         """

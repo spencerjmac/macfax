@@ -1,0 +1,4 @@
+# NBA caches live in NBA_CACHE_DIR (a Docker volume on prod) since 5.9: never bake old copies
+# from a checkout into an image. Only these two directories are excluded.
+data/nba/pbp_cache/
+data/nba/native_poss_cache/

@@ -11,6 +11,11 @@ Task 5.2: nba_fit_box_pooled as the production box BPR.
   bpr_last_updated are left alone.
 - --season Y --dry-run writes nothing and prints the top 20, whose values are
   the ones --seasons Y --out-dir writes to box_<Y>.json.
+- D.3: --season Y caches the trained model under BOX_CACHE_DIR/<Y>.pkl, keyed by
+  the settings and a content hash of the training seasons' rows. Same inputs: no
+  refit and the same predictions; a changed training row or setting: refit;
+  season Y's own rows and later players don't touch the key; --no-cache neither
+  reads nor writes; an unreadable file is a miss.
 
 Real test database for the write; loading, targets and fitting are stood in for.
 """
@@ -29,7 +34,7 @@ from django.core.management.base import CommandError
 from django.test import SimpleTestCase, TestCase
 
 from nba.management.commands import nba_fit_box_pooled as pooled
-from nba.models import NBAPlayer, NBAPlayerSeasonStats, NBASeason, NBATeam
+from nba.models import NBAPlayer, NBAPlayerSeasonStats, NBASeason, NBATeam, NBATeamSeasonRatings
 
 MOD = "nba.management.commands.nba_fit_box_pooled"
 OLD_STAMP = datetime(2026, 7, 5, tzinfo=timezone.utc)
@@ -149,6 +154,11 @@ class WriteTests(TestCase):
             return {}, {"season": season, "train_seasons": sorted(data), "method": "loso",
                         "n_train": 1, "off_alpha": 100.0, "def_alpha": 300.0}
 
+        cache = tempfile.TemporaryDirectory()
+        self.addCleanup(cache.cleanup)
+        patcher = mock.patch(f"{MOD}.BOX_CACHE_DIR", Path(cache.name))
+        patcher.start()
+        self.addCleanup(patcher.stop)
         for target, value in {
             "load_season": lambda s, c, t=None, **_: {"inputs": ("stats", "opp", "team", "career")},
             "window_targets": lambda s, start, k, lam=None: {"obpr": {}, "dbpr": {}, "lambda": lam,
@@ -215,3 +225,117 @@ class WriteTests(TestCase):
             self.assertAlmostEqual(float(tot), exp_o + exp_d, places=4)
         self.assertEqual([int(r[0]) for r in rows], list(range(1, 21)))
         self.assertIn("Player 24", rows[0][1])
+
+
+class BoxModelCacheTests(TestCase):
+    """The trained-model cache around --season Y (real test database for the fingerprint)."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.seasons = {y: NBASeason.objects.create(year=y, display_name=str(y)) for y in (2024, 2025, 2026)}
+        cls.team = NBATeam.objects.create(
+            nba_team_id=1610612738, slug="boston-celtics", name="Boston Celtics",
+            abbreviation="BOS", city="Boston", conference="East", division="Atlantic")
+        cls.players = [NBAPlayer.objects.create(player_id=3000 + n, name=f"P{n}") for n in range(4)]
+        for y in (2024, 2025):
+            for p in cls.players:
+                _row(p, cls.seasons[y], team=cls.team, pts=10.0)
+            NBATeamSeasonRatings.objects.create(team=cls.team, season=cls.seasons[y], season_type="regular",
+                                                adj_net=1.5)
+
+    def setUp(self):
+        cache = tempfile.TemporaryDirectory()
+        self.addCleanup(cache.cleanup)
+        self.dir = Path(cache.name)
+        self.fits = []
+
+        def fit(season, data, weighted, start, **kw):
+            self.fits.append(season)
+            return {"off_pipeline": "model-o", "def_pipeline": "model-d"}, {
+                "season": season, "train_seasons": sorted(data), "method": "loso", "n_train": 1,
+                "off_alpha": 100.0, "def_alpha": 300.0}
+
+        self.predicted_with = []
+
+        def predict(stats, opp, team, artifacts, career):
+            self.predicted_with.append(dict(artifacts))
+            return {}
+
+        for target, value in {
+            "BOX_CACHE_DIR": self.dir,
+            "load_season": lambda s, c, t=None, **_: {"inputs": ("stats", "opp", "team", "career")},
+            "window_targets": lambda s, start, k, lam=None: {"obpr": {}, "dbpr": {}, "lambda": lam, "years": [s]},
+            "fit_season": fit,
+            "predict_nba_box_bpr": predict,
+        }.items():
+            patcher = mock.patch(f"{MOD}.{target}", value)
+            patcher.start()
+            self.addCleanup(patcher.stop)
+
+    def _call(self, *args):
+        out = StringIO()
+        call_command("nba_fit_box_pooled", "--season", "2026", "--dry-run", "--history-start", "2024",
+                     *args, stdout=out)
+        return out.getvalue()
+
+    def test_second_run_uses_the_cache_and_predicts_with_the_same_model(self):
+        first = self._call()
+        self.assertIn("box model cache miss for 2026", first)
+        self.assertTrue((self.dir / "2026.pkl").exists())
+        second = self._call()
+        self.assertIn("box model cache hit for 2026", second)
+        self.assertEqual(self.fits, [2026])                         # fitted once
+        self.assertEqual(self.predicted_with[0], self.predicted_with[1])
+
+    def test_a_changed_training_row_refits(self):
+        self._call()
+        NBAPlayerSeasonStats.objects.filter(player=self.players[0], season__year=2025).update(pts=11.0)
+        self.assertIn("cache miss", self._call())
+        NBATeamSeasonRatings.objects.filter(season__year=2024).update(adj_net=2.0)
+        self.assertIn("cache miss", self._call())
+        self.assertEqual(self.fits, [2026, 2026, 2026])
+
+    def test_season_y_rows_and_new_players_leave_the_key_alone(self):
+        self._call()
+        new = NBAPlayer.objects.create(player_id=9999, name="Rookie")
+        _row(new, self.seasons[2026], team=self.team, pts=30.0)
+        _row(self.players[0], self.seasons[2026], team=self.team, pts=5.0)
+        self.assertIn("cache hit", self._call())
+        self.assertEqual(self.fits, [2026])
+
+    def test_a_changed_setting_refits(self):
+        self._call()
+        self.assertIn("cache miss", self._call("--weight-by-poss"))
+        self.assertIn("cache miss", self._call("--alpha-max", "300"))
+        self.assertEqual(self.fits, [2026, 2026, 2026])
+
+    def test_no_cache_neither_reads_nor_writes(self):
+        out = self._call("--no-cache")
+        self.assertNotIn("box model cache", out)
+        self.assertFalse((self.dir / "2026.pkl").exists())
+        self._call()
+        self._call("--no-cache")
+        self.assertEqual(self.fits, [2026, 2026, 2026])
+
+    def test_unreadable_file_is_a_miss(self):
+        self.dir.mkdir(exist_ok=True)
+        (self.dir / "2026.pkl").write_bytes(b"not a pickle")
+        self.assertIn("cache miss", self._call())
+        self.assertIn("cache hit", self._call())
+
+
+class BoxModelStoreTests(SimpleTestCase):
+
+    def test_stored_model_predicts_bit_for_bit(self):
+        rng = np.random.default_rng(7)
+        X, y = rng.normal(size=(200, 8)), rng.normal(size=200)
+        model = pooled.SelectColumns([0, 2, 5], pooled.fit_ridge(X[:, [0, 2, 5]], y, None, 30.0))
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        pooled.store_cached_model(2026, "k1", {"off_pipeline": model}, {"season": 2026}, Path(tmp.name))
+        self.assertIsNone(pooled.load_cached_model(2026, "other", Path(tmp.name)))
+        artifacts, info = pooled.load_cached_model(2026, "k1", Path(tmp.name))
+        Xn = rng.normal(size=(50, 8))
+        self.assertTrue(np.array_equal(artifacts["off_pipeline"].predict(Xn), model.predict(Xn)))
+        self.assertEqual(info, {"season": 2026})
+        self.assertEqual([p.name for p in Path(tmp.name).iterdir()], ["2026.pkl"])   # no temp files left
