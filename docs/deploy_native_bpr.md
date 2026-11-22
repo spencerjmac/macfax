@@ -432,11 +432,14 @@ PSQL="docker compose exec -T db psql -X -U cbb_user -d cbb_analytics -v ON_ERROR
      ```
      Pass: `2017 Joel Embiid 31 20.2 native-1 …` and `2027 Victor Wembanyama … native-1 …` (local on 2026-11-21: 6.97 and 13.28).
 3. **Pages via curl** (web container): `for u in "nba/players/203954?season=2017" "nba/players/1641705" "ncaa"; do echo "$(curl -s -o /dev/null -w '%{http_code} %{size_download}' "http://127.0.0.1:7000/$u") $u"; done; curl -s "http://127.0.0.1:7000/nba/players/203954?season=2017" | grep -oE "Joel Embiid|31(<!-- -->)? GP" | sort -u`.
-   - All three return 200: Embiid's 2017 page, a native player page (Wembanyama 2027) and the NCAA home page.
-   - The Embiid page contains `Joel Embiid` and `31 GP`.
+   - `/ncaa` (the NCAA home page) returns 200.
+   - **Until D.5 (`a5efaf2`) is deployed, both player pages return 404, and that is expected: it is not a swap failure, so don't roll back on it.**
+     Prod's web (`eb7fbd1`) reads `params.id` without awaiting it, and Next 16 passes `params` as a Promise, so every
+     player page returns 404 before and after the swap (seen 2026-11-21). Embiid 2017 and the native player are checked through the API in item 2 instead.
+   - After D.5 is deployed, all three return 200 and the Embiid page contains `Joel Embiid` and `31 GP`.
 4. **Pages** (browser, macfax.usu.edu and macfax.org):
    - `/nba` and `/nba/ratings`: 2027 shows BPR values. Also check 2016 and 2010, which are new on prod.
-   - `/nba/players/203954?season=2017`: Embiid, 31 games, 20.2 points. `/nba/players/1641705`: a native player page.
+   - After D.5 is deployed: `/nba/players/203954?season=2017` shows Embiid, 31 games, 20.2 points, and `/nba/players/1641705` is a native player page. Until then, both are a known 404 (item 3).
    - A team page, `/nba/outlook` and one outlook detail.
    - Model health.
    - `/ncaa` (NCAA home) and an NCAA ratings page: unchanged.
