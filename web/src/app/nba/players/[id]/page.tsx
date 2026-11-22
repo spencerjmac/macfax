@@ -3,18 +3,21 @@ import { nbaApi } from "@/lib/nba-api";
 import { PlayerScoutingCard } from "@/components/PlayerScoutingCard";
 
 interface Props {
-  params: { id: string };
-  searchParams: { season?: string };
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ season?: string }>;
 }
 
 export default async function PlayerScoutingPage({ params, searchParams }: Props) {
-  const playerId = parseInt(params.id, 10);
+  const { id } = await params;
+  const sp = await searchParams;
+  const playerId = parseInt(id, 10);
   if (isNaN(playerId)) notFound();
 
-  const season = searchParams.season ? parseInt(searchParams.season, 10) : undefined;
+  const season = sp.season ? parseInt(sp.season, 10) : undefined;
 
-  // Fetch all current-season players and find by player_id
-  const players = await nbaApi.getLeaguePlayers({ season, ordering: "-bpr" });
+  // Fetch all current-season players and find by player_id (min_gp 1: the API's default
+  // of 5 games would 404 a player with fewer)
+  const players = await nbaApi.getLeaguePlayers({ season, ordering: "-bpr", min_gp: 1 });
   const player = players.find((p) => p.player_id === playerId);
   if (!player) notFound();
 

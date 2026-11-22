@@ -31,6 +31,9 @@ export default async function NBARankingsPage({ searchParams }: NBAPageProps) {
       : Promise.resolve([]),
   ]);
 
+  // Team slug -> games played, for the players tab's Auto filter on native rows
+  const teamGames: Record<string, number> = Object.fromEntries(rankings.map((r) => [r.team_slug, r.games]));
+
   const currentSeason = seasonYear
     ? seasons.find((s) => s.year === seasonYear) ?? null
     : seasons.find((s) => s.is_current) ?? seasons[0] ?? null;
@@ -120,7 +123,7 @@ export default async function NBARankingsPage({ searchParams }: NBAPageProps) {
             </div>
           </div>
         ) : (
-          <NBAPlayerRankingsTable data={players} seasonDisplay={seasonDisplay} seasonType={seasonType} />
+          <NBAPlayerRankingsTable data={players} seasonDisplay={seasonDisplay} seasonType={seasonType} teamGames={teamGames} />
         )
       )}
 
