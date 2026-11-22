@@ -18,6 +18,12 @@ Prod runs `eb7fbd1` with `nba` migration `0033_rating_scale`, still on the legac
 scripts are in prod's `backups/`, next to the full backup `pre-native-swap-20261121_152551.dump`. Go 2 (P4–P16)
 is set for 2026-11-22, after the 03:00 MST run. The read-only survey of 2026-11-21 is in
 `macfax-runs/d2/prod_readonly.sh` (output in `macfax-runs/d2/prod/`).
+
+**D.5 deployed (2026-11-21 evening, `fab deploy`):** prod now runs `35f3dba` (D.5 web `a5efaf2` plus docs); only `web`
+was recreated, because the backend and scheduler images did not change. Checks on both domains (outputs in
+`macfax-runs/d5deploy/`): NBA health 200, `/ncaa` 200, both player pages 200 (Embiid 2017 shows 31 GP and 20.2), and
+the players tab still shows the possessions label (`Auto · min 340 poss` for 2027), because prod's rows are still
+legacy. Go 2 does not deploy code.
 Every prod step below needs an explicit go in chat. That includes `fab deploy` and every
 `docker compose exec`/`run` that writes.
 
@@ -387,7 +393,7 @@ PSQL="docker compose exec -T db psql -X -U cbb_user -d cbb_analytics -v ON_ERROR
 
 | # | Step | Command | Pass when |
 |---|---|---|---|
-| P1 | Pre-flight (read-only) | On prod: `git rev-parse HEAD; git log -1 --oneline; docker compose ps; df -h /; free -g; docker compose logs --since 14h scheduler \| grep -E "starting update_daily\|update_daily (finished\|FAILED)"`. Record the hash as `PROD_HEAD` (in `$OUT/prod_head.txt` and in §7.5's code rollback). Then locally, the commits P3 will deploy outside `nba/`, `tools/deploy_native` and `docs`: `git log --reverse --format='%h %ad %s' --date=short --name-only $PROD_HEAD..origin/main -- . ':(exclude,glob)**/nba/**' ':(exclude)tools/deploy_native' ':(exclude)docs'` | HEAD as surveyed (`2333608`); all 5 services up; ≥ 20 GB free; today's run shows `finished`. Every listed commit is finished work; **stop if any looks unfinished**. |
+| P1 | Pre-flight (read-only) | On prod: `git rev-parse HEAD; git log -1 --oneline; docker compose ps; df -h /; free -g; docker compose logs --since 14h scheduler \| grep -E "starting update_daily\|update_daily (finished\|FAILED)"`. Record the hash as `PROD_HEAD` (in `$OUT/prod_head.txt` and in §7.5's code rollback). Then locally, the commits P3 will deploy outside `nba/`, `tools/deploy_native` and `docs`: `git log --reverse --format='%h %ad %s' --date=short --name-only $PROD_HEAD..origin/main -- . ':(exclude,glob)**/nba/**' ':(exclude)tools/deploy_native' ':(exclude)docs'` | Go 1: HEAD as surveyed (`2333608`). **Go 2: HEAD is `35f3dba`** (D.5 deployed 2026-11-21); `origin/main` may be ahead by docs or tools commits only, and Go 2 does not deploy them. All 5 services up; ≥ 20 GB free; today's run shows `finished`. Every listed commit is finished work; **stop if any looks unfinished**. |
 | P2 | **Full backup** (named outside db-push's `prod-*` prune pattern) | `docker compose exec -T db pg_dump -U cbb_user -Fc cbb_analytics > backups/pre-native-swap-$TS.dump && ls -lh backups/pre-native-swap-$TS.dump && docker compose exec -T db pg_restore -l < backups/pre-native-swap-$TS.dump \| grep -c "TABLE DATA"` | ≈370 MB; TABLE DATA count = 61 (prod has 61 tables before 0033) |
 | P3 | **Deploy code + migrate to 0033** (from local: `fab deploy`) | `fab deploy` runs `git reset --hard origin/main`, `build`, `up -d`; the backend command runs `migrate`. Then on prod: `$PSQL -Atc "SELECT max(name) FROM django_migrations WHERE app='nba'"` and `curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:7001/api/nba/health/` | `0033_rating_scale`, the same as main and the local DB (L1's `$OUT/nba_migration.txt`); 200. If macfax.usu.edu returns 502: `docker exec swag nginx -t && docker exec swag nginx -s reload`. Prod still runs the **legacy** path (2026 has no native rows), which is safe if the swap is postponed. |
 | P4 | Stop the scheduler | `docker compose stop scheduler && docker compose ps scheduler` | exited |
@@ -433,13 +439,11 @@ PSQL="docker compose exec -T db psql -X -U cbb_user -d cbb_analytics -v ON_ERROR
      Pass: `2017 Joel Embiid 31 20.2 native-1 …` and `2027 Victor Wembanyama … native-1 …` (local on 2026-11-21: 6.97 and 13.28).
 3. **Pages via curl** (web container): `for u in "nba/players/203954?season=2017" "nba/players/1641705" "ncaa"; do echo "$(curl -s -o /dev/null -w '%{http_code} %{size_download}' "http://127.0.0.1:7000/$u") $u"; done; curl -s "http://127.0.0.1:7000/nba/players/203954?season=2017" | grep -oE "Joel Embiid|31(<!-- -->)? GP" | sort -u`.
    - `/ncaa` (the NCAA home page) returns 200.
-   - **Until D.5 (`a5efaf2`) is deployed, both player pages return 404, and that is expected: it is not a swap failure, so don't roll back on it.**
-     Prod's web (`eb7fbd1`) reads `params.id` without awaiting it, and Next 16 passes `params` as a Promise, so every
-     player page returns 404 before and after the swap (seen 2026-11-21). Embiid 2017 and the native player are checked through the API in item 2 instead.
-   - After D.5 is deployed, all three return 200 and the Embiid page contains `Joel Embiid` and `31 GP`.
+   - Both player pages return 200 (D.5 `a5efaf2` is deployed, 2026-11-21), and the Embiid page contains `Joel Embiid` and `31 GP`.
+     A 404 or 500 on either page is a failure.
 4. **Pages** (browser, macfax.usu.edu and macfax.org):
    - `/nba` and `/nba/ratings`: 2027 shows BPR values. Also check 2016 and 2010, which are new on prod.
-   - After D.5 is deployed: `/nba/players/203954?season=2017` shows Embiid, 31 games, 20.2 points, and `/nba/players/1641705` is a native player page. Until then, both are a known 404 (item 3).
+   - `/nba/players/203954?season=2017` shows Embiid, 31 games, 20.2 points, and `/nba/players/1641705` is a native player page.
    - A team page, `/nba/outlook` and one outlook detail.
    - Model health.
    - `/ncaa` (NCAA home) and an NCAA ratings page: unchanged.
