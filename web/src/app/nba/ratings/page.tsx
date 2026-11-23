@@ -49,10 +49,14 @@ export default async function NBARankingsPage({ searchParams }: NBAPageProps) {
         <div className="max-w-[1240px] mx-auto px-8 py-10 pb-[34px]">
           <p className="kicker-sport text-brand mb-[9px]">NBA · {currentSeason?.display_name ?? 'Current season'}</p>
           <h1 className="font-display font-bold text-[clamp(32px,4vw,48px)] leading-none uppercase tracking-[0.005em] m-0 mb-[14px]">
-            NBA Ratings
+            {activeTab === 'players' ? 'NBA Player Ratings' : 'NBA Ratings'}
           </h1>
           <div className="flex items-center gap-[14px] flex-wrap">
-            <p className="text-[15px] text-muted m-0">Opponent-adjusted efficiency for all 30 teams</p>
+            <p className="text-[15px] text-muted m-0">
+              {activeTab === 'players'
+                ? 'Player leaderboards across BPR impact and traditional production, with filters for season, season type, and minimum possessions.'
+                : 'Opponent-adjusted efficiency for all 30 teams'}
+            </p>
             {rankings.length > 0 && (
               <span className="font-mono text-[12px] text-muted-2 inline-flex items-center gap-[7px] px-[10px] py-[5px] bg-ui-surface border border-ui-border rounded-md">
                 <span className="w-1.5 h-1.5 rounded-full bg-brand2" />
@@ -69,7 +73,7 @@ export default async function NBARankingsPage({ searchParams }: NBAPageProps) {
           <div className="flex gap-0">
             {[
               { id: 'teams', label: 'Team Ratings', icon: BarChart3 },
-              { id: 'players', label: 'Player Stats', icon: Users },
+              { id: 'players', label: 'Player Ratings', icon: Users },
             ].map(({ id, label, icon: Icon }) => (
               <Link
                 key={id}
@@ -113,7 +117,7 @@ export default async function NBARankingsPage({ searchParams }: NBAPageProps) {
         players.length === 0 ? (
           <div className="text-center py-20 bg-ui-card border border-ui-border rounded-lg">
             <Users className="w-12 h-12 mx-auto mb-4 text-brand/30" strokeWidth={1} />
-            <p className="font-medium text-text-primary mb-2">No player stats yet</p>
+            <p className="font-medium text-text-primary mb-2">No player ratings yet</p>
             <p className="text-sm text-text-muted max-w-md mx-auto">
               Run the NBA ingestion pipeline first:
             </p>
