@@ -14,7 +14,6 @@ export const metadata: Metadata = {
 
 const NBA_CONFIG: Omit<HubConfig, 'facts'> = {
   label: 'NBA',
-  eyebrow: 'NBA · Updated daily',
   title: 'NBA',
   teamCount: 30,
   lede: 'Adjusted efficiency, roster value, and development curves applied to all 30 NBA franchises — built to show what teams actually project to, not just what they\'ve done so far.',

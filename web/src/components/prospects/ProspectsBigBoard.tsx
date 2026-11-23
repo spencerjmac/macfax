@@ -195,7 +195,6 @@ export function ProspectsBigBoard({ data }: Props) {
 
       {/* ── HEADER ── */}
       <div className="mb-6">
-        <div className="text-xs font-semibold tracking-widest text-brand uppercase mb-1">macfax</div>
         <h1 className="text-3xl font-bold text-text-primary">2026 NBA Draft Big Board</h1>
         <p className="mt-1 text-text-muted">MacFax Prospect Score · MPS Model · 11-fold validated</p>
       </div>

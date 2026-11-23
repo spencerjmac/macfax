@@ -47,7 +47,6 @@ export default async function NBARankingsPage({ searchParams }: NBAPageProps) {
       {/* Page header */}
       <div className="bg-surface border-b border-ui-border">
         <div className="max-w-[1240px] mx-auto px-8 py-10 pb-[34px]">
-          <p className="kicker-sport text-brand mb-[9px]">NBA · {currentSeason?.display_name ?? 'Current season'}</p>
           <h1 className="font-display font-bold text-[clamp(32px,4vw,48px)] leading-none uppercase tracking-[0.005em] m-0 mb-[14px]">
             {activeTab === 'players' ? 'NBA Player Ratings' : 'NBA Ratings'}
           </h1>

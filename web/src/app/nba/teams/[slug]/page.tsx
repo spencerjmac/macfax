@@ -94,10 +94,9 @@ const CAP_TIER_TEXT: Record<CapStatusTier, string> = {
   second_apron: 'Second-apron restrictions make major roster pivots harder.',
 };
 
-function sectionTitle(kicker: string, title: string, text?: string) {
+function sectionTitle(title: string, text?: string) {
   return (
     <div className="mb-4">
-      <p className="kicker-sport text-brand mb-2">{kicker}</p>
       <h2 className="font-display text-[24px] font-bold uppercase leading-none tracking-[0.005em] text-text-primary m-0">
         {title}
       </h2>
@@ -296,7 +295,7 @@ function ProjectionSnapshot({ detail }: { detail: TeamSeasonOutlookDetail }) {
 
   return (
     <section>
-      {sectionTitle('10-second read', 'The Projection At A Glance')}
+      {sectionTitle('The Projection At A Glance')}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <SnapshotCard
           label="Projected Record"
@@ -381,7 +380,7 @@ function EfficiencyProfile({ detail }: { detail: TeamSeasonOutlookDetail }) {
 
   return (
     <section>
-      {sectionTitle('Efficiency', 'Efficiency Profile', 'Adjusted ratings summarize how the team projects possession by possession.')}
+      {sectionTitle('Efficiency Profile', 'Adjusted ratings summarize how the team projects possession by possession.')}
       <div className="grid gap-4 md:grid-cols-3">
         {cards.map((card) => {
           const interpretation = getEfficiencyInterpretation(card.value, card.kind);
@@ -413,7 +412,7 @@ function FourFactorsCard({ detail }: { detail: TeamSeasonOutlookDetail }) {
 
   return (
     <section>
-      {sectionTitle('Possession detail', 'Four Factors', 'The four factors show where the rating is coming from: shooting, turnovers, rebounding, and free throws.')}
+      {sectionTitle('Four Factors', 'The four factors show where the rating is coming from: shooting, turnovers, rebounding, and free throws.')}
       <div className="overflow-hidden rounded-lg border border-ui-border bg-ui-card">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[640px]">
@@ -494,7 +493,7 @@ function OffseasonMovesSection({
 
   return (
     <section>
-      {sectionTitle('Roster movement', 'Offseason Moves', 'The model weighs offseason movement by projected role, player value, and minutes likely to change hands.')}
+      {sectionTitle('Offseason Moves', 'The model weighs offseason movement by projected role, player value, and minutes likely to change hands.')}
       <div className="grid gap-5 lg:grid-cols-2">
         <div className="rounded-lg border border-ui-border bg-ui-card">
           <div className="border-b border-ui-border px-5 py-4">
@@ -563,7 +562,7 @@ function RosterConstructionSection({
 
   return (
     <section>
-      {sectionTitle('Roster shape', 'Roster Construction')}
+      {sectionTitle('Roster Construction')}
       <div className="grid gap-4 lg:grid-cols-3">
         {detail.continuity_score !== null && (
           <div className="rounded-lg border border-ui-border bg-ui-card p-5">
@@ -650,7 +649,7 @@ function ProjectedCoreFiveSection({ detail }: { detail: TeamSeasonOutlookDetail 
 
   return (
     <section>
-      {sectionTitle('Rotation core', core.title)}
+      {sectionTitle(core.title)}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         {core.players.map((player) => (
           <div key={player.id} className="rounded-lg border border-ui-border bg-ui-card p-4">
@@ -716,7 +715,7 @@ function RotationTable({ slots }: { slots: NBAProjectedRosterSlot[] }) {
 
   return (
     <section>
-      {sectionTitle('Projected minutes', 'Projected Rotation', 'BPR scale: +5 All-Star, +2 starter, 0 replacement-level, negative rotation drag.')}
+      {sectionTitle('Projected Rotation', 'BPR scale: +5 All-Star, +2 starter, 0 replacement-level, negative rotation drag.')}
       <div className="overflow-hidden rounded-lg border border-ui-border bg-ui-card">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[760px]">
@@ -761,7 +760,7 @@ function DevelopmentWatchSection({ players }: { players: DevelopmentWatchPlayer[
 
   return (
     <section>
-      {sectionTitle('Next layer', 'Development Watch')}
+      {sectionTitle('Development Watch')}
       <div className="grid gap-5 lg:grid-cols-2">
         {drafted.length > 0 && (
           <div className="rounded-lg border border-ui-border bg-ui-card p-5">
@@ -828,7 +827,7 @@ function BottomLineOutlook({ detail }: { detail: TeamSeasonOutlookDetail }) {
 
   return (
     <section>
-      {sectionTitle('Final read', 'Bottom Line')}
+      {sectionTitle('Bottom Line')}
       <div className="rounded-lg border border-ui-border bg-ui-card p-6">
         <div className="grid gap-5 lg:grid-cols-[1fr_1.4fr] lg:items-center">
           <div>
@@ -864,7 +863,7 @@ function CapSnapshot({ detail }: { detail: TeamSeasonOutlookDetail }) {
 
   return (
     <section>
-      {sectionTitle('Roster flexibility', 'Cap Snapshot')}
+      {sectionTitle('Cap Snapshot')}
       <div className="rounded-lg border border-ui-border bg-ui-card p-5">
         <div className="flex flex-wrap items-center gap-3">
           <span className="rounded bg-ui-surface px-2.5 py-1 text-[11px] font-semibold text-text-primary border border-ui-border">

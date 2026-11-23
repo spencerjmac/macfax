@@ -40,7 +40,6 @@ interface HubViz {
 
 export interface HubConfig {
   label: string;
-  eyebrow: string;
   title: string;
   teamCount: number;
   lede: string;
@@ -115,10 +114,6 @@ export default function SportHubPage({
           >
             {/* Copy */}
             <div className="flex flex-col items-start gap-[18px]">
-              <p className="kicker-sport text-brand2 flex items-center gap-3">
-                <span className="w-1.5 h-1.5 rounded-full bg-brand2 shadow-[0_0_0_4px_rgba(112,192,112,0.18)]" />
-                {config.eyebrow}
-              </p>
               <h1 className="font-display font-bold text-[clamp(42px,5vw,66px)] leading-[0.98] uppercase tracking-[0.005em] text-white m-0">
                 {config.title}
               </h1>
@@ -212,7 +207,6 @@ export default function SportHubPage({
         <div className="max-w-[1240px] mx-auto px-8">
           <div className="flex items-end justify-between gap-6 mb-[30px]">
             <div>
-              <p className="kicker-sport text-brand mb-2">This week</p>
               <h2 className="head-sport text-text-primary m-0">Top of the {config.label} ratings</h2>
             </div>
             <Link
@@ -267,7 +261,6 @@ export default function SportHubPage({
       <section className="py-[56px] border-t border-ui-border bg-[#F7F7F8]">
         <div className="max-w-[1240px] mx-auto px-8">
           <div className="mb-[30px]">
-            <p className="kicker-sport text-brand mb-2">Explore</p>
             <h2 className="head-sport text-text-primary m-0">{config.label} tools</h2>
           </div>
           <div className="grid grid-cols-3 gap-4">
@@ -308,7 +301,6 @@ export default function SportHubPage({
         <div className="max-w-[1240px] mx-auto px-8">
           <div className="flex items-end justify-between gap-6 mb-[30px]">
             <div>
-              <p className="kicker-sport text-brand mb-2">Latest</p>
               <h2 className="head-sport text-text-primary m-0">{config.label} visualizations</h2>
             </div>
             <Link

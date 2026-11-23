@@ -1,7 +1,5 @@
 import { Metadata } from 'next';
-import Link from 'next/link';
 import { api } from '@/lib/api';
-import { nbaApi } from '@/lib/nba-api';
 import NBAEfficiencyLandscapeChart from '@/components/NBAEfficiencyLandscapeChart';
 
 export const dynamic = 'force-dynamic';
@@ -20,23 +18,13 @@ export default async function NBALandscapePage({ searchParams }: Props) {
   const sp = await searchParams;
   const seasonYear = sp.season ? parseInt(sp.season, 10) : undefined;
 
-  const [data, seasons] = await Promise.all([
-    api.getNBALandscape({ season: seasonYear }).catch(() => null),
-    nbaApi.getSeasons().catch(() => []),
-  ]);
-
-  const currentSeason = seasonYear
-    ? seasons.find((s) => s.year === seasonYear) ?? null
-    : seasons.find((s) => s.is_current) ?? seasons[0] ?? null;
+  const data = await api.getNBALandscape({ season: seasonYear }).catch(() => null);
 
   return (
     <div>
       {/* Page header */}
       <div className="bg-surface border-b border-ui-border">
         <div className="max-w-[1240px] mx-auto px-8 py-10 pb-[34px]">
-          <p className="kicker-sport text-brand mb-[9px]">
-            <Link href="/nba/viz" className="hover:underline">NBA · Visualizations</Link> · {data?.season_display ?? currentSeason?.display_name ?? 'Current season'}
-          </p>
           <h1 className="font-display font-bold text-[clamp(32px,4vw,48px)] leading-none uppercase tracking-[0.005em] m-0 mb-[14px]">
             Efficiency Landscape
           </h1>

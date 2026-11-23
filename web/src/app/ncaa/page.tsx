@@ -14,7 +14,6 @@ export const metadata: Metadata = {
 
 const NCAA_CONFIG: Omit<HubConfig, 'facts'> = {
   label: 'NCAA',
-  eyebrow: 'College Basketball · Updated daily',
   title: 'College Basketball',
   teamCount: 365,
   lede: 'Adjusted efficiency, four factors, player impact, and matchup projections for every Division I team — built to show how teams actually play, not just who they\'ve beaten.',

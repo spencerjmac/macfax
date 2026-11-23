@@ -239,7 +239,6 @@ export default function NBATeamsPage() {
         <div className="max-w-[1240px] mx-auto px-5 sm:px-8 py-10 sm:py-12">
           <div className="flex flex-col gap-7 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-[760px]">
-              <p className="kicker-sport text-brand2 mb-3">NBA · 2026-27 Model Preview</p>
               <h1 className="font-display text-[clamp(38px,5vw,68px)] font-bold uppercase leading-[0.98] tracking-[0.005em] text-white m-0">
                 NBA Team Outlooks
               </h1>

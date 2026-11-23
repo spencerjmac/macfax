@@ -55,10 +55,6 @@ export default async function HomePage() {
           >
             {/* Copy */}
             <div className="flex flex-col items-start gap-0">
-              <p className="kicker-sport text-brand2 flex items-center gap-3 mb-6">
-                <span className="w-1.5 h-1.5 rounded-full bg-brand2 shadow-[0_0_0_4px_rgba(112,192,112,0.18)]" />
-                NCAA · NBA — Updated daily
-              </p>
               <h1 className="display-sport text-white mb-6 max-w-[16ch]">
                 The numbers behind the game.
               </h1>
@@ -148,7 +144,6 @@ export default async function HomePage() {
         <div className="max-w-[1240px] mx-auto px-8">
           <div className="flex items-end justify-between gap-6 mb-[30px]">
             <div>
-              <p className="kicker-sport text-brand mb-2">NCAA · NBA</p>
               <h2 className="head-sport text-text-primary">Pick your sport</h2>
             </div>
           </div>
