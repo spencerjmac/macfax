@@ -131,6 +131,10 @@ class EfficiencyLandscapeView(APIView):
         # This ensures tier boundaries stay constant regardless of conference selection
         max_net = max(t['rating'].adj_em for t in all_teams_data)
         
+        # The season has a bracket once seeds load (day after Selection Sunday);
+        # the frontend shows its tournament filters only then.
+        has_tournament = any(t['rating'].tournament_seed is not None for t in all_teams_data)
+
         # Filter by conference / tournament AFTER computing national baseline
         _TOURNAMENT_REGIONS = {'SOUTH', 'EAST', 'WEST', 'MIDWEST'}
         if not conference_filter or conference_filter.upper() == 'ALL':
@@ -177,6 +181,7 @@ class EfficiencyLandscapeView(APIView):
             'conference': conference_filter,
             'top': top_n,
             'max_net': round(max_net, 1),
+            'has_tournament': has_tournament,
             'defaults': {
                 'title_delta': TITLE_FAVORITES_DELTA,
                 'final4_delta': FINAL_FOUR_DELTA,

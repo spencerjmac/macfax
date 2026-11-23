@@ -317,6 +317,10 @@ class TrapezoidView(APIView):
                 'tournament_region': rating.tournament_region,
             })
         
+        # The season has a bracket once seeds load (day after Selection Sunday);
+        # the frontend shows its tournament filters only then.
+        has_tournament = any(t['tournament_seed'] is not None for t in all_teams_data)
+
         # Filter by conference / tournament AFTER getting conference data
         _TOURNAMENT_REGIONS = {'SOUTH', 'EAST', 'WEST', 'MIDWEST'}
         if not conference_filter or conference_filter == 'ALL':
@@ -366,6 +370,7 @@ class TrapezoidView(APIView):
                 'conference': conference_filter,
                 'top': top_n,
                 'total_teams': len(teams),
+                'has_tournament': has_tournament,
                 'trapezoid_basis': 'NATIONAL_D1',
                 'quantiles_used': {
                     'q_bot_em': Q_BOT_EM,

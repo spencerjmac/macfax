@@ -18,6 +18,8 @@ import {
   useYAxisScale,
 } from 'recharts';
 
+const TOURNAMENT_FILTERS = new Set(['NCAA_TOURNAMENT', 'SOUTH', 'EAST', 'WEST', 'MIDWEST']);
+
 export default function EfficiencyLandscapePage() {
   const router = useRouter();
   const [data, setData] = useState<EfficiencyLandscapeData | null>(null);
@@ -30,6 +32,15 @@ export default function EfficiencyLandscapePage() {
   const [conferenceFilter, setConferenceFilter] = useState('ALL');
   const [topN, setTopN] = useState(365);
   const [debouncedTopN, setDebouncedTopN] = useState(365);
+
+  // Tournament filters only once the season has a bracket (seeds load the day after Selection Sunday).
+  // A tournament filter stays listed while its data loads, and resets once a season without seeds has loaded.
+  const isTournamentFilter = TOURNAMENT_FILTERS.has(conferenceFilter);
+  const hasTournament = data?.has_tournament ?? false;
+  if (data && !hasTournament && isTournamentFilter) {
+    setConferenceFilter('ALL');
+  }
+  const showTournamentFilters = hasTournament || isTournamentFilter;
   
   // Conferences differ by season (realignment), so reload when the season changes
   useEffect(() => {
@@ -104,13 +115,15 @@ export default function EfficiencyLandscapePage() {
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="ALL">All Conferences</option>
-              <optgroup label="NCAA Tournament">
-                <option value="NCAA_TOURNAMENT">🏀 NCAA Tournament</option>
-                <option value="SOUTH">↳ South Region</option>
-                <option value="EAST">↳ East Region</option>
-                <option value="WEST">↳ West Region</option>
-                <option value="MIDWEST">↳ Midwest Region</option>
-              </optgroup>
+              {showTournamentFilters && (
+                <optgroup label="NCAA Tournament">
+                  <option value="NCAA_TOURNAMENT">🏀 NCAA Tournament</option>
+                  <option value="SOUTH">↳ South Region</option>
+                  <option value="EAST">↳ East Region</option>
+                  <option value="WEST">↳ West Region</option>
+                  <option value="MIDWEST">↳ Midwest Region</option>
+                </optgroup>
+              )}
               <optgroup label="Conferences">
                 {conferences.map((conf) => (
                   <option key={conf.code} value={conf.code}>

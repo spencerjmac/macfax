@@ -179,6 +179,8 @@ export interface TrapezoidData {
     conference: string;
     top: number;
     total_teams: number;
+    /** True once the season has seeds (day after Selection Sunday). */
+    has_tournament: boolean;
     quantiles_used: {
       x_left_top: number;
       x_right_top: number;
@@ -218,6 +220,8 @@ export interface EfficiencyLandscapeData {
   conference: string;
   top: number;
   max_net: number;
+  /** True once the season has seeds (day after Selection Sunday). */
+  has_tournament: boolean;
   defaults: {
     title_delta: number;
     final4_delta: number;
