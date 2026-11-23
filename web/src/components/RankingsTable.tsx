@@ -84,6 +84,12 @@ export default function RankingsTable({ data, seasons = [], selectedSeason, isPr
     { id: 'adjusted-four-factors' as TabId, label: 'Adj Four Factors' },
   ];
 
+  // Tournament filters only make sense once the season has a bracket (seeds load the day after Selection Sunday).
+  const hasTournament = data.some((t) => t.tournament_seed != null);
+  if (!hasTournament && conferenceFilter.startsWith('ncaa_')) {
+    setConferenceFilter('all');
+  }
+
   const conferences = useMemo(() => {
     const confs = new Set(data.map((t) => t.conference).filter(Boolean));
     return Array.from(confs).sort();
@@ -464,13 +470,15 @@ export default function RankingsTable({ data, seasons = [], selectedSeason, isPr
             className="px-3 py-2 bg-ui-surface border border-ui-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand/50"
           >
             <option value="all">All Conferences</option>
-            <optgroup label="NCAA Tournament">
-              <option value="ncaa_tournament">🏀 NCAA Tournament</option>
-              <option value="ncaa_south">↳ South Region</option>
-              <option value="ncaa_east">↳ East Region</option>
-              <option value="ncaa_west">↳ West Region</option>
-              <option value="ncaa_midwest">↳ Midwest Region</option>
-            </optgroup>
+            {hasTournament && (
+              <optgroup label="NCAA Tournament">
+                <option value="ncaa_tournament">🏀 NCAA Tournament</option>
+                <option value="ncaa_south">↳ South Region</option>
+                <option value="ncaa_east">↳ East Region</option>
+                <option value="ncaa_west">↳ West Region</option>
+                <option value="ncaa_midwest">↳ Midwest Region</option>
+              </optgroup>
+            )}
             <optgroup label="Conferences">
               {conferences.map((conf) => (
                 <option key={conf} value={conf}>
@@ -485,37 +493,39 @@ export default function RankingsTable({ data, seasons = [], selectedSeason, isPr
           Showing {table.getFilteredRowModel().rows.length} teams
         </div>
 
-        {/* Pre-Tournament Toggle */}
-        <div className="flex items-center gap-2 ml-auto">
-          <label htmlFor="preTournamentToggle" className="text-sm font-medium text-text-primary cursor-pointer">
-            Pre-Tournament Only
-          </label>
-          <button
-            id="preTournamentToggle"
-            role="switch"
-            aria-checked={isPreTournament}
-            onClick={() => {
-              const newUrl = new URL(window.location.href);
-              if (!isPreTournament) {
-                newUrl.searchParams.set('pre_tournament', 'true');
-              } else {
-                newUrl.searchParams.delete('pre_tournament');
-              }
-              router.push(newUrl.pathname + newUrl.search);
-            }}
-            className={clsx(
-              "relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 focus:ring-offset-surface",
-              isPreTournament ? "bg-brand" : "bg-ui-border"
-            )}
-          >
-            <span
+        {/* Pre-Tournament Toggle: hidden without a bracket, unless already on so it can be turned off */}
+        {(hasTournament || isPreTournament) && (
+          <div className="flex items-center gap-2 ml-auto">
+            <label htmlFor="preTournamentToggle" className="text-sm font-medium text-text-primary cursor-pointer">
+              Pre-Tournament Only
+            </label>
+            <button
+              id="preTournamentToggle"
+              role="switch"
+              aria-checked={isPreTournament}
+              onClick={() => {
+                const newUrl = new URL(window.location.href);
+                if (!isPreTournament) {
+                  newUrl.searchParams.set('pre_tournament', 'true');
+                } else {
+                  newUrl.searchParams.delete('pre_tournament');
+                }
+                router.push(newUrl.pathname + newUrl.search);
+              }}
               className={clsx(
-                "inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform",
-                isPreTournament ? "translate-x-4" : "translate-x-1"
+                "relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 focus:ring-offset-surface",
+                isPreTournament ? "bg-brand" : "bg-ui-border"
               )}
-            />
-          </button>
-        </div>
+            >
+              <span
+                className={clsx(
+                  "inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform",
+                  isPreTournament ? "translate-x-4" : "translate-x-1"
+                )}
+              />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* View toggle */}
