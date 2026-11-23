@@ -119,6 +119,30 @@ class ConferenceViewSet(viewsets.ReadOnlyModelViewSet):
         return in_season if in_season.exists() else qs
 
 
+def game_score_totals(season, is_pre_tournament):
+    """{team_id: (games, points, opponent points)} from Game final scores.
+
+    Covers the same games as TeamSeasonMetrics (metrics_game_stats_q), including
+    games whose box score is missing, so PTS / OPP PTS per game need no box.
+    """
+    from django.db.models import Case, Count, F, IntegerField, Sum, When
+    from django.db.models.functions import Coalesce
+    from ncaa.utils.metrics_scope import metrics_game_stats_q
+
+    is_home = When(game__home_team_id=F("team_id"), then=Coalesce("game__home_score", 0))
+    is_home_opp = When(game__home_team_id=F("team_id"), then=Coalesce("game__away_score", 0))
+    rows = (
+        TeamGameStats.objects.filter(metrics_game_stats_q(season, is_pre_tournament))
+        .values("team_id")
+        .annotate(
+            n=Count("id"),
+            pts=Sum(Case(is_home, default=Coalesce("game__away_score", 0), output_field=IntegerField())),
+            opp=Sum(Case(is_home_opp, default=Coalesce("game__home_score", 0), output_field=IntegerField())),
+        )
+    )
+    return {r["team_id"]: (r["n"], r["pts"], r["opp"]) for r in rows}
+
+
 @method_decorator(cache_page(60 * 5), name="list")  # Cache for 5 minutes
 class RankingsViewSet(viewsets.ReadOnlyModelViewSet):
     """
@@ -149,6 +173,8 @@ class RankingsViewSet(viewsets.ReadOnlyModelViewSet):
             season = Season.objects.filter(is_current=True).first()
 
         is_pre_tournament = self.request.query_params.get("pre_tournament") == "true"
+        # For get_serializer_context (PTS / OPP PTS from final scores)
+        self._rankings_scope = (season, is_pre_tournament)
         
         base_qs = TeamSeasonRatings.all_objects.filter(is_pre_tournament=is_pre_tournament)
 
@@ -226,6 +252,13 @@ class RankingsViewSet(viewsets.ReadOnlyModelViewSet):
         queryset = queryset.order_by(f"{order_prefix}{actual_field}")
 
         return queryset
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        season, is_pre_tournament = getattr(self, "_rankings_scope", (None, False))
+        if season is not None:
+            context["game_score_totals"] = game_score_totals(season, is_pre_tournament)
+        return context
 
     def list(self, request, *args, **kwargs):
         """Override list to add conference filtering after serialization"""

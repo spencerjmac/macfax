@@ -215,6 +215,22 @@ class RankingsSerializer(serializers.Serializer):
     ft_pct = serializers.SerializerMethodField()
     fg3_rate = serializers.SerializerMethodField()
 
+    # Traditional per-game stats. Box stats divide by box_games (games with a box score;
+    # some seasons have final scores but no box), fouls drawn by opp_box_games, and
+    # PTS / OPP PTS come from final scores over all games.
+    ppg = serializers.SerializerMethodField()
+    papg = serializers.SerializerMethodField()
+    fg_pct = serializers.SerializerMethodField()
+    rpg = serializers.SerializerMethodField()
+    orpg = serializers.SerializerMethodField()
+    drpg = serializers.SerializerMethodField()
+    apg = serializers.SerializerMethodField()
+    spg = serializers.SerializerMethodField()
+    bpg = serializers.SerializerMethodField()
+    topg = serializers.SerializerMethodField()
+    pfpg = serializers.SerializerMethodField()
+    pfdpg = serializers.SerializerMethodField()
+
     # Resume Metrics
     wab = serializers.FloatField()
     sor_rank = serializers.IntegerField()
@@ -371,6 +387,64 @@ class RankingsSerializer(serializers.Serializer):
             if (metrics.total_fta or 0) > 0
             else None
         )
+
+    @staticmethod
+    def _per_game(total, games):
+        return round(total / games, 1) if games else None
+
+    def _box_per_game(self, obj, field):
+        metrics = self._get_metrics(obj)
+        if not metrics:
+            return None
+        return self._per_game(getattr(metrics, field) or 0, metrics.box_games)
+
+    def _game_scores(self, obj):
+        """(games, points, opponent points) from final scores, or None outside the rankings view."""
+        return self.context.get("game_score_totals", {}).get(obj.team_id)
+
+    def get_ppg(self, obj):
+        scores = self._game_scores(obj)
+        return self._per_game(scores[1], scores[0]) if scores else None
+
+    def get_papg(self, obj):
+        scores = self._game_scores(obj)
+        return self._per_game(scores[2], scores[0]) if scores else None
+
+    def get_fg_pct(self, obj):
+        metrics = self._get_metrics(obj)
+        if not metrics or not metrics.total_fga:
+            return None
+        return round((metrics.total_fgm or 0) / metrics.total_fga * 100, 1)
+
+    def get_rpg(self, obj):
+        return self._box_per_game(obj, "total_reb")
+
+    def get_orpg(self, obj):
+        return self._box_per_game(obj, "total_oreb")
+
+    def get_drpg(self, obj):
+        return self._box_per_game(obj, "total_dreb")
+
+    def get_apg(self, obj):
+        return self._box_per_game(obj, "total_ast")
+
+    def get_spg(self, obj):
+        return self._box_per_game(obj, "total_stl")
+
+    def get_bpg(self, obj):
+        return self._box_per_game(obj, "total_blk")
+
+    def get_topg(self, obj):
+        return self._box_per_game(obj, "total_tov")
+
+    def get_pfpg(self, obj):
+        return self._box_per_game(obj, "total_pf")
+
+    def get_pfdpg(self, obj):
+        metrics = self._get_metrics(obj)
+        if not metrics:
+            return None
+        return self._per_game(metrics.total_opp_pf or 0, metrics.opp_box_games)
 
     def get_fg3_rate(self, obj):
         metrics = self._get_metrics(obj)

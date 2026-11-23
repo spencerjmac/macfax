@@ -590,6 +590,13 @@ class TeamSeasonMetrics(models.Model):
     total_blk = models.IntegerField(default=0)
     total_tov = models.IntegerField(default=0)
     total_pf = models.IntegerField(default=0)
+    total_opp_pf = models.IntegerField(default=0, help_text="Opponent personal fouls (fouls drawn)")
+    box_games = models.IntegerField(
+        default=0, help_text="Games with a box score for this team (fga > 0); divisor for per-game box stats"
+    )
+    opp_box_games = models.IntegerField(
+        default=0, help_text="Games with a box score for the opponent (fga > 0); divisor for fouls drawn per game"
+    )
 
     # ==================== Per-Game Averages ====================
     ppg = models.FloatField(default=0.0, help_text="Points per game")

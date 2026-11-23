@@ -30,6 +30,7 @@ from ncaa.models import (
 )
 from ncaa.seasons import resolve_season_year
 from ncaa.utils.d1 import d1_q
+from ncaa.utils.metrics_scope import metrics_game_stats_q
 
 logger = logging.getLogger(__name__)
 
@@ -109,18 +110,10 @@ class Command(BaseCommand):
     def _compute_team_season_metrics(self, team: Team, season: Season, is_pre_tournament: bool):
         """Compute all metrics for a team-season"""
         # Base filter
-        filters = Q(
-            team=team,
-            game__season_year=season.year,
-            game__status="final",
-        ) & d1_q(season, "opponent")  # Only games vs opponents that were D1 that season
-        
-        # Exclude canceled games (where both teams scored 0 points despite 'final' status)
-        filters &= ~Q(game__home_score=0, game__away_score=0)
-        
-        if is_pre_tournament and season.selection_sunday_date:
-            filters &= Q(game__game_date__lte=season.selection_sunday_date)
-            
+        # Final games vs opponents that were D1 that season; canceled 0-0 games and,
+        # for the pre-tournament snapshot, games after Selection Sunday excluded
+        filters = Q(team=team) & metrics_game_stats_q(season, is_pre_tournament)
+
         # Get all games for this team (D1 vs D1 only for metrics)
         game_stats = (
             TeamGameStats.objects.filter(filters)
@@ -177,6 +170,11 @@ class Command(BaseCommand):
             "total_blk": 0,
             "total_tov": 0,
             "total_pf": 0,
+            "total_opp_pf": 0,
+            # Games with a box score (fga > 0); some seasons have final scores but no box,
+            # so per-game box averages divide by these instead of games
+            "box_games": 0,
+            "opp_box_games": 0,
             "total_minutes": 0,   # game minutes (40 + 5 per OT), for pace on the same basis as national pace
         }
 
@@ -197,6 +195,8 @@ class Command(BaseCommand):
             totals["total_blk"] += gs.blk
             totals["total_tov"] += gs.tov
             totals["total_pf"] += gs.pf
+            if gs.fga > 0:
+                totals["box_games"] += 1
 
             # Possessions (team)
             poss = gs.possessions_est
@@ -219,6 +219,9 @@ class Command(BaseCommand):
                 totals["total_opp_fg3m"] += opp_stats.fg3m
                 totals["total_opp_fta"] += opp_stats.fta
                 totals["total_opp_tov"] += opp_stats.tov
+                totals["total_opp_pf"] += opp_stats.pf
+                if opp_stats.fga > 0:
+                    totals["opp_box_games"] += 1
 
         return totals
 
@@ -398,6 +401,9 @@ class Command(BaseCommand):
             "total_blk": totals["total_blk"],
             "total_tov": totals["total_tov"],
             "total_pf": totals["total_pf"],
+            "total_opp_pf": totals["total_opp_pf"],
+            "box_games": totals["box_games"],
+            "opp_box_games": totals["opp_box_games"],
             # Per-game averages
             "ppg": ppg,
             "papg": papg,
