@@ -47,6 +47,24 @@ const BASE_METRICS: MetricMeta[] = [
   { key: 'ftr', label: 'Adj FTR', tooltip: 'Adjusted free throw rate (offense).', format: 'percent1', better: 'higher', showRank: true, heatmap: true },
   { key: 'ftr_d', label: 'Adj FTR D', tooltip: 'Adjusted free throw rate allowed.', format: 'percent1', better: 'lower', showRank: true, heatmap: true },
   { key: 'ftr_margin', label: 'Adj FTR Margin', tooltip: 'Adjusted FTR margin (team - opponent).', format: 'number1pct', better: 'higher', showRank: true, heatmap: true },
+
+  // Traditional per-game stats
+  { key: 'games', label: 'GP', tooltip: 'Games played.', format: 'int', better: 'neutral', showRank: false, heatmap: false },
+  { key: 'ppg', label: 'PTS', tooltip: 'Points per game.', format: 'number1', better: 'higher', showRank: true, heatmap: true },
+  { key: 'papg', label: 'OPP PTS', tooltip: 'Opponent points per game.', format: 'number1', better: 'lower', showRank: true, heatmap: true },
+  { key: 'fg_pct', label: 'FG%', tooltip: 'Field goal percentage.', format: 'percent1', better: 'higher', showRank: true, heatmap: true },
+  { key: 'fg2_pct', label: '2P%', tooltip: 'Two-point field goal percentage.', format: 'percent1', better: 'higher', showRank: true, heatmap: true },
+  { key: 'fg3_pct', label: '3P%', tooltip: 'Three-point field goal percentage.', format: 'percent1', better: 'higher', showRank: true, heatmap: true },
+  { key: 'ft_pct', label: 'FT%', tooltip: 'Free throw percentage.', format: 'percent1', better: 'higher', showRank: true, heatmap: true },
+  { key: 'orpg', label: 'OREB', tooltip: 'Offensive rebounds per game.', format: 'number1', better: 'higher', showRank: true, heatmap: true },
+  { key: 'drpg', label: 'DREB', tooltip: 'Defensive rebounds per game.', format: 'number1', better: 'higher', showRank: true, heatmap: true },
+  { key: 'rpg', label: 'REB', tooltip: 'Total rebounds per game.', format: 'number1', better: 'higher', showRank: true, heatmap: true },
+  { key: 'apg', label: 'AST', tooltip: 'Assists per game.', format: 'number1', better: 'higher', showRank: true, heatmap: true },
+  { key: 'spg', label: 'STL', tooltip: 'Steals per game.', format: 'number1', better: 'higher', showRank: true, heatmap: true },
+  { key: 'bpg', label: 'BLK', tooltip: 'Blocks per game.', format: 'number1', better: 'higher', showRank: true, heatmap: true },
+  { key: 'topg', label: 'TOV', tooltip: 'Turnovers per game.', format: 'number1', better: 'lower', showRank: true, heatmap: true },
+  { key: 'pfpg', label: 'PF', tooltip: 'Personal fouls committed per game.', format: 'number1', better: 'lower', showRank: true, heatmap: true },
+  { key: 'pfdpg', label: 'PFD', tooltip: 'Personal fouls drawn per game (opponent fouls).', format: 'number1', better: 'higher', showRank: true, heatmap: true },
 ];
 
 export const METRIC_DEFINITIONS: Record<string, MetricMeta> = Object.fromEntries(

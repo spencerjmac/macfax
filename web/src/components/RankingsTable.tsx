@@ -29,7 +29,7 @@ interface RankingsTableProps {
   isPreTournament?: boolean;
 }
 
-type TabId = 'overview' | 'four-factors' | 'adjusted-four-factors';
+type TabId = 'overview' | 'four-factors' | 'adjusted-four-factors' | 'traditional';
 
 interface SubColSpec {
   key: string;
@@ -66,6 +66,20 @@ const TEAM_METRIC_DEFINITIONS: Record<TabId, MetricDefinition[]> = {
     { k: 'Margin / Edge', v: 'Adjusted team advantage over opponents, with positive values meaning the four-factor battle favors the team.' },
     { k: 'FFI', v: 'Adjusted Four Factor Index: 0-100 composite of adjusted four-factor margins; higher is better.' },
   ],
+  traditional: [
+    { k: 'PTS', v: 'Points per game, from final scores.' },
+    { k: 'OPP PTS', v: 'Opponent points per game, from final scores; lower is better.' },
+    { k: 'FG%', v: 'Field goals made divided by field goals attempted.' },
+    { k: 'OREB', v: 'Offensive rebounds per game.' },
+    { k: 'DREB', v: 'Defensive rebounds per game.' },
+    { k: 'REB', v: 'Total rebounds per game.' },
+    { k: 'AST', v: 'Assists per game.' },
+    { k: 'STL', v: 'Steals per game.' },
+    { k: 'BLK', v: 'Blocks per game.' },
+    { k: 'TOV', v: 'Turnovers per game; lower is better.' },
+    { k: 'PF', v: 'Personal fouls committed per game; lower is better.' },
+    { k: 'PFD', v: 'Personal fouls drawn per game (fouls committed by opponents).' },
+  ],
 };
 
 export default function RankingsTable({ data, seasons = [], selectedSeason, isPreTournament = false }: RankingsTableProps) {
@@ -82,6 +96,7 @@ export default function RankingsTable({ data, seasons = [], selectedSeason, isPr
     { id: 'overview' as TabId, label: 'Efficiency' },
     { id: 'four-factors' as TabId, label: 'Four Factors' },
     { id: 'adjusted-four-factors' as TabId, label: 'Adj Four Factors' },
+    { id: 'traditional' as TabId, label: 'Traditional' },
   ];
 
   // Tournament filters only make sense once the season has a bracket (seeds load the day after Selection Sunday).
@@ -400,6 +415,27 @@ export default function RankingsTable({ data, seasons = [], selectedSeason, isPr
             { key: 'ftr_margin',  label: 'Margin' },
           ),
           createSubColumn({ key: 'four_factor_index_100', label: 'FFI' }),
+        ];
+
+      case 'traditional':
+        return [
+          ...compactBaseColumns,
+          createSubColumn({ key: 'games', label: 'GP' }),
+          createSubColumn({ key: 'ppg', label: 'PTS' }),
+          createSubColumn({ key: 'papg', label: 'OPP PTS' }),
+          createSubColumn({ key: 'fg_pct', label: 'FG%' }),
+          createSubColumn({ key: 'fg2_pct', label: '2P%' }),
+          createSubColumn({ key: 'fg3_pct', label: '3P%' }),
+          createSubColumn({ key: 'ft_pct', label: 'FT%' }),
+          createSubColumn({ key: 'orpg', label: 'OREB' }),
+          createSubColumn({ key: 'drpg', label: 'DREB' }),
+          createSubColumn({ key: 'rpg', label: 'REB' }),
+          createSubColumn({ key: 'apg', label: 'AST' }),
+          createSubColumn({ key: 'spg', label: 'STL' }),
+          createSubColumn({ key: 'bpg', label: 'BLK' }),
+          createSubColumn({ key: 'topg', label: 'TOV' }),
+          createSubColumn({ key: 'pfpg', label: 'PF' }),
+          createSubColumn({ key: 'pfdpg', label: 'PFD' }),
         ];
 
       default:

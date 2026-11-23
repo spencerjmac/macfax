@@ -79,6 +79,20 @@ export interface TeamSeason {
   fg3_rate: number | null;
   fg3_rate_d: number | null;
   ft_pct: number | null;
+
+  // Traditional per-game stats (box stats over games with a box score; PTS / OPP PTS from final scores)
+  ppg: number | null;
+  papg: number | null;
+  fg_pct: number | null;
+  orpg: number | null;
+  drpg: number | null;
+  rpg: number | null;
+  apg: number | null;
+  spg: number | null;
+  bpg: number | null;
+  topg: number | null;
+  pfpg: number | null;
+  pfdpg: number | null;
   
   // Resume Metrics
   wab: number | null;
