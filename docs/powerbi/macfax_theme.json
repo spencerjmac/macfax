@@ -1,0 +1,19 @@
+{
+  "name": "Macfax Midnight Gold",
+  "dataColors": ["#4B5B70", "#F5C451", "#56D6CF", "#FFFFFF", "#DD7790", "#8597B0"],
+  "background": "#0B1220",
+  "foreground": "#E8EEF7",
+  "tableAccent": "#F5C451",
+  "visualStyles": {
+    "scatterChart": {
+      "*": {
+        "bubbles": [{"bubbleSize": -25}]
+      }
+    }
+  },
+  "textClasses": {
+    "title": {"fontFace": "Segoe UI Semibold", "color": "#E8EEF7"},
+    "label": {"fontFace": "Segoe UI", "color": "#B4C1D3"},
+    "callout": {"fontFace": "Segoe UI Semibold", "color": "#F5C451"}
+  }
+}
