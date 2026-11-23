@@ -44,6 +44,7 @@ const TEAM_METRIC_DEFINITIONS: Record<TabId, MetricDefinition[]> = {
     { k: 'AdjD', v: 'Adjusted Defensive Efficiency: points allowed per 100 possessions, adjusted for opponent offense; lower is better.' },
     { k: 'Tempo', v: 'Adjusted pace: estimated possessions per 40 minutes, adjusted for opponent pace.' },
     { k: 'FFI', v: 'Four Factor Index: 0-100 composite of shooting, turnovers, rebounding, and free throw rate; 50 is average and higher is better.' },
+    { k: 'WAB', v: 'Wins Above Bubble: wins beyond what a bubble-level team would expect against the same schedule; positive means a tournament-worthy resume.' },
   ],
   'four-factors': [
     { k: 'Raw', v: 'Unadjusted box-score four-factor rates before opponent-strength adjustments.' },
@@ -340,6 +341,7 @@ export default function RankingsTable({ data, seasons = [], selectedSeason, isPr
           createMetricColumn('adjD'),
           createMetricColumn('adjTempo'),
           createMetricColumn('four_factor_index_100'),
+          createMetricColumn('wab'),
         ];
 
       case 'four-factors':
@@ -402,6 +404,7 @@ export default function RankingsTable({ data, seasons = [], selectedSeason, isPr
           createMetricColumn('adjD'),
           createMetricColumn('adjTempo'),
           createMetricColumn('four_factor_index_100'),
+          createMetricColumn('wab'),
         ];
     }
   }, [activeTab, metricRanks]);

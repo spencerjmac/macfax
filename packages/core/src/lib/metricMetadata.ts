@@ -19,6 +19,7 @@ const BASE_METRICS: MetricMeta[] = [
   { key: 'adjD', label: 'Adj D', tooltip: 'Adjusted Defensive Efficiency.', format: 'number1', better: 'lower', showRank: true, heatmap: true },
   { key: 'adjTempo', label: 'Adj T', tooltip: 'Adjusted Tempo (possessions per 40).', format: 'number1', better: 'neutral', showRank: false, heatmap: false },
   { key: 'four_factor_index_100', label: 'FFI', tooltip: 'Four Factor Index (adjusted).', format: 'number1', better: 'higher', showRank: true, heatmap: true },
+  { key: 'wab', label: 'WAB', tooltip: 'Wins Above Bubble: wins beyond what a bubble-level team would expect against this schedule.', format: 'number1', better: 'higher', showRank: true, heatmap: true },
 
   { key: 'raw_eFG', label: 'Raw eFG%', tooltip: 'Raw effective FG% (offense).', format: 'percent1', better: 'higher', showRank: true, heatmap: true },
   { key: 'raw_eFG_d', label: 'Raw eFG% D', tooltip: 'Raw effective FG% allowed.', format: 'percent1', better: 'lower', showRank: true, heatmap: true },
