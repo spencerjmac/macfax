@@ -25,6 +25,14 @@ scripts are in prod's `backups/`, next to the full backup `pre-native-swap-20261
 is set for 2026-11-22, after the 03:00 MST run. The read-only survey of 2026-11-21 is in
 `macfax-runs/d2/prod_readonly.sh` (output in `macfax-runs/d2/prod/`).
 
+**Go 2 ran 2026-11-22, 15:12–15:18 MST** (P4–P16, `TS=20261121_152551`; outputs in `macfax-runs/go2/`). Every step
+passed. The swap window ran 15:15:05–15:15:37 (swap rc 0, health 200 after 15 s). The P15 first native run took
+1.4 min with a 543 MB peak and hit the box cache. Prod is now native, with `nba_old` kept for rollback (§7.5).
+The first scheduled native run is 2026-11-23 10:00 UTC (P17). **P18** (`DROP SCHEMA nba_old`) can go after
+the 7th clean daily run, 2026-11-29 10:00 UTC (03:00 MST), if every run from 2026-11-23 to 2026-11-29 is clean.
+It needs its own go. Code that adds `nba_*` columns (such as migration `0034_team_game_traditional`) is not
+deployed until P18 is done, because §7.5's rollback brings back `nba_old` without those columns.
+
 **D.5 deployed (2026-11-21 evening, `fab deploy`):** prod now runs `35f3dba` (D.5 web `a5efaf2` plus docs); only `web`
 was recreated, because the backend and scheduler images did not change. Checks on both domains (outputs in
 `macfax-runs/d5deploy/`): NBA health 200, `/ncaa` 200, both player pages 200 (Embiid 2017 shows 31 GP and 20.2), and

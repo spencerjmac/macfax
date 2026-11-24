@@ -4,6 +4,7 @@ NBA DRF Serializers — macfax NBA app
 
 from rest_framework import serializers
 
+from .traditional import FIELDS as TRADITIONAL_FIELDS, team_traditional_stats
 from .rating_scale import REPLACEMENT_OFFENSE_SHARE, WA_REPLACEMENT, row_is_native
 from .models import (
     NBASeason,
@@ -191,6 +192,22 @@ class NBATeamSeasonRatingsSerializer(serializers.ModelSerializer):
             "efg_margin", "tov_edge", "oreb_edge", "fta_margin",
             "ffi", "rank_adj_net", "rank_ffi", "updated_at",
         ]
+
+    def to_representation(self, obj):
+        """Add the Traditional tab's per-game stats (nba.traditional.FIELDS).
+
+        Computed once per (season, season type) and shared by every row of a list
+        through the serializer context. Teams with no final game get None.
+        """
+        data = super().to_representation(obj)
+        cache = self.context.setdefault("_traditional_stats", {})
+        key = (obj.season_id, obj.season_type)
+        if key not in cache:
+            cache[key] = team_traditional_stats(obj.season_id, obj.season_type)
+        stats = cache[key].get(obj.team_id, {})
+        for field in TRADITIONAL_FIELDS:
+            data[field] = stats.get(field)
+        return data
 
 
 class NBAModelCalibrationSerializer(serializers.ModelSerializer):

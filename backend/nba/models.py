@@ -210,6 +210,11 @@ class NBATeamGameStats(models.Model):
     oreb = models.IntegerField(null=True, blank=True)
     dreb = models.IntegerField(null=True, blank=True)
     tov = models.IntegerField(null=True, blank=True)
+    # Traditional stats from LeagueGameLog (null until a re-sync after migration 0034)
+    ast = models.IntegerField(null=True, blank=True)
+    stl = models.IntegerField(null=True, blank=True)
+    blk = models.IntegerField(null=True, blank=True)
+    pf = models.IntegerField(null=True, blank=True)
 
     # ── Derived (filled after BoxScore sync) ─────────────────────────────────
     # poss = FGA - OREB + TO + 0.44*FTA

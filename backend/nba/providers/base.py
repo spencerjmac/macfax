@@ -70,6 +70,12 @@ class RawLeagueGameLog:
     wl: str                 # 'W', 'L', or '' for scheduled games
     matchup: str = ""       # raw MATCHUP string, e.g. "DAL @ DET"
 
+    # Traditional stats (Traditional tab); None when NBA.com leaves them blank
+    ast: Optional[int] = None
+    stl: Optional[int] = None
+    blk: Optional[int] = None
+    pf: Optional[int] = None
+
     @property
     def is_final(self) -> bool:
         return self.wl in ('W', 'L')

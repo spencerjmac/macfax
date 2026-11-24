@@ -275,6 +275,10 @@ class NBAApiProvider(NBADataProvider):
                         oreb=self._safe_int(row.get("OREB")),
                         dreb=self._safe_int(row.get("DREB")),
                         tov=self._safe_int(row.get("TOV")),
+                        ast=self._safe_int(row.get("AST")),
+                        stl=self._safe_int(row.get("STL")),
+                        blk=self._safe_int(row.get("BLK")),
+                        pf=self._safe_int(row.get("PF")),
                         wl=wl,
                     )
                 )
