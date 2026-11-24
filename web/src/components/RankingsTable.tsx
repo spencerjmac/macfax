@@ -19,6 +19,7 @@ import HeaderWithTooltip from './HeaderWithTooltip';
 import MetricDefinitionsCard, { type MetricDefinition } from './MetricDefinitionsCard';
 import { METRIC_DEFINITIONS, MetricMeta } from '@macfax/core/lib/metricMetadata';
 import { computeRanks, heatStyleFromPercentile, RankData } from '@macfax/core/lib/rankingUtils';
+import { withNullsLast } from '@/lib/nullsLast';
 
 interface RankingsTableProps {
   data: TeamSeason[];
@@ -451,9 +452,12 @@ export default function RankingsTable({ data, seasons = [], selectedSeason, isPr
     }
   }, [activeTab, metricRanks]);
 
+  // Missing values sort last in both directions
+  const sortedColumns = useMemo(() => withNullsLast(columns), [columns]);
+
   const table = useReactTable({
     data: filteredData,
-    columns,
+    columns: sortedColumns,
     state: { sorting, columnFilters, globalFilter },
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,

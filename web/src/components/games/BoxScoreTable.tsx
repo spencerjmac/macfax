@@ -11,6 +11,7 @@ import {
 } from '@tanstack/react-table';
 import clsx from 'clsx';
 import type { PlayerBoxRow, GameTeamRef } from '@macfax/core/types/games';
+import { withNullsLast } from '@/lib/nullsLast';
 
 interface Props {
   homeRows: PlayerBoxRow[];
@@ -56,9 +57,12 @@ function TeamTable({
     [showPlusMinus]
   );
 
+  // Missing values sort last in both directions
+  const sortedColumns = useMemo(() => withNullsLast(columns), [columns]);
+
   const table = useReactTable({
     data: rows,
-    columns,
+    columns: sortedColumns,
     state: { sorting },
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),

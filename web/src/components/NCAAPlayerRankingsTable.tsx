@@ -27,6 +27,7 @@ import {
 } from '@macfax/core/lib/playerMetricMetadata';
 import type { NCAAPlayerSeasonStats, SeasonInfo } from '@macfax/core/types';
 import { BPRConfidenceBadge, type BprSource } from './BPRConfidenceBadge';
+import { withNullsLast } from '@/lib/nullsLast';
 
 type TabId = 'traditional' | 'impact' | 'fourfactors';
 type BprMode = 'strict_bpr' | 'full_two_sided' | 'all_players';
@@ -591,9 +592,12 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
   }, [activeTab, metricRanks, pagination.pageIndex, sorting, tradOptional, allMetaMaps]);
 
   // ── Table ─────────────────────────────────────────────────────────────────
+  // Missing values sort last in both directions
+  const sortedColumns = useMemo(() => withNullsLast(columns), [columns]);
+
   const table = useReactTable({
     data: filtered,
-    columns,
+    columns: sortedColumns,
     state: { sorting, globalFilter, pagination },
     onSortingChange: (updater) => {
       setSorting(updater);

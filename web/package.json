@@ -9,7 +9,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "lint:core": "cd .. && eslint -c web/eslint.config.mjs packages/core/src"
+    "lint:core": "cd .. && eslint -c web/eslint.config.mjs packages/core/src",
+    "test": "node --test --experimental-strip-types src/lib/*.test.mjs"
   },
   "dependencies": {
     "@tanstack/react-table": "^8.20.0",

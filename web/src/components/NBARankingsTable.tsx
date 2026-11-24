@@ -18,6 +18,7 @@ import HeaderWithTooltip from './HeaderWithTooltip';
 import { NBATeamSeasonRatings, NBASeasonInfo } from '@macfax/core/types/nba';
 import { NBA_METRIC_DEFINITIONS, NBAMetricMeta } from '@macfax/core/config/nba';
 import { computeRanks, heatStyleFromPercentile, RankData } from '@macfax/core/lib/rankingUtils';
+import { withNullsLast } from '@/lib/nullsLast';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -330,9 +331,12 @@ export default function NBARankingsTable({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, metricRanks]);
 
+  // Missing values sort last in both directions
+  const sortedColumns = useMemo(() => withNullsLast(columns), [columns]);
+
   const table = useReactTable({
     data: filteredData,
-    columns,
+    columns: sortedColumns,
     state: { sorting, columnFilters, globalFilter },
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,

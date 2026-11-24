@@ -10,6 +10,7 @@ import {
   type SortingState,
 } from '@tanstack/react-table';
 import type { ValidationRecentGame } from '@macfax/core/types/validation';
+import { withNullsLast } from '@/lib/nullsLast';
 
 interface RecentValidationGamesTableProps {
   games: ValidationRecentGame[];
@@ -83,9 +84,12 @@ export function RecentValidationGamesTable({ games }: RecentValidationGamesTable
     []
   );
 
+  // Missing values sort last in both directions
+  const sortedColumns = useMemo(() => withNullsLast(columns), [columns]);
+
   const table = useReactTable({
     data: games,
-    columns,
+    columns: sortedColumns,
     state: { sorting },
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),

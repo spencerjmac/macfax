@@ -33,6 +33,7 @@ import {
   type PlayerMetricMeta,
 } from '@macfax/core/lib/playerMetricMetadata';
 import type { NBAPlayerSeasonStats } from '@macfax/core/types/nba';
+import { withNullsLast } from '@/lib/nullsLast';
 
 type TabId = 'traditional' | 'advanced' | 'impact';
 
@@ -441,9 +442,12 @@ export default function NBAPlayerRankingsTable({
   };
 
   // ── TanStack table ───────────────────────────────────────────────────────
+  // Missing values sort last in both directions
+  const sortedColumns = useMemo(() => withNullsLast(columns), [columns]);
+
   const table = useReactTable({
     data: filtered,
-    columns,
+    columns: sortedColumns,
     state: { sorting, globalFilter, pagination },
     onSortingChange: (updater) => {
       setSorting(updater);
