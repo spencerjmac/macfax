@@ -357,10 +357,11 @@ class TeamGameStats(models.Model):
 
     @property
     def site_factor(self):
-        """Offensive site adjustment factor based on home/away/neutral"""
-        if self.home_away == "H":
+        """Offensive site adjustment factor based on home/away/neutral (self.site: neutral flag wins)"""
+        site = self.site
+        if site == "home":
             return 0.9862
-        elif self.home_away == "A":
+        elif site == "away":
             return 1.0140
         else:  # 'N' neutral
             return 1.0000
@@ -373,9 +374,10 @@ class TeamGameStats(models.Model):
         so we inflate to neutralize. Road makes defense look worse,
         so we deflate.
         """
-        if self.home_away == "H":
+        site = self.site
+        if site == "home":
             return 1.0140  # Inverse of offensive home factor
-        elif self.home_away == "A":
+        elif site == "away":
             return 0.9862  # Inverse of offensive away factor
         else:  # 'N' neutral
             return 1.0000

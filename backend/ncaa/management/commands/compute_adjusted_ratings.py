@@ -26,7 +26,7 @@ from ncaa.models import (
     NationalAverages,
 )
 from ncaa.seasons import resolve_season_year
-from ncaa.models.games import game_minutes_for
+from ncaa.models.games import game_minutes_for, game_site
 from ncaa.utils.d1 import d1_q
 
 logger = logging.getLogger(__name__)
@@ -463,11 +463,12 @@ class Command(BaseCommand):
                     minutes = row["minutes"] or game_minutes_for(row["game__period_count"], row["game__went_to_ot"])
                     raw_pace_g = 40 * poss_g / minutes
 
-                    # Site factors (inlined: avoids property call overhead)
-                    ha = row["home_away"]
-                    if ha == "H":
+                    # Site factors (inlined: avoids property call overhead). game_site: a game with the
+                    # neutral flag is neutral even when its rows say H/A (NCAA-sourced 2026+ games)
+                    site = game_site(row["home_away"], row["game__neutral_site"])
+                    if site == "home":
                         off_site_factor, def_site_factor = 0.9862, 1.0140
-                    elif ha == "A":
+                    elif site == "away":
                         off_site_factor, def_site_factor = 1.0140, 0.9862
                     else:
                         off_site_factor, def_site_factor = 1.0, 1.0

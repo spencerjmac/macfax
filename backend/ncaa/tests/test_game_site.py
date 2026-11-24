@@ -34,6 +34,9 @@ class TeamGameStatsSiteTests(TestCase):
         away = TeamGameStats.objects.create(game=g, team=b, opponent=a, home_away="A", pts=65)
         self.assertEqual((home.site, away.site), ("neutral", "neutral"))
         self.assertEqual((home.site_code, away.site_code), ("N", "N"))
+        # rating site factors (rating_replay, backtests): none on a neutral floor
+        self.assertEqual((home.site_factor, home.defensive_site_factor), (1.0, 1.0))
+        self.assertEqual((away.site_factor, away.defensive_site_factor), (1.0, 1.0))
         # quadrant: a #40 opponent is Q1 on a neutral floor but Q2 at home
         self.assertEqual(get_quadrant(40, home.site_code), "Q1")
         self.assertEqual(get_quadrant(40, "H"), "Q2")
