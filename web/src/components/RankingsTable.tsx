@@ -166,7 +166,7 @@ export default function RankingsTable({ data, seasons = [], selectedSeason, isPr
             <div style={hs} className="px-2 py-1 rounded font-mono">
               {formatValue(value, meta.format)}
               {meta.showRank && rankData?.rank && (
-                <sup className="text-[9px] text-muted ml-0.5 font-sans font-medium">{rankData.rank}</sup>
+                <sup className={`text-[9px] ${hs.background ? 'text-slate-700' : 'text-muted'} ml-0.5 font-sans font-medium`}>{rankData.rank}</sup>
               )}
             </div>
           );
@@ -196,7 +196,7 @@ export default function RankingsTable({ data, seasons = [], selectedSeason, isPr
             <div style={hs} className="px-1 py-0.5 rounded text-center font-mono text-xs">
               {formatValue(value, meta.format)}
               {meta.showRank && rankData?.rank && (
-                <sup className="text-[9px] text-muted ml-0.5 font-sans font-medium">{rankData.rank}</sup>
+                <sup className={`text-[9px] ${hs.background ? 'text-slate-700' : 'text-muted'} ml-0.5 font-sans font-medium`}>{rankData.rank}</sup>
               )}
             </div>
           );
