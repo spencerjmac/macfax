@@ -38,8 +38,9 @@ export function computeRanks(entries: Array<{ id: string; value: number | null }
   return ranks;
 }
 
-const HEAT_ABOVE = ['#e6f9fb', '#d1f3f6', '#baeaef', '#a1e1e7', '#88d9e0'] as const;
-const HEAT_BELOW = ['#fef2ee', '#ffe5dc', '#fed5c7', '#fbc7b5', '#f7b8a2'] as const;
+/** Light-surface heat fills, faintest → strongest (step 1–5). Teal = above the middle, coral = below. */
+export const HEAT_ABOVE = ['#e6f9fb', '#d1f3f6', '#baeaef', '#a1e1e7', '#88d9e0'] as const;
+export const HEAT_BELOW = ['#fef2ee', '#ffe5dc', '#fed5c7', '#fbc7b5', '#f7b8a2'] as const;
 const HEAT_ABOVE_DARK = ['#122a2c', '#0c3639', '#024247', '#024e53', '#015a60'] as const;
 const HEAT_BELOW_DARK = ['#32201a', '#42271e', '#532e21', '#653424', '#773b26'] as const;
 const HEAT_BANDS = [0.6, 0.7, 0.8, 0.9, 0.95] as const;

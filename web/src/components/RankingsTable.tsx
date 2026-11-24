@@ -20,6 +20,7 @@ import MetricDefinitionsCard, { type MetricDefinition } from './MetricDefinition
 import { METRIC_DEFINITIONS, MetricMeta } from '@macfax/core/lib/metricMetadata';
 import { computeRanks, heatStyleFromPercentile, RankData } from '@macfax/core/lib/rankingUtils';
 import { withNullsLast } from '@/lib/nullsLast';
+import HeatLegend from './HeatLegend';
 
 interface RankingsTableProps {
   data: TeamSeason[];
@@ -569,7 +570,7 @@ export default function RankingsTable({ data, seasons = [], selectedSeason, isPr
       </div>
 
       {/* View toggle */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="inline-flex bg-surface border border-ui-border rounded-lg p-[3px]">
           {tabs.map((tab) => (
             <button
@@ -586,6 +587,7 @@ export default function RankingsTable({ data, seasons = [], selectedSeason, isPr
             </button>
           ))}
         </div>
+        <HeatLegend basis="all D1 teams" />
       </div>
 
       {/* Table */}

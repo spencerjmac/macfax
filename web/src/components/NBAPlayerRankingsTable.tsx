@@ -34,6 +34,7 @@ import {
 } from '@macfax/core/lib/playerMetricMetadata';
 import type { NBAPlayerSeasonStats } from '@macfax/core/types/nba';
 import { withNullsLast } from '@/lib/nullsLast';
+import HeatLegend from './HeatLegend';
 
 type TabId = 'traditional' | 'advanced' | 'impact';
 
@@ -524,7 +525,7 @@ export default function NBAPlayerRankingsTable({
       </div>
 
       {/* ── Tabs ────────────────────────────────────────────────────────── */}
-      <div className="border-b border-ui-border">
+      <div className="border-b border-ui-border flex flex-wrap items-center justify-between gap-2">
         <div className="flex space-x-1">
           {tabs.map((tab) => (
             <button
@@ -545,6 +546,7 @@ export default function NBAPlayerRankingsTable({
             </button>
           ))}
         </div>
+        <HeatLegend basis="qualified players" note="PPG/RPG/APG shade above avg only" />
       </div>
 
       {/* ── Column picker ───────────────────────────────────────────────── */}
