@@ -266,6 +266,20 @@ def game_site(home_away, neutral_site) -> str:
     return "home" if home_away == "H" else "away"
 
 
+def sync_home_away_to_site(game_ids) -> int:
+    """Rewrite TeamGameStats.home_away of these games from Game.neutral_site: 'N' on a neutral game, else
+    'H' / 'A' by Game.home_team. Call it whenever neutral_site changes after the box rows exist
+    (backfill_neutral_flags); game_site() still reads the flag first. Returns rows changed."""
+    changed = []
+    for ts in TeamGameStats.objects.filter(game_id__in=list(game_ids)).select_related("game"):
+        want = "N" if ts.game.neutral_site else ("H" if ts.team_id == ts.game.home_team_id else "A")
+        if ts.home_away != want:
+            ts.home_away = want
+            changed.append(ts)
+    TeamGameStats.objects.bulk_update(changed, ["home_away"], batch_size=500)
+    return len(changed)
+
+
 class TeamGameStats(models.Model):
     """
     Box score statistics for one team in one game

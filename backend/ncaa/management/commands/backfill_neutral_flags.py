@@ -48,6 +48,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **opts):
         from ncaa.models import Game, TeamExternalId
+        from ncaa.models.games import sync_home_away_to_site
 
         from ncaa.utils.ncaa_api import ESPNAPIClient
 
@@ -114,5 +115,8 @@ class Command(BaseCommand):
         with transaction.atomic():
             Game.objects.bulk_update(to_set + to_clear, ["neutral_site"],
                                      batch_size=500)
+            # The box rows were written before the flag (the NCAA scoreboard has none): bring
+            # their home_away along, 'N' on neutral games and back to H/A on cleared ones
+            rows = sync_home_away_to_site([g.id for g in to_set + to_clear])
         self.stdout.write(self.style.SUCCESS(
-            f"Updated {len(to_set) + len(to_clear)} games."))
+            f"Updated {len(to_set) + len(to_clear)} games, {rows} box rows."))
