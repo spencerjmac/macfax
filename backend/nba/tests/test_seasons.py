@@ -142,6 +142,13 @@ class RecentFinalGamesTests(_NBAData):
         self.assertTrue(has_recent_final_games(14, today=date(2026, 10, 27)))
         self.assertFalse(has_recent_final_games(14, today=date(2026, 11, 20)))
 
+    def test_postseason_games_count(self):
+        # A Finals that runs past the Jun 30 window keeps the NBA gate open.
+        self.game(self.s2026, "finals", date=date(2026, 7, 2), season_type="playoffs",
+                  counts_toward_regular_season=False)
+        self.assertTrue(has_recent_final_games(14, today=date(2026, 7, 10)))
+        self.assertFalse(has_recent_final_games(14, today=date(2026, 7, 20)))
+
 
 class SeasonsEndpointTests(_NBAData):
     def test_hides_empty_future_rows_but_keeps_current(self):

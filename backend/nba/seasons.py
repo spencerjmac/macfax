@@ -71,14 +71,6 @@ def add_season_argument(parser, help: str | None = None) -> None:
     )
 
 
-def _final_regular_season_games():
-    return NBAGame.objects.filter(
-        season_type="regular",
-        counts_toward_regular_season=True,
-        status__iexact="final",
-    )
-
-
 def activate_latest_season() -> tuple[NBASeason | None, NBASeason] | None:
     """
     Make the newest season with a final regular-season game the displayed one.
@@ -109,8 +101,14 @@ def activate_latest_season() -> tuple[NBASeason | None, NBASeason] | None:
 
 
 def has_recent_final_games(days: int = 14, today: date | None = None) -> bool:
+    """A final game of any type (play-in and playoffs too) in the last ``days`` days.
+
+    The daily job's fallback gate after the Oct 1 - Jun 30 window: a postseason
+    that runs past Jun 30 (as in 2020) keeps syncing until its last game is in.
+    """
     today = today or date.today()
-    return _final_regular_season_games().filter(date__gte=today - timedelta(days=days)).exists()
+    return NBAGame.objects.filter(
+        status__iexact="final", date__gte=today - timedelta(days=days)).exists()
 
 
 def in_season_window(today: date | None = None) -> bool:
