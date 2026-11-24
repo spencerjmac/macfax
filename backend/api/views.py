@@ -523,12 +523,7 @@ def compute_adjusted_variance(team, season, recent_games, nat_avg_ortg, hca_poin
             continue
 
         # Determine site from team's perspective
-        if game_stat.home_away == "H":
-            site = "home"
-        elif game_stat.home_away == "A":
-            site = "away"
-        else:
-            site = "neutral"
+        site = game_stat.site  # game_site: the Game's neutral flag wins
 
         # Predict expected margin using forecast_game
         from .matchup_engine import forecast_game

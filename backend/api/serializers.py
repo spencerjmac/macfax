@@ -789,7 +789,7 @@ class GameLogSerializer(serializers.ModelSerializer):
         opponent_rank = self.get_opponent_net_rank(obj)
         if opponent_rank is None:
             return None
-        return get_quadrant(opponent_rank, obj.home_away)
+        return get_quadrant(opponent_rank, obj.site_code)  # neutral from the Game's flag too
 
 
 class TeamSeasonMetricsSerializer(serializers.ModelSerializer):

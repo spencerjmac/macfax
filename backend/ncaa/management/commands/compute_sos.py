@@ -120,7 +120,7 @@ class Command(BaseCommand):
                     continue
 
                 # Determine site adjustment
-                site_adj = SITE_ADJ.get(game_stat.home_away, 0.0)
+                site_adj = SITE_ADJ[game_stat.site_code]   # game_site: the Game's neutral flag wins
 
                 # Compute win probability for baseline team
                 diff = BASELINE_ADJEM - opp_adjem + site_adj

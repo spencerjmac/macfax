@@ -168,14 +168,8 @@ class Command(BaseCommand):
                     
                     # Forecast game with baseline team vs opponent, the baseline team in this team's place.
                     # forecast_game takes lowercase sites; the uppercase ones used here before were
-                    # treated as neutral, so SOR applied no home-court advantage. Neutral comes from the
-                    # game as well, because 2026 rows store H/A for neutral-site games.
-                    if game_stat.game.neutral_site or game_stat.home_away not in ('H', 'A'):
-                        location = 'neutral'
-                    elif game_stat.home_away == 'H':
-                        location = 'home'
-                    else:
-                        location = 'away'
+                    # treated as neutral, so SOR applied no home-court advantage.
+                    location = game_stat.site   # game_site: the Game's neutral flag wins
                     
                     result = forecast_game(
                         adj_o_a=baseline_adj_o,
