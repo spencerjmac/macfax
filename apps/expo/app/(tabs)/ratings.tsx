@@ -49,12 +49,12 @@ function metricColumn(key: MetricKey, ranks: MetricRanks): ColumnDef<RankingRow,
       const value = info.getValue() as number | null;
       if (value == null) return <Text className="px-2 font-mono text-sm text-ink-fg2">-</Text>;
       const rankData = ranks.get(key)?.get(info.row.original.teamId);
-      const heat = meta.heatmap ? heatStyleFromPercentile(rankData?.percentile ?? null).background : undefined;
+      const heat = meta.heatmap ? heatStyleFromPercentile(rankData?.percentile ?? null, meta.better, 'dark').background : undefined;
       return (
         <View style={heat ? { backgroundColor: heat } : undefined} className="flex-row items-start rounded px-2 py-1">
           <Text className="font-mono text-sm text-text-onDark">{formatValue(value, meta.format)}</Text>
           {meta.showRank && rankData?.rank ? (
-            <Text className="ml-0.5 font-sans-medium text-[9px] text-ink-fg2">{rankData.rank}</Text>
+            <Text className={`ml-0.5 font-sans-medium text-[9px] ${heat ? 'text-ink-fg' : 'text-ink-fg2'}`}>{rankData.rank}</Text>
           ) : null}
         </View>
       );

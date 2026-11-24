@@ -109,7 +109,7 @@ export default function NBARankingsTable({
         const value = info.getValue<number | null>();
         const rankData = metricRanks.get(meta.key)?.get(info.row.original.team_slug);
         if (value == null) return <span className="text-text-muted">-</span>;
-        const hs = meta.heatmap ? heatStyleFromPercentile(rankData?.percentile ?? null) : {};
+        const hs = meta.heatmap ? heatStyleFromPercentile(rankData?.percentile ?? null, meta.better) : {};
         return (
           <div style={hs} className="px-2 py-1 rounded font-mono">
             {formatValue(value, meta.format)}
@@ -136,7 +136,7 @@ export default function NBARankingsTable({
         const value = info.getValue<number | null>();
         const rankData = metricRanks.get(meta.key)?.get(info.row.original.team_slug);
         if (value == null) return <div className="text-center text-text-muted text-xs">-</div>;
-        const hs = meta.heatmap ? heatStyleFromPercentile(rankData?.percentile ?? null) : {};
+        const hs = meta.heatmap ? heatStyleFromPercentile(rankData?.percentile ?? null, meta.better) : {};
         return (
           <div style={hs} className="px-1 py-0.5 rounded text-center font-mono text-xs">
             {formatValue(value, meta.format)}

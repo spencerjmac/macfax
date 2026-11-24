@@ -280,7 +280,7 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
         const raw = info.getValue<number | null>();
         if (raw == null) return <span className="text-text-muted">—</span>;
         const rankData = metricRanks.get(key)?.get(info.row.original.player_id);
-        const hs = meta.heatmap ? heatStyleFromPercentile(rankData?.percentile ?? null) : {};
+        const hs = meta.heatmap ? heatStyleFromPercentile(rankData?.percentile ?? null, meta.better) : {};
         return (
           <div style={hs} className="flex items-center justify-between gap-1 px-2 py-1 rounded">
             <span className="font-mono">{formatPlayerMetric(raw, meta.format)}</span>
@@ -413,7 +413,7 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
           const val = info.getValue<number | null>();
           if (val == null) return <div className="text-center text-text-muted text-xs">—</div>;
           const rankData = metricRanks.get('adj_team_net_on')?.get(info.row.original.player_id);
-          const hs = heatStyleFromPercentile(rankData?.percentile ?? null);
+          const hs = heatStyleFromPercentile(rankData?.percentile ?? null, 'higher');
           return (
             <div style={hs} className="px-1 py-0.5 rounded text-center">
               <div className="font-mono text-xs leading-tight">{val.toFixed(1)}</div>
@@ -437,7 +437,7 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
           const val = info.getValue<number | null>();
           if (val == null) return <div className="text-center text-text-muted text-xs">—</div>;
           const rankData = metricRanks.get('adj_team_off_eff_on')?.get(info.row.original.player_id);
-          const hs = heatStyleFromPercentile(rankData?.percentile ?? null);
+          const hs = heatStyleFromPercentile(rankData?.percentile ?? null, 'higher');
           return (
             <div style={hs} className="px-1 py-0.5 rounded text-center">
               <div className="font-mono text-xs leading-tight">{val.toFixed(1)}</div>
@@ -461,7 +461,7 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
           const val = info.getValue<number | null>();
           if (val == null) return <div className="text-center text-text-muted text-xs">—</div>;
           const rankData = metricRanks.get('adj_team_def_eff_on')?.get(info.row.original.player_id);
-          const hs = heatStyleFromPercentile(rankData?.percentile ?? null);
+          const hs = heatStyleFromPercentile(rankData?.percentile ?? null, 'lower');
           return (
             <div style={hs} className="px-1 py-0.5 rounded text-center">
               <div className="font-mono text-xs leading-tight">{val.toFixed(1)}</div>
@@ -519,7 +519,7 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
           const raw = info.getValue<number | null>();
           const rankData = metricRanks.get(key)?.get(info.row.original.player_id);
           if (raw == null) return <div className="text-center text-text-muted text-xs">—</div>;
-          const hs = meta.heatmap ? heatStyleFromPercentile(rankData?.percentile ?? null) : {};
+          const hs = meta.heatmap ? heatStyleFromPercentile(rankData?.percentile ?? null, meta.better) : {};
           return (
             <div style={hs} className="px-1 py-0.5 rounded text-center">
               <div className="font-mono text-xs leading-tight">
