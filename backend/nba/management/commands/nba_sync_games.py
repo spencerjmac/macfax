@@ -87,6 +87,14 @@ class Command(BaseCommand):
         for row in rows:
             by_game[row.game_id].append(row)
 
+        # Home team of games already stored. Neutral-site games come back with both
+        # rows reading "@", and the matchup fallback below follows row order, which
+        # NBA.com doesn't keep fixed; a stored game keeps its home team instead.
+        existing_home: dict[str, int] = dict(
+            NBAGame.objects.filter(game_id__in=list(by_game)).values_list(
+                "game_id", "home_team__nba_team_id")
+        )
+
         # ── Process each game ─────────────────────────────────────────────────
         games_payload = []  # list of (home_row, away_row, nba_game_kwargs)
         skipped = 0
@@ -102,7 +110,17 @@ class Command(BaseCommand):
                 if len(home_rows) == 0 and len(away_rows) == 2:
                     row_a, row_b = away_rows
                     parts = row_a.matchup.split(" @ ")
-                    if len(parts) == 2:
+                    stored_home = existing_home.get(game_id)
+                    if stored_home in (row_a.team_id, row_b.team_id):
+                        if row_b.team_id == stored_home:
+                            home_rows, away_rows = [row_b], [row_a]
+                        else:
+                            home_rows, away_rows = [row_a], [row_b]
+                        logger.info(
+                            "game_id=%s neutral site: kept stored home=%s away=%s",
+                            game_id, home_rows[0].team_abbreviation, away_rows[0].team_abbreviation,
+                        )
+                    elif len(parts) == 2:
                         home_abbr = parts[1].strip()
                         if row_b.team_abbreviation == home_abbr:
                             home_rows, away_rows = [row_b], [row_a]
