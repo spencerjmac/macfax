@@ -33,7 +33,7 @@ class RankingsTraditionalStatsTests(IsolatedCacheTestCase):
         for team in (self.a, self.b):
             TeamSeasonRatings.all_objects.create(
                 team=team, season=self.season, is_pre_tournament=False, adj_o=105.0, adj_d=100.0,
-                adj_em=5.0, adj_tempo=68.0, games_played=2, wins=1, losses=1,
+                adj_em=5.0, adj_tempo=68.0, games_played=2, wins=1, losses=1, d1_games_played=2,
             )
         call_command("compute_team_metrics", season=2013, stdout=open("/dev/null", "w"))
 
@@ -71,9 +71,43 @@ class RankingsTraditionalStatsTests(IsolatedCacheTestCase):
         self.assertEqual(row["topg"], 11.0)
         self.assertEqual(row["pfpg"], 18.0)
         self.assertEqual(row["pfdpg"], 20.0)  # opponent fouls over games with an opponent box
+        self.assertEqual(row["d1_games_played"], 2)  # GP: the D1 games the stats cover
 
     def test_away_team_scores_use_its_side(self):
         row = self._row("team-b")
         self.assertEqual(row["ppg"], 65.0)
         self.assertEqual(row["papg"], 73.0)
         self.assertEqual(row["pfdpg"], 18.0)
+
+
+class RankingsTraditionalBeforeRecomputeTests(IsolatedCacheTestCase):
+    """Rows between migrate (0074) and the recompute: box_games / opp_box_games are 0."""
+
+    def setUp(self):
+        super().setUp()
+        self.season = Season.objects.create(year=2013, display_name="2012-13", is_current=True)
+        team = Team.objects.create(slug="team-a", name="Team A", is_d1=True)
+        TeamSeasonRatings.all_objects.create(
+            team=team, season=self.season, is_pre_tournament=False, adj_o=105.0, adj_d=100.0,
+            adj_em=5.0, adj_tempo=68.0, games_played=3, wins=2, losses=1, d1_games_played=3,
+        )
+        # Totals from an earlier compute, new 0074 columns still at their defaults
+        TeamSeasonMetrics.all_objects.create(
+            team=team, season=self.season, is_pre_tournament=False, games=3,
+            total_fgm=75, total_fga=150, total_reb=100, total_oreb=30, total_dreb=70, total_ast=40,
+            total_stl=20, total_blk=10, total_tov=35, total_pf=50,
+        )
+
+    def test_zero_box_games_gives_null_not_an_error(self):
+        response = self.client.get(reverse("rankings-list"), {"season": "2013"})
+        self.assertEqual(response.status_code, 200, response.content[:300])
+        row = response.json()["results"][0]
+        for field in ("rpg", "orpg", "drpg", "apg", "spg", "bpg", "topg", "pfpg", "pfdpg"):
+            with self.subTest(field=field):
+                self.assertIsNone(row[field])
+        # No counted games: final-score fields are null too
+        self.assertIsNone(row["ppg"])
+        self.assertIsNone(row["papg"])
+        # Not a per-game stat, so it needs no box_games
+        self.assertEqual(row["fg_pct"], 50.0)
+        self.assertEqual(row["d1_games_played"], 3)

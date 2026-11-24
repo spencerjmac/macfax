@@ -420,7 +420,7 @@ export default function RankingsTable({ data, seasons = [], selectedSeason, isPr
       case 'traditional':
         return [
           ...compactBaseColumns,
-          createSubColumn({ key: 'games', label: 'GP' }),
+          createSubColumn({ key: 'd1_games_played', label: 'GP' }),
           createSubColumn({ key: 'ppg', label: 'PTS' }),
           createSubColumn({ key: 'papg', label: 'OPP PTS' }),
           createSubColumn({ key: 'fg_pct', label: 'FG%' }),

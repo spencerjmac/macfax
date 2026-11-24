@@ -78,6 +78,7 @@ function mapApiRowToTeamSeason(team: Record<string, unknown>): TeamSeason {
     fg3_rate: pct(team.fg3_rate),
     fg3_rate_d: pct(team.fg3_rate_d),
     ft_pct: pct(team.ft_pct),
+    d1_games_played: num(team.d1_games_played),
     ppg: num(team.ppg),
     papg: num(team.papg),
     fg_pct: pct(team.fg_pct),

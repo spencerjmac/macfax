@@ -49,7 +49,7 @@ const BASE_METRICS: MetricMeta[] = [
   { key: 'ftr_margin', label: 'Adj FTR Margin', tooltip: 'Adjusted FTR margin (team - opponent).', format: 'number1pct', better: 'higher', showRank: true, heatmap: true },
 
   // Traditional per-game stats
-  { key: 'games', label: 'GP', tooltip: 'Games played.', format: 'int', better: 'neutral', showRank: false, heatmap: false },
+  { key: 'd1_games_played', label: 'GP', tooltip: 'D1 games', format: 'int', better: 'neutral', showRank: false, heatmap: false },
   { key: 'ppg', label: 'PTS', tooltip: 'Points per game.', format: 'number1', better: 'higher', showRank: true, heatmap: true },
   { key: 'papg', label: 'OPP PTS', tooltip: 'Opponent points per game.', format: 'number1', better: 'lower', showRank: true, heatmap: true },
   { key: 'fg_pct', label: 'FG%', tooltip: 'Field goal percentage.', format: 'percent1', better: 'higher', showRank: true, heatmap: true },

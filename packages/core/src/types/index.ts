@@ -81,6 +81,7 @@ export interface TeamSeason {
   ft_pct: number | null;
 
   // Traditional per-game stats (box stats over games with a box score; PTS / OPP PTS from final scores)
+  d1_games_played: number | null;
   ppg: number | null;
   papg: number | null;
   fg_pct: number | null;

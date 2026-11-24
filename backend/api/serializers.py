@@ -215,6 +215,9 @@ class RankingsSerializer(serializers.Serializer):
     ft_pct = serializers.SerializerMethodField()
     fg3_rate = serializers.SerializerMethodField()
 
+    # D1 games: the games TeamSeasonMetrics (and so every per-game stat) covers
+    d1_games_played = serializers.IntegerField(allow_null=True, required=False)
+
     # Traditional per-game stats. Box stats divide by box_games (games with a box score;
     # some seasons have final scores but no box), fouls drawn by opp_box_games, and
     # PTS / OPP PTS come from final scores over all games.
