@@ -15,8 +15,9 @@ import {
 } from '@tanstack/react-table';
 import clsx from 'clsx';
 import HeaderWithTooltip from './HeaderWithTooltip';
-import GroupedTableHead, { cellClass, valueTextClass, withMeta } from './table/GroupedTableHead';
+import GroupedTableHead, { cellClass, withMeta } from './table/GroupedTableHead';
 import TableTabs from './table/TableTabs';
+import MetricValue from './table/MetricValue';
 import MetricDefinitionsCard, { type MetricDefinition } from './MetricDefinitionsCard';
 import { computeRanks, heatStyleFromPercentile } from '@macfax/core/lib/rankingUtils';
 import { AUTO_THRESHOLD, autoNcaaMinMinutes } from '@macfax/core/lib/playerThresholds';
@@ -283,13 +284,16 @@ export default function NCAAPlayerRankingsTable({ data, selectedSeason, seasons 
       ),
       cell: (info) => {
         const raw = info.getValue<number | null>();
-        if (raw == null) return <span className="text-text-muted">—</span>;
         const rankData = metricRanks.get(key)?.get(info.row.original.player_id);
-        const hs = meta.heatmap ? heatStyleFromPercentile(rankData?.percentile ?? null, meta.better) : {};
+        const hs = raw != null && meta.heatmap ? heatStyleFromPercentile(rankData?.percentile ?? null, meta.better) : {};
         return (
-          <div style={hs} className="flex items-center justify-between gap-1 px-2 py-1 rounded">
-            <span className={clsx('font-mono', valueTextClass(info.column))}>{formatPlayerMetric(raw, meta.format)}</span>
-          </div>
+          <MetricValue
+            text={raw == null ? null : formatPlayerMetric(raw, meta.format)}
+            heat={hs}
+            rank={rankData?.rank}
+            showRank={meta.showRank}
+            column={info.column}
+          />
         );
       },
       sortDescFirst: meta.better !== 'lower',
@@ -360,7 +364,7 @@ export default function NCAAPlayerRankingsTable({ data, selectedSeason, seasons 
       header: 'Pos',
       cell: (info) => (
         <span className="text-xs text-text-muted uppercase">
-          {info.getValue<string | null>() || '—'}
+          {info.getValue<string | null>() || '-'}
         </span>
       ),
       enableSorting: false,
@@ -412,13 +416,17 @@ export default function NCAAPlayerRankingsTable({ data, selectedSeason, seasons 
             : null,
         cell: (info) => {
           const val = info.getValue<number | null>();
-          if (val == null) return <div className="text-center text-text-muted text-xs">—</div>;
           const rankData = metricRanks.get('adj_team_net_on')?.get(info.row.original.player_id);
-          const hs = heatStyleFromPercentile(rankData?.percentile ?? null, 'higher');
+          const hs = val != null ? heatStyleFromPercentile(rankData?.percentile ?? null, 'higher') : {};
           return (
-            <div style={hs} className="px-1 py-0.5 rounded text-center">
-              <div className={clsx('font-mono leading-tight', valueTextClass(info.column, 'text-xs'))}>{val.toFixed(1)}</div>
-            </div>
+            <MetricValue
+              text={val == null ? null : val.toFixed(1)}
+              heat={hs}
+              rank={rankData?.rank}
+              showRank={false}
+              column={info.column}
+              variant="compact"
+            />
           );
         },
         sortDescFirst: true,
@@ -436,13 +444,17 @@ export default function NCAAPlayerRankingsTable({ data, selectedSeason, seasons 
         ),
         cell: (info) => {
           const val = info.getValue<number | null>();
-          if (val == null) return <div className="text-center text-text-muted text-xs">—</div>;
           const rankData = metricRanks.get('adj_team_off_eff_on')?.get(info.row.original.player_id);
-          const hs = heatStyleFromPercentile(rankData?.percentile ?? null, 'higher');
+          const hs = val != null ? heatStyleFromPercentile(rankData?.percentile ?? null, 'higher') : {};
           return (
-            <div style={hs} className="px-1 py-0.5 rounded text-center">
-              <div className={clsx('font-mono leading-tight', valueTextClass(info.column, 'text-xs'))}>{val.toFixed(1)}</div>
-            </div>
+            <MetricValue
+              text={val == null ? null : val.toFixed(1)}
+              heat={hs}
+              rank={rankData?.rank}
+              showRank={allMetaMaps['adj_team_off_eff_on']?.showRank}
+              column={info.column}
+              variant="compact"
+            />
           );
         },
         sortDescFirst: true,
@@ -460,13 +472,17 @@ export default function NCAAPlayerRankingsTable({ data, selectedSeason, seasons 
         ),
         cell: (info) => {
           const val = info.getValue<number | null>();
-          if (val == null) return <div className="text-center text-text-muted text-xs">—</div>;
           const rankData = metricRanks.get('adj_team_def_eff_on')?.get(info.row.original.player_id);
-          const hs = heatStyleFromPercentile(rankData?.percentile ?? null, 'lower');
+          const hs = val != null ? heatStyleFromPercentile(rankData?.percentile ?? null, 'lower') : {};
           return (
-            <div style={hs} className="px-1 py-0.5 rounded text-center">
-              <div className={clsx('font-mono leading-tight', valueTextClass(info.column, 'text-xs'))}>{val.toFixed(1)}</div>
-            </div>
+            <MetricValue
+              text={val == null ? null : val.toFixed(1)}
+              heat={hs}
+              rank={rankData?.rank}
+              showRank={allMetaMaps['adj_team_def_eff_on']?.showRank}
+              column={info.column}
+              variant="compact"
+            />
           );
         },
         sortDescFirst: false,
@@ -489,7 +505,7 @@ export default function NCAAPlayerRankingsTable({ data, selectedSeason, seasons 
         accessorFn: (row) => row.bpr_source ?? '',
         cell: (info) => {
           const row = info.row.original;
-          if (!row.bpr_source) return <span className="text-text-muted">—</span>;
+          if (!row.bpr_source) return <span className="text-text-muted">-</span>;
           return (
             <BPRConfidenceBadge
               source={row.bpr_source as BprSource}
@@ -525,14 +541,16 @@ export default function NCAAPlayerRankingsTable({ data, selectedSeason, seasons 
         cell: (info) => {
           const raw = info.getValue<number | null>();
           const rankData = metricRanks.get(key)?.get(info.row.original.player_id);
-          if (raw == null) return <div className="text-center text-text-muted text-xs">—</div>;
-          const hs = meta.heatmap ? heatStyleFromPercentile(rankData?.percentile ?? null, meta.better) : {};
+          const hs = raw != null && meta.heatmap ? heatStyleFromPercentile(rankData?.percentile ?? null, meta.better) : {};
           return (
-            <div style={hs} className="px-1 py-0.5 rounded text-center">
-              <div className={clsx('font-mono leading-tight', valueTextClass(info.column, 'text-xs'))}>
-                {formatPlayerMetric(raw, meta.format)}
-              </div>
-            </div>
+            <MetricValue
+              text={raw == null ? null : formatPlayerMetric(raw, meta.format)}
+              heat={hs}
+              rank={rankData?.rank}
+              showRank={meta.showRank}
+              column={info.column}
+              variant="compact"
+            />
           );
         },
         size: 68,

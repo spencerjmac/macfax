@@ -16,8 +16,9 @@ import Link from 'next/link';
 import clsx from 'clsx';
 import { noDataMessage } from '@/lib/nbaNoData';
 import HeaderWithTooltip from './HeaderWithTooltip';
-import GroupedTableHead, { cellClass, valueTextClass, withMeta } from './table/GroupedTableHead';
+import GroupedTableHead, { cellClass, withMeta } from './table/GroupedTableHead';
 import TableTabs from './table/TableTabs';
+import MetricValue from './table/MetricValue';
 import { NBATeamSeasonRatings, NBASeasonInfo } from '@macfax/core/types/nba';
 import { NBA_METRIC_DEFINITIONS, NBAMetricMeta } from '@macfax/core/config/nba';
 import { computeRanks, heatStyleFromPercentile, RankData } from '@macfax/core/lib/rankingUtils';
@@ -112,15 +113,15 @@ export default function NBARankingsTable({
       cell: (info) => {
         const value = info.getValue<number | null>();
         const rankData = metricRanks.get(meta.key)?.get(info.row.original.team_slug);
-        if (value == null) return <span className="text-text-muted">-</span>;
-        const hs = meta.heatmap ? heatStyleFromPercentile(rankData?.percentile ?? null, meta.better) : {};
+        const hs = value != null && meta.heatmap ? heatStyleFromPercentile(rankData?.percentile ?? null, meta.better) : {};
         return (
-          <div style={hs} className={clsx('px-2 py-1 rounded font-mono', valueTextClass(info.column))}>
-            {formatValue(value, meta.format)}
-            {meta.showRank && rankData?.rank && (
-              <sup className={`text-[9px] ${hs.background ? 'text-slate-700' : 'text-muted'} ml-0.5 font-sans font-medium`}>{rankData.rank}</sup>
-            )}
-          </div>
+          <MetricValue
+            text={value == null ? null : formatValue(value, meta.format)}
+            heat={hs}
+            rank={rankData?.rank}
+            showRank={meta.showRank}
+            column={info.column}
+          />
         );
       },
       size: 100,
@@ -139,15 +140,15 @@ export default function NBARankingsTable({
       cell: (info) => {
         const value = info.getValue<number | null>();
         const rankData = metricRanks.get(meta.key)?.get(info.row.original.team_slug);
-        if (value == null) return <div className="text-center text-text-muted text-xs">-</div>;
-        const hs = meta.heatmap ? heatStyleFromPercentile(rankData?.percentile ?? null, meta.better) : {};
+        const hs = value != null && meta.heatmap ? heatStyleFromPercentile(rankData?.percentile ?? null, meta.better) : {};
         return (
-          <div style={hs} className={clsx('px-1 py-0.5 rounded text-center font-mono', valueTextClass(info.column, 'text-xs'))}>
-            {formatValue(value, meta.format)}
-            {meta.showRank && rankData?.rank && (
-              <sup className={`text-[9px] ${hs.background ? 'text-slate-700' : 'text-muted'} ml-0.5 font-sans font-medium`}>{rankData.rank}</sup>
-            )}
-          </div>
+          <MetricValue
+            text={value == null ? null : formatValue(value, meta.format)}
+            heat={hs}
+            rank={rankData?.rank}
+            showRank={meta.showRank}
+            column={info.column} variant="compact"
+          />
         );
       },
       size: 68,

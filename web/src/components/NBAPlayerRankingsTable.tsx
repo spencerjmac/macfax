@@ -17,10 +17,10 @@ import {
 import clsx from 'clsx';
 import { noDataMessage } from '@/lib/nbaNoData';
 import HeaderWithTooltip from './HeaderWithTooltip';
-import GroupedTableHead, { cellClass, valueTextClass, withMeta } from './table/GroupedTableHead';
+import GroupedTableHead, { cellClass, withMeta } from './table/GroupedTableHead';
 import TableTabs from './table/TableTabs';
+import MetricValue from './table/MetricValue';
 import { computeRanks, heatStyleFromPercentile } from '@macfax/core/lib/rankingUtils';
-import { getBPRTier, fmtSigned } from '@macfax/core/lib/bprTiers';
 import { winsAddedFormula } from '@macfax/core/lib/ratingScale';
 import {
   AUTO_THRESHOLD,
@@ -93,10 +93,14 @@ const NBA_ARCHETYPE_STYLES: Record<string, string> = {
   connector:   'bg-ui-hover text-text-muted border-ui-border',
 };
 
-// plus_minus lives on the type but not in playerMetricMetadata — add inline
+// plus_minus and wins_added live on the type but not in playerMetricMetadata — add inline
 const PLUS_MINUS_META: PlayerMetricMeta = {
   key: 'plus_minus', label: '+/-', tooltip: 'Season plus/minus per game.',
-  format: 'number1', better: 'higher', showRank: false, heatmap: true, tier: 'primary',
+  format: 'signed1', better: 'higher', showRank: false, heatmap: true, tier: 'primary',
+};
+const WINS_ADDED_META: PlayerMetricMeta = {
+  key: 'wins_added', label: 'W.Add', tooltip: 'Wins Added above replacement.',
+  format: 'signed1', better: 'higher', showRank: true, heatmap: true, tier: 'primary',
 };
 
 const PAGE_SIZE = 100;
@@ -121,6 +125,8 @@ export default function NBAPlayerRankingsTable({
   const minPoss = isAuto ? autoMinPoss : minPossChoice;
   // Native rows under Auto use minutes >= 18 x team games (playerThresholds.ts)
   const hasNative = useMemo(() => data.some((p) => p.rating_scale === 'native-1'), [data]);
+  // Role column only when the archetype job has filled it for this season
+  const hasArchetype = useMemo(() => data.some((p) => p.nba_archetype), [data]);
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: PAGE_SIZE });
 
   const [optionalCols, setOptionalCols] = useState<Set<string>>(() => {
@@ -177,7 +183,7 @@ export default function NBAPlayerRankingsTable({
 
   // ── Metric lookup map ────────────────────────────────────────────────────
   const allMetaMaps = useMemo(() => {
-    const map: Record<string, PlayerMetricMeta> = { plus_minus: PLUS_MINUS_META };
+    const map: Record<string, PlayerMetricMeta> = { plus_minus: PLUS_MINUS_META, wins_added: WINS_ADDED_META };
     [...PLAYER_TRADITIONAL_METRICS, ...NBA_ADVANCED_METRICS, ...NBA_IMPACT_METRICS].forEach((m) => {
       map[m.key] = m;
     });
@@ -188,7 +194,7 @@ export default function NBAPlayerRankingsTable({
   const allKeys = [
     ...NBA_TRAD_PRIMARY, ...NBA_TRAD_EXTRAS, 'plus_minus',
     ...NBA_ADV_PRIMARY, ...NBA_ADV_EXTRAS,
-    ...NBA_IMP_PRIMARY, ...NBA_IMP_BOX_KEYS, ...NBA_IMP_ADJ_KEYS, ...NBA_IMP_RAW_KEYS, 'on_court_poss',
+    ...NBA_IMP_PRIMARY, ...NBA_IMP_BOX_KEYS, ...NBA_IMP_ADJ_KEYS, ...NBA_IMP_RAW_KEYS, 'on_court_poss', 'wins_added',
   ];
 
   const metricRanks = useMemo(() => {
@@ -216,20 +222,16 @@ export default function NBAPlayerRankingsTable({
       ),
       cell: (info) => {
         const value = info.getValue<number | null>();
-        if (value == null) return <span className="text-text-muted">—</span>;
         const rankData = metricRanks.get(key)?.get(String(info.row.original.id));
-        const hs = meta.heatmap ? heatStyleFromPercentile(rankData?.percentile ?? null, meta.better) : {};
-        if (key === 'plus_minus') {
-          return (
-            <span className={clsx('font-mono text-xs', value > 0 ? 'text-emerald-700' : value < 0 ? 'text-rose-700' : '')}>
-              {value >= 0 ? '+' : ''}{value.toFixed(1)}
-            </span>
-          );
-        }
+        const hs = value != null && meta.heatmap ? heatStyleFromPercentile(rankData?.percentile ?? null, meta.better) : {};
         return (
-          <div style={hs} className="flex items-center justify-between gap-1 px-2 py-1 rounded">
-            <span className={clsx('font-mono', valueTextClass(info.column, 'text-xs'))}>{formatPlayerMetric(value, meta.format)}</span>
-          </div>
+          <MetricValue
+            text={value == null ? null : formatPlayerMetric(value, meta.format)}
+            heat={hs}
+            rank={rankData?.rank}
+            showRank={meta.showRank}
+            column={info.column}
+          />
         );
       },
       sortDescFirst: meta.better !== 'lower',
@@ -249,12 +251,16 @@ export default function NBAPlayerRankingsTable({
       cell: (info) => {
         const value = info.getValue<number | null>();
         const rankData = metricRanks.get(key)?.get(String(info.row.original.id));
-        if (value == null) return <div className="text-center text-text-muted text-xs">—</div>;
-        const hs = meta.heatmap ? heatStyleFromPercentile(rankData?.percentile ?? null, meta.better) : {};
+        const hs = value != null && meta.heatmap ? heatStyleFromPercentile(rankData?.percentile ?? null, meta.better) : {};
         return (
-          <div style={hs} className="px-1 py-0.5 rounded text-center">
-            <div className={clsx('font-mono leading-tight', valueTextClass(info.column, 'text-xs'))}>{formatPlayerMetric(value, meta.format)}</div>
-          </div>
+          <MetricValue
+            text={value == null ? null : formatPlayerMetric(value, meta.format)}
+            heat={hs}
+            rank={rankData?.rank}
+            showRank={meta.showRank}
+            column={info.column}
+            variant="compact"
+          />
         );
       },
       size: 72,
@@ -376,7 +382,7 @@ export default function NBAPlayerRankingsTable({
         accessorFn: (row) => row.nba_archetype ?? '',
         cell: (info) => {
           const arch = info.row.original.nba_archetype;
-          if (!arch) return <span className="text-text-muted">—</span>;
+          if (!arch) return <span className="text-text-muted">-</span>;
           const label = arch === 'three_and_d' ? '3&D' : arch.charAt(0).toUpperCase() + arch.slice(1);
           const cls = NBA_ARCHETYPE_STYLES[arch] ?? 'text-text-muted';
           return (
@@ -409,16 +415,20 @@ export default function NBAPlayerRankingsTable({
         ),
         cell: (info) => {
           const v = info.getValue<number | null>();
-          if (v == null) return <span className="text-text-muted font-mono text-xs">—</span>;
-          const tier = getBPRTier(v, info.row.original.rating_scale);
+          const rankData = metricRanks.get('wins_added')?.get(String(info.row.original.id));
+          const hs = v != null ? heatStyleFromPercentile(rankData?.percentile ?? null, 'higher') : {};
           return (
-            <span className={clsx('font-mono text-xs font-semibold tabular-nums', tier.color)}>
-              {fmtSigned(v, 1)}
-            </span>
+            <MetricValue
+              text={v == null ? null : formatPlayerMetric(v, WINS_ADDED_META.format)}
+              heat={hs}
+              rank={rankData?.rank}
+              showRank={WINS_ADDED_META.showRank}
+              column={info.column}
+            />
           );
         },
         sortDescFirst: true,
-        size: 64,
+        size: 72,
       };
 
       return [
@@ -437,7 +447,7 @@ export default function NBAPlayerRankingsTable({
         ...(rawOnCourtVisible
           ? [createGroup('imp-raw-oc', 'Raw On-Court', NBA_IMP_RAW_KEYS, ['ORtg', 'DRtg', 'Net'], { netLast: true })]
           : []),
-        archetypeCol,
+        ...(hasArchetype ? [archetypeCol] : []),
       ];
     }
 
@@ -450,7 +460,7 @@ export default function NBAPlayerRankingsTable({
       activeTab === 'traditional' ? [...NBA_TRAD_PRIMARY, 'plus_minus'] : NBA_ADV_PRIMARY;
 
     return [rankColumn, ...baseColumns, ...[...primaryKeys, ...visibleExtras].map(createMetricColumn)];
-  }, [activeTab, metricRanks, sorting, pagination.pageIndex, optionalCols, wa_formula]);
+  }, [activeTab, metricRanks, sorting, pagination.pageIndex, optionalCols, wa_formula, hasArchetype]);
 
   const isGroupedTab = activeTab === 'impact';
 

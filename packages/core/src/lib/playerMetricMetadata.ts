@@ -10,8 +10,9 @@ export type Better = 'higher' | 'lower' | 'neutral';
 // 'pct_raw' = already a percent-point value, just show with 1 decimal + %
 // 'number1' = show 1 decimal as-is
 // 'number2' = show 2 decimals
+// 'signed1' = 1 decimal with an explicit '+' on positives
 // 'int' = show as integer
-export type PlayerMetricFormat = 'pct4' | 'pct_raw' | 'number1' | 'number2' | 'int';
+export type PlayerMetricFormat = 'pct4' | 'pct_raw' | 'number1' | 'number2' | 'signed1' | 'int';
 
 export interface PlayerMetricMeta {
   key: string;
@@ -59,48 +60,48 @@ export const NCAA_IMPACT_METRICS: PlayerMetricMeta[] = [
   {
     key: 'bpr',    label: 'BPR',    group: 'BPR',
     tooltip: 'Bayesian Performance Rating = OBPR + DBPR. Prior-informed RAPM estimate of total impact in pts/100 poss above average D1 player.',
-    format: 'number2', better: 'higher', showRank: true, heatmap: true,
+    format: 'number1', better: 'higher', showRank: true, heatmap: true,
   },
   {
     key: 'obpr',   label: 'OBPR',   group: 'BPR',
     tooltip: 'Offensive BPR — estimated pts/100 poss added when the player is on offense, relative to an average D1 player.',
-    format: 'number2', better: 'higher', showRank: true, heatmap: true,
+    format: 'number1', better: 'higher', showRank: true, heatmap: true,
   },
   {
     key: 'dbpr',   label: 'DBPR',   group: 'BPR',
     tooltip: 'Defensive BPR — estimated pts/100 poss prevented when the player is on defense, relative to an average D1 player. Higher = better defender.',
-    format: 'number2', better: 'higher', showRank: true, heatmap: true,
+    format: 'number1', better: 'higher', showRank: true, heatmap: true,
   },
   {
     key: 'box_bpr',  label: 'Box BPR',  group: 'BPR',
     tooltip: 'Box-score-only BPR estimate (no lineup data required). Trained to predict RAPM from per-100-poss box stats.',
-    format: 'number2', better: 'higher', showRank: false, heatmap: true,
+    format: 'number1', better: 'higher', showRank: false, heatmap: true,
   },
   {
     key: 'box_obpr', label: 'Box OBPR', group: 'BPR',
     tooltip: 'Offensive Box BPR (box-score model only).',
-    format: 'number2', better: 'higher', showRank: false, heatmap: true,
+    format: 'number1', better: 'higher', showRank: false, heatmap: true,
   },
   {
     key: 'box_dbpr', label: 'Box DBPR', group: 'BPR',
     tooltip: 'Defensive Box BPR (box-score model only).',
-    format: 'number2', better: 'higher', showRank: false, heatmap: true,
+    format: 'number1', better: 'higher', showRank: false, heatmap: true,
   },
   // ── MPIR (legacy) ────────────────────────────────────────────────────────────
   {
     key: 'mpir',   label: 'MPIR',   group: 'Macfax Impact',
     tooltip: 'Macfax Player Impact Rating = O-MPIR + D-MPIR. Blends on-court efficiency with box-score prior weighted by minutes played.',
-    format: 'number2', better: 'higher', showRank: true, heatmap: true,
+    format: 'number1', better: 'higher', showRank: true, heatmap: true,
   },
   {
     key: 'o_mpir', label: 'O-MPIR', group: 'Macfax Impact',
     tooltip: 'Offensive MPIR — blend of on-court offensive impact (ORtg vs league avg) and box-score scoring prior, weighted by minutes.',
-    format: 'number2', better: 'higher', showRank: false, heatmap: true,
+    format: 'number1', better: 'higher', showRank: false, heatmap: true,
   },
   {
     key: 'd_mpir', label: 'D-MPIR', group: 'Macfax Impact',
     tooltip: 'Defensive MPIR — blend of on-court defensive impact (DRtg vs league avg) and box-score defensive prior (stl+blk), weighted by minutes.',
-    format: 'number2', better: 'higher', showRank: false, heatmap: true,
+    format: 'number1', better: 'higher', showRank: false, heatmap: true,
   },
   {
     key: 'on_court_ortg',  label: 'On-Ct ORtg', group: 'On-Court Ratings',
@@ -317,49 +318,49 @@ export const NBA_IMPACT_METRICS: PlayerMetricMeta[] = [
   {
     key: 'bpr',   label: 'BPR',   group: 'BPR',
     tooltip: 'Bayesian Performance Rating (OBPR + DBPR). Career-stabilized box stats regularized toward single-season RAPM. Context-adjusted impact in pts/100 poss above league average — reflects role and team quality, not pure skill in isolation.',
-    format: 'number2', better: 'higher', showRank: true, heatmap: true, tier: 'primary',
+    format: 'number1', better: 'higher', showRank: true, heatmap: true, tier: 'primary',
   },
   {
     key: 'obpr',  label: 'OBPR',  group: 'BPR',
     tooltip: 'Offensive BPR — estimated offensive pts/100 poss added above league average.',
-    format: 'number2', better: 'higher', showRank: true, heatmap: true, tier: 'primary',
+    format: 'number1', better: 'higher', showRank: true, heatmap: true, tier: 'primary',
   },
   {
     key: 'dbpr',  label: 'DBPR',  group: 'BPR',
     tooltip: 'Defensive BPR — estimated defensive pts/100 poss prevented above league average. Higher = better defender.',
-    format: 'number2', better: 'higher', showRank: true, heatmap: true, tier: 'primary',
+    format: 'number1', better: 'higher', showRank: true, heatmap: true, tier: 'primary',
   },
   // ── Box BPR (intermediate — available but not primary) ────────────────────────
   {
     key: 'box_bpr',   label: 'Box BPR',   group: 'Box BPR',
     tooltip: 'Box-score-only BPR — Ridge regression on per-100-poss box stats. Intermediate signal used as prior for final BPR.',
-    format: 'number2', better: 'higher', showRank: false, heatmap: false, tier: 'optional',
+    format: 'number1', better: 'higher', showRank: false, heatmap: false, tier: 'optional',
   },
   {
     key: 'box_obpr',  label: 'Box OBPR',  group: 'Box BPR',
     tooltip: 'Offensive Box BPR (box-score model only).',
-    format: 'number2', better: 'higher', showRank: false, heatmap: false, tier: 'optional',
+    format: 'number1', better: 'higher', showRank: false, heatmap: false, tier: 'optional',
   },
   {
     key: 'box_dbpr',  label: 'Box DBPR',  group: 'Box BPR',
     tooltip: 'Defensive Box BPR (box-score model only).',
-    format: 'number2', better: 'higher', showRank: false, heatmap: false, tier: 'optional',
+    format: 'number1', better: 'higher', showRank: false, heatmap: false, tier: 'optional',
   },
   // ── MPIR ─────────────────────────────────────────────────────────────────────
   {
     key: 'mpir',          label: 'MPIR',      group: 'Macfax Impact',
     tooltip: 'Macfax Player Impact Rating (O-MPIR + D-MPIR). Combines box production and on-court team efficiency into a single impact score.',
-    format: 'number2', better: 'higher', showRank: true, heatmap: true, tier: 'primary',
+    format: 'number1', better: 'higher', showRank: true, heatmap: true, tier: 'primary',
   },
   {
     key: 'o_mpir',        label: 'O-MPIR',    group: 'Macfax Impact',
     tooltip: 'Offensive MPIR — blend of on-court offensive impact and box-score offensive prior.',
-    format: 'number2', better: 'higher', showRank: false, heatmap: true, tier: 'primary',
+    format: 'number1', better: 'higher', showRank: false, heatmap: true, tier: 'primary',
   },
   {
     key: 'd_mpir',        label: 'D-MPIR',    group: 'Macfax Impact',
     tooltip: 'Defensive MPIR — blend of on-court defensive impact and box-score defensive prior.',
-    format: 'number2', better: 'higher', showRank: false, heatmap: true, tier: 'primary',
+    format: 'number1', better: 'higher', showRank: false, heatmap: true, tier: 'primary',
   },
   {
     key: 'on_court_adj_o', label: 'On-Ct Adj O', group: 'Adj On-Court',
@@ -415,6 +416,7 @@ export const PLAYER_METRIC_LOOKUP: Record<string, PlayerMetricMeta> = Object.fro
  *   pct_raw  — value already in pct-points → "45.6%"
  *   number1  — "12.3"
  *   number2  — "12.34"
+ *   signed1  — "+1.2" / "-1.2"
  *   int      — "12"
  */
 export function formatPlayerMetric(value: number | null | undefined, format: PlayerMetricFormat): string {
@@ -424,6 +426,7 @@ export function formatPlayerMetric(value: number | null | undefined, format: Pla
     case 'pct_raw': return `${value.toFixed(1)}%`;
     case 'number1': return value.toFixed(1);
     case 'number2': return value.toFixed(2);
+    case 'signed1': return `${value > 0 ? '+' : ''}${value.toFixed(1)}`;
     case 'int':     return Math.round(value).toString();
   }
 }
