@@ -106,7 +106,7 @@ export default function TeamPageTabs({ team, ranks, checklist, cinderella }: Tea
         {activeTab === 'resume' && <ResumeTab team={team} ranks={ranks} />}
         {activeTab === 'charts' && <ChartsTab team={team} />}
         {activeTab === 'game-log' && <GameLogTab team={team} />}
-        {activeTab === 'players' && <PlayersTab players={players} loading={playersLoading} />}
+        {activeTab === 'players' && <PlayersTab players={players} loading={playersLoading} seasonDisplay={team.season} />}
       </div>
     </div>
   );
@@ -1048,9 +1048,11 @@ function GameLogTab({ team }: { team: TeamSeason }) {
 function PlayersTab({
   players,
   loading,
+  seasonDisplay,
 }: {
   players: NCAAPlayerSeasonStats[];
   loading: boolean;
+  seasonDisplay?: string;
 }) {
   if (loading) {
     return <div className="text-text-muted py-8 text-center">Loading roster...</div>;
@@ -1058,12 +1060,8 @@ function PlayersTab({
 
   if (players.length === 0) {
     return (
-      <div className="text-center py-12">
-        <p className="text-text-muted mb-2">No player data available for this team.</p>
-        <p className="text-xs text-text-muted font-mono">
-          Run: <code>python manage.py sync_ncaa_player_gamelogs</code>
-          <br />then: <code>python manage.py compute_ncaa_player_season_stats</code>
-        </p>
+      <div className="text-center py-12 text-text-muted">
+        No player data for {seasonDisplay || 'this season'} yet.
       </div>
     );
   }
