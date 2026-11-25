@@ -175,7 +175,13 @@ class Command(BaseCommand):
             # so per-game box averages divide by these instead of games
             "box_games": 0,
             "opp_box_games": 0,
-            "total_minutes": 0,   # game minutes (40 + 5 per OT), for pace on the same basis as national pace
+            # Pace and raw efficiency use only games where both teams have a box score, so points,
+            # possessions and minutes cover the same games (see _add_efficiency_game)
+            "eff_pts": 0,
+            "eff_pts_allowed": 0,
+            "eff_possessions": 0.0,
+            "eff_opp_possessions": 0.0,
+            "eff_minutes": 0,
         }
 
         for gs in game_stats:
@@ -198,13 +204,9 @@ class Command(BaseCommand):
             if gs.fga > 0:
                 totals["box_games"] += 1
 
-            # Possessions (team). Minutes count only for games with a box score: a final score without
-            # a box (2,471 games in 2005-2025, 2,327 of them in 2005-07 and 2012-13) has no possessions, and its 40 minutes
-            # would pull pace down.
+            # Possessions (team)
             poss = gs.possessions_est
             totals["total_possessions"] += poss
-            if gs.fga > 0:
-                totals["total_minutes"] += gs.game_minutes
 
             # Get opponent stats for defensive metrics
             opp_stats = TeamGameStats.objects.filter(
@@ -225,8 +227,25 @@ class Command(BaseCommand):
                 totals["total_opp_pf"] += opp_stats.pf
                 if opp_stats.fga > 0:
                     totals["opp_box_games"] += 1
+                    if gs.fga > 0:
+                        self._add_efficiency_game(totals, gs, opp_stats)
 
         return totals
+
+    @staticmethod
+    def _add_efficiency_game(totals: Dict, gs, opp_stats) -> None:
+        """A game where both teams have a box score: count it for pace, ORtg and DRtg.
+
+        A final score without a box (2,471 games in 2005-2025, 2,327 of them in 2005-07 and 2012-13) has
+        no possessions, and possessions_est averages both teams' rows, so a game with one box only gets
+        half-possessions. Points, possessions and minutes all come from these games, so each ratio
+        covers one set of games.
+        """
+        totals["eff_pts"] += gs.pts
+        totals["eff_pts_allowed"] += opp_stats.pts
+        totals["eff_possessions"] += gs.possessions_est
+        totals["eff_opp_possessions"] += opp_stats.possessions_est
+        totals["eff_minutes"] += gs.game_minutes
 
     def _compute_kill_shots(self, team: Team, season: Season, is_pre_tournament: bool) -> Dict:
         """
@@ -311,18 +330,19 @@ class Command(BaseCommand):
         # Per-game averages
         ppg = totals["total_pts"] / games
         papg = totals["total_pts_allowed"] / games
-        # Possessions per 40 minutes (overtime games last longer), like compute_national_averages' avg_pace
-        pace = (40 * totals["total_possessions"] / totals["total_minutes"]) if totals.get("total_minutes") else (
-            totals["total_possessions"] / games)
+        # Possessions per 40 minutes (overtime games last longer), like compute_national_averages' avg_pace,
+        # over games where both teams have a box score
+        pace = (40 * totals["eff_possessions"] / totals["eff_minutes"]) if totals["eff_minutes"] else 0
 
         # Per-possession metrics (per 100 possessions)
         total_poss = totals["total_possessions"]
         total_opp_poss = totals["total_opp_possessions"]
 
-        ortg = 100 * (totals["total_pts"] / total_poss) if total_poss > 0 else 0
+        # Raw ORtg / DRtg over the same games (a final score without a box has points but no possessions)
+        ortg = 100 * (totals["eff_pts"] / totals["eff_possessions"]) if totals["eff_possessions"] > 0 else 0
         drtg = (
-            100 * (totals["total_pts_allowed"] / total_opp_poss)
-            if total_opp_poss > 0
+            100 * (totals["eff_pts_allowed"] / totals["eff_opp_possessions"])
+            if totals["eff_opp_possessions"] > 0
             else 0
         )
         net_rtg = ortg - drtg

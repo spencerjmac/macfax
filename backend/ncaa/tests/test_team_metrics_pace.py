@@ -1,8 +1,10 @@
 """
-compute_team_metrics: raw pace counts only games with a box score.
+compute_team_metrics: raw pace, ORtg and DRtg count only games where both teams have a box score.
 
 A game with a final score but no box (2,471 in 2005-2025, 2,327 of them in 2005-07 and 2012-13) has zero possessions;
-its 40 minutes used to be added anyway, pulling pace down.
+its 40 minutes used to be added anyway, pulling pace down, and its points were divided by box-only
+possessions, inflating ORtg/DRtg. A game with one box only (possessions_est averages both rows) gets
+half-possessions, so it is left out too.
 """
 from datetime import date
 from io import StringIO
@@ -25,6 +27,7 @@ class PaceTests(TestCase):
         self.b = Team.objects.create(slug="team-b", name="Team B", is_d1=True)
         self._game("g1", date(2013, 1, 5), 80, 70, BOX_A, BOX_B)          # full box, regulation
         self._game("g2", date(2013, 1, 12), 66, 60, {"pts": 66}, {"pts": 60})   # final score, no box
+        self._game("g3", date(2013, 1, 19), 75, 71, dict(BOX_A, pts=75), {"pts": 71})   # one box only
         for team in (self.a, self.b):
             TeamSeasonRatings.all_objects.create(
                 team=team, season=self.season, is_pre_tournament=False, adj_o=105.0, adj_d=100.0,
@@ -40,5 +43,13 @@ class PaceTests(TestCase):
     def test_pace_counts_only_the_game_with_a_box(self):
         m = TeamSeasonMetrics.all_objects.get(team=self.a, season=self.season, is_pre_tournament=False)
         box_row = TeamGameStats.objects.get(game__source_game_id="g1", team=self.a)
-        self.assertEqual(m.games, 2)
+        self.assertEqual(m.games, 3)
         self.assertAlmostEqual(m.pace, 40 * box_row.possessions_est / 40, places=4)   # not halved by g2
+
+    def test_ortg_drtg_count_only_games_with_both_boxes(self):
+        m = TeamSeasonMetrics.all_objects.get(team=self.a, season=self.season, is_pre_tournament=False)
+        a1 = TeamGameStats.objects.get(game__source_game_id="g1", team=self.a)
+        b1 = TeamGameStats.objects.get(game__source_game_id="g1", team=self.b)
+        self.assertAlmostEqual(m.ortg, 100 * 80 / a1.possessions_est, places=4)   # g2's 66 and g3's 75 left out
+        self.assertAlmostEqual(m.drtg, 100 * 70 / b1.possessions_est, places=4)
+        self.assertEqual(m.ppg, (80 + 66 + 75) / 3)                                 # per-game points: every game
