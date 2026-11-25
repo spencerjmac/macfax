@@ -163,8 +163,8 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
   const [bprMode, setBprMode] = useState<BprMode>('strict_bpr');
 
   const tabs: Array<{ id: TabId; label: string }> = [
-    { id: 'traditional',  label: 'Traditional'  },
     { id: 'impact',       label: 'Impact'        },
+    { id: 'traditional',  label: 'Traditional'  },
     { id: 'fourfactors',  label: 'Four Factors'  },
   ];
 

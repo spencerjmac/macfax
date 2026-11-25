@@ -107,8 +107,11 @@ export default function NBAPlayerRankingsTable({
   const router = useRouter();
   const isPlayoffs = seasonType === 'playoffs';
 
-  const [activeTab, setActiveTab] = useState<TabId>('traditional');
-  const [sorting, setSorting] = useState<SortingState>([{ id: 'pts', desc: true }]);
+  // Open on Impact when BPR exists; playoffs and seasons before BPR is computed open on Traditional
+  const hasBpr = useMemo(() => data.some((p) => p.bpr != null), [data]);
+  const startOnImpact = !isPlayoffs && hasBpr;
+  const [activeTab, setActiveTab] = useState<TabId>(startOnImpact ? 'impact' : 'traditional');
+  const [sorting, setSorting] = useState<SortingState>([startOnImpact ? { id: 'bpr', desc: true } : { id: 'pts', desc: true }]);
   const [globalFilter, setGlobalFilter] = useState('');
   // Default "Auto" scales with games played (see playerThresholds.ts)
   const [minPossChoice, setMinPossChoice] = useState<number>(AUTO_THRESHOLD);
@@ -136,18 +139,19 @@ export default function NBAPlayerRankingsTable({
     impact:      [{ id: 'bpr', desc: true }],
   };
 
-  // Auto-redirect away from Impact when switching to playoffs
+  // Leave Impact when switching to playoffs or to a season with no BPR yet
   useEffect(() => {
-    if (isPlayoffs && activeTab === 'impact') {
+    if ((isPlayoffs || !hasBpr) && activeTab === 'impact') {
       setActiveTab('traditional');
       setSorting(tabDefaultSort['traditional']);
     }
-  }, [isPlayoffs]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPlayoffs, hasBpr]);
 
   const tabs = [
+    ...(!isPlayoffs ? [{ id: 'impact' as TabId, label: 'Impact' }] : []),
     { id: 'traditional' as TabId, label: 'Traditional' },
     { id: 'advanced'    as TabId, label: 'Advanced'    },
-    ...(!isPlayoffs ? [{ id: 'impact' as TabId, label: 'Impact' }] : []),
   ];
 
   // ── Qualification (shared by displayed rows and percentile ranks) ───────
