@@ -34,6 +34,7 @@ import {
 } from '@macfax/core/lib/playerMetricMetadata';
 import type { NBAPlayerSeasonStats } from '@macfax/core/types/nba';
 import { withNullsLast } from '@/lib/nullsLast';
+import HeatLegend from './HeatLegend';
 
 type TabId = 'traditional' | 'advanced' | 'impact';
 
@@ -134,22 +135,25 @@ export default function NBAPlayerRankingsTable({
     ...(!isPlayoffs ? [{ id: 'impact' as TabId, label: 'Impact' }] : []),
   ];
 
-  // ── Filter ──────────────────────────────────────────────────────────────
-  const filtered = useMemo(
+  // ── Qualification (shared by displayed rows and percentile ranks) ───────
+  const qualified = useMemo(
     () =>
-      data.filter((p) => {
-        if (!isPlayoffs && !nbaRowMeetsPlayingTime(p, isAuto, minPoss, teamGames)) return false;
-        if (globalFilter) {
-          const q = globalFilter.toLowerCase();
-          return (
-            p.player_name.toLowerCase().includes(q) ||
-            (p.team_name ?? '').toLowerCase().includes(q)
-          );
-        }
-        return true;
-      }),
-    [data, isAuto, minPoss, teamGames, globalFilter, isPlayoffs]
+      isPlayoffs
+        ? data
+        : data.filter((p) => nbaRowMeetsPlayingTime(p, isAuto, minPoss, teamGames)),
+    [data, isAuto, minPoss, teamGames, isPlayoffs]
   );
+
+  // ── Filter ──────────────────────────────────────────────────────────────
+  const filtered = useMemo(() => {
+    if (!globalFilter) return qualified;
+    const q = globalFilter.toLowerCase();
+    return qualified.filter(
+      (p) =>
+        p.player_name.toLowerCase().includes(q) ||
+        (p.team_name ?? '').toLowerCase().includes(q)
+    );
+  }, [qualified, globalFilter]);
 
   // ── Metric lookup map ────────────────────────────────────────────────────
   const allMetaMaps = useMemo(() => {
@@ -168,21 +172,18 @@ export default function NBAPlayerRankingsTable({
   ];
 
   const metricRanks = useMemo(() => {
-    const rankBase = isPlayoffs
-      ? data
-      : data.filter((p) => p.on_court_poss != null && p.on_court_poss >= minPoss);
     const ranks = new Map<string, ReturnType<typeof computeRanks>>();
     allKeys.forEach((key) => {
       const meta = allMetaMaps[key];
       if (!meta) return;
-      const entries = rankBase.map((p) => ({
+      const entries = qualified.map((p) => ({
         id: String(p.id),
         value: (p as any)[key] as number | null,
       }));
       ranks.set(key, computeRanks(entries, meta.better));
     });
     return ranks;
-  }, [data, minPoss, allMetaMaps, isPlayoffs]);
+  }, [qualified, allMetaMaps]);
 
   // ── Column factory ───────────────────────────────────────────────────────
   const createMetricColumn = (key: string): ColumnDef<NBAPlayerSeasonStats> => {
@@ -197,7 +198,7 @@ export default function NBAPlayerRankingsTable({
         const value = info.getValue<number | null>();
         if (value == null) return <span className="text-text-muted">—</span>;
         const rankData = metricRanks.get(key)?.get(String(info.row.original.id));
-        const hs = meta.heatmap ? heatStyleFromPercentile(rankData?.percentile ?? null) : {};
+        const hs = meta.heatmap ? heatStyleFromPercentile(rankData?.percentile ?? null, meta.better) : {};
         if (key === 'plus_minus') {
           return (
             <span className={clsx('font-mono text-xs', value > 0 ? 'text-emerald-700' : value < 0 ? 'text-rose-700' : '')}>
@@ -229,7 +230,7 @@ export default function NBAPlayerRankingsTable({
         const value = info.getValue<number | null>();
         const rankData = metricRanks.get(key)?.get(String(info.row.original.id));
         if (value == null) return <div className="text-center text-text-muted text-xs">—</div>;
-        const hs = meta.heatmap ? heatStyleFromPercentile(rankData?.percentile ?? null) : {};
+        const hs = meta.heatmap ? heatStyleFromPercentile(rankData?.percentile ?? null, meta.better) : {};
         return (
           <div style={hs} className="px-1 py-0.5 rounded text-center">
             <div className="font-mono text-xs leading-tight">{formatPlayerMetric(value, meta.format)}</div>
@@ -524,7 +525,7 @@ export default function NBAPlayerRankingsTable({
       </div>
 
       {/* ── Tabs ────────────────────────────────────────────────────────── */}
-      <div className="border-b border-ui-border">
+      <div className="border-b border-ui-border flex flex-wrap items-center justify-between gap-2">
         <div className="flex space-x-1">
           {tabs.map((tab) => (
             <button
@@ -545,6 +546,7 @@ export default function NBAPlayerRankingsTable({
             </button>
           ))}
         </div>
+        <HeatLegend basis="qualified players" note="PPG/RPG/APG shade above avg only" />
       </div>
 
       {/* ── Column picker ───────────────────────────────────────────────── */}

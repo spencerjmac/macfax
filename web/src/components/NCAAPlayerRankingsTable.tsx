@@ -28,6 +28,7 @@ import {
 import type { NCAAPlayerSeasonStats, SeasonInfo } from '@macfax/core/types';
 import { BPRConfidenceBadge, type BprSource } from './BPRConfidenceBadge';
 import { withNullsLast } from '@/lib/nullsLast';
+import HeatLegend from './HeatLegend';
 
 type TabId = 'traditional' | 'impact' | 'fourfactors';
 type BprMode = 'strict_bpr' | 'full_two_sided' | 'all_players';
@@ -280,7 +281,7 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
         const raw = info.getValue<number | null>();
         if (raw == null) return <span className="text-text-muted">—</span>;
         const rankData = metricRanks.get(key)?.get(info.row.original.player_id);
-        const hs = meta.heatmap ? heatStyleFromPercentile(rankData?.percentile ?? null) : {};
+        const hs = meta.heatmap ? heatStyleFromPercentile(rankData?.percentile ?? null, meta.better) : {};
         return (
           <div style={hs} className="flex items-center justify-between gap-1 px-2 py-1 rounded">
             <span className="font-mono">{formatPlayerMetric(raw, meta.format)}</span>
@@ -413,7 +414,7 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
           const val = info.getValue<number | null>();
           if (val == null) return <div className="text-center text-text-muted text-xs">—</div>;
           const rankData = metricRanks.get('adj_team_net_on')?.get(info.row.original.player_id);
-          const hs = heatStyleFromPercentile(rankData?.percentile ?? null);
+          const hs = heatStyleFromPercentile(rankData?.percentile ?? null, 'higher');
           return (
             <div style={hs} className="px-1 py-0.5 rounded text-center">
               <div className="font-mono text-xs leading-tight">{val.toFixed(1)}</div>
@@ -437,7 +438,7 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
           const val = info.getValue<number | null>();
           if (val == null) return <div className="text-center text-text-muted text-xs">—</div>;
           const rankData = metricRanks.get('adj_team_off_eff_on')?.get(info.row.original.player_id);
-          const hs = heatStyleFromPercentile(rankData?.percentile ?? null);
+          const hs = heatStyleFromPercentile(rankData?.percentile ?? null, 'higher');
           return (
             <div style={hs} className="px-1 py-0.5 rounded text-center">
               <div className="font-mono text-xs leading-tight">{val.toFixed(1)}</div>
@@ -461,7 +462,7 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
           const val = info.getValue<number | null>();
           if (val == null) return <div className="text-center text-text-muted text-xs">—</div>;
           const rankData = metricRanks.get('adj_team_def_eff_on')?.get(info.row.original.player_id);
-          const hs = heatStyleFromPercentile(rankData?.percentile ?? null);
+          const hs = heatStyleFromPercentile(rankData?.percentile ?? null, 'lower');
           return (
             <div style={hs} className="px-1 py-0.5 rounded text-center">
               <div className="font-mono text-xs leading-tight">{val.toFixed(1)}</div>
@@ -519,7 +520,7 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
           const raw = info.getValue<number | null>();
           const rankData = metricRanks.get(key)?.get(info.row.original.player_id);
           if (raw == null) return <div className="text-center text-text-muted text-xs">—</div>;
-          const hs = meta.heatmap ? heatStyleFromPercentile(rankData?.percentile ?? null) : {};
+          const hs = meta.heatmap ? heatStyleFromPercentile(rankData?.percentile ?? null, meta.better) : {};
           return (
             <div style={hs} className="px-1 py-0.5 rounded text-center">
               <div className="font-mono text-xs leading-tight">
@@ -689,7 +690,7 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
       </div>
 
       {/* ── Tabs ────────────────────────────────────────────────────────────── */}
-      <div className="border-b border-ui-border">
+      <div className="border-b border-ui-border flex flex-wrap items-center justify-between gap-2">
         <div className="flex space-x-1">
           {tabs.map((tab) => (
             <button
@@ -706,6 +707,7 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
             </button>
           ))}
         </div>
+        <HeatLegend basis="qualified players" note="PPG/RPG/APG shade above avg only" />
       </div>
 
       {/* ── Tab sub-controls ────────────────────────────────────────────────── */}
