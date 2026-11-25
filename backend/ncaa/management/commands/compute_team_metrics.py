@@ -198,10 +198,13 @@ class Command(BaseCommand):
             if gs.fga > 0:
                 totals["box_games"] += 1
 
-            # Possessions (team)
+            # Possessions (team). Minutes count only for games with a box score: a final score without
+            # a box (2,471 games in 2005-2025, 2,327 of them in 2005-07 and 2012-13) has no possessions, and its 40 minutes
+            # would pull pace down.
             poss = gs.possessions_est
             totals["total_possessions"] += poss
-            totals["total_minutes"] += gs.game_minutes
+            if gs.fga > 0:
+                totals["total_minutes"] += gs.game_minutes
 
             # Get opponent stats for defensive metrics
             opp_stats = TeamGameStats.objects.filter(
