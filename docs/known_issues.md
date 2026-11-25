@@ -105,3 +105,17 @@ branch notes" for `0022500147` and `0022501230`. No such notes exist; this file 
   pre-tournament ratings do not change.
 - **Not done:** the venue rule (decided 2026-11-24). Early-season events, conference tournaments and other
   neutral games of 2005-2007 still count as home games.
+
+### Early-season HCA is too high (2027: 6.15)
+
+- **Where:** `NationalAverages.hca_points` for the current season, from `compute_hca` in the nightly run.
+  On 2026-11-25 (about six games a team), 2027 HCA was 6.15 against 3.4-4.2 for full seasons
+  (2.07 and 2.86 in the COVID seasons 2021-2022). It was 5.91 before the neutral-site fix; that fix
+  raised it by taking the 2027 neutral games out of the home sample.
+- **Cause:** early-season home games are mostly mismatches (home "buy" games), and the strength
+  adjustment uses ratings that are still unsettled, so the in-season sample overstates home-court
+  advantage until enough games are played.
+- **Effect:** every forecast that uses the national HCA leans toward home teams while it stays high:
+  luck, WAB, SOR, game value and the matchup predictions.
+- **Fix (follow-up, not done):** blend the current-season estimate with prior seasons' HCA until the
+  season has enough games, for example weighted by games played.
