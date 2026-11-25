@@ -16,6 +16,7 @@ import {
 import clsx from 'clsx';
 import HeaderWithTooltip from './HeaderWithTooltip';
 import GroupedTableHead, { cellClass, valueTextClass, withMeta } from './table/GroupedTableHead';
+import TableTabs from './table/TableTabs';
 import MetricDefinitionsCard, { type MetricDefinition } from './MetricDefinitionsCard';
 import { computeRanks, heatStyleFromPercentile } from '@macfax/core/lib/rankingUtils';
 import { AUTO_THRESHOLD, autoNcaaMinMinutes } from '@macfax/core/lib/playerThresholds';
@@ -82,7 +83,6 @@ const PLAYER_FIRST_SEASON = 2020;
 
 interface NCAAPlayerRankingsTableProps {
   data: NCAAPlayerSeasonStats[];
-  seasonDisplay?: string;
   selectedSeason?: number;
   /** Seasons from the API (`getAllSeasons`); the dropdown lists those with player data. */
   seasons?: SeasonInfo[];
@@ -133,12 +133,15 @@ const BPR_SOURCE_STYLES: Record<string, string> = {
 
 const PAGE_SIZE = 100;
 
-export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedSeason, seasons = [] }: NCAAPlayerRankingsTableProps) {
+export default function NCAAPlayerRankingsTable({ data, selectedSeason, seasons = [] }: NCAAPlayerRankingsTableProps) {
   const router = useRouter();
+  // Team-table labels and order (newest first), limited to seasons with player data
   const playerSeasons = useMemo(
-    () => seasons.map((x) => x.year).filter((yr) => yr >= PLAYER_FIRST_SEASON).sort((a, b) => a - b),
+    () => seasons.filter((x) => x.year >= PLAYER_FIRST_SEASON).sort((a, b) => b.year - a.year),
     [seasons],
   );
+  // No season in the URL means the API's current season
+  const seasonValue = selectedSeason ?? seasons.find((x) => x.is_current)?.year ?? '';
   // Early in a season BPR isn't computed yet; open on Traditional so the table isn't empty
   const hasBpr = useMemo(() => data.some((p) => p.bpr != null), [data]);
   const [activeTab, setActiveTab] = useState<TabId>(hasBpr ? 'impact' : 'traditional');
@@ -308,7 +311,7 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
           ? metricRanks.get(activeSortKey)?.get(p.player_id)?.rank
           : undefined;
         return (
-          <span className="font-mono font-semibold text-sm text-text-muted">
+          <span className="font-mono font-semibold">
             {rank ?? pageOffset + info.row.index + 1}
           </span>
         );
@@ -324,7 +327,7 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
       cell: (info) => {
         const p = info.row.original;
         return (
-          <div className="flex items-center gap-2 min-w-0">
+          <div className="flex items-center gap-2 min-w-0 max-w-[190px]">
             {p.headshot_url && (
               <img
                 src={p.headshot_url}
@@ -333,7 +336,7 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
                 onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
               />
             )}
-            <span className="font-medium text-sm truncate">{p.player_name}</span>
+            <span className="font-medium text-sm truncate" title={p.player_name}>{p.player_name}</span>
           </div>
         );
       },
@@ -623,9 +626,27 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
 
   return (
     <div className="space-y-4">
-      {/* ── Filter bar ──────────────────────────────────────────────────────── */}
-      <div className="flex flex-wrap gap-3 items-center">
-        <div className="flex-1 min-w-[180px]">
+      {/* ── Filter bar (team-table order) ──────────────────────────────────── */}
+      <div className="flex flex-wrap gap-4 items-center">
+        {playerSeasons.length > 1 && (
+          <div>
+            <select
+              value={seasonValue}
+              onChange={(e) => {
+                const val = e.target.value;
+                router.push(val ? `/ncaa/players?season=${val}` : '/ncaa/players');
+              }}
+              className="px-3 py-2 bg-ui-surface border border-ui-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand/50 font-medium"
+            >
+              {playerSeasons.map((x) => (
+                <option key={x.year} value={x.year}>
+                  {x.display_name}{x.is_current ? ' (Current)' : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+        <div className="flex-1 min-w-[200px]">
           <input
             type="text"
             value={globalFilter}
@@ -634,27 +655,8 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
               setPagination((p) => ({ ...p, pageIndex: 0 }));
             }}
             placeholder="Search players or teams..."
-            className="w-full px-3 py-2 bg-ui-surface border border-ui-border rounded-lg text-sm
-                       focus:outline-none focus:ring-2 focus:ring-brand/50"
+            className="w-full px-3 py-2 bg-ui-surface border border-ui-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand/50"
           />
-        </div>
-        <div>
-          <select
-            value={minMinutesChoice}
-            onChange={(e) => {
-              setMinMinutesChoice(Number(e.target.value));
-              setPagination((p) => ({ ...p, pageIndex: 0 }));
-            }}
-            className="px-3 py-2 bg-ui-surface border border-ui-border rounded-lg text-sm
-                       focus:outline-none focus:ring-2 focus:ring-brand/50"
-          >
-            <option value={AUTO_THRESHOLD}>Auto · min {autoMinMinutes} min</option>
-            {[10, 25, 50, 100, 200, 300, 400, 600].map((n) => (
-              <option key={n} value={n}>
-                Min {n} min
-              </option>
-            ))}
-          </select>
         </div>
         <div>
           <select
@@ -663,8 +665,7 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
               setConferenceFilter(e.target.value);
               setPagination((p) => ({ ...p, pageIndex: 0 }));
             }}
-            className="px-3 py-2 bg-ui-surface border border-ui-border rounded-lg text-sm
-                       focus:outline-none focus:ring-2 focus:ring-brand/50"
+            className="px-3 py-2 bg-ui-surface border border-ui-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand/50"
           >
             <option value="all">All Conferences</option>
             {conferences.map((c) => (
@@ -674,46 +675,29 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
         </div>
         <div>
           <select
-            value={selectedSeason ?? ''}
+            value={minMinutesChoice}
             onChange={(e) => {
-              const val = e.target.value;
-              router.push(val ? `/ncaa/players?season=${val}` : '/ncaa/players');
+              setMinMinutesChoice(Number(e.target.value));
+              setPagination((p) => ({ ...p, pageIndex: 0 }));
             }}
-            className="px-3 py-2 bg-ui-surface border border-ui-border rounded-lg text-sm
-                       focus:outline-none focus:ring-2 focus:ring-brand/50"
+            className="px-3 py-2 bg-ui-surface border border-ui-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand/50"
           >
-            <option value="">Current season</option>
-            {playerSeasons.map((yr) => (
-              <option key={yr} value={yr}>
-                {yr - 1}–{String(yr).slice(2)}
+            <option value={AUTO_THRESHOLD}>Auto · min {autoMinMinutes} min</option>
+            {[10, 25, 50, 100, 200, 300, 400, 600].map((n) => (
+              <option key={n} value={n}>
+                Min {n} min
               </option>
             ))}
           </select>
         </div>
-        <div className="text-sm text-text-muted whitespace-nowrap">
-          {table.getFilteredRowModel().rows.length} players
-          {seasonDisplay && <span className="ml-1">· {seasonDisplay}</span>}
+        <div className="text-sm text-text-muted">
+          Showing {table.getFilteredRowModel().rows.length} players
         </div>
       </div>
 
       {/* ── Tabs ────────────────────────────────────────────────────────────── */}
-      <div className="border-b border-ui-border flex flex-wrap items-center justify-between gap-2">
-        <div className="flex space-x-1">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => switchTab(tab.id)}
-              className={clsx(
-                'px-4 py-2 text-sm font-medium transition-colors relative',
-                activeTab === tab.id
-                  ? 'text-brand border-b-2 border-brand'
-                  : 'text-text-muted hover:text-text-primary',
-              )}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <TableTabs tabs={tabs} active={activeTab} onChange={switchTab} />
         <HeatLegend basis="qualified players" note="PPG/RPG/APG shade above avg only" />
       </div>
 
@@ -782,7 +766,7 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
       {/* ── Table ───────────────────────────────────────────────────────────── */}
       <div className="overflow-x-auto border border-ui-border rounded-lg">
         <table className="w-full">
-          <GroupedTableHead headerGroups={table.getHeaderGroups()} tone="surface" />
+          <GroupedTableHead headerGroups={table.getHeaderGroups()} tone="ink" />
           <tbody>
             {table.getRowModel().rows.map((row) => (
               <tr
@@ -792,7 +776,7 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
                 {row.getVisibleCells().map((cell) => (
                   <td
                     key={cell.id}
-                    className={clsx('py-2 text-sm', cellClass(cell.column), isGroupedTab ? 'px-1' : 'px-2')}
+                    className={clsx('py-2 text-sm', cellClass(cell.column), isGroupedTab ? 'px-1' : 'px-3')}
                     style={{ width: cell.column.getSize() }}
                   >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}

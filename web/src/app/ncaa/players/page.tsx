@@ -47,7 +47,7 @@ export default async function NCAAPlayersPage({ searchParams }: PlayersPageProps
       </div>
 
       <div className="max-w-[1240px] mx-auto px-8 py-8">
-        <NCAAPlayerRankingsTable data={players} seasonDisplay={meta.season} selectedSeason={seasonYear} seasons={seasons} />
+        <NCAAPlayerRankingsTable data={players} selectedSeason={seasonYear} seasons={seasons} />
       </div>
     </div>
   );

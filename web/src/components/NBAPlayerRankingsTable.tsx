@@ -18,6 +18,7 @@ import clsx from 'clsx';
 import { noDataMessage } from '@/lib/nbaNoData';
 import HeaderWithTooltip from './HeaderWithTooltip';
 import GroupedTableHead, { cellClass, valueTextClass, withMeta } from './table/GroupedTableHead';
+import TableTabs from './table/TableTabs';
 import { computeRanks, heatStyleFromPercentile } from '@macfax/core/lib/rankingUtils';
 import { getBPRTier, fmtSigned } from '@macfax/core/lib/bprTiers';
 import { winsAddedFormula } from '@macfax/core/lib/ratingScale';
@@ -287,7 +288,7 @@ export default function NBAPlayerRankingsTable({
         const row = info.row.original;
         const headshotUrl = `https://cdn.nba.com/headshots/nba/latest/1040x760/${row.player_id}.png`;
         return (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 min-w-0 max-w-[190px]">
             <div className="w-6 h-6 rounded-full overflow-hidden bg-ui-surface flex-shrink-0">
               <img
                 src={headshotUrl}
@@ -298,7 +299,8 @@ export default function NBAPlayerRankingsTable({
             </div>
             <Link
               href={`/nba/players/${row.player_id}`}
-              className="font-medium text-sm hover:underline underline-offset-2"
+              title={row.player_name}
+              className="font-medium text-sm truncate hover:underline underline-offset-2"
             >
               {info.getValue<string>()}
             </Link>
@@ -358,7 +360,7 @@ export default function NBAPlayerRankingsTable({
           ? metricRanks.get(activeSortKey)?.get(String(info.row.original.id))?.rank
           : undefined;
         return (
-          <span className="font-mono font-semibold text-sm text-text-muted">
+          <span className="font-mono font-semibold">
             {rank ?? pagination.pageIndex * PAGE_SIZE + info.row.index + 1}
           </span>
         );
@@ -491,7 +493,7 @@ export default function NBAPlayerRankingsTable({
   return (
     <div className="space-y-4">
       {/* ── Filter bar ──────────────────────────────────────────────────── */}
-      <div className="flex flex-wrap gap-3 items-center">
+      <div className="flex flex-wrap gap-4 items-center">
         {seasons.length > 1 && (
           <div>
             <select
@@ -519,7 +521,7 @@ export default function NBAPlayerRankingsTable({
             <option value="playoffs">Playoffs</option>
           </select>
         </div>
-        <div className="flex-1 min-w-[180px]">
+        <div className="flex-1 min-w-[200px]">
           <input
             type="text"
             value={globalFilter}
@@ -528,8 +530,7 @@ export default function NBAPlayerRankingsTable({
               setPagination((p) => ({ ...p, pageIndex: 0 }));
             }}
             placeholder="Search players or teams..."
-            className="w-full px-3 py-2 bg-ui-surface border border-ui-border rounded-lg text-sm
-                       focus:outline-none focus:ring-2 focus:ring-brand/50"
+            className="w-full px-3 py-2 bg-ui-surface border border-ui-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand/50"
           />
         </div>
         {!isPlayoffs && (
@@ -554,34 +555,22 @@ export default function NBAPlayerRankingsTable({
             </select>
           </div>
         )}
-        <div className="text-sm text-text-muted whitespace-nowrap">
-          {table.getFilteredRowModel().rows.length} players
-          {seasonDisplay && <span className="ml-1">· {seasonDisplay}</span>}
+        <div className="text-sm text-text-muted">
+          Showing {table.getFilteredRowModel().rows.length} players
         </div>
       </div>
 
       {/* ── Tabs ────────────────────────────────────────────────────────── */}
-      <div className="border-b border-ui-border flex flex-wrap items-center justify-between gap-2">
-        <div className="flex space-x-1">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => {
-                setActiveTab(tab.id);
-                setSorting(tabDefaultSort[tab.id]);
-                setPagination((p) => ({ ...p, pageIndex: 0 }));
-              }}
-              className={clsx(
-                'px-4 py-2 text-sm font-medium transition-colors',
-                activeTab === tab.id
-                  ? 'text-brand border-b-2 border-brand'
-                  : 'text-text-muted hover:text-text-primary',
-              )}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <TableTabs
+          tabs={tabs}
+          active={activeTab}
+          onChange={(id) => {
+            setActiveTab(id);
+            setSorting(tabDefaultSort[id]);
+            setPagination((p) => ({ ...p, pageIndex: 0 }));
+          }}
+        />
         <HeatLegend basis="qualified players" note="PPG/RPG/APG shade above avg only" />
       </div>
 
@@ -614,14 +603,14 @@ export default function NBAPlayerRankingsTable({
       {/* ── Table ───────────────────────────────────────────────────────── */}
       <div className="overflow-x-auto border border-ui-border rounded-lg">
         <table className="w-full">
-          <GroupedTableHead headerGroups={table.getHeaderGroups()} tone="surface" />
+          <GroupedTableHead headerGroups={table.getHeaderGroups()} tone="ink" />
           <tbody>
             {table.getRowModel().rows.map((row) => (
               <tr key={row.id} className="border-b border-ui-border hover:bg-ui-hover transition-colors">
                 {row.getVisibleCells().map((cell) => (
                   <td
                     key={cell.id}
-                    className={clsx('py-2 text-sm', cellClass(cell.column), isGroupedTab ? 'px-1' : 'px-2')}
+                    className={clsx('py-2 text-sm', cellClass(cell.column), isGroupedTab ? 'px-1' : 'px-3')}
                     style={{ width: cell.column.getSize() }}
                   >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}

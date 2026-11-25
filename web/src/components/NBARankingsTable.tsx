@@ -17,6 +17,7 @@ import clsx from 'clsx';
 import { noDataMessage } from '@/lib/nbaNoData';
 import HeaderWithTooltip from './HeaderWithTooltip';
 import GroupedTableHead, { cellClass, valueTextClass, withMeta } from './table/GroupedTableHead';
+import TableTabs from './table/TableTabs';
 import { NBATeamSeasonRatings, NBASeasonInfo } from '@macfax/core/types/nba';
 import { NBA_METRIC_DEFINITIONS, NBAMetricMeta } from '@macfax/core/config/nba';
 import { computeRanks, heatStyleFromPercentile, RankData } from '@macfax/core/lib/rankingUtils';
@@ -427,22 +428,7 @@ export default function NBARankingsTable({
       {/* Tabs */}
       {/* View toggle */}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="inline-flex max-w-full overflow-x-auto no-scrollbar bg-surface border border-ui-border rounded-lg p-[3px]">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={clsx(
-                'shrink-0 whitespace-nowrap px-[14px] py-2 rounded-md font-display font-semibold text-[13px] tracking-[0.06em] uppercase transition-all',
-                activeTab === tab.id
-                  ? 'bg-ink text-white'
-                  : 'text-muted hover:text-text-primary',
-              )}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+        <TableTabs tabs={tabs} active={activeTab} onChange={setActiveTab} />
         <HeatLegend basis="all 30 teams" />
       </div>
 
