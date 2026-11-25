@@ -135,22 +135,25 @@ export default function NBAPlayerRankingsTable({
     ...(!isPlayoffs ? [{ id: 'impact' as TabId, label: 'Impact' }] : []),
   ];
 
-  // ── Filter ──────────────────────────────────────────────────────────────
-  const filtered = useMemo(
+  // ── Qualification (shared by displayed rows and percentile ranks) ───────
+  const qualified = useMemo(
     () =>
-      data.filter((p) => {
-        if (!isPlayoffs && !nbaRowMeetsPlayingTime(p, isAuto, minPoss, teamGames)) return false;
-        if (globalFilter) {
-          const q = globalFilter.toLowerCase();
-          return (
-            p.player_name.toLowerCase().includes(q) ||
-            (p.team_name ?? '').toLowerCase().includes(q)
-          );
-        }
-        return true;
-      }),
-    [data, isAuto, minPoss, teamGames, globalFilter, isPlayoffs]
+      isPlayoffs
+        ? data
+        : data.filter((p) => nbaRowMeetsPlayingTime(p, isAuto, minPoss, teamGames)),
+    [data, isAuto, minPoss, teamGames, isPlayoffs]
   );
+
+  // ── Filter ──────────────────────────────────────────────────────────────
+  const filtered = useMemo(() => {
+    if (!globalFilter) return qualified;
+    const q = globalFilter.toLowerCase();
+    return qualified.filter(
+      (p) =>
+        p.player_name.toLowerCase().includes(q) ||
+        (p.team_name ?? '').toLowerCase().includes(q)
+    );
+  }, [qualified, globalFilter]);
 
   // ── Metric lookup map ────────────────────────────────────────────────────
   const allMetaMaps = useMemo(() => {
@@ -169,21 +172,18 @@ export default function NBAPlayerRankingsTable({
   ];
 
   const metricRanks = useMemo(() => {
-    const rankBase = isPlayoffs
-      ? data
-      : data.filter((p) => p.on_court_poss != null && p.on_court_poss >= minPoss);
     const ranks = new Map<string, ReturnType<typeof computeRanks>>();
     allKeys.forEach((key) => {
       const meta = allMetaMaps[key];
       if (!meta) return;
-      const entries = rankBase.map((p) => ({
+      const entries = qualified.map((p) => ({
         id: String(p.id),
         value: (p as any)[key] as number | null,
       }));
       ranks.set(key, computeRanks(entries, meta.better));
     });
     return ranks;
-  }, [data, minPoss, allMetaMaps, isPlayoffs]);
+  }, [qualified, allMetaMaps]);
 
   // ── Column factory ───────────────────────────────────────────────────────
   const createMetricColumn = (key: string): ColumnDef<NBAPlayerSeasonStats> => {
