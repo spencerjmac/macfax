@@ -16,7 +16,7 @@ import { TeamSeason, SeasonInfo } from '@macfax/core/types';
 import Link from 'next/link';
 import clsx from 'clsx';
 import HeaderWithTooltip from './HeaderWithTooltip';
-import GroupedTableHead, { alignClass } from './table/GroupedTableHead';
+import GroupedTableHead, { cellClass, valueTextClass, withMeta } from './table/GroupedTableHead';
 import MetricDefinitionsCard, { type MetricDefinition } from './MetricDefinitionsCard';
 import { METRIC_DEFINITIONS, MetricMeta } from '@macfax/core/lib/metricMetadata';
 import { computeRanks, heatStyleFromPercentile, RankData } from '@macfax/core/lib/rankingUtils';
@@ -54,21 +54,19 @@ const TEAM_METRIC_DEFINITIONS: Record<TabId, MetricDefinition[]> = {
   'four-factors': [
     { k: 'Raw', v: 'Unadjusted box-score four-factor rates before opponent-strength adjustments.' },
     { k: 'eFG%', v: 'Effective Field Goal %: shooting efficiency that gives made threes extra credit.' },
-    { k: 'TOV%', v: 'Turnover rate: turnovers per possession; lower is better on offense and higher is better on defense.' },
-    { k: 'ORB%', v: 'Offensive rebounding rate: share of available offensive rebounds secured.' },
-    { k: 'DRB%', v: 'Defensive rebounding rate: share of opponent misses rebounded by the defense.' },
-    { k: 'FTR', v: 'Free throw rate: free throw attempts per field goal attempt.' },
-    { k: 'Margin / Edge', v: 'Team rate minus opponent rate, with TOV Edge using opponent TOV% minus team TOV%; positive is better.' },
+    { k: 'Turnover %', v: 'Turnover rate: turnovers per possession; lower is better on offense and higher is better on defense.' },
+    { k: 'Rebounding', v: 'ORB: offensive rebounding rate, the share of available offensive rebounds secured. DRB: defensive rebounding rate, the share of opponent misses rebounded by the defense.' },
+    { k: 'FT Rate', v: 'Free throw rate: free throw attempts per field goal attempt.' },
+    { k: 'Net', v: 'Team rate minus opponent rate (for turnovers, opponent TOV% minus team TOV%); positive is better.' },
     { k: 'FFI', v: 'Raw Four Factor Index: 0-100 composite of raw shooting, turnovers, rebounding, and free throw rate.' },
   ],
   'adjusted-four-factors': [
     { k: 'Adjusted', v: 'Four-factor rates adjusted for opponent quality so teams can be compared across schedules.' },
     { k: 'eFG%', v: 'Adjusted effective field goal percentage: shooting efficiency with made threes receiving extra credit.' },
-    { k: 'TOV%', v: 'Adjusted turnover rate: turnovers per possession; lower is better on offense and higher is better on defense.' },
-    { k: 'ORB%', v: 'Adjusted offensive rebounding rate: share of available offensive rebounds secured.' },
-    { k: 'DRB%', v: 'Adjusted defensive rebounding rate: share of opponent misses rebounded by the defense.' },
-    { k: 'FTR', v: 'Adjusted free throw rate: free throw attempts per field goal attempt.' },
-    { k: 'Margin / Edge', v: 'Adjusted team advantage over opponents, with positive values meaning the four-factor battle favors the team.' },
+    { k: 'Turnover %', v: 'Adjusted turnover rate: turnovers per possession; lower is better on offense and higher is better on defense.' },
+    { k: 'Rebounding', v: 'ORB: adjusted offensive rebounding rate, the share of available offensive rebounds secured. DRB: adjusted defensive rebounding rate, the share of opponent misses rebounded by the defense.' },
+    { k: 'FT Rate', v: 'Adjusted free throw rate: free throw attempts per field goal attempt.' },
+    { k: 'Net', v: 'Adjusted team advantage over opponents; positive values mean the four-factor battle favors the team.' },
     { k: 'FFI', v: 'Adjusted Four Factor Index: 0-100 composite of adjusted four-factor margins; higher is better.' },
   ],
   traditional: [
@@ -168,7 +166,7 @@ export default function RankingsTable({ data, seasons = [], selectedSeason, isPr
           if (value == null) return <span className="text-text-muted">-</span>;
           const hs = meta.heatmap ? heatStyleFromPercentile(rankData?.percentile ?? null, meta.better) : {};
           return (
-            <div style={hs} className="px-2 py-1 rounded font-mono">
+            <div style={hs} className={clsx('px-2 py-1 rounded font-mono', valueTextClass(info.column))}>
               {formatValue(value, meta.format)}
               {meta.showRank && rankData?.rank && (
                 <sup className={`text-[9px] ${hs.background ? 'text-slate-700' : 'text-muted'} ml-0.5 font-sans font-medium`}>{rankData.rank}</sup>
@@ -198,7 +196,7 @@ export default function RankingsTable({ data, seasons = [], selectedSeason, isPr
           }
           const hs = meta.heatmap ? heatStyleFromPercentile(rankData?.percentile ?? null, meta.better) : {};
           return (
-            <div style={hs} className="px-1 py-0.5 rounded text-center font-mono text-xs">
+            <div style={hs} className={clsx('px-1 py-0.5 rounded text-center font-mono', valueTextClass(info.column, 'text-xs'))}>
               {formatValue(value, meta.format)}
               {meta.showRank && rankData?.rank && (
                 <sup className={`text-[9px] ${hs.background ? 'text-slate-700' : 'text-muted'} ml-0.5 font-sans font-medium`}>{rankData.rank}</sup>
@@ -211,7 +209,7 @@ export default function RankingsTable({ data, seasons = [], selectedSeason, isPr
       };
     };
 
-    // ── Factory for a 3-column group (Off / Def / Edge or Margin) ────────────
+    // ── Factory for a 3-column group (Off / Def / Net) ─────────────────────────
     const createGroup = (
       id: string,
       label: string,
@@ -221,7 +219,11 @@ export default function RankingsTable({ data, seasons = [], selectedSeason, isPr
     ): ColumnDef<TeamSeason> => ({
       id,
       header: label,
-      columns: [createSubColumn(off), createSubColumn(def), createSubColumn(edge)],
+      columns: [
+        withMeta(createSubColumn(off), { divider: true }),
+        createSubColumn(def),
+        withMeta(createSubColumn(edge), { net: true }),
+      ],
     });
 
     // ── Base columns – full version (Overview) ────────────────────────────────
@@ -230,6 +232,7 @@ export default function RankingsTable({ data, seasons = [], selectedSeason, isPr
         accessorKey: 'rank',
         header: 'Rk',
         meta: { align: 'left' },
+        sortDescFirst: false,
         cell: (info) => (
           <span className="font-mono font-semibold">{info.getValue<number>()}</span>
         ),
@@ -299,6 +302,7 @@ export default function RankingsTable({ data, seasons = [], selectedSeason, isPr
         accessorKey: 'rank',
         header: 'Rk',
         meta: { align: 'left' },
+        sortDescFirst: false,
         cell: (info) => (
           <span className="font-mono font-semibold text-sm">{info.getValue<number>()}</span>
         ),
@@ -358,7 +362,7 @@ export default function RankingsTable({ data, seasons = [], selectedSeason, isPr
       case 'overview':
         return [
           ...baseColumns,
-          createMetricColumn('adjEM'),
+          withMeta(createMetricColumn('adjEM'), { emphasis: true }),
           createMetricColumn('adjO'),
           createMetricColumn('adjD'),
           createMetricColumn('adjTempo'),
@@ -371,53 +375,53 @@ export default function RankingsTable({ data, seasons = [], selectedSeason, isPr
       case 'four-factors':
         return [
           ...compactBaseColumns,
-          createGroup('ff-efg', 'Raw EFG %',
+          createGroup('ff-efg', 'eFG%',
             { key: 'raw_eFG',         label: 'Off'    },
             { key: 'raw_eFG_d',       label: 'Def'    },
-            { key: 'raw_eFG_margin',  label: 'Margin' },
+            { key: 'raw_eFG_margin',  label: 'Net'    },
           ),
-          createGroup('ff-tov', 'Raw Turnover Rate',
+          createGroup('ff-tov', 'Turnover %',
             { key: 'raw_tov',         label: 'Off'  },
             { key: 'raw_tov_d',       label: 'Def'  },
-            { key: 'raw_tov_edge',    label: 'Edge' },
+            { key: 'raw_tov_edge',    label: 'Net'  },
           ),
-          createGroup('ff-reb', 'Raw Rebound %',
+          createGroup('ff-reb', 'Rebounding',
             { key: 'raw_orb',         label: 'ORB'  },
             { key: 'raw_drb',         label: 'DRB'  },
-            { key: 'raw_reb_edge',    label: 'Edge' },
+            { key: 'raw_reb_edge',    label: 'Net'  },
           ),
-          createGroup('ff-ftr', 'Raw FT Rate',
+          createGroup('ff-ftr', 'FT Rate',
             { key: 'raw_ftr',         label: 'Off'    },
             { key: 'raw_ftr_d',       label: 'Def'    },
-            { key: 'raw_ftr_margin',  label: 'Margin' },
+            { key: 'raw_ftr_margin',  label: 'Net'    },
           ),
-          createSubColumn({ key: 'raw_four_factor_index_100', label: 'FFI' }),
+          withMeta(createSubColumn({ key: 'raw_four_factor_index_100', label: 'FFI' }), { emphasis: true }),
         ];
 
       case 'adjusted-four-factors':
         return [
           ...compactBaseColumns,
-          createGroup('aff-efg', 'Adjusted EFG %',
+          createGroup('aff-efg', 'eFG%',
             { key: 'eFG',         label: 'Off'    },
             { key: 'eFG_d',       label: 'Def'    },
-            { key: 'eFG_margin',  label: 'Margin' },
+            { key: 'eFG_margin',  label: 'Net'    },
           ),
-          createGroup('aff-tov', 'Adjusted Turnover Rate',
+          createGroup('aff-tov', 'Turnover %',
             { key: 'tov',         label: 'Off'  },
             { key: 'tov_d',       label: 'Def'  },
-            { key: 'tov_edge',    label: 'Edge' },
+            { key: 'tov_edge',    label: 'Net'  },
           ),
-          createGroup('aff-reb', 'Adjusted Rebound %',
+          createGroup('aff-reb', 'Rebounding',
             { key: 'orb',         label: 'ORB'  },
             { key: 'drb',         label: 'DRB'  },
-            { key: 'reb_edge',    label: 'Edge' },
+            { key: 'reb_edge',    label: 'Net'  },
           ),
-          createGroup('aff-ftr', 'Adjusted FT Rate',
+          createGroup('aff-ftr', 'FT Rate',
             { key: 'ftr',         label: 'Off'    },
             { key: 'ftr_d',       label: 'Def'    },
-            { key: 'ftr_margin',  label: 'Margin' },
+            { key: 'ftr_margin',  label: 'Net'    },
           ),
-          createSubColumn({ key: 'four_factor_index_100', label: 'FFI' }),
+          withMeta(createSubColumn({ key: 'four_factor_index_100', label: 'FFI' }), { emphasis: true }),
         ];
 
       case 'traditional':
@@ -444,7 +448,7 @@ export default function RankingsTable({ data, seasons = [], selectedSeason, isPr
       default:
         return [
           ...baseColumns,
-          createMetricColumn('adjEM'),
+          withMeta(createMetricColumn('adjEM'), { emphasis: true }),
           createMetricColumn('adjO'),
           createMetricColumn('adjD'),
           createMetricColumn('adjTempo'),
@@ -606,7 +610,7 @@ export default function RankingsTable({ data, seasons = [], selectedSeason, isPr
                 {row.getVisibleCells().map((cell) => (
                   <td
                     key={cell.id}
-                    className={clsx('py-2 text-sm', alignClass(cell.column), isGroupedTab ? 'px-1' : 'px-3')}
+                    className={clsx('py-2 text-sm', cellClass(cell.column), isGroupedTab ? 'px-1' : 'px-3')}
                     style={{ width: cell.column.getSize() }}
                   >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}

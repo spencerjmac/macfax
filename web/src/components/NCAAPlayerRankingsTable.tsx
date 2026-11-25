@@ -15,7 +15,7 @@ import {
 } from '@tanstack/react-table';
 import clsx from 'clsx';
 import HeaderWithTooltip from './HeaderWithTooltip';
-import GroupedTableHead, { alignClass } from './table/GroupedTableHead';
+import GroupedTableHead, { cellClass, valueTextClass, withMeta } from './table/GroupedTableHead';
 import MetricDefinitionsCard, { type MetricDefinition } from './MetricDefinitionsCard';
 import { computeRanks, heatStyleFromPercentile } from '@macfax/core/lib/rankingUtils';
 import { AUTO_THRESHOLD, autoNcaaMinMinutes } from '@macfax/core/lib/playerThresholds';
@@ -72,7 +72,7 @@ const PLAYER_METRIC_DEFINITIONS: Record<TabId, MetricDefinition[]> = {
     { k: 'Rebound Impact', v: 'Estimated effect on team offensive rebounding and limiting opponent offensive rebounds.' },
     { k: 'FTR Impact', v: 'Estimated effect on getting to the line and limiting opponent free throws.' },
     { k: 'On-Court Rates', v: 'Team and opponent four-factor rates while the player is on the floor; these describe lineup environment, not pure individual impact.' },
-    { k: 'Margin / Edge', v: 'Team on-court advantage over opponents; positive values favor the player\'s lineup.' },
+    { k: 'Net', v: 'Team on-court advantage over opponents; positive values favor the player\'s lineup.' },
     { k: 'On-Ct FFI', v: 'On-court Four Factor Index: team four-factor profile while the player is on court, scaled 0-100.' },
   ],
 };
@@ -285,7 +285,7 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
         const hs = meta.heatmap ? heatStyleFromPercentile(rankData?.percentile ?? null, meta.better) : {};
         return (
           <div style={hs} className="flex items-center justify-between gap-1 px-2 py-1 rounded">
-            <span className="font-mono">{formatPlayerMetric(raw, meta.format)}</span>
+            <span className={clsx('font-mono', valueTextClass(info.column))}>{formatPlayerMetric(raw, meta.format)}</span>
           </div>
         );
       },
@@ -473,7 +473,7 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
       const onCtxGroup: ColumnDef<NCAAPlayerSeasonStats> = {
         id: 'impact-adj-ctx',
         header: 'On-Court Context',
-        columns: [adjOffSubCol, adjDefSubCol, adjNetSubCol],
+        columns: [withMeta(adjOffSubCol, { divider: true }), adjDefSubCol, adjNetSubCol],
       };
 
       const sourceCol: ColumnDef<NCAAPlayerSeasonStats> = {
@@ -498,7 +498,9 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
 
       return [
         ...base,
-        ...IMPACT_METRIC_KEYS.map(createMetricColumn),
+        ...IMPACT_METRIC_KEYS.map((k) =>
+          k === 'bpr' ? withMeta(createMetricColumn(k), { emphasis: true }) : createMetricColumn(k),
+        ),
         onCtxGroup,
         sourceCol,
       ];
@@ -520,7 +522,7 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
           const hs = meta.heatmap ? heatStyleFromPercentile(rankData?.percentile ?? null, meta.better) : {};
           return (
             <div style={hs} className="px-1 py-0.5 rounded text-center">
-              <div className="font-mono text-xs leading-tight">
+              <div className={clsx('font-mono leading-tight', valueTextClass(info.column, 'text-xs'))}>
                 {formatPlayerMetric(raw, meta.format)}
               </div>
             </div>
@@ -538,12 +540,17 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
     ): ColumnDef<NCAAPlayerSeasonStats> => ({
       id,
       header: label,
-      columns: subs.map(createSubColumn),
+      columns: subs.map((sub, i) =>
+        withMeta(createSubColumn(sub), {
+          divider: i === 0,
+          net: sub.label === 'Net' || sub.label === 'Total',
+        }),
+      ),
     });
 
     return [
       ...base,
-      createSubColumn({ key: 'four_factor_impact_index', label: 'FFII' }),
+      withMeta(createSubColumn({ key: 'four_factor_impact_index', label: 'FFII' }), { emphasis: true }),
       createGroup('ff-impact-efg', 'eFG Impact',
         { key: 'off_efg_impact',    label: 'Off' },
         { key: 'def_efg_impact',    label: 'Def' },
@@ -567,24 +574,24 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
       createGroup('ff-lineup-efg', 'On-Court eFG%',
         { key: 'on_court_efg_pct',     label: 'Off'    },
         { key: 'on_court_opp_efg_pct', label: 'Def'    },
-        { key: 'on_court_efg_margin',  label: 'Margin' },
+        { key: 'on_court_efg_margin',  label: 'Net'    },
       ),
       createGroup('ff-lineup-tov', 'On-Court TOV%',
         { key: 'on_court_tov_pct',     label: 'Off'  },
         { key: 'on_court_opp_tov_pct', label: 'Def'  },
-        { key: 'on_court_tov_edge',    label: 'Edge' },
+        { key: 'on_court_tov_edge',    label: 'Net'  },
       ),
       createGroup('ff-lineup-reb', 'On-Court Reb%',
         { key: 'on_court_orb_pct',  label: 'ORB'  },
         { key: 'on_court_drb_pct',  label: 'DRB'  },
-        { key: 'on_court_reb_edge', label: 'Edge' },
+        { key: 'on_court_reb_edge', label: 'Net'  },
       ),
       createGroup('ff-lineup-ftr', 'On-Court FTR',
         { key: 'on_court_ftr',        label: 'Off'    },
         { key: 'on_court_opp_ftr',    label: 'Def'    },
-        { key: 'on_court_ftr_margin', label: 'Margin' },
+        { key: 'on_court_ftr_margin', label: 'Net'    },
       ),
-      createSubColumn({ key: 'on_court_ffi', label: 'On-Ct FFI' }),
+      withMeta(createSubColumn({ key: 'on_court_ffi', label: 'On-Ct FFI' }), { divider: true }),
     ];
   }, [activeTab, metricRanks, pagination.pageIndex, sorting, tradOptional, allMetaMaps]);
 
@@ -781,7 +788,7 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
                 {row.getVisibleCells().map((cell) => (
                   <td
                     key={cell.id}
-                    className={clsx('py-2 text-sm', alignClass(cell.column), isGroupedTab ? 'px-1' : 'px-2')}
+                    className={clsx('py-2 text-sm', cellClass(cell.column), isGroupedTab ? 'px-1' : 'px-2')}
                     style={{ width: cell.column.getSize() }}
                   >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}

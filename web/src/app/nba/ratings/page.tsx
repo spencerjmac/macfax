@@ -140,9 +140,11 @@ export default async function NBARankingsPage({ searchParams }: NBAPageProps) {
               { k: 'Adj Def',  v: 'Opponent-adjusted defensive efficiency — points allowed per 100 possessions.' },
               { k: 'Pace',     v: 'Estimated possessions per 48 minutes after opponent adjustment.' },
               { k: 'FFI',      v: 'Four Factor Index — composite of eFG%, TOV rate, rebound rate, and FT rate edges. Weights from 11-season OLS regression.' },
-              { k: 'EFG %',    v: 'Effective field goal %, accounting for 3-pointer value. Off = team, Def = opponent allowed.' },
-              { k: 'TOV Rate', v: 'Turnovers per 100 possessions. Off = own rate (lower = better); Def = opponent rate (higher = better).' },
-              { k: 'FT Rate',  v: 'Free throw attempts per field goal attempt. Higher Off and lower Def is better.' },
+              { k: 'eFG%',       v: 'Effective field goal %, accounting for 3-pointer value. Off = team, Def = opponent allowed.' },
+              { k: 'Turnover %', v: 'Turnovers per 100 possessions. Off = own rate (lower = better); Def = opponent rate (higher = better).' },
+              { k: 'Rebounding', v: 'OREB = team offensive rebound %; Def = opponent offensive rebound % allowed (lower = better).' },
+              { k: 'FT Rate',    v: 'Free throw attempts per field goal attempt. Higher Off and lower Def is better.' },
+              { k: 'Net',        v: 'Team rate minus opponent rate (for turnovers and rebounding, the side that favors the team); positive is better.' },
             ].map(d => (
               <div key={d.k} className="text-muted">
                 <b className="font-mono font-semibold text-text-primary mr-1.5">{d.k}</b>{d.v}

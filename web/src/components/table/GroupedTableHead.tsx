@@ -1,6 +1,14 @@
 'use client';
 
-import { flexRender, type Column, type Header, type HeaderGroup, type RowData } from '@tanstack/react-table';
+import {
+  flexRender,
+  type Column,
+  type ColumnDef,
+  type ColumnMeta,
+  type Header,
+  type HeaderGroup,
+  type RowData,
+} from '@tanstack/react-table';
 import clsx from 'clsx';
 
 declare module '@tanstack/react-table' {
@@ -8,6 +16,12 @@ declare module '@tanstack/react-table' {
   interface ColumnMeta<TData extends RowData, TValue> {
     /** Header and cell alignment. Numeric columns leave it unset and are centered. */
     align?: 'left' | 'center';
+    /** 1px left rule on header + cells: first sub-column of a group, or a standalone summary column. */
+    divider?: boolean;
+    /** The tab's headline metric: 2px left rule, value in text-sm semibold. */
+    emphasis?: boolean;
+    /** Net sub-column of a group (Net / Total): value in semibold. */
+    net?: boolean;
   }
 }
 
@@ -24,12 +38,38 @@ export function alignClass(column: AnyColumn): string {
   return columnAlign(column) === 'left' ? 'text-left' : 'text-center';
 }
 
+/** Returns the column with `extra` merged into its meta (keeps align and anything else already set). */
+export function withMeta<T, V>(col: ColumnDef<T, V>, extra: ColumnMeta<T, V>): ColumnDef<T, V> {
+  return { ...col, meta: { ...col.meta, ...extra } };
+}
+
+/** Classes for a body <td>: alignment plus the column's left rule. */
+export function cellClass(column: AnyColumn): string {
+  const meta = column.columnDef.meta;
+  return clsx(
+    alignClass(column),
+    meta?.emphasis ? 'border-l-2 border-ui-border' : meta?.divider && 'border-l border-ui-border',
+  );
+}
+
+/**
+ * Size/weight classes for a cell's value text. `base` is the size the column uses when it isn't the
+ * headline (e.g. 'text-xs'); the headline is always text-sm semibold, net columns add semibold.
+ */
+export function valueTextClass(column: AnyColumn, base = ''): string {
+  const meta = column.columnDef.meta;
+  if (meta?.emphasis) return 'text-sm font-semibold';
+  return clsx(base, meta?.net && 'font-semibold');
+}
+
 const TONES = {
   ink: {
     th: 'px-2 py-[13px] text-xs font-display font-semibold text-white uppercase tracking-[0.06em] whitespace-nowrap border-b border-ink-line',
     leafBg: 'bg-ink',
     groupBg: 'bg-ink-2',
     groupBorder: 'border-x border-ink-line',
+    divider: 'border-l border-ink-line',
+    emphasis: 'border-l-2 border-ink-line',
     sortable: 'cursor-pointer select-none hover:text-brand2',
     arrow: 'text-brand2',
     asc: '▴',
@@ -40,6 +80,8 @@ const TONES = {
     leafBg: 'bg-ui-surface',
     groupBg: 'bg-ui-hover',
     groupBorder: 'border-x border-ui-border/50',
+    divider: 'border-l border-ui-border',
+    emphasis: 'border-l-2 border-ui-border',
     sortable: 'cursor-pointer select-none hover:bg-ui-hover',
     arrow: 'text-brand',
     asc: '↑',
@@ -85,6 +127,7 @@ export default function GroupedTableHead<T>({ headerGroups, tone }: GroupedTable
           t.leafBg,
           'align-bottom',
           left ? 'text-left' : 'text-center',
+          column.columnDef.meta?.emphasis ? t.emphasis : column.columnDef.meta?.divider && t.divider,
           canSort && t.sortable,
         )}
         onClick={canSort ? column.getToggleSortingHandler() : undefined}

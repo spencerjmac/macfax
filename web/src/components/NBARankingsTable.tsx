@@ -15,7 +15,7 @@ import {
 import Link from 'next/link';
 import clsx from 'clsx';
 import HeaderWithTooltip from './HeaderWithTooltip';
-import GroupedTableHead, { alignClass } from './table/GroupedTableHead';
+import GroupedTableHead, { cellClass, valueTextClass, withMeta } from './table/GroupedTableHead';
 import { NBATeamSeasonRatings, NBASeasonInfo } from '@macfax/core/types/nba';
 import { NBA_METRIC_DEFINITIONS, NBAMetricMeta } from '@macfax/core/config/nba';
 import { computeRanks, heatStyleFromPercentile, RankData } from '@macfax/core/lib/rankingUtils';
@@ -113,7 +113,7 @@ export default function NBARankingsTable({
         if (value == null) return <span className="text-text-muted">-</span>;
         const hs = meta.heatmap ? heatStyleFromPercentile(rankData?.percentile ?? null, meta.better) : {};
         return (
-          <div style={hs} className="px-2 py-1 rounded font-mono">
+          <div style={hs} className={clsx('px-2 py-1 rounded font-mono', valueTextClass(info.column))}>
             {formatValue(value, meta.format)}
             {meta.showRank && rankData?.rank && (
               <sup className={`text-[9px] ${hs.background ? 'text-slate-700' : 'text-muted'} ml-0.5 font-sans font-medium`}>{rankData.rank}</sup>
@@ -140,7 +140,7 @@ export default function NBARankingsTable({
         if (value == null) return <div className="text-center text-text-muted text-xs">-</div>;
         const hs = meta.heatmap ? heatStyleFromPercentile(rankData?.percentile ?? null, meta.better) : {};
         return (
-          <div style={hs} className="px-1 py-0.5 rounded text-center font-mono text-xs">
+          <div style={hs} className={clsx('px-1 py-0.5 rounded text-center font-mono', valueTextClass(info.column, 'text-xs'))}>
             {formatValue(value, meta.format)}
             {meta.showRank && rankData?.rank && (
               <sup className={`text-[9px] ${hs.background ? 'text-slate-700' : 'text-muted'} ml-0.5 font-sans font-medium`}>{rankData.rank}</sup>
@@ -162,7 +162,11 @@ export default function NBARankingsTable({
   ): ColumnDef<NBATeamSeasonRatings> => ({
     id,
     header: label,
-    columns: [createSubColumn(off), createSubColumn(def_), createSubColumn(edge)],
+    columns: [
+      withMeta(createSubColumn(off), { divider: true }),
+      createSubColumn(def_),
+      withMeta(createSubColumn(edge), { net: true }),
+    ],
   });
 
   // Base columns
@@ -172,6 +176,7 @@ export default function NBARankingsTable({
       accessorKey: 'rank_adj_net',
       header: 'Rk',
       meta: { align: 'left' },
+      sortDescFirst: false,
       cell: (info) => (
         <span className="font-mono font-semibold">{info.getValue<number | null>() ?? '-'}</span>
       ),
@@ -231,6 +236,7 @@ export default function NBARankingsTable({
       accessorKey: 'rank_adj_net',
       header: 'Rk',
       meta: { align: 'left' },
+      sortDescFirst: false,
       cell: (info) => (
         <span className="font-mono font-semibold text-sm">{info.getValue<number | null>() ?? '-'}</span>
       ),
@@ -284,7 +290,7 @@ export default function NBARankingsTable({
       case 'overview':
         return [
           ...baseColumns,
-          createMetricColumn('adj_net'),
+          withMeta(createMetricColumn('adj_net'), { emphasis: true }),
           createMetricColumn('adj_off'),
           createMetricColumn('adj_def'),
           createMetricColumn('pace'),
@@ -294,33 +300,33 @@ export default function NBARankingsTable({
       case 'four-factors':
         return [
           ...compactBaseColumns,
-          createGroup('ff-efg', 'EFG %',
+          createGroup('ff-efg', 'eFG%',
             { key: 'efg_pct',      label: 'Off'    },
             { key: 'opp_efg_pct', label: 'Def'    },
-            { key: 'efg_margin',  label: 'Margin' },
+            { key: 'efg_margin',  label: 'Net'    },
           ),
-          createGroup('ff-tov', 'Turnover Rate',
+          createGroup('ff-tov', 'Turnover %',
             { key: 'tov_rate',     label: 'Off'  },
             { key: 'opp_tov_rate', label: 'Def'  },
-            { key: 'tov_edge',     label: 'Edge' },
+            { key: 'tov_edge',     label: 'Net'  },
           ),
-          createGroup('ff-reb', 'Rebound %',
+          createGroup('ff-reb', 'Rebounding',
             { key: 'oreb_pct',     label: 'OREB' },
             { key: 'opp_oreb_pct', label: 'Def'  },
-            { key: 'oreb_edge',    label: 'Edge' },
+            { key: 'oreb_edge',    label: 'Net'  },
           ),
           createGroup('ff-ftr', 'FT Rate',
             { key: 'fta_rate',     label: 'Off'    },
             { key: 'opp_fta_rate', label: 'Def'    },
-            { key: 'fta_margin',   label: 'Margin' },
+            { key: 'fta_margin',   label: 'Net'    },
           ),
-          createSubColumn({ key: 'ffi', label: 'FFI' }),
+          withMeta(createSubColumn({ key: 'ffi', label: 'FFI' }), { emphasis: true }),
         ];
 
       default:
         return [
           ...baseColumns,
-          createMetricColumn('adj_net'),
+          withMeta(createMetricColumn('adj_net'), { emphasis: true }),
           createMetricColumn('adj_off'),
           createMetricColumn('adj_def'),
           createMetricColumn('pace'),
@@ -452,7 +458,7 @@ export default function NBARankingsTable({
                 {row.getVisibleCells().map((cell) => (
                   <td
                     key={cell.id}
-                    className={clsx('py-2 text-sm', alignClass(cell.column), isGroupedTab ? 'px-1' : 'px-3')}
+                    className={clsx('py-2 text-sm', cellClass(cell.column), isGroupedTab ? 'px-1' : 'px-3')}
                     style={{ width: cell.column.getSize() }}
                   >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}

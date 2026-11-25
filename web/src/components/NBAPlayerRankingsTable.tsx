@@ -16,7 +16,7 @@ import {
 } from '@tanstack/react-table';
 import clsx from 'clsx';
 import HeaderWithTooltip from './HeaderWithTooltip';
-import GroupedTableHead, { alignClass } from './table/GroupedTableHead';
+import GroupedTableHead, { cellClass, valueTextClass, withMeta } from './table/GroupedTableHead';
 import { computeRanks, heatStyleFromPercentile } from '@macfax/core/lib/rankingUtils';
 import { getBPRTier, fmtSigned } from '@macfax/core/lib/bprTiers';
 import { winsAddedFormula } from '@macfax/core/lib/ratingScale';
@@ -209,7 +209,7 @@ export default function NBAPlayerRankingsTable({
         }
         return (
           <div style={hs} className="flex items-center justify-between gap-1 px-2 py-1 rounded">
-            <span className="font-mono text-xs">{formatPlayerMetric(value, meta.format)}</span>
+            <span className={clsx('font-mono', valueTextClass(info.column, 'text-xs'))}>{formatPlayerMetric(value, meta.format)}</span>
           </div>
         );
       },
@@ -234,7 +234,7 @@ export default function NBAPlayerRankingsTable({
         const hs = meta.heatmap ? heatStyleFromPercentile(rankData?.percentile ?? null, meta.better) : {};
         return (
           <div style={hs} className="px-1 py-0.5 rounded text-center">
-            <div className="font-mono text-xs leading-tight">{formatPlayerMetric(value, meta.format)}</div>
+            <div className={clsx('font-mono leading-tight', valueTextClass(info.column, 'text-xs'))}>{formatPlayerMetric(value, meta.format)}</div>
           </div>
         );
       },
@@ -248,10 +248,15 @@ export default function NBAPlayerRankingsTable({
     label: string,
     keys: string[],
     labels?: string[],
+    { emphasizeFirst = false }: { emphasizeFirst?: boolean } = {},
   ): ColumnDef<NBAPlayerSeasonStats> => ({
     id,
     header: label,
-    columns: keys.map((k, i) => createSubColumn(k, labels?.[i])),
+    columns: keys.map((k, i) =>
+      i === 0
+        ? withMeta(createSubColumn(k, labels?.[i]), { divider: true, emphasis: emphasizeFirst })
+        : createSubColumn(k, labels?.[i]),
+    ),
   });
 
   // ── Base identity columns ────────────────────────────────────────────────
@@ -374,6 +379,7 @@ export default function NBAPlayerRankingsTable({
       const winsAddedCol: ColumnDef<NBAPlayerSeasonStats> = {
         id: 'wins_added',
         accessorKey: 'wins_added',
+        meta: { divider: true },
         header: () => (
           <HeaderWithTooltip
             label="W.Add"
@@ -400,7 +406,7 @@ export default function NBAPlayerRankingsTable({
         ...baseColumns,
         possCol,
         winsAddedCol,
-        createGroup('imp-bpr',  'BPR',   NBA_IMP_PRIMARY.slice(0, 3)),
+        createGroup('imp-bpr',  'BPR',   NBA_IMP_PRIMARY.slice(0, 3), undefined, { emphasizeFirst: true }),
         createGroup('imp-mpir', 'MPIR',  NBA_IMP_PRIMARY.slice(3)),
         ...(boxBprVisible.length > 0
           ? [createGroup('imp-box-bpr', 'Box BPR', boxBprVisible)]
@@ -584,7 +590,7 @@ export default function NBAPlayerRankingsTable({
                 {row.getVisibleCells().map((cell) => (
                   <td
                     key={cell.id}
-                    className={clsx('py-2 text-sm', alignClass(cell.column), isGroupedTab ? 'px-1' : 'px-2')}
+                    className={clsx('py-2 text-sm', cellClass(cell.column), isGroupedTab ? 'px-1' : 'px-2')}
                     style={{ width: cell.column.getSize() }}
                   >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
