@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import {
   useReactTable,
   getCoreRowModel,
@@ -131,6 +132,12 @@ const BPR_SOURCE_STYLES: Record<string, string> = {
   mixed:   'bg-secondary/10 text-secondary border-secondary/20',
   partial: 'bg-ui-hover text-text-muted border-ui-border',
 };
+
+const BPR_MODES: Array<{ id: BprMode; label: string; title: string }> = [
+  { id: 'strict_bpr',     label: 'Strict BPR',     title: 'Only players with full RAPM on both sides' },
+  { id: 'full_two_sided', label: 'Full Two-Sided', title: 'Both OBPR and DBPR present (RAPM or box)' },
+  { id: 'all_players',    label: 'All Players',    title: 'Include box-only and partial fallbacks' },
+];
 
 const PAGE_SIZE = 100;
 
@@ -347,16 +354,44 @@ export default function NCAAPlayerRankingsTable({ data, selectedSeason, seasons 
       size: 170,
     };
 
+    // Compact team cell from the team table: logo + name, linking to the team page
     const teamCol: ColumnDef<NCAAPlayerSeasonStats> = {
       accessorKey: 'team_name',
       header: 'Team',
       meta: { align: 'left' },
-      cell: (info) => (
-        <span className="text-xs text-text-muted truncate block max-w-[110px]">
-          {info.getValue<string>() || '—'}
-        </span>
-      ),
-      size: 120,
+      cell: (info) => {
+        const p = info.row.original;
+        if (!p.team_name) return <span className="text-text-muted">-</span>;
+        const inner = (
+          <>
+            {p.team_logo ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={p.team_logo}
+                alt={p.team_name}
+                className="w-5 h-5 object-contain shrink-0"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+              />
+            ) : (
+              <div className="w-5 h-5 shrink-0 bg-ui-surface rounded-full flex items-center justify-center text-xs font-bold text-text-muted">
+                {p.team_name.charAt(0)}
+              </div>
+            )}
+            <span className="font-medium text-sm truncate" title={p.team_name}>{p.team_name}</span>
+          </>
+        );
+        return p.team_slug ? (
+          <Link
+            href={`/ncaa/team/${p.team_slug}`}
+            className="flex items-center space-x-2 min-w-0 max-w-[170px] hover:text-brand transition-colors"
+          >
+            {inner}
+          </Link>
+        ) : (
+          <div className="flex items-center space-x-2 min-w-0 max-w-[170px]">{inner}</div>
+        );
+      },
+      size: 170,
     };
 
     const posCol: ColumnDef<NCAAPlayerSeasonStats> = {
@@ -754,30 +789,15 @@ export default function NCAAPlayerRankingsTable({ data, selectedSeason, seasons 
       {activeTab === 'impact' && (
         <div className="flex flex-wrap gap-2 items-center">
           <span className="text-xs text-text-muted font-medium">Ratings:</span>
-          {(
-            [
-              { id: 'strict_bpr',    label: 'Strict BPR',     title: 'Only players with full RAPM on both sides' },
-              { id: 'full_two_sided', label: 'Full Two-Sided', title: 'Both OBPR and DBPR present (RAPM or box)' },
-              { id: 'all_players',   label: 'All Players',    title: 'Include box-only and partial fallbacks' },
-            ] as const
-          ).map(({ id, label, title }) => (
-            <button
-              key={id}
-              title={title}
-              onClick={() => {
-                setBprMode(id);
-                setPagination((p) => ({ ...p, pageIndex: 0 }));
-              }}
-              className={clsx(
-                'px-3 py-1 text-xs rounded border transition-colors',
-                bprMode === id
-                  ? 'bg-brand/10 text-brand border-brand/30 font-medium'
-                  : 'bg-ui-surface text-text-muted border-ui-border hover:border-brand/30',
-              )}
-            >
-              {label}
-            </button>
-          ))}
+          <TableTabs
+            size="sm"
+            tabs={BPR_MODES}
+            active={bprMode}
+            onChange={(id) => {
+              setBprMode(id);
+              setPagination((p) => ({ ...p, pageIndex: 0 }));
+            }}
+          />
         </div>
       )}
 

@@ -1056,6 +1056,8 @@ class PlayerSeasonStatsSerializer(serializers.ModelSerializer):
     jersey = serializers.CharField(source="player.jersey", read_only=True)
     headshot_url = serializers.CharField(source="player.headshot_url", read_only=True)
     team_name = serializers.SerializerMethodField()
+    team_slug = serializers.SerializerMethodField()
+    team_logo = serializers.SerializerMethodField()
     conference_name = serializers.CharField(allow_null=True, read_only=True)
     season_display = serializers.CharField(source="season.display_name", read_only=True)
 
@@ -1063,7 +1065,7 @@ class PlayerSeasonStatsSerializer(serializers.ModelSerializer):
         model = PlayerSeasonStats
         fields = [
             "player_name", "player_id", "position", "jersey", "headshot_url",
-            "team_name", "conference_name", "season_display",
+            "team_name", "team_slug", "team_logo", "conference_name", "season_display",
             "gp", "mpg", "pts", "reb", "ast", "stl", "blk", "tov", "pf",
             "fg_pct", "fg3_pct", "ft_pct", "fga_pg", "fg3a_pg",
             "ftm_pg", "fta_pg", "oreb_pg", "dreb_pg",
@@ -1104,6 +1106,12 @@ class PlayerSeasonStatsSerializer(serializers.ModelSerializer):
 
     def get_team_name(self, obj):
         return obj.team.name if obj.team else ""
+
+    def get_team_slug(self, obj):
+        return obj.team.slug if obj.team else None
+
+    def get_team_logo(self, obj):
+        return (obj.team.logo_url or None) if obj.team else None
 
 
 class PlaceholderArchetypeSerializer(serializers.ModelSerializer):

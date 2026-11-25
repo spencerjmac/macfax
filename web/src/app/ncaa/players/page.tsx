@@ -36,7 +36,7 @@ export default async function NCAAPlayersPage({ searchParams }: PlayersPageProps
           </h1>
           <div className="flex items-center gap-[14px] flex-wrap">
             <p className="text-[15px] text-muted m-0">
-              Player leaderboards across BPR impact, traditional production, and four-factor impact, with filters for season, minutes, conference, and rating mode.
+              BPR impact, traditional production, and four-factor impact for every D-I player.
             </p>
             <span className="font-mono text-[12px] text-muted-2 inline-flex items-center gap-[7px] px-[10px] py-[5px] bg-ui-surface border border-ui-border rounded-md">
               <span className="w-1.5 h-1.5 rounded-full bg-brand2" />

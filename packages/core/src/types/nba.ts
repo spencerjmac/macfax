@@ -482,6 +482,8 @@ export interface NBAPlayerSeasonStats {
   team: number | null;
   team_name: string | null;
   team_slug: string | null;
+  team_abbreviation: string | null;
+  team_logo_url: string | null;
   season: number;
   season_display: string;
   // Traditional

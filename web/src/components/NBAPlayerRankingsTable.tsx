@@ -19,6 +19,7 @@ import { noDataMessage } from '@/lib/nbaNoData';
 import HeaderWithTooltip from './HeaderWithTooltip';
 import GroupedTableHead, { cellClass, withMeta } from './table/GroupedTableHead';
 import TableTabs from './table/TableTabs';
+import MetricDefinitionsCard, { type MetricDefinition } from './MetricDefinitionsCard';
 import MetricValue from './table/MetricValue';
 import { computeRanks, heatStyleFromPercentile } from '@macfax/core/lib/rankingUtils';
 import { winsAddedFormula } from '@macfax/core/lib/ratingScale';
@@ -102,6 +103,56 @@ const WINS_ADDED_META: PlayerMetricMeta = {
   key: 'wins_added', label: 'W.Add', tooltip: 'Wins Added above replacement.',
   format: 'signed1', better: 'higher', showRank: true, heatmap: true, tier: 'primary',
 };
+
+// Written from each column's tooltip (playerMetricMetadata.ts and the inline metas above)
+const NBA_PLAYER_DEFINITIONS: Record<Exclude<TabId, 'impact'>, MetricDefinition[]> = {
+  traditional: [
+    { k: 'GP', v: 'Games played.' },
+    { k: 'MPG', v: 'Minutes per game.' },
+    { k: 'PPG', v: 'Points per game.' },
+    { k: 'RPG', v: 'Total rebounds per game.' },
+    { k: 'APG', v: 'Assists per game.' },
+    { k: 'SPG', v: 'Steals per game.' },
+    { k: 'BPG', v: 'Blocks per game.' },
+    { k: 'TOV', v: 'Turnovers per game; lower is better.' },
+    { k: 'eFG%', v: 'Effective FG% = (FGM + 0.5 × 3PM) / FGA: shooting efficiency that gives made threes extra credit.' },
+    { k: 'TS%', v: 'True Shooting % = PTS / (2 × (FGA + 0.44 × FTA)): the most complete single shooting-efficiency stat.' },
+    { k: 'AST/TO', v: 'Assist-to-turnover ratio; higher is better.' },
+    { k: '+/-', v: 'Season plus/minus per game.' },
+    { k: 'FG% / 3P% / FT%', v: 'Field goal, three-point, and free throw percentages.' },
+    { k: 'ORB / DRB', v: 'Offensive and defensive rebounds per game.' },
+    { k: 'FGA / 3PA / FTA', v: 'Field goal, three-point, and free throw attempts per game.' },
+  ],
+  advanced: [
+    { k: 'TS%', v: 'True Shooting %: scoring efficiency that accounts for twos, threes, and free throws.' },
+    { k: 'eFG%', v: 'Effective Field Goal %: shooting efficiency that gives made threes extra credit.' },
+    { k: 'USG%', v: 'Usage rate: share of team possessions used by this player while on the floor.' },
+    { k: 'ORB%', v: 'Offensive rebound rate while on court.' },
+    { k: 'DRB%', v: 'Defensive rebound rate while on court.' },
+    { k: 'AST%', v: 'Assist rate: share of team field goals assisted by this player while on court.' },
+    { k: 'TOV%', v: 'Turnover rate per 100 plays; lower is better.' },
+    { k: 'AST/TO', v: 'Assist-to-turnover ratio.' },
+    { k: 'PIE', v: 'Player Impact Estimate: share of positive game events contributed.' },
+    { k: 'STL% / BLK%', v: 'Steal rate, and share of opponent two-point attempts blocked, while on court.' },
+  ],
+};
+
+/** Impact definitions; W.Add's formula depends on the season's rating scale. */
+function nbaImpactDefinitions(waFormula: string): MetricDefinition[] {
+  return [
+    { k: 'Poss', v: 'Estimated possessions played on court this season.' },
+    { k: 'W.Add', v: `Wins Added above replacement: ${waFormula}.` },
+    { k: 'BPR', v: 'Bayesian Performance Rating (OBPR + DBPR): career-stabilized box stats regularized toward single-season RAPM. Context-adjusted impact in points per 100 possessions above league average; it reflects role and team quality, not pure skill in isolation.' },
+    { k: 'OBPR', v: 'Offensive BPR: estimated offensive points per 100 possessions added above league average.' },
+    { k: 'DBPR', v: 'Defensive BPR: estimated defensive points per 100 possessions prevented above league average; higher is a better defender.' },
+    { k: 'MPIR', v: 'Macfax Player Impact Rating (O-MPIR + D-MPIR): combines box production and on-court team efficiency into one impact score.' },
+    { k: 'O-MPIR / D-MPIR', v: 'Offensive and defensive MPIR: blends of on-court impact and the box-score prior on each end.' },
+    { k: 'Box BPR', v: 'Box-score-only BPR (ridge regression on per-100 box stats); the intermediate signal used as the prior for final BPR.' },
+    { k: 'Adj On-Court', v: 'Bayesian-stabilized adjusted offensive (Adj O) and defensive (Adj D) team efficiency with the player on court; Adj EM = Adj O − Adj D.' },
+    { k: 'Raw On-Court', v: 'Raw team offensive (ORtg) and defensive (DRtg) rating per 100 possessions with the player on court; Net = ORtg − DRtg.' },
+    { k: 'Role', v: 'Player archetype from the box-score profile (creator, scorer, interior, 3&D, stretch, connector).' },
+  ];
+}
 
 const PAGE_SIZE = 100;
 
@@ -319,20 +370,39 @@ export default function NBAPlayerRankingsTable({
       accessorKey: 'team_name',
       header: 'Team',
       meta: { align: 'left' },
+      // Compact team cell from the team table: logo + abbreviation, linking to the team page
       cell: (info) => {
         const row = info.row.original;
         const name = info.getValue<string | null>();
-        if (!name) return <span className="text-text-muted text-xs">—</span>;
+        if (!name) return <span className="text-text-muted">-</span>;
+        const abbr = row.team_abbreviation ?? name;
+        const inner = (
+          <>
+            {row.team_logo_url ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={row.team_logo_url}
+                alt={name}
+                className="w-5 h-5 object-contain shrink-0"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+              />
+            ) : (
+              <div className="w-5 h-5 shrink-0 bg-ui-surface rounded-full flex items-center justify-center text-[9px] font-bold text-text-muted">
+                {abbr.slice(0, 3)}
+              </div>
+            )}
+            <span className="font-medium text-sm whitespace-nowrap" title={name}>{abbr}</span>
+          </>
+        );
         return row.team_slug ? (
-          <Link href={`/nba/team/${row.team_slug}`}
-            className="text-xs hover:text-brand transition-colors truncate block max-w-[110px]">
-            {name}
+          <Link href={`/nba/team/${row.team_slug}`} className="flex items-center space-x-2 hover:text-brand transition-colors">
+            {inner}
           </Link>
         ) : (
-          <span className="text-xs text-text-muted truncate block max-w-[110px]">{name}</span>
+          <div className="flex items-center space-x-2">{inner}</div>
         );
       },
-      size: 120,
+      size: 80,
     },
     {
       accessorKey: 'gp',
@@ -680,6 +750,12 @@ export default function NBAPlayerRankingsTable({
           </div>
         </div>
       )}
+
+      <MetricDefinitionsCard
+        definitions={activeTab === 'impact'
+          ? nbaImpactDefinitions(wa_formula).filter((d) => d.k !== 'Role' || hasArchetype)
+          : NBA_PLAYER_DEFINITIONS[activeTab]}
+      />
     </div>
   );
 }

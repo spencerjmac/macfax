@@ -569,6 +569,8 @@ export interface NCAAPlayerSeasonStats {
   jersey: string | null;
   headshot_url: string | null;
   team_name: string;
+  team_slug: string | null;
+  team_logo: string | null;
   conference_name: string | null;
   season_display: string;
   // Traditional

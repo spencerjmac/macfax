@@ -91,6 +91,8 @@ class NBAPlayerSeasonStatsSerializer(serializers.ModelSerializer):
     player_id = serializers.IntegerField(source="player.player_id", read_only=True)
     team_name = serializers.CharField(source="team.name", read_only=True, allow_null=True)
     team_slug = serializers.CharField(source="team.slug", read_only=True, allow_null=True)
+    team_abbreviation = serializers.CharField(source="team.abbreviation", read_only=True, allow_null=True)
+    team_logo_url = serializers.CharField(source="team.logo_url", read_only=True, allow_null=True)
     season_display = serializers.CharField(source="season.display_name", read_only=True)
 
     # RAPM aliases — expose baseline RAPM under display-friendly names
@@ -133,7 +135,8 @@ class NBAPlayerSeasonStatsSerializer(serializers.ModelSerializer):
         model = NBAPlayerSeasonStats
         fields = [
             "id", "player", "player_id", "player_name",
-            "team", "team_name", "team_slug", "season", "season_display", "season_type",
+            "team", "team_name", "team_slug", "team_abbreviation", "team_logo_url",
+            "season", "season_display", "season_type",
             # Traditional box score
             "gp", "mpg",
             "pts", "reb", "ast", "stl", "blk", "tov", "plus_minus",
