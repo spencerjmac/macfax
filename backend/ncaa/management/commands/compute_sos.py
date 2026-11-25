@@ -174,6 +174,7 @@ class Command(BaseCommand):
                 win_prob = 1.0 / (1.0 + math.exp(-diff / SIGMA))
 
                 win_probs.append(win_prob)
+                # NC SOS measures the schedule a team chose; NCAA tournament / NIT games aren't chosen
                 regular_season = (season.selection_sunday_date is None
                                   or game_stat.game.game_date <= season.selection_sunday_date)
                 if regular_season and (team_conf is None or conference_of.get(game_stat.opponent_id) != team_conf):
