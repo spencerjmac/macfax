@@ -1,7 +1,8 @@
 export type Better = 'higher' | 'lower' | 'neutral';
 
 // 'number1pct' — formats as X.X% without multiplying by 100 (value already in pct-point form)
-export type MetricFormat = 'number1' | 'number2' | 'percent1' | 'number1pct' | 'int';
+// 'signed1' — X.X with an explicit sign (+1.8 / -0.6)
+export type MetricFormat = 'number1' | 'number2' | 'percent1' | 'number1pct' | 'int' | 'signed1';
 
 export interface MetricMeta {
   key: string;
@@ -11,6 +12,8 @@ export interface MetricMeta {
   better: Better;
   showRank?: boolean;
   heatmap?: boolean;
+  /** First click sorts high to low; defaults to better === 'higher' */
+  sortDescFirst?: boolean;
 }
 
 const BASE_METRICS: MetricMeta[] = [
@@ -19,6 +22,8 @@ const BASE_METRICS: MetricMeta[] = [
   { key: 'adjD', label: 'Adj D', tooltip: 'Adjusted Defensive Efficiency.', format: 'number1', better: 'lower', showRank: true, heatmap: true },
   { key: 'adjTempo', label: 'Adj T', tooltip: 'Adjusted Tempo (possessions per 40).', format: 'number1', better: 'neutral', showRank: false, heatmap: false },
   { key: 'four_factor_index_100', label: 'FFI', tooltip: 'Four Factor Index (adjusted).', format: 'number1', better: 'higher', showRank: true, heatmap: true },
+  { key: 'sos_rank', label: 'SOS', tooltip: 'Strength of schedule rank (1 = hardest): expected win% for an average D1 team vs this schedule.', format: 'int', better: 'lower', showRank: false, heatmap: true },
+  { key: 'luck_wins', label: 'Luck', tooltip: 'Games won above what our ratings expect vs this schedule; tends not to repeat.', format: 'signed1', better: 'neutral', showRank: false, heatmap: false, sortDescFirst: true },
   { key: 'wab', label: 'WAB', tooltip: 'Wins Above Bubble: wins beyond what a bubble-level team would expect against this schedule.', format: 'number1', better: 'higher', showRank: true, heatmap: true },
 
   { key: 'raw_eFG', label: 'Raw eFG%', tooltip: 'Raw effective FG% (offense).', format: 'percent1', better: 'higher', showRank: true, heatmap: true },

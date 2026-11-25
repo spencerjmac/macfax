@@ -104,6 +104,8 @@ export interface TeamSeason {
   ap_poll_week6: number | null;
   sor: number | null;
   luck: number | null;
+  /** Wins above what our ratings expect vs this schedule (luck x D1 games) */
+  luck_wins: number | null;
   sos_adjEM: number | null;
   ncsos_adjEM: number | null;
   barthag: number | null;

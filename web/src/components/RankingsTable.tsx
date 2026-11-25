@@ -47,6 +47,8 @@ const TEAM_METRIC_DEFINITIONS: Record<TabId, MetricDefinition[]> = {
     { k: 'Tempo', v: 'Adjusted pace: estimated possessions per 40 minutes, adjusted for opponent pace.' },
     { k: 'FFI', v: 'Four Factor Index: 0-100 composite of shooting, turnovers, rebounding, and free throw rate; 50 is average and higher is better.' },
     { k: 'WAB', v: 'Wins Above Bubble: wins beyond what a bubble-level team would expect against the same schedule; positive means a tournament-worthy resume.' },
+    { k: 'SOS', v: 'Strength of schedule rank, 1 = hardest: expected win% for an average D1 team vs this schedule; teal = harder.' },
+    { k: 'Luck', v: 'Games won above (+) or below (-) what our ratings expect vs this schedule; tends not to repeat, so it is not shaded.' },
   ],
   'four-factors': [
     { k: 'Raw', v: 'Unadjusted box-score four-factor rates before opponent-strength adjustments.' },
@@ -143,6 +145,7 @@ export default function RankingsTable({ data, seasons = [], selectedSeason, isPr
       case 'number2':    return value.toFixed(2);
       case 'percent1':   return `${(value * 100).toFixed(1)}%`;
       case 'number1pct': return `${value.toFixed(1)}%`;
+      case 'signed1':    return `${value > 0 ? '+' : ''}${value.toFixed(1)}`;
       case 'int':        return Math.round(value).toString();
       default:          return value.toString();
     }
@@ -173,7 +176,7 @@ export default function RankingsTable({ data, seasons = [], selectedSeason, isPr
           );
         },
         size: 100,
-        sortDescFirst: meta.better === 'higher',
+        sortDescFirst: meta.sortDescFirst ?? meta.better === 'higher',
       };
     };
 
@@ -365,6 +368,8 @@ export default function RankingsTable({ data, seasons = [], selectedSeason, isPr
           createMetricColumn('adjTempo'),
           createMetricColumn('four_factor_index_100'),
           createMetricColumn('wab'),
+          createMetricColumn('sos_rank'),
+          createMetricColumn('luck_wins'),
         ];
 
       case 'four-factors':
@@ -449,6 +454,8 @@ export default function RankingsTable({ data, seasons = [], selectedSeason, isPr
           createMetricColumn('adjTempo'),
           createMetricColumn('four_factor_index_100'),
           createMetricColumn('wab'),
+          createMetricColumn('sos_rank'),
+          createMetricColumn('luck_wins'),
         ];
     }
   }, [activeTab, metricRanks]);
