@@ -22,6 +22,8 @@ declare module '@tanstack/react-table' {
     emphasis?: boolean;
     /** Net sub-column of a group (Net / Total): value in semibold. */
     net?: boolean;
+    /** Hero metric (player Impact BPR): like emphasis, with the value one size larger (text-base). */
+    hero?: boolean;
   }
 }
 
@@ -58,6 +60,7 @@ export function cellClass(column: AnyColumn): string {
  */
 export function valueTextClass(column: AnyColumn, base = ''): string {
   const meta = column.columnDef.meta;
+  if (meta?.hero) return 'text-base font-semibold';
   if (meta?.emphasis) return 'text-sm font-semibold';
   return clsx(base, meta?.net && 'font-semibold');
 }
@@ -131,7 +134,8 @@ export default function GroupedTableHead<T>({ headerGroups, tone }: GroupedTable
           canSort && t.sortable,
         )}
         onClick={canSort ? column.getToggleSortingHandler() : undefined}
-        style={{ width: column.getSize() }}
+        // A hero column holds its width (auto layout would otherwise shrink it to content)
+        style={column.columnDef.meta?.hero ? { width: column.getSize(), minWidth: column.getSize() } : { width: column.getSize() }}
         aria-sort={sorted === 'asc' ? 'ascending' : sorted === 'desc' ? 'descending' : undefined}
       >
         <div className={clsx('flex items-center gap-1', !left && 'justify-center')}>

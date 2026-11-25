@@ -34,6 +34,7 @@ import {
   NBA_ADVANCED_METRICS,
   NBA_IMPACT_METRICS,
   formatPlayerMetric,
+  meetsAttemptFloor,
   type PlayerMetricMeta,
 } from '@macfax/core/lib/playerMetricMetadata';
 import type { NBAPlayerSeasonStats, NBASeasonInfo } from '@macfax/core/types/nba';
@@ -64,26 +65,10 @@ function playersHref(season: string | number | undefined, seasonType: string): s
   return query ? `/nba/players?${query}` : '/nba/players';
 }
 
-// Primary columns always shown — never in picker
-const NBA_TRAD_PRIMARY = ['pts', 'reb', 'ast', 'stl', 'blk', 'tov', 'efg_pct', 'ts_pct', 'ast_to'];
-// Secondary (pre-checked) + optional (off by default) — shown in picker
-const NBA_TRAD_EXTRAS  = ['fg_pct', 'fg3_pct', 'ft_pct', 'oreb_pg', 'dreb_pg', 'fga_pg', 'fg3a_pg', 'fta_pg'];
-const NBA_TRAD_SECONDARY = new Set(['fg_pct', 'fg3_pct', 'ft_pct', 'oreb_pg', 'dreb_pg']);
-
-const NBA_ADV_PRIMARY  = ['ts_pct', 'efg_pct', 'usg_pct', 'oreb_pct', 'dreb_pct', 'ast_pct', 'tov_pct', 'ast_to', 'pie'];
-const NBA_ADV_EXTRAS   = ['stl_pct', 'blk_pct'];
-
-// Impact primary columns — final BPR (prior-informed RAPM) displayed first
-const NBA_IMP_PRIMARY  = ['bpr', 'obpr', 'dbpr', 'mpir', 'o_mpir', 'd_mpir'];
-// Box BPR (intermediate prior) — optional/secondary for transparency
-const NBA_IMP_BOX_KEYS = ['box_bpr', 'box_obpr', 'box_dbpr'];
-const NBA_IMP_ADJ_KEYS = ['on_court_adj_o', 'on_court_adj_d', 'on_court_adj_em']; // secondary
-const NBA_IMP_RAW_KEYS = ['on_court_ortg', 'on_court_drtg', 'on_court_net'];       // optional
-
-const NBA_DEFAULT_EXTRAS = new Set([
-  ...NBA_TRAD_SECONDARY,
-  ...NBA_IMP_ADJ_KEYS, // adj on-court secondary — pre-checked
-]);
+// ── Column sets ──────────────────────────────────────────────────────────────
+const NBA_IMPACT_KEYS = ['bpr', 'obpr', 'dbpr', 'wins_added', 'on_court_poss'];
+const NBA_TRAD_KEYS = ['pts', 'reb', 'ast', 'stl', 'blk', 'tov', 'fg_pct', 'fg3_pct', 'ft_pct', 'ts_pct'];
+const NBA_ADV_KEYS = ['usg_pct', 'ts_pct', 'ast_pct', 'tov_pct', 'oreb_pct', 'dreb_pct', 'stl_pct', 'blk_pct'];
 
 const NBA_ARCHETYPE_STYLES: Record<string, string> = {
   creator:     'bg-brand/10 text-brand border-brand/20',
@@ -94,65 +79,61 @@ const NBA_ARCHETYPE_STYLES: Record<string, string> = {
   connector:   'bg-ui-hover text-text-muted border-ui-border',
 };
 
-// plus_minus and wins_added live on the type but not in playerMetricMetadata — add inline
-const PLUS_MINUS_META: PlayerMetricMeta = {
-  key: 'plus_minus', label: '+/-', tooltip: 'Season plus/minus per game.',
-  format: 'signed1', better: 'higher', showRank: false, heatmap: true, tier: 'primary',
-};
+// wins_added lives on the type but not in playerMetricMetadata — add inline
 const WINS_ADDED_META: PlayerMetricMeta = {
   key: 'wins_added', label: 'W.Add', tooltip: 'Wins Added above replacement.',
   format: 'signed1', better: 'higher', showRank: true, heatmap: true, tier: 'primary',
 };
 
-// Written from each column's tooltip (playerMetricMetadata.ts and the inline metas above)
+const BPR_REFERENCE = { k: 'BPR', v: 'Bayesian Performance Rating, shown for reference; see the Impact tab.' };
+
+// Written from each column's tooltip (playerMetricMetadata.ts and the inline meta above)
 const NBA_PLAYER_DEFINITIONS: Record<Exclude<TabId, 'impact'>, MetricDefinition[]> = {
   traditional: [
     { k: 'GP', v: 'Games played.' },
     { k: 'MPG', v: 'Minutes per game.' },
+    BPR_REFERENCE,
     { k: 'PPG', v: 'Points per game.' },
     { k: 'RPG', v: 'Total rebounds per game.' },
     { k: 'APG', v: 'Assists per game.' },
     { k: 'SPG', v: 'Steals per game.' },
     { k: 'BPG', v: 'Blocks per game.' },
     { k: 'TOV', v: 'Turnovers per game; lower is better.' },
-    { k: 'eFG%', v: 'Effective FG% = (FGM + 0.5 × 3PM) / FGA: shooting efficiency that gives made threes extra credit.' },
+    { k: 'FG%', v: 'Field goal percentage.' },
+    { k: '3P%', v: 'Three-point percentage; shaded only at 1 or more three-point attempts per game.' },
+    { k: 'FT%', v: 'Free throw percentage; shaded only at 1 or more free throw attempts per game.' },
     { k: 'TS%', v: 'True Shooting % = PTS / (2 × (FGA + 0.44 × FTA)): the most complete single shooting-efficiency stat.' },
-    { k: 'AST/TO', v: 'Assist-to-turnover ratio; higher is better.' },
-    { k: '+/-', v: 'Season plus/minus per game.' },
-    { k: 'FG% / 3P% / FT%', v: 'Field goal, three-point, and free throw percentages.' },
-    { k: 'ORB / DRB', v: 'Offensive and defensive rebounds per game.' },
-    { k: 'FGA / 3PA / FTA', v: 'Field goal, three-point, and free throw attempts per game.' },
   ],
   advanced: [
-    { k: 'TS%', v: 'True Shooting %: scoring efficiency that accounts for twos, threes, and free throws.' },
-    { k: 'eFG%', v: 'Effective Field Goal %: shooting efficiency that gives made threes extra credit.' },
+    BPR_REFERENCE,
     { k: 'USG%', v: 'Usage rate: share of team possessions used by this player while on the floor.' },
-    { k: 'ORB%', v: 'Offensive rebound rate while on court.' },
-    { k: 'DRB%', v: 'Defensive rebound rate while on court.' },
+    { k: 'TS%', v: 'True Shooting %: scoring efficiency that accounts for twos, threes, and free throws.' },
     { k: 'AST%', v: 'Assist rate: share of team field goals assisted by this player while on court.' },
     { k: 'TOV%', v: 'Turnover rate per 100 plays; lower is better.' },
-    { k: 'AST/TO', v: 'Assist-to-turnover ratio.' },
-    { k: 'PIE', v: 'Player Impact Estimate: share of positive game events contributed.' },
-    { k: 'STL% / BLK%', v: 'Steal rate, and share of opponent two-point attempts blocked, while on court.' },
+    { k: 'ORB%', v: 'Offensive rebound rate while on court.' },
+    { k: 'DRB%', v: 'Defensive rebound rate while on court.' },
+    { k: 'STL%', v: 'Steal rate while on court.' },
+    { k: 'BLK%', v: 'Block rate: share of opponent two-point attempts blocked while on court.' },
   ],
 };
 
 /** Impact definitions; W.Add's formula depends on the season's rating scale. */
 function nbaImpactDefinitions(waFormula: string): MetricDefinition[] {
   return [
-    { k: 'Poss', v: 'Estimated possessions played on court this season.' },
-    { k: 'W.Add', v: `Wins Added above replacement: ${waFormula}.` },
     { k: 'BPR', v: 'Bayesian Performance Rating (OBPR + DBPR): career-stabilized box stats regularized toward single-season RAPM. Context-adjusted impact in points per 100 possessions above league average; it reflects role and team quality, not pure skill in isolation.' },
     { k: 'OBPR', v: 'Offensive BPR: estimated offensive points per 100 possessions added above league average.' },
     { k: 'DBPR', v: 'Defensive BPR: estimated defensive points per 100 possessions prevented above league average; higher is a better defender.' },
-    { k: 'MPIR', v: 'Macfax Player Impact Rating (O-MPIR + D-MPIR): combines box production and on-court team efficiency into one impact score.' },
-    { k: 'O-MPIR / D-MPIR', v: 'Offensive and defensive MPIR: blends of on-court impact and the box-score prior on each end.' },
-    { k: 'Box BPR', v: 'Box-score-only BPR (ridge regression on per-100 box stats); the intermediate signal used as the prior for final BPR.' },
-    { k: 'Adj On-Court', v: 'Bayesian-stabilized adjusted offensive (Adj O) and defensive (Adj D) team efficiency with the player on court; Adj EM = Adj O − Adj D.' },
-    { k: 'Raw On-Court', v: 'Raw team offensive (ORtg) and defensive (DRtg) rating per 100 possessions with the player on court; Net = ORtg − DRtg.' },
+    { k: 'W.Add', v: `Wins Added above replacement: ${waFormula}.` },
+    { k: 'Poss', v: 'Estimated possessions played on court this season.' },
     { k: 'Role', v: 'Player archetype from the box-score profile (creator, scorer, interior, 3&D, stretch, connector).' },
   ];
 }
+
+const TAB_DEFAULT_SORT: Record<TabId, SortingState> = {
+  impact:      [{ id: 'bpr', desc: true }],
+  traditional: [{ id: 'pts', desc: true }],
+  advanced:    [{ id: 'ts_pct', desc: true }],
+};
 
 const PAGE_SIZE = 100;
 
@@ -167,7 +148,7 @@ export default function NBAPlayerRankingsTable({
   const hasBpr = useMemo(() => data.some((p) => p.bpr != null), [data]);
   const startOnImpact = !isPlayoffs && hasBpr;
   const [activeTab, setActiveTab] = useState<TabId>(startOnImpact ? 'impact' : 'traditional');
-  const [sorting, setSorting] = useState<SortingState>([startOnImpact ? { id: 'bpr', desc: true } : { id: 'pts', desc: true }]);
+  const [sorting, setSorting] = useState<SortingState>(TAB_DEFAULT_SORT[startOnImpact ? 'impact' : 'traditional']);
   const [globalFilter, setGlobalFilter] = useState('');
   // Default "Auto" scales with games played (see playerThresholds.ts)
   const [minPossChoice, setMinPossChoice] = useState<number>(AUTO_THRESHOLD);
@@ -180,28 +161,11 @@ export default function NBAPlayerRankingsTable({
   const hasArchetype = useMemo(() => data.some((p) => p.nba_archetype), [data]);
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: PAGE_SIZE });
 
-  const [optionalCols, setOptionalCols] = useState<Set<string>>(() => {
-    try {
-      const saved = localStorage.getItem('nba-player-cols-v1');
-      return saved ? new Set(JSON.parse(saved) as string[]) : new Set(NBA_DEFAULT_EXTRAS);
-    } catch { return new Set(NBA_DEFAULT_EXTRAS); }
-  });
-
-  useEffect(() => {
-    localStorage.setItem('nba-player-cols-v1', JSON.stringify([...optionalCols]));
-  }, [optionalCols]);
-
-  const tabDefaultSort: Record<TabId, SortingState> = {
-    traditional: [{ id: 'pts',     desc: true }],
-    advanced:    [{ id: 'ts_pct',  desc: true }],
-    impact:      [{ id: 'bpr', desc: true }],
-  };
-
   // Leave Impact when switching to playoffs or to a season with no BPR yet
   useEffect(() => {
     if ((isPlayoffs || !hasBpr) && activeTab === 'impact') {
       setActiveTab('traditional');
-      setSorting(tabDefaultSort['traditional']);
+      setSorting(TAB_DEFAULT_SORT.traditional);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPlayoffs, hasBpr]);
@@ -234,7 +198,7 @@ export default function NBAPlayerRankingsTable({
 
   // ── Metric lookup map ────────────────────────────────────────────────────
   const allMetaMaps = useMemo(() => {
-    const map: Record<string, PlayerMetricMeta> = { plus_minus: PLUS_MINUS_META, wins_added: WINS_ADDED_META };
+    const map: Record<string, PlayerMetricMeta> = { wins_added: WINS_ADDED_META };
     [...PLAYER_TRADITIONAL_METRICS, ...NBA_ADVANCED_METRICS, ...NBA_IMPACT_METRICS].forEach((m) => {
       map[m.key] = m;
     });
@@ -242,20 +206,15 @@ export default function NBAPlayerRankingsTable({
   }, []);
 
   // ── Percentile ranks ─────────────────────────────────────────────────────
-  const allKeys = [
-    ...NBA_TRAD_PRIMARY, ...NBA_TRAD_EXTRAS, 'plus_minus',
-    ...NBA_ADV_PRIMARY, ...NBA_ADV_EXTRAS,
-    ...NBA_IMP_PRIMARY, ...NBA_IMP_BOX_KEYS, ...NBA_IMP_ADJ_KEYS, ...NBA_IMP_RAW_KEYS, 'on_court_poss', 'wins_added',
-  ];
-
   const metricRanks = useMemo(() => {
     const ranks = new Map<string, ReturnType<typeof computeRanks>>();
-    allKeys.forEach((key) => {
+    new Set([...NBA_IMPACT_KEYS, ...NBA_TRAD_KEYS, ...NBA_ADV_KEYS]).forEach((key) => {
       const meta = allMetaMaps[key];
       if (!meta) return;
+      // Below an attempt floor a shooting % is left out of the ranks (and so of the heat)
       const entries = qualified.map((p) => ({
         id: String(p.id),
-        value: (p as any)[key] as number | null,
+        value: meetsAttemptFloor(p, key) ? ((p as unknown as Record<string, number | null>)[key] ?? null) : null,
       }));
       ranks.set(key, computeRanks(entries, meta.better));
     });
@@ -263,24 +222,26 @@ export default function NBAPlayerRankingsTable({
   }, [qualified, allMetaMaps]);
 
   // ── Column factory ───────────────────────────────────────────────────────
-  const createMetricColumn = (key: string): ColumnDef<NBAPlayerSeasonStats> => {
+  const createMetricColumn = (key: string, tooltip?: string): ColumnDef<NBAPlayerSeasonStats> => {
     const meta = allMetaMaps[key];
     if (!meta) return { id: key } as ColumnDef<NBAPlayerSeasonStats>;
     return {
       accessorKey: key,
       header: () => (
-        <HeaderWithTooltip label={meta.label} better={meta.better} tooltip={meta.tooltip} />
+        <HeaderWithTooltip label={meta.label} better={meta.better} tooltip={tooltip ?? meta.tooltip} />
       ),
       cell: (info) => {
+        const row = info.row.original;
         const value = info.getValue<number | null>();
-        const rankData = metricRanks.get(key)?.get(String(info.row.original.id));
-        const hs = value != null && meta.heatmap ? heatStyleFromPercentile(rankData?.percentile ?? null, meta.better) : {};
+        const graded = meetsAttemptFloor(row, key);
+        const rankData = graded ? metricRanks.get(key)?.get(String(row.id)) : undefined;
+        const hs = value != null && graded && meta.heatmap ? heatStyleFromPercentile(rankData?.percentile ?? null, meta.better) : {};
         return (
           <MetricValue
             text={value == null ? null : formatPlayerMetric(value, meta.format)}
             heat={hs}
             rank={rankData?.rank}
-            showRank={meta.showRank}
+            showRank={graded && meta.showRank}
             column={info.column}
           />
         );
@@ -289,51 +250,6 @@ export default function NBAPlayerRankingsTable({
       size: 78,
     };
   };
-
-  const createSubColumn = (key: string, label?: string): ColumnDef<NBAPlayerSeasonStats> => {
-    const meta = allMetaMaps[key];
-    if (!meta) return { id: key } as ColumnDef<NBAPlayerSeasonStats>;
-    const displayLabel = label ?? meta.label;
-    return {
-      accessorKey: key,
-      header: () => (
-        <HeaderWithTooltip label={displayLabel} better={meta.better} tooltip={meta.tooltip} />
-      ),
-      cell: (info) => {
-        const value = info.getValue<number | null>();
-        const rankData = metricRanks.get(key)?.get(String(info.row.original.id));
-        const hs = value != null && meta.heatmap ? heatStyleFromPercentile(rankData?.percentile ?? null, meta.better) : {};
-        return (
-          <MetricValue
-            text={value == null ? null : formatPlayerMetric(value, meta.format)}
-            heat={hs}
-            rank={rankData?.rank}
-            showRank={meta.showRank}
-            column={info.column}
-            variant="compact"
-          />
-        );
-      },
-      size: 72,
-      sortDescFirst: meta.better !== 'lower',
-    };
-  };
-
-  const createGroup = (
-    id: string,
-    label: string,
-    keys: string[],
-    labels?: string[],
-    { emphasizeFirst = false, netLast = false }: { emphasizeFirst?: boolean; netLast?: boolean } = {},
-  ): ColumnDef<NBAPlayerSeasonStats> => ({
-    id,
-    header: label,
-    columns: keys.map((k, i) =>
-      i === 0
-        ? withMeta(createSubColumn(k, labels?.[i]), { divider: true, emphasis: emphasizeFirst })
-        : withMeta(createSubColumn(k, labels?.[i]), { net: netLast && i === keys.length - 1 }),
-    ),
-  });
 
   // ── Base identity columns ────────────────────────────────────────────────
   const baseColumns: ColumnDef<NBAPlayerSeasonStats>[] = [
@@ -465,87 +381,32 @@ export default function NBAPlayerRankingsTable({
         size: 72,
       };
 
-      const possCol = createMetricColumn('on_court_poss');
+      const winsAddedCol = createMetricColumn('wins_added', `Wins Added above replacement · ${wa_formula}`);
 
-      const adjOnCourtVisible = NBA_IMP_ADJ_KEYS.every((k) => optionalCols.has(k));
-      const rawOnCourtVisible = NBA_IMP_RAW_KEYS.every((k) => optionalCols.has(k));
-
-      const boxBprVisible = NBA_IMP_BOX_KEYS.filter((k) => optionalCols.has(k));
-
-      const winsAddedCol: ColumnDef<NBAPlayerSeasonStats> = {
-        id: 'wins_added',
-        accessorKey: 'wins_added',
-        meta: { divider: true },
-        header: () => (
-          <HeaderWithTooltip
-            label="W.Add"
-            better="higher"
-            tooltip={`Wins Added above replacement · ${wa_formula}`}
-          />
-        ),
-        cell: (info) => {
-          const v = info.getValue<number | null>();
-          const rankData = metricRanks.get('wins_added')?.get(String(info.row.original.id));
-          const hs = v != null ? heatStyleFromPercentile(rankData?.percentile ?? null, 'higher') : {};
-          return (
-            <MetricValue
-              text={v == null ? null : formatPlayerMetric(v, WINS_ADDED_META.format)}
-              heat={hs}
-              rank={rankData?.rank}
-              showRank={WINS_ADDED_META.showRank}
-              column={info.column}
-            />
-          );
-        },
-        sortDescFirst: true,
-        size: 72,
-      };
-
+      // BPR is the hero: first metric, larger value, widest metric column
       return [
         rankColumn,
         ...baseColumns,
-        possCol,
+        { ...withMeta(createMetricColumn('bpr'), { emphasis: true, hero: true }), size: 120 },
+        createMetricColumn('obpr'),
+        createMetricColumn('dbpr'),
         winsAddedCol,
-        createGroup('imp-bpr',  'BPR',   NBA_IMP_PRIMARY.slice(0, 3), undefined, { emphasizeFirst: true }),
-        createGroup('imp-mpir', 'MPIR',  NBA_IMP_PRIMARY.slice(3)),
-        ...(boxBprVisible.length > 0
-          ? [createGroup('imp-box-bpr', 'Box BPR', boxBprVisible)]
-          : []),
-        ...(adjOnCourtVisible
-          ? [createGroup('imp-adj-oc', 'Adj On-Court', NBA_IMP_ADJ_KEYS, ['Adj O', 'Adj D', 'Adj EM'], { netLast: true })]
-          : []),
-        ...(rawOnCourtVisible
-          ? [createGroup('imp-raw-oc', 'Raw On-Court', NBA_IMP_RAW_KEYS, ['ORtg', 'DRtg', 'Net'], { netLast: true })]
-          : []),
+        createMetricColumn('on_court_poss'),
         ...(hasArchetype ? [archetypeCol] : []),
       ];
     }
 
-    const visibleExtras =
-      activeTab === 'traditional'
-        ? NBA_TRAD_EXTRAS.filter((k) => optionalCols.has(k))
-        : NBA_ADV_EXTRAS.filter((k) => optionalCols.has(k));
-
-    const primaryKeys =
-      activeTab === 'traditional' ? [...NBA_TRAD_PRIMARY, 'plus_minus'] : NBA_ADV_PRIMARY;
-
-    return [rankColumn, ...baseColumns, ...[...primaryKeys, ...visibleExtras].map(createMetricColumn)];
-  }, [activeTab, metricRanks, sorting, pagination.pageIndex, optionalCols, wa_formula, hasArchetype]);
-
-  const isGroupedTab = activeTab === 'impact';
-
-  // ── Extras per tab (for the column picker UI) ────────────────────────────
-  const extrasForTab = activeTab === 'traditional' ? NBA_TRAD_EXTRAS
-    : activeTab === 'advanced' ? NBA_ADV_EXTRAS
-    : [...NBA_IMP_BOX_KEYS, ...NBA_IMP_ADJ_KEYS, ...NBA_IMP_RAW_KEYS];
-
-  const toggleExtra = (key: string) => {
-    setOptionalCols((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key); else next.add(key);
-      return next;
-    });
-  };
+    // BPR pinned right after MPG on the other tabs, when the season has it
+    const pinnedBpr = hasBpr ? [withMeta(createMetricColumn('bpr'), { divider: true })] : [];
+    const keys = activeTab === 'traditional' ? NBA_TRAD_KEYS : NBA_ADV_KEYS;
+    return [
+      rankColumn,
+      ...baseColumns,
+      ...pinnedBpr,
+      ...keys.map((k, i) => (i === 0 ? withMeta(createMetricColumn(k), { divider: true }) : createMetricColumn(k))),
+    ];
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, metricRanks, sorting, pagination.pageIndex, wa_formula, hasArchetype, hasBpr]);
 
   // ── TanStack table ───────────────────────────────────────────────────────
   // Missing values sort last in both directions
@@ -647,38 +508,12 @@ export default function NBAPlayerRankingsTable({
           active={activeTab}
           onChange={(id) => {
             setActiveTab(id);
-            setSorting(tabDefaultSort[id]);
+            setSorting(TAB_DEFAULT_SORT[id]);
             setPagination((p) => ({ ...p, pageIndex: 0 }));
           }}
         />
         <HeatLegend basis="qualified players" note="PPG/RPG/APG shade above avg only" />
       </div>
-
-      {/* ── Column picker ───────────────────────────────────────────────── */}
-      {extrasForTab.length > 0 && (
-        <div className="flex flex-wrap gap-2 items-center">
-          <span className="text-xs text-text-muted font-medium">Show:</span>
-          {extrasForTab.map((key) => {
-            const meta = allMetaMaps[key];
-            if (!meta) return null;
-            const on = optionalCols.has(key);
-            return (
-              <button
-                key={key}
-                onClick={() => toggleExtra(key)}
-                className={clsx(
-                  'px-2.5 py-1 text-xs rounded border transition-colors',
-                  on
-                    ? 'bg-brand/10 text-brand border-brand/30 font-medium'
-                    : 'bg-ui-surface text-text-muted border-ui-border hover:border-brand/30',
-                )}
-              >
-                {meta.label}
-              </button>
-            );
-          })}
-        </div>
-      )}
 
       {/* ── Table ───────────────────────────────────────────────────────── */}
       <div className="overflow-x-auto border border-ui-border rounded-lg">
@@ -690,7 +525,7 @@ export default function NBAPlayerRankingsTable({
                 {row.getVisibleCells().map((cell) => (
                   <td
                     key={cell.id}
-                    className={clsx('py-2 text-sm', cellClass(cell.column), isGroupedTab ? 'px-1' : 'px-3')}
+                    className={clsx('py-2 text-sm', cellClass(cell.column), 'px-3')}
                     style={{ width: cell.column.getSize() }}
                   >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}

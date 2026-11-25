@@ -44,7 +44,7 @@ export default async function NBAPlayersPage({ searchParams }: NBAPlayersPagePro
           </h1>
           <div className="flex items-center gap-[14px] flex-wrap">
             <p className="text-[15px] text-muted m-0">
-              Player leaderboards across BPR impact and traditional production, with filters for season, season type, and minimum possessions.
+              BPR impact, box-score production, and advanced rates for every NBA player.
             </p>
             {players.length > 0 && (
               <span className="font-mono text-[12px] text-muted-2 inline-flex items-center gap-[7px] px-[10px] py-[5px] bg-ui-surface border border-ui-border rounded-md">

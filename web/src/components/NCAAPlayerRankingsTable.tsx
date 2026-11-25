@@ -27,58 +27,52 @@ import {
   NCAA_IMPACT_METRICS,
   NCAA_FF_METRICS,
   formatPlayerMetric,
+  meetsAttemptFloor,
   type PlayerMetricMeta,
 } from '@macfax/core/lib/playerMetricMetadata';
 import type { NCAAPlayerSeasonStats, SeasonInfo } from '@macfax/core/types';
-import { BPRConfidenceBadge, type BprSource } from './BPRConfidenceBadge';
 import { withNullsLast } from '@/lib/nullsLast';
 import { ncaaTeamHref } from '@/lib/teamLinks';
 import { pickCurrentSeason } from '@macfax/core/lib/season';
 import HeatLegend from './HeatLegend';
 
 type TabId = 'traditional' | 'impact' | 'fourfactors';
-type BprMode = 'strict_bpr' | 'full_two_sided' | 'all_players';
+
+const BOX_ESTIMATE_NOTE = 'Box-score estimate — not enough lineup data yet';
 
 const PLAYER_METRIC_DEFINITIONS: Record<TabId, MetricDefinition[]> = {
-  traditional: [
-    { k: 'GP', v: 'Games played.' },
-    { k: 'MPG', v: 'Minutes per game; the minutes filter uses total minutes played.' },
-    { k: 'PPG', v: 'Points per game.' },
-    { k: 'RPG', v: 'Total rebounds per game.' },
-    { k: 'APG', v: 'Assists per game.' },
-    { k: 'SPG', v: 'Steals per game.' },
-    { k: 'BPG', v: 'Blocks per game.' },
-    { k: 'TOV', v: 'Turnovers per game; lower is usually better.' },
-    { k: 'TS%', v: 'True Shooting %: scoring efficiency that accounts for twos, threes, and free throws.' },
-    { k: 'eFG%', v: 'Effective Field Goal %: shooting efficiency that gives made threes extra credit.' },
-    { k: 'AST/TO', v: 'Assist-to-turnover ratio; higher means more playmaking per turnover.' },
-    { k: '3P% / FT%', v: 'Three-point and free throw shooting percentages.' },
-    { k: 'FGA / 3PA / FTA', v: 'Field goal, three-point, and free throw attempts per game.' },
-    { k: 'ORB / DRB', v: 'Offensive and defensive rebounds per game.' },
-  ],
   impact: [
     { k: 'BPR', v: 'Bayesian Performance Rating (OBPR + DBPR): estimated total player impact in points per 100 possessions above an average D-I player.' },
     { k: 'OBPR', v: 'Offensive BPR: estimated offensive points per 100 possessions added relative to an average D-I player.' },
     { k: 'DBPR', v: 'Defensive BPR: estimated defensive points per 100 possessions prevented relative to an average D-I player; higher is better.' },
     { k: 'Poss', v: 'Offensive possessions played from lineup segments; used to qualify and stabilize player impact ratings.' },
-    { k: 'Box BPR', v: 'Box-score-only BPR estimate used when lineup data is limited; trained to approximate RAPM-based impact.' },
-    { k: 'Adj Off', v: 'Opponent-adjusted team offensive efficiency while the player is on court.' },
-    { k: 'Adj Def', v: 'Opponent-adjusted team defensive efficiency while the player is on court; lower is better.' },
-    { k: 'Adj Net', v: 'On-court adjusted net efficiency: Adj Off minus Adj Def.' },
-    { k: 'Source', v: 'BPR source label: RAPM uses lineup data, box uses box-score estimates, and mixed or partial means a fallback was needed.' },
+    { k: 'Box-score estimates', v: 'Off by default, so the table lists only players rated from lineup data (RAPM). Turn it on to include players whose BPR is a box-score estimate; their BPR is marked †.' },
+  ],
+  traditional: [
+    { k: 'GP', v: 'Games played.' },
+    { k: 'MPG', v: 'Minutes per game; the minutes filter uses total minutes played.' },
+    { k: 'BPR', v: 'Bayesian Performance Rating, shown for reference; see the Impact tab. † marks a box-score estimate.' },
+    { k: 'PPG', v: 'Points per game.' },
+    { k: 'RPG', v: 'Total rebounds per game.' },
+    { k: 'APG', v: 'Assists per game.' },
+    { k: 'SPG', v: 'Steals per game.' },
+    { k: 'BPG', v: 'Blocks per game.' },
+    { k: 'TOV', v: 'Turnovers per game; lower is better.' },
+    { k: 'FG%', v: 'Field goal percentage.' },
+    { k: '3P%', v: 'Three-point percentage; shaded only at 1 or more three-point attempts per game.' },
+    { k: 'FT%', v: 'Free throw percentage; shaded only at 1 or more free throw attempts per game.' },
+    { k: 'TS%', v: 'True Shooting %: scoring efficiency that accounts for twos, threes, and free throws.' },
   ],
   fourfactors: [
+    { k: 'BPR', v: 'Bayesian Performance Rating, shown for reference; see the Impact tab. † marks a box-score estimate.' },
     { k: 'FFII', v: 'Four Factor Impact Index: 0-100 RAPM-based estimate of how much a player moves shooting, turnovers, rebounding, and free throw rate.' },
-    { k: 'Off Impact', v: 'Estimated player effect on the team offensive factor while on offense; positive is better.' },
-    { k: 'Def Impact', v: 'Estimated player effect on the opponent factor while defending; positive is better.' },
+    { k: 'Off', v: 'Estimated player effect on the team factor while on offense; positive is better.' },
+    { k: 'Def', v: 'Estimated player effect on the opponent factor while defending; positive is better.' },
     { k: 'Total', v: 'Two-way factor impact: offensive impact plus defensive impact.' },
     { k: 'eFG Impact', v: 'Estimated effect on team shot efficiency and opponent shot efficiency.' },
     { k: 'TOV Impact', v: 'Estimated effect on reducing team turnovers and forcing opponent turnovers.' },
     { k: 'Rebound Impact', v: 'Estimated effect on team offensive rebounding and limiting opponent offensive rebounds.' },
     { k: 'FTR Impact', v: 'Estimated effect on getting to the line and limiting opponent free throws.' },
-    { k: 'On-Court Rates', v: 'Team and opponent four-factor rates while the player is on the floor; these describe lineup environment, not pure individual impact.' },
-    { k: 'Net', v: 'Team on-court advantage over opponents; positive values favor the player\'s lineup.' },
-    { k: 'On-Ct FFI', v: 'On-court Four Factor Index: team four-factor profile while the player is on court, scaled 0-100.' },
   ],
 };
 
@@ -92,54 +86,25 @@ interface NCAAPlayerRankingsTableProps {
   seasons?: SeasonInfo[];
 }
 
-// ── Traditional ───────────────────────────────────────────────────────────────
-// Core visible columns
-const TRAD_DEFAULT_KEYS = [
-  'pts', 'reb', 'ast', 'stl', 'blk', 'tov', 'ts_pct', 'efg_pct', 'ast_to',
+// ── Column sets ───────────────────────────────────────────────────────────────
+const IMPACT_KEYS = ['bpr', 'obpr', 'dbpr', 'off_poss'];
+const TRAD_KEYS = ['pts', 'reb', 'ast', 'stl', 'blk', 'tov', 'fg_pct', 'fg3_pct', 'ft_pct', 'ts_pct'];
+const FF_GROUPS: Array<{ id: string; label: string; keys: [string, string, string] }> = [
+  { id: 'ff-impact-efg', label: 'eFG Impact',     keys: ['off_efg_impact', 'def_efg_impact', 'efg_impact_margin'] },
+  { id: 'ff-impact-tov', label: 'TOV Impact',     keys: ['off_tov_impact', 'def_tov_impact', 'tov_impact_margin'] },
+  { id: 'ff-impact-reb', label: 'Rebound Impact', keys: ['off_orb_impact', 'def_reb_impact', 'reb_impact_margin'] },
+  { id: 'ff-impact-ftr', label: 'FTR Impact',     keys: ['off_ftr_impact', 'def_ftr_impact', 'ftr_impact_margin'] },
 ];
-// User-toggleable optional extras
-const TRAD_OPTIONAL_KEYS = [
-  'fg3_pct', 'ft_pct', 'fga_pg', 'fg3a_pg', 'fta_pg', 'oreb_pg', 'dreb_pg',
-  'usg_pct', 'fta_rate', 'fg3_rate', 'ast_usg',
-];
+const FF_KEYS = ['four_factor_impact_index', ...FF_GROUPS.flatMap((g) => g.keys)];
 
-// ── Impact ────────────────────────────────────────────────────────────────────
-// Flat columns (BPR family + poss) — adj_team context rendered as a group
-const IMPACT_METRIC_KEYS = [
-  'bpr', 'obpr', 'dbpr', 'off_poss', 'box_bpr',
-];
-// These become the "On-Court Context" grouped columns in the Impact tab
-const IMPACT_ADJ_CTX_KEYS = ['adj_team_off_eff_on', 'adj_team_def_eff_on'];
-
-// ── Four Factors ──────────────────────────────────────────────────────────────
-const FF_ALL_KEYS = [
-  // New RAPM-based impact (primary)
-  'four_factor_impact_index',
-  'off_efg_impact', 'def_efg_impact',
-  'off_tov_impact', 'def_tov_impact',
-  'off_orb_impact', 'def_reb_impact',
-  'off_ftr_impact', 'def_ftr_impact',
-  'efg_impact_margin', 'tov_impact_margin', 'reb_impact_margin', 'ftr_impact_margin',
-  // Old on-court lineup environment (context)
-  'on_court_efg_pct', 'on_court_opp_efg_pct', 'on_court_efg_margin',
-  'on_court_tov_pct', 'on_court_opp_tov_pct', 'on_court_tov_edge',
-  'on_court_orb_pct', 'on_court_drb_pct', 'on_court_reb_edge',
-  'on_court_ftr', 'on_court_opp_ftr', 'on_court_ftr_margin',
-  'on_court_ffi',
-];
-
-const BPR_SOURCE_STYLES: Record<string, string> = {
-  rapm:    'bg-brand/10 text-brand border-brand/20',
-  box_bpr: 'bg-brand-orange/10 text-brand-orange border-brand-orange/20',
-  mixed:   'bg-secondary/10 text-secondary border-secondary/20',
-  partial: 'bg-ui-hover text-text-muted border-ui-border',
+const TAB_DEFAULT_SORT: Record<TabId, SortingState> = {
+  impact:      [{ id: 'bpr', desc: true }],
+  traditional: [{ id: 'pts', desc: true }],
+  fourfactors: [{ id: 'four_factor_impact_index', desc: true }],
 };
 
-const BPR_MODES: Array<{ id: BprMode; label: string; title: string }> = [
-  { id: 'strict_bpr',     label: 'Strict BPR',     title: 'Only players with full RAPM on both sides' },
-  { id: 'full_two_sided', label: 'Full Two-Sided', title: 'Both OBPR and DBPR present (RAPM or box)' },
-  { id: 'all_players',    label: 'All Players',    title: 'Include box-only and partial fallbacks' },
-];
+/** BPR from lineup data (RAPM); anything else is a box-score or partial fallback. */
+const isLineupBpr = (p: NCAAPlayerSeasonStats) => p.bpr_source === 'rapm';
 
 const PAGE_SIZE = 100;
 
@@ -157,7 +122,7 @@ export default function NCAAPlayerRankingsTable({ data, selectedSeason, seasons 
   // Early in a season BPR isn't computed yet; open on Traditional so the table isn't empty
   const hasBpr = useMemo(() => data.some((p) => p.bpr != null), [data]);
   const [activeTab, setActiveTab] = useState<TabId>(hasBpr ? 'impact' : 'traditional');
-  const [sorting, setSorting] = useState<SortingState>([hasBpr ? { id: 'bpr', desc: true } : { id: 'pts', desc: true }]);
+  const [sorting, setSorting] = useState<SortingState>(TAB_DEFAULT_SORT[hasBpr ? 'impact' : 'traditional']);
   const [globalFilter, setGlobalFilter] = useState('');
   // Default "Auto" scales with games played (see playerThresholds.ts)
   const [minMinutesChoice, setMinMinutesChoice] = useState<number>(AUTO_THRESHOLD);
@@ -165,31 +130,18 @@ export default function NCAAPlayerRankingsTable({ data, selectedSeason, seasons 
   const minMinutes = minMinutesChoice === AUTO_THRESHOLD ? autoMinMinutes : minMinutesChoice;
   const [conferenceFilter, setConferenceFilter] = useState('all');
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: PAGE_SIZE });
-  const [tradOptional, setTradOptional] = useState<Set<string>>(() => {
-    try {
-      const saved = localStorage.getItem('ncaa-player-trad-cols');
-      return saved ? new Set(JSON.parse(saved) as string[]) : new Set();
-    } catch { return new Set(); }
-  });
-
-  useEffect(() => {
-    localStorage.setItem('ncaa-player-trad-cols', JSON.stringify([...tradOptional]));
-  }, [tradOptional]);
-  const [bprMode, setBprMode] = useState<BprMode>('strict_bpr');
+  // Off = lineup-based (RAPM) BPR only; on = also box-score and partial estimates
+  const [includeBoxEstimates, setIncludeBoxEstimates] = useState(false);
 
   const tabs: Array<{ id: TabId; label: string }> = [
-    { id: 'impact',       label: 'Impact'        },
+    { id: 'impact',       label: 'Impact'       },
     { id: 'traditional',  label: 'Traditional'  },
-    { id: 'fourfactors',  label: 'Four Factors'  },
+    { id: 'fourfactors',  label: 'Four Factors' },
   ];
 
   const switchTab = (tab: TabId) => {
     setActiveTab(tab);
-    setSorting([
-      tab === 'impact'      ? { id: 'bpr',         desc: true } :
-      tab === 'fourfactors' ? { id: 'four_factor_impact_index', desc: true } :
-                               { id: 'pts',          desc: true },
-    ]);
+    setSorting(TAB_DEFAULT_SORT[tab]);
     setPagination((p) => ({ ...p, pageIndex: 0 }));
   };
 
@@ -206,29 +158,22 @@ export default function NCAAPlayerRankingsTable({ data, selectedSeason, seasons 
     return Array.from(seen).sort();
   }, [data]);
 
+  // ── Qualified pool: minutes floor, plus the box-estimate gate on Impact ───
+  // Also the rank and heat base, so colors compare like with like.
+  const rankBase = useMemo(() => {
+    const base = data.filter((p) => p.mpg * p.gp >= minMinutes);
+    return activeTab === 'impact' && !includeBoxEstimates ? base.filter(isLineupBpr) : base;
+  }, [data, minMinutes, activeTab, includeBoxEstimates]);
+
   // ── Filter ────────────────────────────────────────────────────────────────
-  const filtered = useMemo(
-    () =>
-      data.filter((p) => {
-        if (p.mpg * p.gp < minMinutes) return false;
-        if (conferenceFilter !== 'all' && p.conference_name !== conferenceFilter) return false;
-        // BPR mode gate (only applied on Impact tab)
-        if (activeTab === 'impact') {
-          if (bprMode === 'strict_bpr' && p.bpr_source !== 'rapm') return false;
-          if (bprMode === 'full_two_sided' &&
-              (p.obpr == null || p.dbpr == null || p.bpr_source === 'partial')) return false;
-        }
-        if (globalFilter) {
-          const q = globalFilter.toLowerCase();
-          return (
-            p.player_name.toLowerCase().includes(q) ||
-            p.team_name.toLowerCase().includes(q)
-          );
-        }
-        return true;
-      }),
-    [data, minMinutes, conferenceFilter, globalFilter, activeTab, bprMode]
-  );
+  const filtered = useMemo(() => {
+    const q = globalFilter.toLowerCase();
+    return rankBase.filter((p) => {
+      if (conferenceFilter !== 'all' && p.conference_name !== conferenceFilter) return false;
+      if (q) return p.player_name.toLowerCase().includes(q) || p.team_name.toLowerCase().includes(q);
+      return true;
+    });
+  }, [rankBase, conferenceFilter, globalFilter]);
 
   // ── Meta map ──────────────────────────────────────────────────────────────
   const allMetaMaps: Record<string, PlayerMetricMeta> = useMemo(() => {
@@ -239,24 +184,10 @@ export default function NCAAPlayerRankingsTable({ data, selectedSeason, seasons 
     return map;
   }, []);
 
-  // ── Rank base: respects current tab's mode filter ─────────────────────────
-  const rankBase = useMemo(() => {
-    let base = data.filter((p) => p.mpg * p.gp >= minMinutes);
-    if (activeTab === 'impact') {
-      if (bprMode === 'strict_bpr')
-        base = base.filter((p) => p.bpr_source === 'rapm');
-      else if (bprMode === 'full_two_sided')
-        base = base.filter(
-          (p) => p.obpr != null && p.dbpr != null && p.bpr_source !== 'partial'
-        );
-    }
-    return base;
-  }, [data, minMinutes, activeTab, bprMode]);
-
   const activeTabKeys = useMemo(() => {
-    if (activeTab === 'traditional') return [...TRAD_DEFAULT_KEYS, ...TRAD_OPTIONAL_KEYS];
-    if (activeTab === 'fourfactors') return FF_ALL_KEYS;
-    return [...IMPACT_METRIC_KEYS, ...IMPACT_ADJ_CTX_KEYS];
+    if (activeTab === 'traditional') return ['bpr', ...TRAD_KEYS];
+    if (activeTab === 'fourfactors') return ['bpr', ...FF_KEYS];
+    return IMPACT_KEYS;
   }, [activeTab]);
 
   const metricRanks = useMemo(() => {
@@ -264,49 +195,48 @@ export default function NCAAPlayerRankingsTable({ data, selectedSeason, seasons 
     activeTabKeys.forEach((key) => {
       const meta = allMetaMaps[key];
       if (!meta) return;
+      // Below an attempt floor a shooting % is left out of the ranks (and so of the heat)
       const entries = rankBase.map((p) => ({
         id: p.player_id,
-        value: (p as any)[key] as number | null,
+        value: meetsAttemptFloor(p, key) ? ((p as unknown as Record<string, number | null>)[key] ?? null) : null,
       }));
       ranks.set(key, computeRanks(entries, meta.better));
     });
-    // Computed: adj_team_net_on (off - def)
-    if (activeTab === 'impact') {
-      const entries = rankBase.map((p) => ({
-        id: p.player_id,
-        value:
-          p.adj_team_off_eff_on != null && p.adj_team_def_eff_on != null
-            ? p.adj_team_off_eff_on - p.adj_team_def_eff_on
-            : null,
-      }));
-      ranks.set('adj_team_net_on', computeRanks(entries, 'higher'));
-    }
     return ranks;
-  }, [rankBase, allMetaMaps, activeTabKeys, activeTab]);
+  }, [rankBase, allMetaMaps, activeTabKeys]);
 
   // ── Column factory ────────────────────────────────────────────────────────
-  const createMetricColumn = (key: string): ColumnDef<NCAAPlayerSeasonStats> => {
+  const createMetricColumn = (key: string, variant: 'full' | 'compact' = 'full', label?: string): ColumnDef<NCAAPlayerSeasonStats> => {
     const meta = allMetaMaps[key];
     if (!meta) return { id: key } as ColumnDef<NCAAPlayerSeasonStats>;
     return {
       accessorKey: key,
       header: () => (
-        <HeaderWithTooltip label={meta.label} better={meta.better} tooltip={meta.tooltip} />
+        <HeaderWithTooltip label={label ?? meta.label} better={meta.better} tooltip={meta.tooltip} />
       ),
       cell: (info) => {
+        const p = info.row.original;
         const raw = info.getValue<number | null>();
-        const rankData = metricRanks.get(key)?.get(info.row.original.player_id);
-        const hs = raw != null && meta.heatmap ? heatStyleFromPercentile(rankData?.percentile ?? null, meta.better) : {};
+        const graded = meetsAttemptFloor(p, key);
+        const rankData = graded ? metricRanks.get(key)?.get(p.player_id) : undefined;
+        const hs = raw != null && graded && meta.heatmap ? heatStyleFromPercentile(rankData?.percentile ?? null, meta.better) : {};
+        // BPR that isn't from lineup data gets a † (only shown when such rows are listed)
+        const marker = key === 'bpr' && raw != null && !isLineupBpr(p)
+          ? <span title={BOX_ESTIMATE_NOTE} aria-label={BOX_ESTIMATE_NOTE} className="ml-0.5 font-sans text-[10px] text-muted cursor-help">†</span>
+          : undefined;
         return (
           <MetricValue
             text={raw == null ? null : formatPlayerMetric(raw, meta.format)}
             heat={hs}
             rank={rankData?.rank}
-            showRank={meta.showRank}
+            showRank={graded && meta.showRank}
             column={info.column}
+            variant={variant}
+            marker={marker}
           />
         );
       },
+      size: variant === 'compact' ? 68 : 78,
       sortDescFirst: meta.better !== 'lower',
     };
   };
@@ -344,6 +274,7 @@ export default function NCAAPlayerRankingsTable({ data, selectedSeason, seasons 
         return (
           <div className="flex items-center gap-2 min-w-0 max-w-[190px]">
             {p.headshot_url && (
+              /* eslint-disable-next-line @next/next/no-img-element */
               <img
                 src={p.headshot_url}
                 alt={p.player_name}
@@ -428,236 +359,40 @@ export default function NCAAPlayerRankingsTable({ data, selectedSeason, seasons 
     };
 
     const base = [rankCol, playerCol, teamCol, posCol, gpCol, mpgCol];
+    // BPR pinned right after MPG on the other tabs, when the season has it
+    const pinnedBpr = hasBpr ? [withMeta(createMetricColumn('bpr'), { divider: true })] : [];
+
+    // ── Impact: BPR is the hero (first metric, larger value, widest column) ──
+    if (activeTab === 'impact') {
+      return [
+        ...base,
+        { ...withMeta(createMetricColumn('bpr'), { emphasis: true, hero: true }), size: 120 },
+        createMetricColumn('obpr'),
+        createMetricColumn('dbpr'),
+        createMetricColumn('off_poss'),
+      ];
+    }
 
     // ── Traditional ──
     if (activeTab === 'traditional') {
-      const visibleKeys = [
-        ...TRAD_DEFAULT_KEYS,
-        ...TRAD_OPTIONAL_KEYS.filter((k) => tradOptional.has(k)),
-      ];
-      return [...base, ...visibleKeys.map(createMetricColumn)];
+      return [...base, ...pinnedBpr, ...TRAD_KEYS.map((k, i) => (i === 0 ? withMeta(createMetricColumn(k), { divider: true }) : createMetricColumn(k)))];
     }
 
-    // ── Impact ──
-    if (activeTab === 'impact') {
-      const adjNetSubCol: ColumnDef<NCAAPlayerSeasonStats> = {
-        id: 'adj_team_net_on',
-        header: () => (
-          <HeaderWithTooltip
-            label="Adj Net"
-            better="higher"
-            tooltip="Adjusted net efficiency (Off Eff − Def Eff) in pts/100 poss while this player is on court."
-          />
-        ),
-        accessorFn: (row) =>
-          row.adj_team_off_eff_on != null && row.adj_team_def_eff_on != null
-            ? row.adj_team_off_eff_on - row.adj_team_def_eff_on
-            : null,
-        cell: (info) => {
-          const val = info.getValue<number | null>();
-          const rankData = metricRanks.get('adj_team_net_on')?.get(info.row.original.player_id);
-          const hs = val != null ? heatStyleFromPercentile(rankData?.percentile ?? null, 'higher') : {};
-          return (
-            <MetricValue
-              text={val == null ? null : val.toFixed(1)}
-              heat={hs}
-              rank={rankData?.rank}
-              showRank={false}
-              column={info.column}
-              variant="compact"
-            />
-          );
-        },
-        sortDescFirst: true,
-        size: 68,
-      };
-
-      const adjOffSubCol: ColumnDef<NCAAPlayerSeasonStats> = {
-        accessorKey: 'adj_team_off_eff_on',
-        header: () => (
-          <HeaderWithTooltip
-            label="Adj Off"
-            better="higher"
-            tooltip={allMetaMaps['adj_team_off_eff_on']?.tooltip ?? ''}
-          />
-        ),
-        cell: (info) => {
-          const val = info.getValue<number | null>();
-          const rankData = metricRanks.get('adj_team_off_eff_on')?.get(info.row.original.player_id);
-          const hs = val != null ? heatStyleFromPercentile(rankData?.percentile ?? null, 'higher') : {};
-          return (
-            <MetricValue
-              text={val == null ? null : val.toFixed(1)}
-              heat={hs}
-              rank={rankData?.rank}
-              showRank={allMetaMaps['adj_team_off_eff_on']?.showRank}
-              column={info.column}
-              variant="compact"
-            />
-          );
-        },
-        sortDescFirst: true,
-        size: 68,
-      };
-
-      const adjDefSubCol: ColumnDef<NCAAPlayerSeasonStats> = {
-        accessorKey: 'adj_team_def_eff_on',
-        header: () => (
-          <HeaderWithTooltip
-            label="Adj Def"
-            better="lower"
-            tooltip={allMetaMaps['adj_team_def_eff_on']?.tooltip ?? ''}
-          />
-        ),
-        cell: (info) => {
-          const val = info.getValue<number | null>();
-          const rankData = metricRanks.get('adj_team_def_eff_on')?.get(info.row.original.player_id);
-          const hs = val != null ? heatStyleFromPercentile(rankData?.percentile ?? null, 'lower') : {};
-          return (
-            <MetricValue
-              text={val == null ? null : val.toFixed(1)}
-              heat={hs}
-              rank={rankData?.rank}
-              showRank={allMetaMaps['adj_team_def_eff_on']?.showRank}
-              column={info.column}
-              variant="compact"
-            />
-          );
-        },
-        sortDescFirst: false,
-        size: 68,
-      };
-
-      const onCtxGroup: ColumnDef<NCAAPlayerSeasonStats> = {
-        id: 'impact-adj-ctx',
-        header: 'On-Court Context',
-        columns: [
-          withMeta(adjOffSubCol, { divider: true }),
-          adjDefSubCol,
-          withMeta(adjNetSubCol, { net: true }),
-        ],
-      };
-
-      const sourceCol: ColumnDef<NCAAPlayerSeasonStats> = {
-        id: 'bpr_source',
-        header: 'Confidence',
-        accessorFn: (row) => row.bpr_source ?? '',
-        cell: (info) => {
-          const row = info.row.original;
-          if (!row.bpr_source) return <span className="text-text-muted">-</span>;
-          return (
-            <BPRConfidenceBadge
-              source={row.bpr_source as BprSource}
-              sample={row.off_poss}
-              league="ncaa"
-              seasonYear={selectedSeason}
-            />
-          );
-        },
-        enableSorting: false,
-        size: 90,
-      };
-
-      return [
-        ...base,
-        ...IMPACT_METRIC_KEYS.map((k) =>
-          k === 'bpr' ? withMeta(createMetricColumn(k), { emphasis: true }) : createMetricColumn(k),
-        ),
-        onCtxGroup,
-        sourceCol,
-      ];
-    }
-
-    // ── Four Factors — grouped columns matching team rankings design ────────
-    const createSubColumn = ({ key, label }: { key: string; label: string }): ColumnDef<NCAAPlayerSeasonStats> => {
-      const meta = allMetaMaps[key];
-      if (!meta) return { id: key } as ColumnDef<NCAAPlayerSeasonStats>;
-      return {
-        accessorKey: key,
-        header: () => (
-          <HeaderWithTooltip label={label} better={meta.better} tooltip={meta.tooltip} />
-        ),
-        cell: (info) => {
-          const raw = info.getValue<number | null>();
-          const rankData = metricRanks.get(key)?.get(info.row.original.player_id);
-          const hs = raw != null && meta.heatmap ? heatStyleFromPercentile(rankData?.percentile ?? null, meta.better) : {};
-          return (
-            <MetricValue
-              text={raw == null ? null : formatPlayerMetric(raw, meta.format)}
-              heat={hs}
-              rank={rankData?.rank}
-              showRank={meta.showRank}
-              column={info.column}
-              variant="compact"
-            />
-          );
-        },
-        size: 68,
-        sortDescFirst: meta.better !== 'lower',
-      };
-    };
-
-    const createGroup = (
-      id: string,
-      label: string,
-      ...subs: Array<{ key: string; label: string }>
-    ): ColumnDef<NCAAPlayerSeasonStats> => ({
-      id,
-      header: label,
-      columns: subs.map((sub, i) =>
-        withMeta(createSubColumn(sub), {
-          divider: i === 0,
-          net: sub.label === 'Net' || sub.label === 'Total',
-        }),
-      ),
-    });
-
+    // ── Four Factors: FFII + the four Off / Def / Total impact groups ──
     return [
       ...base,
-      withMeta(createSubColumn({ key: 'four_factor_impact_index', label: 'FFII' }), { emphasis: true }),
-      createGroup('ff-impact-efg', 'eFG Impact',
-        { key: 'off_efg_impact',    label: 'Off' },
-        { key: 'def_efg_impact',    label: 'Def' },
-        { key: 'efg_impact_margin', label: 'Total' },
-      ),
-      createGroup('ff-impact-tov', 'TOV Impact',
-        { key: 'off_tov_impact',    label: 'Off' },
-        { key: 'def_tov_impact',    label: 'Def' },
-        { key: 'tov_impact_margin', label: 'Total' },
-      ),
-      createGroup('ff-impact-reb', 'Rebound Impact',
-        { key: 'off_orb_impact',    label: 'Off' },
-        { key: 'def_reb_impact',    label: 'Def' },
-        { key: 'reb_impact_margin', label: 'Total' },
-      ),
-      createGroup('ff-impact-ftr', 'FTR Impact',
-        { key: 'off_ftr_impact',    label: 'Off' },
-        { key: 'def_ftr_impact',    label: 'Def' },
-        { key: 'ftr_impact_margin', label: 'Total' },
-      ),
-      createGroup('ff-lineup-efg', 'On-Court eFG%',
-        { key: 'on_court_efg_pct',     label: 'Off'    },
-        { key: 'on_court_opp_efg_pct', label: 'Def'    },
-        { key: 'on_court_efg_margin',  label: 'Net'    },
-      ),
-      createGroup('ff-lineup-tov', 'On-Court TOV%',
-        { key: 'on_court_tov_pct',     label: 'Off'  },
-        { key: 'on_court_opp_tov_pct', label: 'Def'  },
-        { key: 'on_court_tov_edge',    label: 'Net'  },
-      ),
-      createGroup('ff-lineup-reb', 'On-Court Reb%',
-        { key: 'on_court_orb_pct',  label: 'ORB'  },
-        { key: 'on_court_drb_pct',  label: 'DRB'  },
-        { key: 'on_court_reb_edge', label: 'Net'  },
-      ),
-      createGroup('ff-lineup-ftr', 'On-Court FTR',
-        { key: 'on_court_ftr',        label: 'Off'    },
-        { key: 'on_court_opp_ftr',    label: 'Def'    },
-        { key: 'on_court_ftr_margin', label: 'Net'    },
-      ),
-      withMeta(createSubColumn({ key: 'on_court_ffi', label: 'On-Ct FFI' }), { divider: true }),
+      ...pinnedBpr,
+      withMeta(createMetricColumn('four_factor_impact_index', 'compact', 'FFII'), { emphasis: true }),
+      ...FF_GROUPS.map((g): ColumnDef<NCAAPlayerSeasonStats> => ({
+        id: g.id,
+        header: g.label,
+        columns: g.keys.map((k, i) =>
+          withMeta(createMetricColumn(k, 'compact', ['Off', 'Def', 'Total'][i]), { divider: i === 0, net: i === 2 }),
+        ),
+      })),
     ];
-  }, [activeTab, metricRanks, pagination.pageIndex, sorting, tradOptional, allMetaMaps, selectedSeason, currentSeason]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, metricRanks, pagination.pageIndex, sorting, allMetaMaps, hasBpr, selectedSeason, currentSeason]);
 
   // ── Table ─────────────────────────────────────────────────────────────────
   // Missing values sort last in both directions
@@ -679,7 +414,7 @@ export default function NCAAPlayerRankingsTable({ data, selectedSeason, seasons 
     getPaginationRowModel: getPaginationRowModel(),
   });
 
-  const isGroupedTab = activeTab === 'fourfactors' || activeTab === 'impact';
+  const isGroupedTab = activeTab === 'fourfactors';
 
   return (
     <div className="space-y-4">
@@ -758,51 +493,20 @@ export default function NCAAPlayerRankingsTable({ data, selectedSeason, seasons 
         <HeatLegend basis="qualified players" note="PPG/RPG/APG shade above avg only" />
       </div>
 
-      {/* ── Tab sub-controls ────────────────────────────────────────────────── */}
-      {activeTab === 'traditional' && (
-        <div className="flex flex-wrap gap-2 items-center">
-          <span className="text-xs text-text-muted font-medium">Show:</span>
-          {TRAD_OPTIONAL_KEYS.map((key) => {
-            const meta = allMetaMaps[key];
-            if (!meta) return null;
-            const on = tradOptional.has(key);
-            return (
-              <button
-                key={key}
-                onClick={() => {
-                  setTradOptional((prev) => {
-                    const next = new Set(prev);
-                    if (next.has(key)) next.delete(key); else next.add(key);
-                    return next;
-                  });
-                }}
-                className={clsx(
-                  'px-2.5 py-1 text-xs rounded border transition-colors',
-                  on
-                    ? 'bg-brand/10 text-brand border-brand/30 font-medium'
-                    : 'bg-ui-surface text-text-muted border-ui-border hover:border-brand/30',
-                )}
-              >
-                {meta.label}
-              </button>
-            );
-          })}
-        </div>
-      )}
-
+      {/* ── Impact: box-score estimates toggle ─────────────────────────────── */}
       {activeTab === 'impact' && (
-        <div className="flex flex-wrap gap-2 items-center">
-          <span className="text-xs text-text-muted font-medium">Ratings:</span>
-          <TableTabs
-            size="sm"
-            tabs={BPR_MODES}
-            active={bprMode}
-            onChange={(id) => {
-              setBprMode(id);
+        <label className="inline-flex items-center gap-2 text-sm text-text-muted cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={includeBoxEstimates}
+            onChange={(e) => {
+              setIncludeBoxEstimates(e.target.checked);
               setPagination((p) => ({ ...p, pageIndex: 0 }));
             }}
+            className="h-4 w-4 rounded border-ui-border accent-ink"
           />
-        </div>
+          Include box-score-only estimates
+        </label>
       )}
 
       {/* ── Table ───────────────────────────────────────────────────────────── */}
@@ -877,7 +581,11 @@ export default function NCAAPlayerRankingsTable({ data, selectedSeason, seasons 
         </div>
       )}
 
-      <MetricDefinitionsCard definitions={PLAYER_METRIC_DEFINITIONS[activeTab]} />
+      <MetricDefinitionsCard
+        definitions={hasBpr
+          ? PLAYER_METRIC_DEFINITIONS[activeTab]
+          : PLAYER_METRIC_DEFINITIONS[activeTab].filter((d) => d.k !== 'BPR')}
+      />
     </div>
   );
 }

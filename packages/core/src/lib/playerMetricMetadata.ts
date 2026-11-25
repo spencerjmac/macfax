@@ -399,6 +399,25 @@ export const NBA_IMPACT_METRICS: PlayerMetricMeta[] = [
   },
 ];
 
+// ─── Attempt floors ───────────────────────────────────────────────────────────
+
+/**
+ * Shooting percentages on tiny volume are noise: below these per-game attempt floors a
+ * player's 3P% / FT% shows as a plain number, with no heat and no rank.
+ */
+export const ATTEMPT_FLOORS: Record<string, { attemptsKey: string; min: number }> = {
+  fg3_pct: { attemptsKey: 'fg3a_pg', min: 1 },
+  ft_pct:  { attemptsKey: 'fta_pg',  min: 1 },
+};
+
+/** True when `metricKey` has no floor, or the row's per-game attempts reach it. */
+export function meetsAttemptFloor(row: object, metricKey: string): boolean {
+  const floor = ATTEMPT_FLOORS[metricKey];
+  if (!floor) return true;
+  const attempts = (row as Record<string, unknown>)[floor.attemptsKey];
+  return typeof attempts === 'number' && attempts >= floor.min;
+}
+
 // ─── Lookup helpers ───────────────────────────────────────────────────────────
 
 export const PLAYER_METRIC_LOOKUP: Record<string, PlayerMetricMeta> = Object.fromEntries(
