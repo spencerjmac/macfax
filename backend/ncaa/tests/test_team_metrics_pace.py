@@ -53,3 +53,21 @@ class PaceTests(TestCase):
         self.assertAlmostEqual(m.ortg, 100 * 80 / a1.possessions_est, places=4)   # g2's 66 and g3's 75 left out
         self.assertAlmostEqual(m.drtg, 100 * 70 / b1.possessions_est, places=4)
         self.assertEqual(m.ppg, (80 + 66 + 75) / 3)                                 # per-game points: every game
+
+    def test_rates_and_per_game_box_stats(self):
+        m = TeamSeasonMetrics.all_objects.get(team=self.a, season=self.season, is_pre_tournament=False)
+        a1 = TeamGameStats.objects.get(game__source_game_id="g1", team=self.a)
+        # TOV% and ORB% over g1 only (g3's box is one-sided, g2 has none)
+        self.assertAlmostEqual(m.tov_pct, 100 * 11 / a1.possessions_est, places=4)
+        self.assertAlmostEqual(m.orb_pct, 100 * 10 / (10 + 20), places=4)
+        # assists per game with a box: g1 and g3 (Team A's own box), not g2
+        self.assertEqual(m.box_games, 2)
+        self.assertAlmostEqual(m.ast_g, (15 + 15) / 2, places=4)
+
+    def test_national_averages_use_games_with_both_boxes(self):
+        from ncaa.models import NationalAverages
+        call_command("compute_national_averages", season=2013, stdout=StringIO())
+        na = NationalAverages.objects.get(season=self.season)
+        a1 = TeamGameStats.objects.get(game__source_game_id="g1", team=self.a)
+        self.assertAlmostEqual(na.avg_ortg, 100 * (80 + 70) / (2 * a1.poss_game), places=4)
+        self.assertAlmostEqual(na.avg_pace, 40 * (2 * a1.poss_game) / (2 * 40), places=4)

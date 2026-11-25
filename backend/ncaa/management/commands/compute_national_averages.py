@@ -67,6 +67,12 @@ class Command(BaseCommand):
         total_minutes = 0
         
         for stat in game_stats:
+            # Games where both teams have a box score only. A final score without a box has no
+            # possessions, and a game with one box only gets half-possessions (poss_game averages
+            # both rows), so either would put points or minutes against possessions they don't have.
+            opp = stat._get_opp_stats()
+            if not (stat.fga > 0 and opp is not None and opp.fga > 0):
+                continue
             poss = stat.poss_game
             if poss:
                 total_pts += stat.pts
@@ -79,10 +85,7 @@ class Command(BaseCommand):
                 total_fta += stat.fta
                 total_minutes += stat.game_minutes
                 
-                # Get opponent dreb
-                opp = stat._get_opp_stats()
-                if opp:
-                    total_opp_dreb += opp.dreb
+                total_opp_dreb += opp.dreb
         
         # Compute averages (possession-weighted)
         avg_ortg = (100 * total_pts / total_possessions) if total_possessions > 0 else 0.0

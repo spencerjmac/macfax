@@ -182,6 +182,12 @@ class Command(BaseCommand):
             "eff_possessions": 0.0,
             "eff_opp_possessions": 0.0,
             "eff_minutes": 0,
+            "eff_tov": 0,
+            "eff_opp_tov": 0,
+            "eff_oreb": 0,
+            "eff_dreb": 0,
+            "eff_opp_oreb": 0,
+            "eff_opp_dreb": 0,
         }
 
         for gs in game_stats:
@@ -234,7 +240,8 @@ class Command(BaseCommand):
 
     @staticmethod
     def _add_efficiency_game(totals: Dict, gs, opp_stats) -> None:
-        """A game where both teams have a box score: count it for pace, ORtg and DRtg.
+        """A game where both teams have a box score: count it for pace, ORtg / DRtg, TOV% and the
+        rebound rates.
 
         A final score without a box (2,471 games in 2005-2025, 2,327 of them in 2005-07 and 2012-13) has
         no possessions, and possessions_est averages both teams' rows, so a game with one box only gets
@@ -246,6 +253,12 @@ class Command(BaseCommand):
         totals["eff_possessions"] += gs.possessions_est
         totals["eff_opp_possessions"] += opp_stats.possessions_est
         totals["eff_minutes"] += gs.game_minutes
+        totals["eff_tov"] += gs.tov
+        totals["eff_opp_tov"] += opp_stats.tov
+        totals["eff_oreb"] += gs.oreb
+        totals["eff_dreb"] += gs.dreb
+        totals["eff_opp_oreb"] += opp_stats.oreb
+        totals["eff_opp_dreb"] += opp_stats.dreb
 
     def _compute_kill_shots(self, team: Team, season: Season, is_pre_tournament: bool) -> Dict:
         """
@@ -359,14 +372,20 @@ class Command(BaseCommand):
         tov = totals["total_tov"]
 
         efg_pct = ((fgm + 0.5 * fg3m) / fga * 100) if fga > 0 else 0
-        tov_pct = (tov / total_poss * 100) if total_poss > 0 else 0
-        orb_pct = (oreb / (oreb + opp_dreb) * 100) if (oreb + opp_dreb) > 0 else 0
+        # TOV% and rebound rates over games where both teams have a box (see _add_efficiency_game):
+        # a game with one box would pair this team's counts with an empty opponent row
+        e_poss, e_opp_poss = totals["eff_possessions"], totals["eff_opp_possessions"]
+        e_tov, e_opp_tov = totals["eff_tov"], totals["eff_opp_tov"]
+        e_oreb, e_dreb = totals["eff_oreb"], totals["eff_dreb"]
+        e_opp_oreb, e_opp_dreb = totals["eff_opp_oreb"], totals["eff_opp_dreb"]
+        tov_pct = (e_tov / e_poss * 100) if e_poss > 0 else 0
+        orb_pct = (e_oreb / (e_oreb + e_opp_dreb) * 100) if (e_oreb + e_opp_dreb) > 0 else 0
         ftr = (fta / fga * 100) if fga > 0 else 0
 
         # Opponent Four Factors
         # Opponent ORB% = Opponent OREB / (Opponent OREB + Team DREB)
         opp_orb_pct = (
-            (opp_oreb / (opp_oreb + dreb) * 100) if (opp_oreb + dreb) > 0 else 0
+            (e_opp_oreb / (e_opp_oreb + e_dreb) * 100) if (e_opp_oreb + e_dreb) > 0 else 0
         )
 
         # Opponent offensive stats
@@ -377,8 +396,8 @@ class Command(BaseCommand):
         opp_tov = totals["total_opp_tov"]
 
         opp_efg_pct = ((opp_fgm + 0.5 * opp_fg3m) / opp_fga * 100) if opp_fga > 0 else 0
-        opp_tov_pct = (opp_tov / total_opp_poss * 100) if total_opp_poss > 0 else 0
-        drb_pct = (dreb / (dreb + opp_oreb) * 100) if (dreb + opp_oreb) > 0 else 0
+        opp_tov_pct = (e_opp_tov / e_opp_poss * 100) if e_opp_poss > 0 else 0
+        drb_pct = (e_dreb / (e_dreb + e_opp_oreb) * 100) if (e_dreb + e_opp_oreb) > 0 else 0
         opp_ftr = (opp_fta / opp_fga * 100) if opp_fga > 0 else 0
 
         # Four Factor Margins
@@ -393,14 +412,16 @@ class Command(BaseCommand):
         kill_shot_margin_pg = kill_shots_pg - kill_shots_conceded_pg
 
         # CBB Analytics stats
-        ast_g = totals["total_ast"] / games
-        blk_g = totals["total_blk"] / games
+        # Box counts per game with a box (a final score without a box has no assists or blocks)
+        box_games = totals["box_games"]
+        ast_g = totals["total_ast"] / box_games if box_games else 0
+        blk_g = totals["total_blk"] / box_games if box_games else 0
         # AST% = AST / FGM (simplified)
         ast_pct = (totals["total_ast"] / fgm * 100) if fgm > 0 else 0
         # BLK% = placeholder (needs opponent FGA)
         blk_pct = None
         # DPF = defensive personal fouls (simplified as opponent FTA)
-        dpf_g = totals["total_pf"] / games  # Placeholder
+        dpf_g = totals["total_pf"] / box_games if box_games else 0  # Placeholder
 
         return {
             "games": games,
