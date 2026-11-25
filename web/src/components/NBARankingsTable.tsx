@@ -14,6 +14,7 @@ import {
 } from '@tanstack/react-table';
 import Link from 'next/link';
 import clsx from 'clsx';
+import { noDataMessage } from '@/lib/nbaNoData';
 import HeaderWithTooltip from './HeaderWithTooltip';
 import GroupedTableHead, { cellClass, valueTextClass, withMeta } from './table/GroupedTableHead';
 import { NBATeamSeasonRatings, NBASeasonInfo } from '@macfax/core/types/nba';
@@ -472,7 +473,9 @@ export default function NBARankingsTable({
 
       {table.getFilteredRowModel().rows.length === 0 && (
         <div className="text-center py-8 text-text-muted">
-          No teams found matching your search.
+          {data.length === 0
+            ? noDataMessage(selectedSeasonType, seasons.find((s) => s.year === selectedSeason)?.display_name)
+            : 'No teams found matching your search.'}
         </div>
       )}
     </div>

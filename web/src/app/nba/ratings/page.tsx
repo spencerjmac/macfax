@@ -1,5 +1,4 @@
 import { Metadata } from 'next';
-import { BarChart3 } from 'lucide-react';
 import { redirect } from 'next/navigation';
 import { nbaApi } from '@/lib/nba-api';
 import NBARankingsTable from '@/components/NBARankingsTable';
@@ -63,28 +62,12 @@ export default async function NBARankingsPage({ searchParams }: NBAPageProps) {
       </div>
 
       <div className="max-w-[1240px] mx-auto px-8 py-8">
-        {rankings.length === 0 ? (
-          /* Empty state — DB not yet populated */
-          <div className="text-center py-20 bg-ui-card border border-ui-border rounded-lg">
-            <BarChart3 className="w-12 h-12 mx-auto mb-4 text-brand/30" strokeWidth={1} />
-            <p className="font-medium text-text-primary mb-2">No ratings data yet</p>
-            <p className="text-sm text-text-muted max-w-md mx-auto">
-              Run the following management commands to populate ratings:
-            </p>
-            <div className="mt-4 flex flex-col items-center gap-2 text-sm font-mono">
-              <code className="bg-gray-100 px-3 py-1 rounded">python manage.py nba_sync_teams</code>
-              <code className="bg-gray-100 px-3 py-1 rounded">python manage.py nba_sync_games</code>
-              <code className="bg-gray-100 px-3 py-1 rounded">python manage.py nba_compute_ratings</code>
-            </div>
-          </div>
-        ) : (
-          <NBARankingsTable
-            data={rankings}
-            seasons={seasons}
-            selectedSeason={currentSeason?.year}
-            selectedSeasonType={seasonType}
-          />
-        )}
+        <NBARankingsTable
+          data={rankings}
+          seasons={seasons}
+          selectedSeason={currentSeason?.year}
+          selectedSeasonType={seasonType}
+        />
 
         {/* Legend */}
         <div className="mt-8 p-6 bg-ui-surface border border-ui-border rounded-lg">

@@ -153,7 +153,7 @@ export default async function HomePage() {
             <LeagueCard
               title="College Basketball"
               sub="Adjusted efficiency ratings for every Division I team"
-              feats={feats([['Ratings', '/ncaa/ratings'], ['Matchup', '/ncaa/matchup'], ['Roster Outlook', '/ncaa/outlook'], ['Visualizations', '/ncaa/viz']])}
+              feats={feats([['Team Ratings', '/ncaa/ratings'], ['Player Ratings', '/ncaa/players'], ['Matchup', '/ncaa/matchup'], ['Roster Outlook', '/ncaa/outlook'], ['Visualizations', '/ncaa/viz']])}
               href="/ncaa/ratings"
               btnLabel="Enter NCAA"
               icon={<BasketballIcon className="w-16 h-16 shrink-0" />}
@@ -169,7 +169,7 @@ export default async function HomePage() {
             <LeagueCard
               title="NBA"
               sub="Model projections for all 30 NBA franchises"
-              feats={feats([['Ratings', '/nba/ratings'], ['Team Outlooks', '/nba/teams'], ['Visualizations', '/nba/viz']])}
+              feats={feats([['Team Ratings', '/nba/ratings'], ['Player Ratings', '/nba/players'], ['Team Outlooks', '/nba/teams'], ['Visualizations', '/nba/viz']])}
               href="/nba"
               btnLabel="Enter NBA"
               icon={<BasketballIcon className="w-16 h-16 shrink-0" />}

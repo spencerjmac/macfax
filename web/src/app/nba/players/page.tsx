@@ -1,5 +1,4 @@
 import { Metadata } from 'next';
-import { Users } from 'lucide-react';
 import { nbaApi } from '@/lib/nba-api';
 import NBAPlayerRankingsTable from '@/components/NBAPlayerRankingsTable';
 
@@ -58,28 +57,14 @@ export default async function NBAPlayersPage({ searchParams }: NBAPlayersPagePro
       </div>
 
       <div className="max-w-[1240px] mx-auto px-8 py-8">
-        {players.length === 0 ? (
-          <div className="text-center py-20 bg-ui-card border border-ui-border rounded-lg">
-            <Users className="w-12 h-12 mx-auto mb-4 text-brand/30" strokeWidth={1} />
-            <p className="font-medium text-text-primary mb-2">No player ratings yet</p>
-            <p className="text-sm text-text-muted max-w-md mx-auto">
-              Run the NBA ingestion pipeline first:
-            </p>
-            <div className="mt-4 flex flex-col items-center gap-2 text-sm font-mono">
-              <code className="bg-gray-100 px-3 py-1 rounded">python manage.py nba_sync_team_logs</code>
-              <code className="bg-gray-100 px-3 py-1 rounded">python manage.py nba_compute_player_stats</code>
-            </div>
-          </div>
-        ) : (
-          <NBAPlayerRankingsTable
-            data={players}
-            seasonDisplay={seasonDisplay}
-            seasonType={seasonType}
-            teamGames={teamGames}
-            seasons={seasons}
-            selectedSeason={currentSeason?.year}
-          />
-        )}
+        <NBAPlayerRankingsTable
+          data={players}
+          seasonDisplay={seasonDisplay}
+          seasonType={seasonType}
+          teamGames={teamGames}
+          seasons={seasons}
+          selectedSeason={currentSeason?.year}
+        />
       </div>
     </div>
   );

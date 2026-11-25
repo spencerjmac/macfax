@@ -15,6 +15,7 @@ import {
   PaginationState,
 } from '@tanstack/react-table';
 import clsx from 'clsx';
+import { noDataMessage } from '@/lib/nbaNoData';
 import HeaderWithTooltip from './HeaderWithTooltip';
 import GroupedTableHead, { cellClass, valueTextClass, withMeta } from './table/GroupedTableHead';
 import { computeRanks, heatStyleFromPercentile } from '@macfax/core/lib/rankingUtils';
@@ -629,7 +630,11 @@ export default function NBAPlayerRankingsTable({
       </div>
 
       {table.getFilteredRowModel().rows.length === 0 && (
-        <div className="text-center py-8 text-text-muted">No players found. Try adjusting the filters.</div>
+        <div className="text-center py-8 text-text-muted">
+          {data.length === 0
+            ? noDataMessage(seasonType, seasonDisplay)
+            : 'No players found. Try adjusting the filters.'}
+        </div>
       )}
 
       {/* ── Pagination ────────────────────────────────────────────────────── */}
