@@ -15,6 +15,7 @@ import {
 import Link from 'next/link';
 import clsx from 'clsx';
 import HeaderWithTooltip from './HeaderWithTooltip';
+import GroupedTableHead, { alignClass } from './table/GroupedTableHead';
 import { NBATeamSeasonRatings, NBASeasonInfo } from '@macfax/core/types/nba';
 import { NBA_METRIC_DEFINITIONS, NBAMetricMeta } from '@macfax/core/config/nba';
 import { computeRanks, heatStyleFromPercentile, RankData } from '@macfax/core/lib/rankingUtils';
@@ -164,21 +165,13 @@ export default function NBARankingsTable({
     columns: [createSubColumn(off), createSubColumn(def_), createSubColumn(edge)],
   });
 
-  // Invisible wrapper — gives leaf columns the same depth as grouped cols
-  // so TanStack's header rows align properly.
-  const invisible = (id: string, cols: ColumnDef<NBATeamSeasonRatings>[]): ColumnDef<NBATeamSeasonRatings> => ({
-    id,
-    header: () => null,
-    meta: { isInvisible: true },
-    columns: cols,
-  });
-
   // Base columns
 
   const baseColumns: ColumnDef<NBATeamSeasonRatings>[] = [
     {
       accessorKey: 'rank_adj_net',
       header: 'Rk',
+      meta: { align: 'left' },
       cell: (info) => (
         <span className="font-mono font-semibold">{info.getValue<number | null>() ?? '-'}</span>
       ),
@@ -187,6 +180,7 @@ export default function NBARankingsTable({
     {
       accessorKey: 'team_name',
       header: 'Team',
+      meta: { align: 'left' },
       cell: (info) => {
         const team = info.row.original;
         return (
@@ -216,6 +210,7 @@ export default function NBARankingsTable({
     {
       accessorKey: 'team_conference',
       header: 'Conf',
+      meta: { align: 'left' },
       cell: (info) => (
         <span className="text-text-muted text-xs uppercase">{info.getValue<string>()}</span>
       ),
@@ -235,6 +230,7 @@ export default function NBARankingsTable({
     {
       accessorKey: 'rank_adj_net',
       header: 'Rk',
+      meta: { align: 'left' },
       cell: (info) => (
         <span className="font-mono font-semibold text-sm">{info.getValue<number | null>() ?? '-'}</span>
       ),
@@ -243,6 +239,7 @@ export default function NBARankingsTable({
     {
       accessorKey: 'team_name',
       header: 'Team',
+      meta: { align: 'left' },
       cell: (info) => {
         const team = info.row.original;
         return (
@@ -272,6 +269,7 @@ export default function NBARankingsTable({
     {
       accessorKey: 'team_conference',
       header: 'Conf',
+      meta: { align: 'left' },
       cell: (info) => (
         <span className="text-text-muted text-xs uppercase">{info.getValue<string>()}</span>
       ),
@@ -295,7 +293,7 @@ export default function NBARankingsTable({
 
       case 'four-factors':
         return [
-          invisible('ff-base', compactBaseColumns),
+          ...compactBaseColumns,
           createGroup('ff-efg', 'EFG %',
             { key: 'efg_pct',      label: 'Off'    },
             { key: 'opp_efg_pct', label: 'Def'    },
@@ -444,55 +442,7 @@ export default function NBARankingsTable({
       {/* Table */}
       <div className="overflow-x-auto border border-ui-border rounded-lg">
         <table className="w-full">
-          <thead>
-            {table.getHeaderGroups().map((headerGroup, groupIdx) => (
-              <tr
-                key={headerGroup.id}
-                className={clsx(
-                  'border-b border-ink-line',
-                  isGroupedTab && groupIdx === 0 ? 'bg-ink-2' : 'bg-ink',
-                )}
-              >
-                {headerGroup.headers.map((header) => {
-                  if (header.isPlaceholder) return null;
-
-                  const isInvisibleGroup = !!(header.column.columnDef.meta as { isInvisible?: boolean })?.isInvisible;
-                  const isLabeledGroup = header.colSpan > 1 && !isInvisibleGroup;
-                  const isLeaf = header.colSpan === 1;
-
-                  return (
-                    <th
-                      key={header.id}
-                      colSpan={header.colSpan}
-                      className={clsx(
-                        'px-2 py-[13px] text-xs font-display font-semibold text-white uppercase tracking-[0.06em] align-middle whitespace-nowrap',
-                        isLabeledGroup && 'text-center border-x border-ink-line',
-                        isLeaf && 'text-left',
-                        isLeaf && header.column.getCanSort() &&
-                          'cursor-pointer select-none hover:text-brand2',
-                      )}
-                      onClick={isLeaf ? header.column.getToggleSortingHandler() : undefined}
-                      style={isLeaf ? { width: header.column.getSize() } : undefined}
-                    >
-                      {isInvisibleGroup ? null : (
-                        <div
-                          className={clsx(
-                            'flex items-center gap-1',
-                            isLabeledGroup && 'justify-center',
-                          )}
-                        >
-                          {flexRender(header.column.columnDef.header, header.getContext())}
-                          {isLeaf && header.column.getIsSorted() && (
-                            <span className="text-brand2">{header.column.getIsSorted() === 'desc' ? '\u25be' : '\u25b4'}</span>
-                          )}
-                        </div>
-                      )}
-                    </th>
-                  );
-                })}
-              </tr>
-            ))}
-          </thead>
+          <GroupedTableHead headerGroups={table.getHeaderGroups()} tone="ink" />
           <tbody>
             {table.getRowModel().rows.map((row) => (
               <tr
@@ -502,7 +452,7 @@ export default function NBARankingsTable({
                 {row.getVisibleCells().map((cell) => (
                   <td
                     key={cell.id}
-                    className={clsx('py-2 text-sm', isGroupedTab ? 'px-1' : 'px-3')}
+                    className={clsx('py-2 text-sm', alignClass(cell.column), isGroupedTab ? 'px-1' : 'px-3')}
                     style={{ width: cell.column.getSize() }}
                   >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}

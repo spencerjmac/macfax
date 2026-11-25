@@ -16,6 +16,7 @@ import {
 } from '@tanstack/react-table';
 import clsx from 'clsx';
 import HeaderWithTooltip from './HeaderWithTooltip';
+import GroupedTableHead, { alignClass } from './table/GroupedTableHead';
 import { computeRanks, heatStyleFromPercentile } from '@macfax/core/lib/rankingUtils';
 import { getBPRTier, fmtSigned } from '@macfax/core/lib/bprTiers';
 import { winsAddedFormula } from '@macfax/core/lib/ratingScale';
@@ -258,6 +259,7 @@ export default function NBAPlayerRankingsTable({
     {
       accessorKey: 'player_name',
       header: 'Player',
+      meta: { align: 'left' },
       cell: (info) => {
         const row = info.row.original;
         const headshotUrl = `https://cdn.nba.com/headshots/nba/latest/1040x760/${row.player_id}.png`;
@@ -285,6 +287,7 @@ export default function NBAPlayerRankingsTable({
     {
       accessorKey: 'team_name',
       header: 'Team',
+      meta: { align: 'left' },
       cell: (info) => {
         const row = info.row.original;
         const name = info.getValue<string | null>();
@@ -317,13 +320,6 @@ export default function NBAPlayerRankingsTable({
     },
   ];
 
-  const invisible = (id: string, cols: ColumnDef<NBAPlayerSeasonStats>[]): ColumnDef<NBAPlayerSeasonStats> => ({
-    id,
-    header: () => null,
-    meta: { isInvisible: true },
-    columns: cols,
-  });
-
   // ── Full column set per tab ──────────────────────────────────────────────
   // native-1 rows: new Wins Added formula (task 5.10b); earlier rows keep the old text
   const wa_formula = useMemo(() => winsAddedFormula(data), [data]);
@@ -333,6 +329,7 @@ export default function NBAPlayerRankingsTable({
     const rankColumn: ColumnDef<NBAPlayerSeasonStats> = {
       id: 'rank',
       header: 'Rk',
+      meta: { align: 'left' },
       cell: (info) => {
         const rank = activeSortKey
           ? metricRanks.get(activeSortKey)?.get(String(info.row.original.id))?.rank
@@ -399,7 +396,9 @@ export default function NBAPlayerRankingsTable({
       };
 
       return [
-        invisible('imp-base', [rankColumn, ...baseColumns, possCol]),
+        rankColumn,
+        ...baseColumns,
+        possCol,
         winsAddedCol,
         createGroup('imp-bpr',  'BPR',   NBA_IMP_PRIMARY.slice(0, 3)),
         createGroup('imp-mpir', 'MPIR',  NBA_IMP_PRIMARY.slice(3)),
@@ -575,60 +574,17 @@ export default function NBAPlayerRankingsTable({
         </div>
       )}
 
-
       {/* ── Table ───────────────────────────────────────────────────────── */}
       <div className="overflow-x-auto border border-ui-border rounded-lg">
         <table className="w-full">
-          <thead>
-            {table.getHeaderGroups().map((hg, groupIdx) => (
-              <tr
-                key={hg.id}
-                className={clsx(
-                  'border-b border-ui-border',
-                  isGroupedTab && groupIdx === 0 ? 'bg-ui-hover' : 'bg-ui-surface',
-                )}
-              >
-                {hg.headers.map((header) => {
-                  if (header.isPlaceholder) return null;
-                  const isInvisibleGroup = !!(header.column.columnDef.meta as { isInvisible?: boolean })?.isInvisible;
-                  const isLabeledGroup = header.colSpan > 1 && !isInvisibleGroup;
-                  const isLeaf = header.colSpan === 1;
-                  return (
-                    <th
-                      key={header.id}
-                      colSpan={header.colSpan}
-                      onClick={isLeaf ? header.column.getToggleSortingHandler() : undefined}
-                      className={clsx(
-                        'px-2 py-2 text-xs font-semibold text-text-secondary uppercase tracking-wider align-middle',
-                        isLabeledGroup && 'text-center border-x border-ui-border/50',
-                        isLeaf && 'text-left',
-                        isLeaf && header.column.getCanSort() && 'cursor-pointer select-none hover:bg-ui-hover',
-                      )}
-                      style={isLeaf ? { width: header.column.getSize() } : undefined}
-                    >
-                      {isInvisibleGroup ? null : (
-                        <div className={clsx('flex items-center gap-1', isLabeledGroup && 'justify-center')}>
-                          {flexRender(header.column.columnDef.header, header.getContext())}
-                          {isLeaf && header.column.getIsSorted() && (
-                            <span className="text-brand">
-                              {header.column.getIsSorted() === 'desc' ? '↓' : '↑'}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </th>
-                  );
-                })}
-              </tr>
-            ))}
-          </thead>
+          <GroupedTableHead headerGroups={table.getHeaderGroups()} tone="surface" />
           <tbody>
             {table.getRowModel().rows.map((row) => (
               <tr key={row.id} className="border-b border-ui-border hover:bg-ui-hover transition-colors">
                 {row.getVisibleCells().map((cell) => (
                   <td
                     key={cell.id}
-                    className={clsx('py-2 text-sm', isGroupedTab ? 'px-1' : 'px-2')}
+                    className={clsx('py-2 text-sm', alignClass(cell.column), isGroupedTab ? 'px-1' : 'px-2')}
                     style={{ width: cell.column.getSize() }}
                   >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}

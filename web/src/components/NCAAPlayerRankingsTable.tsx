@@ -15,6 +15,7 @@ import {
 } from '@tanstack/react-table';
 import clsx from 'clsx';
 import HeaderWithTooltip from './HeaderWithTooltip';
+import GroupedTableHead, { alignClass } from './table/GroupedTableHead';
 import MetricDefinitionsCard, { type MetricDefinition } from './MetricDefinitionsCard';
 import { computeRanks, heatStyleFromPercentile } from '@macfax/core/lib/rankingUtils';
 import { AUTO_THRESHOLD, autoNcaaMinMinutes } from '@macfax/core/lib/playerThresholds';
@@ -300,6 +301,7 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
     const rankCol: ColumnDef<NCAAPlayerSeasonStats> = {
       id: 'rank',
       header: 'Rk',
+      meta: { align: 'left' },
       cell: (info) => {
         const p = info.row.original;
         const rank = activeSortKey
@@ -318,6 +320,7 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
     const playerCol: ColumnDef<NCAAPlayerSeasonStats> = {
       accessorKey: 'player_name',
       header: 'Player',
+      meta: { align: 'left' },
       cell: (info) => {
         const p = info.row.original;
         return (
@@ -340,6 +343,7 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
     const teamCol: ColumnDef<NCAAPlayerSeasonStats> = {
       accessorKey: 'team_name',
       header: 'Team',
+      meta: { align: 'left' },
       cell: (info) => (
         <span className="text-xs text-text-muted truncate block max-w-[110px]">
           {info.getValue<string>() || '—'}
@@ -378,13 +382,6 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
     };
 
     const base = [rankCol, playerCol, teamCol, posCol, gpCol, mpgCol];
-
-    const invisible = (id: string, cols: ColumnDef<NCAAPlayerSeasonStats>[]): ColumnDef<NCAAPlayerSeasonStats> => ({
-      id,
-      header: () => null,
-      meta: { isInvisible: true },
-      columns: cols,
-    });
 
     // ── Traditional ──
     if (activeTab === 'traditional') {
@@ -500,7 +497,7 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
       };
 
       return [
-        invisible('impact-base', base),
+        ...base,
         ...IMPACT_METRIC_KEYS.map(createMetricColumn),
         onCtxGroup,
         sourceCol,
@@ -544,9 +541,8 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
       columns: subs.map(createSubColumn),
     });
 
-
     return [
-      invisible('ff-base', base),
+      ...base,
       createSubColumn({ key: 'four_factor_impact_index', label: 'FFII' }),
       createGroup('ff-impact-efg', 'eFG Impact',
         { key: 'off_efg_impact',    label: 'Off' },
@@ -775,49 +771,7 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
       {/* ── Table ───────────────────────────────────────────────────────────── */}
       <div className="overflow-x-auto border border-ui-border rounded-lg">
         <table className="w-full">
-          <thead>
-            {table.getHeaderGroups().map((headerGroup, groupIdx) => (
-              <tr
-                key={headerGroup.id}
-                className={clsx(
-                  'border-b border-ui-border',
-                  isGroupedTab && groupIdx === 0 ? 'bg-ui-hover' : 'bg-ui-surface',
-                )}
-              >
-                {headerGroup.headers.map((header) => {
-                  if (header.isPlaceholder) return null;
-                  const isInvisibleGroup = !!(header.column.columnDef.meta as any)?.isInvisible;
-                  const isLabeledGroup = header.colSpan > 1 && !isInvisibleGroup;
-                  const isLeaf = header.colSpan === 1;
-                  return (
-                    <th
-                      key={header.id}
-                      colSpan={header.colSpan}
-                      className={clsx(
-                        'px-2 py-2 text-xs font-semibold text-text-secondary uppercase tracking-wider align-middle',
-                        isLabeledGroup && 'text-center border-x border-ui-border/50',
-                        isLeaf && 'text-left',
-                        isLeaf && header.column.getCanSort() && 'cursor-pointer select-none hover:bg-ui-hover',
-                      )}
-                      onClick={isLeaf ? header.column.getToggleSortingHandler() : undefined}
-                      style={isLeaf ? { width: header.column.getSize() } : undefined}
-                    >
-                      {isInvisibleGroup ? null : (
-                        <div className={clsx('flex items-center gap-1', isLabeledGroup && 'justify-center')}>
-                          {flexRender(header.column.columnDef.header, header.getContext())}
-                          {isLeaf && header.column.getIsSorted() && (
-                            <span className="text-brand">
-                              {header.column.getIsSorted() === 'desc' ? '↓' : '↑'}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </th>
-                  );
-                })}
-              </tr>
-            ))}
-          </thead>
+          <GroupedTableHead headerGroups={table.getHeaderGroups()} tone="surface" />
           <tbody>
             {table.getRowModel().rows.map((row) => (
               <tr
@@ -827,7 +781,7 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
                 {row.getVisibleCells().map((cell) => (
                   <td
                     key={cell.id}
-                    className={clsx('py-2 text-sm', isGroupedTab ? 'px-1' : 'px-2')}
+                    className={clsx('py-2 text-sm', alignClass(cell.column), isGroupedTab ? 'px-1' : 'px-2')}
                     style={{ width: cell.column.getSize() }}
                   >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
