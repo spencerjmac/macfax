@@ -92,6 +92,15 @@ body {
 
 /* Custom utility classes */
 @layer utilities {
+  /* Scrollable but scrollbar hidden (e.g. tab switchers that overflow on phones) */
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
   .stat-number {
     @apply font-mono text-sm;
   }
