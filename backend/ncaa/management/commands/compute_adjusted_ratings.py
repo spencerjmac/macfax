@@ -133,6 +133,19 @@ class Command(BaseCommand):
             help="Anchor early-season shrinkage to team BPR projections (default: disabled)",
         )
         parser.add_argument(
+            "--no-bpr-prior",
+            action="store_true",
+            default=False,
+            help="Never use the BPR prior, whatever PipelineConfig.use_bpr_prior says",
+        )
+        parser.add_argument(
+            "--no-write",
+            action="store_true",
+            default=False,
+            help="Solve only: keep the ratings on the command (self.solved, team id -> aor / adr / pace) "
+                 "and write nothing. compute_sos uses this for luck (--shrinkage 0 --no-bpr-prior).",
+        )
+        parser.add_argument(
             "--prior-decay-games",
             type=int,
             default=None,
@@ -154,7 +167,7 @@ class Command(BaseCommand):
         importance_enabled = False if options["no_importance"] else cfg.importance_enabled
         update_natavg = options["update_natavg"]
         is_pre_tournament = options["pre_tournament"]
-        use_bpr_prior = options["use_bpr_prior"] or cfg.use_bpr_prior
+        use_bpr_prior = (options["use_bpr_prior"] or cfg.use_bpr_prior) and not options.get("no_bpr_prior")
         prior_decay_games = options["prior_decay_games"] if options["prior_decay_games"] is not None else cfg.bpr_prior_decay_games
 
         # --- Importance weight constants ---
@@ -659,6 +672,12 @@ class Command(BaseCommand):
             )
 
         self.stdout.write(f"Teams with box rows that fell back to the prior: {len(fallback_names)}")
+
+        # --no-write: hand the solved ratings to the caller, write nothing
+        self.solved = {tid: dict(r) for tid, r in ratings.items()}
+        if options.get("no_write"):
+            self.stdout.write("--no-write: ratings kept on the command, nothing saved")
+            return
 
         # Capture current DB ratings for comparison before overwriting
         old_ratings_db = {

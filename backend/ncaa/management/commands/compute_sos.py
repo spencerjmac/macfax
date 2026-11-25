@@ -23,19 +23,22 @@ The same loop over each schedule (D1 opponents; full season, or up to Selection 
   NCAA tournament / NIT games are not part of the non-conference schedule (as KenPom's NCSOS; with
   them r vs KenPom 2026 was 0.899, without 0.954).
 - opp_adj_em / opp_adj_o / opp_adj_d: mean stored ratings of the opponents in games with a result.
+- luck = (wins - expected wins) / games (ncaa.analytics.luck: unshrunk ratings from the solver,
+  the season's HCA, a sigma fitted to the season's results).
 Canceled games (stored as 'final' 0-0) are left out of all of it, SOS included.
 """
 
 from django.core.management.base import BaseCommand
 from django.db import transaction
-from ncaa.models import TeamSeasonMetrics, TeamSeasonRatings, TeamGameStats, Season
+from ncaa.analytics import luck as luck_model
+from ncaa.models import NationalAverages, TeamSeasonMetrics, TeamSeasonRatings, TeamGameStats, Season
 import math
 from ncaa.seasons import resolve_season_year
 from ncaa.utils.d1 import d1_q
 
 
 # Written by compute_sos besides sos_win_pct / sos_rank
-SCHEDULE_FIELDS = ['opp_adj_em', 'opp_adj_o', 'opp_adj_d', 'nc_sos_win_pct', 'nc_sos_rank']
+SCHEDULE_FIELDS = ['luck', 'opp_adj_em', 'opp_adj_o', 'opp_adj_d', 'nc_sos_win_pct', 'nc_sos_rank']
 INDEPENDENT = 'Independent'
 
 
@@ -119,6 +122,11 @@ class Command(BaseCommand):
         }
         conference_of = season_conferences(season)
 
+        # Luck forecast inputs (ncaa.analytics.luck)
+        nat_avg = NationalAverages.objects.filter(season=season).first()
+        nat_avg_ortg = (nat_avg.avg_ortg if nat_avg and nat_avg.avg_ortg else cfg.fallback_avg_ortg)
+        hca_points = (nat_avg.hca_points if nat_avg and nat_avg.hca_points is not None else cfg.fallback_hca)
+        luck_games = []         # (team_id, opponent_id, site, won) over every team's games
 
         sos_results = []
         nc_results = []
@@ -176,6 +184,7 @@ class Command(BaseCommand):
                 if won is None:
                     continue
                 opp_rows.append(opp_ratings)
+                luck_games.append((team.id, game_stat.opponent_id, game_stat.site, won))
 
             if not win_probs:
                 self.stdout.write(self.style.WARNING(f'⚠️  {team.name}: No valid games with opponent ratings'))
@@ -213,6 +222,14 @@ class Command(BaseCommand):
         nc_results.sort(key=lambda r: r.nc_sos_win_pct)
         for rank, r in enumerate(nc_results, start=1):
             r.nc_sos_rank = rank
+
+        # Luck, from unshrunk ratings and a sigma fitted to this season's results
+        luck_by_team, luck_sigma, luck_n = luck_model.season_luck(
+            luck_games, luck_model.unshrunk_ratings(season_year, is_pre_tournament), nat_avg_ortg, hca_points)
+        for r in teams_with_ratings:
+            r.luck = luck_by_team.get(r.team_id)
+        if luck_sigma is not None:
+            self.stdout.write(f'Luck: {luck_n} team-games, HCA {hca_points:.2f}, fitted sigma {luck_sigma:.2f}\n')
 
         # Update database. Rows of rated D1 teams without a counted game keep nothing stale.
         counted = {r['team_ratings'].pk for r in sos_results}
