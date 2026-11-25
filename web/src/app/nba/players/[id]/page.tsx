@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { nbaApi } from "@/lib/nba-api";
 import { PlayerScoutingCard } from "@/components/PlayerScoutingCard";
@@ -24,9 +25,9 @@ export default async function PlayerScoutingPage({ params, searchParams }: Props
   return (
     <main className="max-w-2xl mx-auto px-4 py-8">
       <div className="mb-6">
-        <a href="/nba/ratings?tab=players" className="text-xs text-slate-500 hover:text-teal-400 transition-colors">
-          ← Back to ratings
-        </a>
+        <Link href="/nba/players" className="text-xs text-slate-500 hover:text-teal-400 transition-colors">
+          ← Back to player ratings
+        </Link>
       </div>
       <PlayerScoutingCard player={player} className="w-full" />
       <p className="mt-4 text-xs text-slate-600 text-center">

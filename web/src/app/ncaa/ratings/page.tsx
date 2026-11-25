@@ -1,17 +1,14 @@
 import { Metadata } from 'next';
-import { BarChart3, Users } from 'lucide-react';
-import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { getAllTeams, getAllSeasons, getMetadata } from '@/lib/data';
-import { api } from '@/lib/api';
 import RankingsTable from '@/components/RankingsTable';
-import NCAAPlayerRankingsTable from '@/components/NCAAPlayerRankingsTable';
 
 // Force dynamic rendering - never cache this page
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export const metadata: Metadata = {
-  title: 'Ratings | macfax',
+  title: 'NCAA Team Ratings | macfax',
   description: 'Complete NCAA Division I men\'s basketball team ratings with adjusted efficiency metrics, four factors, and advanced statistics.',
 };
 
@@ -21,25 +18,20 @@ interface RankingsPageProps {
 
 export default async function RankingsPage({ searchParams }: RankingsPageProps) {
   const params = await searchParams;
+
+  // Player ratings moved to their own route; keep old links working
+  if (params.tab === 'players') {
+    redirect(params.season ? `/ncaa/players?season=${encodeURIComponent(params.season)}` : '/ncaa/players');
+  }
+
   const seasonYear = params.season ? parseInt(params.season, 10) : undefined;
-  const activeTab = params.tab === 'players' ? 'players' : 'teams';
   const isPreTournament = params.pre_tournament === 'true';
 
-  const [teams, seasons, meta, players] = await Promise.all([
+  const [teams, seasons, meta] = await Promise.all([
     getAllTeams(seasonYear, isPreTournament),
     getAllSeasons(),
     getMetadata(seasonYear, isPreTournament),
-    activeTab === 'players'
-      ? api.getLeaguePlayers({ season: seasonYear, ordering: '-pts', min_gp: 1 }).catch(() => [])
-      : Promise.resolve([]),
   ]);
-
-  const seasonParam = seasonYear ? `&season=${seasonYear}` : '';
-  const preTourneyParam = isPreTournament ? `&pre_tournament=true` : '';
-  const pageTitle = activeTab === 'players' ? 'NCAA Player Ratings' : 'NCAA Ratings';
-  const pageSubtitle = activeTab === 'players'
-    ? 'Player leaderboards across BPR impact, traditional production, and four-factor impact, with filters for season, minutes, conference, and rating mode.'
-    : 'Complete team and player ratings powered by opponent-adjusted ratings, four factors, resume metrics, and sortable season filters.';
 
   return (
     <div>
@@ -47,11 +39,11 @@ export default async function RankingsPage({ searchParams }: RankingsPageProps) 
       <div className="bg-surface border-b border-ui-border">
         <div className="max-w-[1240px] mx-auto px-8 py-10 pb-[34px]">
           <h1 className="font-display font-bold text-[clamp(32px,4vw,48px)] leading-none uppercase tracking-[0.005em] m-0 mb-[14px]">
-            {pageTitle}
+            NCAA Team Ratings
           </h1>
           <div className="flex items-center gap-[14px] flex-wrap">
             <p className="text-[15px] text-muted m-0">
-              {pageSubtitle}
+              Complete team ratings powered by opponent-adjusted ratings, four factors, resume metrics, and sortable season filters.
             </p>
             <span className="font-mono text-[12px] text-muted-2 inline-flex items-center gap-[7px] px-[10px] py-[5px] bg-ui-surface border border-ui-border rounded-md">
               <span className="w-1.5 h-1.5 rounded-full bg-brand2" />
@@ -62,34 +54,7 @@ export default async function RankingsPage({ searchParams }: RankingsPageProps) 
       </div>
 
       <div className="max-w-[1240px] mx-auto px-8 py-8">
-        {/* Teams / Players tab */}
-        <div className="border-b border-ui-border mb-6">
-          <div className="flex gap-0">
-            {[
-              { id: 'teams',   label: 'Team Ratings', icon: BarChart3 },
-              { id: 'players', label: 'Player Ratings', icon: Users    },
-            ].map(({ id, label, icon: Icon }) => (
-              <Link
-                key={id}
-                href={`/ncaa/ratings?tab=${id}${seasonParam}${preTourneyParam}`}
-                className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
-                  activeTab === id
-                    ? 'border-brand text-brand'
-                    : 'border-transparent text-text-muted hover:text-text-primary'
-                }`}
-              >
-                <Icon className="w-4 h-4" />
-                {label}
-              </Link>
-            ))}
-          </div>
-        </div>
-
-        {activeTab === 'players' ? (
-          <NCAAPlayerRankingsTable data={players} seasonDisplay={meta.season} selectedSeason={seasonYear} seasons={seasons} />
-        ) : (
-          <RankingsTable data={teams} seasons={seasons} selectedSeason={seasonYear} isPreTournament={isPreTournament} />
-        )}
+        <RankingsTable data={teams} seasons={seasons} selectedSeason={seasonYear} isPreTournament={isPreTournament} />
       </div>
     </div>
   );

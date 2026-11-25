@@ -478,8 +478,8 @@ export default function NBAPlayerRankingsTable({
           <select
             value={seasonType}
             onChange={(e) => {
-              const stParam = e.target.value === 'playoffs' ? '&season_type=playoffs' : '';
-              router.push(`/nba/ratings?tab=players${stParam}`);
+              const stParam = e.target.value === 'playoffs' ? '?season_type=playoffs' : '';
+              router.push(`/nba/players${stParam}`);
             }}
             className="px-3 py-2 bg-ui-surface border border-ui-border rounded-lg text-sm
                        focus:outline-none focus:ring-2 focus:ring-brand/50 font-medium"

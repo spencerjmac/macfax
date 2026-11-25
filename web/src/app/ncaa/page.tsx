@@ -1,5 +1,5 @@
 import { Metadata } from 'next';
-import { Trophy, Swords, Sparkles, ScatterChart, BookOpen, Gauge } from 'lucide-react';
+import { Trophy, Users, Swords, Sparkles, ScatterChart, BookOpen, Gauge } from 'lucide-react';
 import { getAllTeams } from '@/lib/data';
 import SportHubPage, { type HubConfig, type HubTeam } from '@/components/SportHubPage';
 
@@ -21,7 +21,8 @@ const NCAA_CONFIG: Omit<HubConfig, 'facts'> = {
   secondaryCta: 'Matchup tool',
   secondaryCtaHref: '/ncaa/matchup',
   tools: [
-    { icon: Trophy,      title: 'Ratings',        body: 'Complete NCAA team and player ratings with AdjEM, adjusted efficiency, four factors, sorting, search, season, conference, and tournament filters.', href: '/ncaa/ratings' },
+    { icon: Trophy,      title: 'Team Ratings',   body: 'Complete NCAA team ratings with AdjEM, adjusted efficiency, four factors, sorting, search, season, conference, and tournament filters.', href: '/ncaa/ratings' },
+    { icon: Users,       title: 'Player Ratings', body: 'Player leaderboards across BPR impact, traditional production, and four-factor impact, with season, minutes, conference, and rating-mode filters.', href: '/ncaa/players' },
     { icon: Swords,      title: 'Matchup',        body: 'Head-to-head forecasts for any two teams, including projected score, margin, win probability, four-factor edges, key drivers, volatility, and recent form.', href: '/ncaa/matchup' },
     { icon: Sparkles,    title: 'Outlook',        body: 'Next-season roster projections built from player talent, minutes, fit, continuity, uncertainty, and editable roster scenarios.', href: '/ncaa/outlook' },
     { icon: ScatterChart,title: 'Visualizations', body: 'Interactive charts like Trapezoid of Excellence, Efficiency Landscape, Crystal Ball, Cinderella Index, and custom scatterplots.', href: '/ncaa/viz' },

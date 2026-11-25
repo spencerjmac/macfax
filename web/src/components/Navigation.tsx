@@ -16,7 +16,8 @@ const NAV_ITEMS: NavSection[] = [
     href: '/ncaa',
     items: [
       { label: 'Overview', href: '/ncaa' },
-      { label: 'Ratings', href: '/ncaa/ratings' },
+      { label: 'Team Ratings', href: '/ncaa/ratings' },
+      { label: 'Player Ratings', href: '/ncaa/players' },
       { label: 'Matchup Tool', href: '/ncaa/matchup' },
       { label: 'Roster Outlook', href: '/ncaa/outlook' },
       { label: 'Visualizations', href: '/ncaa/viz' },
@@ -29,7 +30,8 @@ const NAV_ITEMS: NavSection[] = [
     href: '/nba',
     items: [
       { label: 'Overview', href: '/nba' },
-      { label: 'Ratings', href: '/nba/ratings' },
+      { label: 'Team Ratings', href: '/nba/ratings' },
+      { label: 'Player Ratings', href: '/nba/players' },
       { label: 'Team Outlooks', href: '/nba/teams' },
       { label: 'Matchup Tool', href: '/nba/matchup' },
       { label: 'Player Value', href: '/nba/player-value' },
