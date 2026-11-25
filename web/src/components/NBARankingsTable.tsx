@@ -422,13 +422,13 @@ export default function NBARankingsTable({
       {/* Tabs */}
       {/* View toggle */}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="inline-flex bg-surface border border-ui-border rounded-lg p-[3px]">
+        <div className="inline-flex max-w-full overflow-x-auto no-scrollbar bg-surface border border-ui-border rounded-lg p-[3px]">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={clsx(
-                'px-[14px] py-2 rounded-md font-display font-semibold text-[13px] tracking-[0.06em] uppercase transition-all',
+                'shrink-0 whitespace-nowrap px-[14px] py-2 rounded-md font-display font-semibold text-[13px] tracking-[0.06em] uppercase transition-all',
                 activeTab === tab.id
                   ? 'bg-ink text-white'
                   : 'text-muted hover:text-text-primary',
