@@ -240,6 +240,11 @@ class RankingsSerializer(serializers.Serializer):
     net_rank = serializers.IntegerField()
     sos_rank = serializers.IntegerField()
     sos_win_pct = serializers.FloatField()
+    nc_sos_rank = serializers.IntegerField(allow_null=True, required=False)
+    # Mean ratings of D1 opponents (compute_sos)
+    opp_adj_em = serializers.FloatField(allow_null=True, required=False)
+    opp_adj_o = serializers.FloatField(allow_null=True, required=False)
+    opp_adj_d = serializers.FloatField(allow_null=True, required=False)
     ap_poll_week6 = serializers.IntegerField(allow_null=True, required=False)
 
     # NCAA Tournament
