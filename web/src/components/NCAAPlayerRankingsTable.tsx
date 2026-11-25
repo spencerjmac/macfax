@@ -414,7 +414,7 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
           const hs = heatStyleFromPercentile(rankData?.percentile ?? null, 'higher');
           return (
             <div style={hs} className="px-1 py-0.5 rounded text-center">
-              <div className="font-mono text-xs leading-tight">{val.toFixed(1)}</div>
+              <div className={clsx('font-mono leading-tight', valueTextClass(info.column, 'text-xs'))}>{val.toFixed(1)}</div>
             </div>
           );
         },
@@ -438,7 +438,7 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
           const hs = heatStyleFromPercentile(rankData?.percentile ?? null, 'higher');
           return (
             <div style={hs} className="px-1 py-0.5 rounded text-center">
-              <div className="font-mono text-xs leading-tight">{val.toFixed(1)}</div>
+              <div className={clsx('font-mono leading-tight', valueTextClass(info.column, 'text-xs'))}>{val.toFixed(1)}</div>
             </div>
           );
         },
@@ -462,7 +462,7 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
           const hs = heatStyleFromPercentile(rankData?.percentile ?? null, 'lower');
           return (
             <div style={hs} className="px-1 py-0.5 rounded text-center">
-              <div className="font-mono text-xs leading-tight">{val.toFixed(1)}</div>
+              <div className={clsx('font-mono leading-tight', valueTextClass(info.column, 'text-xs'))}>{val.toFixed(1)}</div>
             </div>
           );
         },
@@ -473,7 +473,11 @@ export default function NCAAPlayerRankingsTable({ data, seasonDisplay, selectedS
       const onCtxGroup: ColumnDef<NCAAPlayerSeasonStats> = {
         id: 'impact-adj-ctx',
         header: 'On-Court Context',
-        columns: [withMeta(adjOffSubCol, { divider: true }), adjDefSubCol, adjNetSubCol],
+        columns: [
+          withMeta(adjOffSubCol, { divider: true }),
+          adjDefSubCol,
+          withMeta(adjNetSubCol, { net: true }),
+        ],
       };
 
       const sourceCol: ColumnDef<NCAAPlayerSeasonStats> = {

@@ -248,14 +248,14 @@ export default function NBAPlayerRankingsTable({
     label: string,
     keys: string[],
     labels?: string[],
-    { emphasizeFirst = false }: { emphasizeFirst?: boolean } = {},
+    { emphasizeFirst = false, netLast = false }: { emphasizeFirst?: boolean; netLast?: boolean } = {},
   ): ColumnDef<NBAPlayerSeasonStats> => ({
     id,
     header: label,
     columns: keys.map((k, i) =>
       i === 0
         ? withMeta(createSubColumn(k, labels?.[i]), { divider: true, emphasis: emphasizeFirst })
-        : createSubColumn(k, labels?.[i]),
+        : withMeta(createSubColumn(k, labels?.[i]), { net: netLast && i === keys.length - 1 }),
     ),
   });
 
@@ -412,10 +412,10 @@ export default function NBAPlayerRankingsTable({
           ? [createGroup('imp-box-bpr', 'Box BPR', boxBprVisible)]
           : []),
         ...(adjOnCourtVisible
-          ? [createGroup('imp-adj-oc', 'Adj On-Court', NBA_IMP_ADJ_KEYS, ['Adj O', 'Adj D', 'Adj EM'])]
+          ? [createGroup('imp-adj-oc', 'Adj On-Court', NBA_IMP_ADJ_KEYS, ['Adj O', 'Adj D', 'Adj EM'], { netLast: true })]
           : []),
         ...(rawOnCourtVisible
-          ? [createGroup('imp-raw-oc', 'Raw On-Court', NBA_IMP_RAW_KEYS, ['ORtg', 'DRtg', 'Net'])]
+          ? [createGroup('imp-raw-oc', 'Raw On-Court', NBA_IMP_RAW_KEYS, ['ORtg', 'DRtg', 'Net'], { netLast: true })]
           : []),
         archetypeCol,
       ];
