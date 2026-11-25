@@ -459,6 +459,23 @@ class TeamSeasonRatings(models.Model):
         blank=True,
         help_text="Expected win% for an average D1 team vs this schedule",
     )
+    nc_sos_rank = models.IntegerField(
+        null=True, blank=True,
+        help_text="SOS rank over non-conference D1 games only (compute_sos; 1 = hardest)",
+    )
+    nc_sos_win_pct = models.FloatField(
+        null=True, blank=True,
+        help_text="Expected win% of an average D1 team against the non-conference D1 schedule",
+    )
+    # Luck and opponent strength (compute_sos), D1 games with a result
+    luck = models.FloatField(
+        null=True, blank=True,
+        help_text="(wins - expected wins) / games; expected = sum of forecast_game win probabilities "
+                  "from this row's own ratings, HCA and sigma",
+    )
+    opp_adj_em = models.FloatField(null=True, blank=True, help_text="Mean AdjEM of D1 opponents (this row's ratings set)")
+    opp_adj_o = models.FloatField(null=True, blank=True, help_text="Mean AdjO of D1 opponents")
+    opp_adj_d = models.FloatField(null=True, blank=True, help_text="Mean AdjD of D1 opponents")
 
     # Rankings
     rank_adj_o = models.IntegerField(null=True, blank=True)

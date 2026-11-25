@@ -127,6 +127,12 @@ class ApplyHCATestCase(TestCase):
         self.assertAlmostEqual(pts_a, 88.0, places=2)  # +3.0
         self.assertAlmostEqual(pts_b, 77.0, places=2)  # -3.0
 
+    def test_hca_unknown_site_raises(self):
+        """An unknown site (e.g. compute_sor's old 'HOME') must not silently mean neutral"""
+        for site in ('HOME', 'AWAY', 'NEUTRAL', 'H', ''):
+            with self.assertRaises(ValueError):
+                apply_hca_adjustment(75.0, 70.0, site, 3.5)
+
 
 class ComputeWinProbabilityTestCase(TestCase):
     """Tests for compute_win_probability function"""

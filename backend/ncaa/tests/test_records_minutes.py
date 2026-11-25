@@ -73,6 +73,30 @@ class RecordsAndMinutesTests(TestCase):
         self.assertEqual((rows[self.c.id].wins, rows[self.c.id].losses, rows[self.c.id].games_played), (1, 1, 2))
         self.assertEqual((rows[self.a.id].wins, rows[self.a.id].losses, rows[self.a.id].games_played), (1, 1, 2))
 
+    def test_no_write_solves_without_saving(self):
+        from ncaa.management.commands.compute_adjusted_ratings import Command as Solver
+        solver = Solver()
+        call_command(solver, season=2010, stdout=StringIO(), iterations=5, shrinkage=0.0, no_bpr_prior=True,
+                     no_write=True)
+        self.assertEqual(TeamSeasonRatings.all_objects.filter(season=self.season).count(), 0)
+        self.assertEqual(set(solver.solved), {self.a.id, self.b.id, self.c.id})
+        self.assertTrue(all({"aor", "adr", "pace"} <= set(r) for r in solver.solved.values()))
+        # A beat B on the only rated game: unshrunk, A rates above B
+        a, b = solver.solved[self.a.id], solver.solved[self.b.id]
+        self.assertGreater(a["aor"] - a["adr"], b["aor"] - b["adr"])
+
+    def test_no_bpr_prior_overrides_the_config(self):
+        from ncaa.models import PipelineConfig
+        PipelineConfig.objects.update_or_create(pk=1, defaults={"use_bpr_prior": True})
+        runs = {}
+        for flag in (False, True):
+            out = StringIO()
+            call_command("compute_adjusted_ratings", season=2010, stdout=out, iterations=5, no_bpr_prior=flag,
+                         no_write=True)
+            runs[flag] = out.getvalue()
+        self.assertIn("BPR prior", runs[False])       # config on: the solver loads the prior
+        self.assertNotIn("BPR prior", runs[True])     # --no-bpr-prior: never
+
     def test_double_overtime_is_50_minutes(self):
         self.assertEqual(game_minutes_for(4, True), 50)
         self.assertEqual(game_minutes_for(2, False), 40)

@@ -23,6 +23,9 @@ from ncaa.seasons import resolve_season_year
 logger = logging.getLogger(__name__)
 
 
+SOR_SEED = 20261124
+
+
 class Command(BaseCommand):
     help = 'Compute SOR (Strength of Record) ranks for all teams'
     
@@ -124,6 +127,9 @@ class Command(BaseCommand):
         teams_updated = 0
         teams_skipped = 0
         
+        # Seeded, so a rerun on the same data gives the same ranks
+        rng = np.random.default_rng(SOR_SEED)
+
         with transaction.atomic():
             for i, team_rating in enumerate(all_teams, 1):
                 team = team_rating.team
@@ -133,6 +139,10 @@ class Command(BaseCommand):
                     team=team,
                     game__season_year=season_year,
                     game__status='final'
+                ).exclude(
+                    # Canceled games stored as 'final' 0-0: no result, so not a game the baseline plays either
+                    # (same filter as compute_sos and compute_wab)
+                    game__home_score=0, game__away_score=0,
                 ).select_related('game', 'opponent')
                 
                 games_count = team_games.count()
@@ -156,14 +166,10 @@ class Command(BaseCommand):
                         # Skip game if opponent has no ratings
                         continue
                     
-                    # Forecast game with baseline team vs opponent
-                    # Location from baseline team's perspective (inverse of actual team's location)
-                    if game_stat.home_away == 'H':
-                        location = 'HOME'
-                    elif game_stat.home_away == 'A':
-                        location = 'AWAY'
-                    else:
-                        location = 'NEUTRAL'
+                    # Forecast game with baseline team vs opponent, the baseline team in this team's place.
+                    # forecast_game takes lowercase sites; the uppercase ones used here before were
+                    # treated as neutral, so SOR applied no home-court advantage.
+                    location = game_stat.site   # game_site: the Game's neutral flag wins
                     
                     result = forecast_game(
                         adj_o_a=baseline_adj_o,
@@ -188,7 +194,7 @@ class Command(BaseCommand):
                 
                 # Monte Carlo simulation: how often does baseline team get >= actual_wins?
                 wins_array = np.array(win_probs)
-                simulated_wins = np.random.binomial(1, wins_array, size=(num_trials, len(wins_array)))
+                simulated_wins = rng.binomial(1, wins_array, size=(num_trials, len(wins_array)))
                 total_wins_per_trial = simulated_wins.sum(axis=1)
                 
                 # Probability that baseline gets >= actual_wins

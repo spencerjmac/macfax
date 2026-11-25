@@ -1,0 +1,372 @@
+# KenPom team name -> our Team.slug, all 365 D1 teams of 2025-26.
+# Names only (no KenPom numbers). Keyed by slug, not id: ids differ between local and prod.
+# KenPom suffixes a tournament seed to some names ('Michigan 1'): strip a trailing ' <digits>' first.
+# Built 2026-11-24 from KenPom's 2026 table: 358 by exact or normalized name, 7 by hand
+# (CSUN, Southeast Missouri, Nicholls, Eastern Michigan, SIUE, Western Michigan, Kansas City).
+# Used by the luck / schedule checks; meant for the KenPom/EvanMiya BPR backtest too.
+
+"Abilene Christian": abilene-christian
+"Air Force": air-force
+"Akron": akron
+"Alabama": alabama
+"Alabama A&M": alabama-am
+"Alabama St.": alabama-st
+"Albany": albany
+"Alcorn St.": alcorn-st
+"American": american
+"Appalachian St.": appalachian-st
+"Arizona": arizona
+"Arizona St.": arizona-st
+"Arkansas": arkansas
+"Arkansas Pine Bluff": arkansas-pine-bluff
+"Arkansas St.": arkansas-st
+"Army": army
+"Auburn": auburn
+"Austin Peay": austin-peay
+"Ball St.": ball-st
+"Baylor": baylor
+"Bellarmine": bellarmine
+"Belmont": belmont
+"Bethune Cookman": bethune-cookman
+"Binghamton": binghamton
+"Boise St.": boise-st
+"Boston College": boston-college
+"Boston University": boston-university
+"Bowling Green": bowling-green
+"Bradley": bradley
+"Brown": brown
+"Bryant": bryant
+"Bucknell": bucknell
+"Buffalo": buffalo
+"Butler": butler
+"BYU": byu
+"Cal Baptist": cal-baptist
+"Cal Poly": cal-poly
+"Cal St. Bakersfield": cal-st-bakersfield
+"Cal St. Fullerton": cal-st-fullerton
+"California": california
+"Campbell": campbell
+"Canisius": canisius
+"Central Arkansas": central-arkansas
+"Central Connecticut": central-connecticut
+"Central Michigan": central-michigan
+"Charleston": charleston
+"Charleston Southern": charleston-southern
+"Charlotte": charlotte
+"Chattanooga": chattanooga
+"Chicago St.": chicago-st
+"Cincinnati": cincinnati
+"Clemson": clemson
+"Cleveland St.": cleveland-st
+"Coastal Carolina": coastal-carolina
+"Colgate": colgate
+"Colorado": colorado
+"Colorado St.": colorado-st
+"Columbia": columbia
+"Connecticut": connecticut
+"Coppin St.": coppin-st
+"Cornell": cornell
+"Creighton": creighton
+"CSUN": cal-st-northridge
+"Dartmouth": dartmouth
+"Davidson": davidson
+"Dayton": dayton
+"Delaware": delaware
+"Delaware St.": delaware-st
+"Denver": denver
+"DePaul": depaul
+"Detroit Mercy": detroit-mercy
+"Drake": drake
+"Drexel": drexel
+"Duke": duke
+"Duquesne": duquesne
+"East Carolina": east-carolina
+"East Tennessee St.": east-tennessee-st
+"East Texas A&M": east-texas-am
+"Eastern Illinois": eastern-illinois
+"Eastern Kentucky": eastern-kentucky
+"Eastern Michigan": eastern-mich
+"Eastern Washington": eastern-washington
+"Elon": elon
+"Evansville": evansville
+"Fairfield": fairfield
+"Fairleigh Dickinson": fairleigh-dickinson
+"FIU": fiu
+"Florida": florida
+"Florida A&M": florida-am
+"Florida Atlantic": florida-atlantic
+"Florida Gulf Coast": florida-gulf-coast
+"Florida St.": florida-st
+"Fordham": fordham
+"Fresno St.": fresno-st
+"Furman": furman
+"Gardner Webb": gardner-webb
+"George Mason": george-mason
+"George Washington": george-washington
+"Georgetown": georgetown
+"Georgia": georgia
+"Georgia Southern": georgia-southern
+"Georgia St.": georgia-st
+"Georgia Tech": georgia-tech
+"Gonzaga": gonzaga
+"Grambling St.": grambling-st
+"Grand Canyon": grand-canyon
+"Green Bay": green-bay
+"Hampton": hampton
+"Harvard": harvard
+"Hawaii": hawaii
+"High Point": high-point
+"Hofstra": hofstra
+"Holy Cross": holy-cross
+"Houston": houston
+"Houston Christian": houston-christian
+"Howard": howard
+"Idaho": idaho
+"Idaho St.": idaho-st
+"Illinois": illinois
+"Illinois Chicago": illinois-chicago
+"Illinois St.": illinois-st
+"Incarnate Word": incarnate-word
+"Indiana": indiana
+"Indiana St.": indiana-st
+"Iona": iona
+"Iowa": iowa
+"Iowa St.": iowa-st
+"IU Indy": iu-indy
+"Jackson St.": jackson-st
+"Jacksonville": jacksonville
+"Jacksonville St.": jacksonville-st
+"James Madison": james-madison
+"Kansas": kansas
+"Kansas City": umkc
+"Kansas St.": kansas-st
+"Kennesaw St.": kennesaw-st
+"Kent St.": kent-st
+"Kentucky": kentucky
+"La Salle": la-salle
+"Lafayette": lafayette
+"Lamar": lamar
+"Le Moyne": le-moyne
+"Lehigh": lehigh
+"Liberty": liberty
+"Lindenwood": lindenwood
+"Lipscomb": lipscomb
+"Little Rock": little-rock
+"LIU": liu
+"Long Beach St.": long-beach-st
+"Longwood": longwood
+"Louisiana": louisiana
+"Louisiana Monroe": louisiana-monroe
+"Louisiana Tech": louisiana-tech
+"Louisville": louisville
+"Loyola Chicago": loyola-chicago
+"Loyola Marymount": loyola-marymount
+"Loyola MD": loyola-md
+"LSU": lsu
+"Maine": maine
+"Manhattan": manhattan
+"Marist": marist
+"Marquette": marquette
+"Marshall": marshall
+"Maryland": maryland
+"Maryland Eastern Shore": maryland-eastern-shore
+"Massachusetts": massachusetts
+"McNeese": mcneese
+"Memphis": memphis
+"Mercer": mercer
+"Mercyhurst": mercyhurst
+"Merrimack": merrimack
+"Miami FL": miami-fl
+"Miami OH": miami-oh
+"Michigan": michigan
+"Michigan St.": michigan-st
+"Middle Tennessee": middle-tennessee
+"Milwaukee": milwaukee
+"Minnesota": minnesota
+"Mississippi": mississippi
+"Mississippi St.": mississippi-st
+"Mississippi Valley St.": mississippi-valley-st
+"Missouri": missouri
+"Missouri St.": missouri-st
+"Monmouth": monmouth
+"Montana": montana
+"Montana St.": montana-st
+"Morehead St.": morehead-st
+"Morgan St.": morgan-st
+"Mount St. Mary's": mount-st-marys
+"Murray St.": murray-st
+"N.C. State": nc-state
+"Navy": navy
+"Nebraska": nebraska
+"Nebraska Omaha": nebraska-omaha
+"Nevada": nevada
+"New Hampshire": new-hampshire
+"New Haven": new-haven
+"New Mexico": new-mexico
+"New Mexico St.": new-mexico-st
+"New Orleans": new-orleans
+"Niagara": niagara
+"Nicholls": nicholls-st
+"NJIT": njit
+"Norfolk St.": norfolk-st
+"North Alabama": north-alabama
+"North Carolina": north-carolina
+"North Carolina A&T": north-carolina-at
+"North Carolina Central": north-carolina-central
+"North Dakota": north-dakota
+"North Dakota St.": north-dakota-st
+"North Florida": north-florida
+"North Texas": north-texas
+"Northeastern": northeastern
+"Northern Arizona": northern-arizona
+"Northern Colorado": northern-colorado
+"Northern Illinois": northern-illinois
+"Northern Iowa": northern-iowa
+"Northern Kentucky": northern-kentucky
+"Northwestern": northwestern
+"Northwestern St.": northwestern-st
+"Notre Dame": notre-dame
+"Oakland": oakland
+"Ohio": ohio
+"Ohio St.": ohio-st
+"Oklahoma": oklahoma
+"Oklahoma St.": oklahoma-st
+"Old Dominion": old-dominion
+"Oral Roberts": oral-roberts
+"Oregon": oregon
+"Oregon St.": oregon-st
+"Pacific": pacific
+"Penn": penn
+"Penn St.": penn-st
+"Pepperdine": pepperdine
+"Pittsburgh": pittsburgh
+"Portland": portland
+"Portland St.": portland-st
+"Prairie View A&M": prairie-view-am
+"Presbyterian": presbyterian
+"Princeton": princeton
+"Providence": providence
+"Purdue": purdue
+"Purdue Fort Wayne": purdue-fort-wayne
+"Queens": queens
+"Quinnipiac": quinnipiac
+"Radford": radford
+"Rhode Island": rhode-island
+"Rice": rice
+"Richmond": richmond
+"Rider": rider
+"Robert Morris": robert-morris
+"Rutgers": rutgers
+"Sacramento St.": sacramento-st
+"Sacred Heart": sacred-heart
+"Saint Francis": saint-francis
+"Saint Joseph's": saint-josephs
+"Saint Louis": saint-louis
+"Saint Mary's": saint-marys
+"Saint Peter's": saint-peters
+"Sam Houston St.": sam-houston-st
+"Samford": samford
+"San Diego": san-diego
+"San Diego St.": san-diego-st
+"San Francisco": san-francisco
+"San Jose St.": san-jose-st
+"Santa Clara": santa-clara
+"Seattle": seattle
+"Seton Hall": seton-hall
+"Siena": siena
+"SIUE": siu-edwardsville
+"SMU": smu
+"South Alabama": south-alabama
+"South Carolina": south-carolina
+"South Carolina St.": south-carolina-st
+"South Dakota": south-dakota
+"South Dakota St.": south-dakota-st
+"South Florida": south-florida
+"Southeast Missouri": southeast-missouri-st
+"Southeastern Louisiana": southeastern-louisiana
+"Southern": southern
+"Southern Illinois": southern-illinois
+"Southern Indiana": southern-indiana
+"Southern Miss": southern-miss
+"Southern Utah": southern-utah
+"St. Bonaventure": st-bonaventure
+"St. John's": st-johns
+"St. Thomas": st-thomas
+"Stanford": stanford
+"Stephen F. Austin": stephen-f-austin
+"Stetson": stetson
+"Stonehill": stonehill
+"Stony Brook": stony-brook
+"Syracuse": syracuse
+"Tarleton St.": tarleton-st
+"TCU": tcu
+"Temple": temple
+"Tennessee": tennessee
+"Tennessee Martin": tennessee-martin
+"Tennessee St.": tennessee-st
+"Tennessee Tech": tennessee-tech
+"Texas": texas
+"Texas A&M": texas-am
+"Texas A&M Corpus Chris": texas-am-corpus-chris
+"Texas Southern": texas-southern
+"Texas St.": texas-st
+"Texas Tech": texas-tech
+"The Citadel": the-citadel
+"Toledo": toledo
+"Towson": towson
+"Troy": troy
+"Tulane": tulane
+"Tulsa": tulsa
+"UAB": uab
+"UC Davis": uc-davis
+"UC Irvine": uc-irvine
+"UC Riverside": uc-riverside
+"UC San Diego": uc-san-diego
+"UC Santa Barbara": uc-santa-barbara
+"UCF": ucf
+"UCLA": ucla
+"UMass Lowell": umass-lowell
+"UMBC": umbc
+"UNC Asheville": unc-asheville
+"UNC Greensboro": unc-greensboro
+"UNC Wilmington": unc-wilmington
+"UNLV": unlv
+"USC": usc
+"USC Upstate": usc-upstate
+"UT Arlington": ut-arlington
+"UT Rio Grande Valley": ut-rio-grande-valley
+"Utah": utah
+"Utah St.": utah-st
+"Utah Tech": utah-tech
+"Utah Valley": utah-valley
+"UTEP": utep
+"UTSA": utsa
+"Valparaiso": valparaiso
+"Vanderbilt": vanderbilt
+"VCU": vcu
+"Vermont": vermont
+"Villanova": villanova
+"Virginia": virginia
+"Virginia Tech": virginia-tech
+"VMI": vmi
+"Wagner": wagner
+"Wake Forest": wake-forest
+"Washington": washington
+"Washington St.": washington-st
+"Weber St.": weber-st
+"West Georgia": west-georgia
+"West Virginia": west-virginia
+"Western Carolina": western-carolina
+"Western Illinois": western-illinois
+"Western Kentucky": western-kentucky
+"Western Michigan": western-mich
+"Wichita St.": wichita-st
+"William & Mary": william-mary
+"Winthrop": winthrop
+"Wisconsin": wisconsin
+"Wofford": wofford
+"Wright St.": wright-st
+"Wyoming": wyoming
+"Xavier": xavier
+"Yale": yale
+"Youngstown St.": youngstown-st

@@ -50,9 +50,11 @@ class Command(BaseCommand):
             return
         
         # Get all home games with valid team stats
+        # True home games only: a neutral-flagged game stays out even when its rows say H (game_site)
         home_games = TeamGameStats.objects.filter(
             game__season_year=season_year,
-            home_away='H'
+            home_away='H',
+            game__neutral_site=False,
         ).select_related('team', 'opponent', 'game').prefetch_related('team__season_stats', 'opponent__season_stats')
         
         total_games = home_games.count()

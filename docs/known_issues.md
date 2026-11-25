@@ -83,3 +83,25 @@ branch notes" for `0022500147` and `0022501230`. No such notes exist; this file 
 - **Fix:** comes with the prod history merge, which brings earlier membership seasons. Locally the flags were
   checked against Wikipedia's standings marks (Tasks 8a.2 and 8b.2). The 4-season assumption itself is suspect
   for later seasons; see `sync_team_season_membership`.
+
+## NCAA (local and prod)
+
+### 2005-2007 have no neutral-site games outside the NCAA tournament
+
+- **Where:** apart from the NCAA tournament (below), every 2005, 2006 and 2007 game has
+  `Game.neutral_site = false` and `home_away` 'H' / 'A'. 2008-2025 flag about 520-780 neutral games a season.
+- **Cause:** the source has none. ESPN's own `neutralSite` in each game's `raw_json` is `false` for every
+  2005-2007 game; from 2008 on it matches the stored flag exactly.
+- **Effect:** in those three seasons every other neutral game counts as a home game: the rating solver's
+  site factors, HCA (`compute_hca`: 4.13 / 3.73 / 4.01 with the tournament marked, against 3.8-4.2 for
+  2008-2010), SOS, SOR, WAB, game value and quadrants treat them as home/away.
+- **Venue data exists but is not reliable enough to fill the gap on its own.** `raw_json` holds ESPN's
+  venue for most games (about 600 a season have none). Calling a game neutral when it is not at the home
+  team's most-used venue, tested on seasons that have the flag: precision 0.88 / 0.80 / 0.86 and recall
+  0.65 / 0.89 / 0.94 in 2008 / 2009 / 2010 (0.95 / 0.98 in 2015). Applied to 2005-2007 it would mark about
+  390-490 games a season, with roughly one in seven wrong and some missed.
+- **Done:** the NCAA tournament games (64 a season, opening round included) are marked neutral by
+  `data_fixes/2026-11-24_ncaa_tourney_neutral_2005_2007.py`. They are all after Selection Sunday, so
+  pre-tournament ratings do not change.
+- **Not done:** the venue rule (decided 2026-11-24). Early-season events, conference tournaments and other
+  neutral games of 2005-2007 still count as home games.

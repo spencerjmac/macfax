@@ -240,6 +240,14 @@ class RankingsSerializer(serializers.Serializer):
     net_rank = serializers.IntegerField()
     sos_rank = serializers.IntegerField()
     sos_win_pct = serializers.FloatField()
+    nc_sos_rank = serializers.IntegerField(allow_null=True, required=False)
+    # Luck: (wins - expected wins) / D1 games; luck_wins = wins above expected (compute_sos)
+    luck = serializers.FloatField(allow_null=True, required=False)
+    luck_wins = serializers.SerializerMethodField()
+    # Mean ratings of D1 opponents (compute_sos)
+    opp_adj_em = serializers.FloatField(allow_null=True, required=False)
+    opp_adj_o = serializers.FloatField(allow_null=True, required=False)
+    opp_adj_d = serializers.FloatField(allow_null=True, required=False)
     ap_poll_week6 = serializers.IntegerField(allow_null=True, required=False)
 
     # NCAA Tournament
@@ -448,6 +456,12 @@ class RankingsSerializer(serializers.Serializer):
         if not metrics:
             return None
         return self._per_game(metrics.total_opp_pf or 0, metrics.opp_box_games)
+
+    def get_luck_wins(self, obj):
+        """luck x D1 games: wins above (or below) the games' expected wins."""
+        if obj.luck is None or not obj.d1_games_played:
+            return None
+        return round(obj.luck * obj.d1_games_played, 2)
 
     def get_fg3_rate(self, obj):
         metrics = self._get_metrics(obj)
@@ -789,7 +803,7 @@ class GameLogSerializer(serializers.ModelSerializer):
         opponent_rank = self.get_opponent_net_rank(obj)
         if opponent_rank is None:
             return None
-        return get_quadrant(opponent_rank, obj.home_away)
+        return get_quadrant(opponent_rank, obj.site_code)  # neutral from the Game's flag too
 
 
 class TeamSeasonMetricsSerializer(serializers.ModelSerializer):

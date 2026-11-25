@@ -10,6 +10,9 @@ Invariants pinned here:
 - backfill_neutral_flags matches a game by date and team pair in either order, and only within --start/--end.
 - Re-ingesting an NCAA-sourced game (scheduled -> final) never clears a neutral flag set from ESPN.
 - update_ncaa_teams runs backfill_neutral_flags after ingest, over the ingest window plus lookahead.
+- When backfill_neutral_flags sets or clears a flag, the game's box rows follow: 'N' on a neutral game,
+  'H' / 'A' by Game.home_team on a cleared one (sync_home_away_to_site). Before, rows stayed 'H' / 'A' on
+  flagged games, so everything reading home_away gave those games home-court advantage.
 """
 
 from datetime import date, timedelta
@@ -21,7 +24,7 @@ from django.test import TestCase
 
 from ncaa.management.commands.ingest_gamelogs import Command as Ingest
 from ncaa.management.commands.update_ncaa_teams import NEUTRAL_LOOKAHEAD_DAYS
-from ncaa.models import Game, Season, Team, TeamExternalId
+from ncaa.models import Game, Season, Team, TeamExternalId, TeamGameStats
 from ncaa.utils.team_mapping import TeamMapper
 
 
@@ -58,6 +61,19 @@ class BackfillTests(TestCase):
         self.backfill(lambda d: [espn_event("96", "2305", True)])
         g.refresh_from_db()
         self.assertTrue(g.neutral_site)
+
+    def _rows(self, g):
+        return dict(TeamGameStats.objects.filter(game=g).values_list("team__slug", "home_away"))
+
+    def test_box_rows_follow_the_flag(self):
+        g = self.game("6650631", date(2026, 11, 10), self.ku, self.uk)
+        TeamGameStats.objects.create(game=g, team=self.ku, opponent=self.uk, home_away="H", pts=69)
+        TeamGameStats.objects.create(game=g, team=self.uk, opponent=self.ku, home_away="A", pts=89)
+        self.backfill(lambda d: [espn_event("96", "2305", True)])
+        self.assertEqual(self._rows(g), {"kansas": "N", "kentucky": "N"})
+        # ESPN later says not neutral: cleared with --allow-clear, rows back to H/A by Game.home_team
+        self.backfill(lambda d: [espn_event("2305", "96", False)], allow_clear=True)
+        self.assertEqual(self._rows(g), {"kansas": "H", "kentucky": "A"})
 
     def test_only_dates_in_the_window_are_fetched(self):
         self.game("1", date(2026, 11, 3), self.ku, self.uk)

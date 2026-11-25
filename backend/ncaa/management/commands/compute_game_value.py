@@ -116,12 +116,7 @@ class Command(BaseCommand):
                 result = 1.0 if won else 0.0
                 
                 # Determine site from team perspective
-                if game_stat.home_away == 'H':
-                    site = 'home'
-                elif game_stat.home_away == 'A':
-                    site = 'away'
-                else:
-                    site = 'neutral'
+                site = game_stat.site   # game_site: the Game's neutral flag wins
                 
                 # Forecast with bubble team vs opponent
                 forecast = forecast_game(

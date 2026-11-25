@@ -251,6 +251,35 @@ def game_minutes_for(period_count, went_to_ot) -> int:
     return 45 if went_to_ot else 40
 
 
+SITE_CODES = {"home": "H", "away": "A", "neutral": "N"}
+
+
+def game_site(home_away, neutral_site) -> str:
+    """'home', 'away' or 'neutral' for one team's side of a game.
+
+    Neutral when the Game's neutral_site flag is set or the row says 'N'. ESPN-sourced rows (2008-2025)
+    store 'N' for neutral games; NCAA-sourced rows (2026, and part of 2027) keep 'H'/'A' and set the
+    flag. Use this (or TeamGameStats.site) wherever a site decides HCA, quadrants or the like.
+    """
+    if neutral_site or home_away == "N":
+        return "neutral"
+    return "home" if home_away == "H" else "away"
+
+
+def sync_home_away_to_site(game_ids) -> int:
+    """Rewrite TeamGameStats.home_away of these games from Game.neutral_site: 'N' on a neutral game, else
+    'H' / 'A' by Game.home_team. Call it whenever neutral_site changes after the box rows exist
+    (backfill_neutral_flags); game_site() still reads the flag first. Returns rows changed."""
+    changed = []
+    for ts in TeamGameStats.objects.filter(game_id__in=list(game_ids)).select_related("game"):
+        want = "N" if ts.game.neutral_site else ("H" if ts.team_id == ts.game.home_team_id else "A")
+        if ts.home_away != want:
+            ts.home_away = want
+            changed.append(ts)
+    TeamGameStats.objects.bulk_update(changed, ["home_away"], batch_size=500)
+    return len(changed)
+
+
 class TeamGameStats(models.Model):
     """
     Box score statistics for one team in one game
@@ -331,11 +360,22 @@ class TeamGameStats(models.Model):
         return self._cached_opp_stats
 
     @property
+    def site(self) -> str:
+        """'home', 'away' or 'neutral' for this team (game_site: the Game's neutral flag wins)."""
+        return game_site(self.home_away, self.game.neutral_site)
+
+    @property
+    def site_code(self) -> str:
+        """site as 'H', 'A' or 'N' (quadrants, SOS site adjustment)."""
+        return SITE_CODES[self.site]
+
+    @property
     def site_factor(self):
-        """Offensive site adjustment factor based on home/away/neutral"""
-        if self.home_away == "H":
+        """Offensive site adjustment factor based on home/away/neutral (self.site: neutral flag wins)"""
+        site = self.site
+        if site == "home":
             return 0.9862
-        elif self.home_away == "A":
+        elif site == "away":
             return 1.0140
         else:  # 'N' neutral
             return 1.0000
@@ -348,9 +388,10 @@ class TeamGameStats(models.Model):
         so we inflate to neutralize. Road makes defense look worse,
         so we deflate.
         """
-        if self.home_away == "H":
+        site = self.site
+        if site == "home":
             return 1.0140  # Inverse of offensive home factor
-        elif self.home_away == "A":
+        elif site == "away":
             return 0.9862  # Inverse of offensive away factor
         else:  # 'N' neutral
             return 1.0000

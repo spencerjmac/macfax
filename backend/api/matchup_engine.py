@@ -70,6 +70,9 @@ def apply_hca_adjustment(
         - Away team gets -HCA/2
         - Neutral: no adjustment
     """
+    if site not in ('home', 'away', 'neutral'):
+        # An unknown value used to fall through to neutral silently (compute_sor passed 'HOME')
+        raise ValueError(f"site must be 'home', 'away' or 'neutral', not {site!r}")
     hca_half = hca_points / 2
     
     if site == 'home':
@@ -804,12 +807,7 @@ def compute_wab_for_team(
         result = 1.0 if won else 0.0
         
         # Determine site from team perspective
-        if game_stat.home_away == 'H':
-            site = 'home'  # Team at home
-        elif game_stat.home_away == 'A':
-            site = 'away'  # Team away
-        else:
-            site = 'neutral'
+        site = game_stat.site  # game_site: the Game's neutral flag wins
         
         # Compute pBubble_g: probability that Bubble Team would win
         # Treat Bubble Team as if it were the actual team in this game
