@@ -71,7 +71,14 @@ export default async function NBAPlayersPage({ searchParams }: NBAPlayersPagePro
             </div>
           </div>
         ) : (
-          <NBAPlayerRankingsTable data={players} seasonDisplay={seasonDisplay} seasonType={seasonType} teamGames={teamGames} />
+          <NBAPlayerRankingsTable
+            data={players}
+            seasonDisplay={seasonDisplay}
+            seasonType={seasonType}
+            teamGames={teamGames}
+            seasons={seasons}
+            selectedSeason={currentSeason?.year}
+          />
         )}
       </div>
     </div>

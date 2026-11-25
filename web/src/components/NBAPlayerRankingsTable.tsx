@@ -33,7 +33,7 @@ import {
   formatPlayerMetric,
   type PlayerMetricMeta,
 } from '@macfax/core/lib/playerMetricMetadata';
-import type { NBAPlayerSeasonStats } from '@macfax/core/types/nba';
+import type { NBAPlayerSeasonStats, NBASeasonInfo } from '@macfax/core/types/nba';
 import { withNullsLast } from '@/lib/nullsLast';
 import HeatLegend from './HeatLegend';
 
@@ -45,9 +45,21 @@ interface NBAPlayerRankingsTableProps {
   seasonType?: string;
   /** Team slug -> games played this season (from the team rankings); drives Auto for native rows. */
   teamGames?: Readonly<Record<string, number>>;
+  seasons?: NBASeasonInfo[];
+  selectedSeason?: number;
 }
 
 const NO_TEAM_GAMES: Readonly<Record<string, number>> = {};
+const NO_SEASONS: NBASeasonInfo[] = [];
+
+/** /nba/players URL for a season and season type (both optional). */
+function playersHref(season: string | number | undefined, seasonType: string): string {
+  const qs = new URLSearchParams();
+  if (season) qs.set('season', String(season));
+  if (seasonType === 'playoffs') qs.set('season_type', 'playoffs');
+  const query = qs.toString();
+  return query ? `/nba/players?${query}` : '/nba/players';
+}
 
 // Primary columns always shown — never in picker
 const NBA_TRAD_PRIMARY = ['pts', 'reb', 'ast', 'stl', 'blk', 'tov', 'efg_pct', 'ts_pct', 'ast_to'];
@@ -89,6 +101,7 @@ const PAGE_SIZE = 100;
 
 export default function NBAPlayerRankingsTable({
   data, seasonDisplay, seasonType = 'regular', teamGames = NO_TEAM_GAMES,
+  seasons = NO_SEASONS, selectedSeason,
 }: NBAPlayerRankingsTableProps) {
   const router = useRouter();
   const isPlayoffs = seasonType === 'playoffs';
@@ -474,13 +487,26 @@ export default function NBAPlayerRankingsTable({
     <div className="space-y-4">
       {/* ── Filter bar ──────────────────────────────────────────────────── */}
       <div className="flex flex-wrap gap-3 items-center">
+        {seasons.length > 1 && (
+          <div>
+            <select
+              value={selectedSeason ?? ''}
+              onChange={(e) => router.push(playersHref(e.target.value, seasonType))}
+              className="px-3 py-2 bg-ui-surface border border-ui-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand/50 font-medium"
+            >
+              {seasons.map((s) => (
+                <option key={s.year} value={s.year}>
+                  {s.display_name}{s.is_current ? ' (Current)' : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         <div>
           <select
             value={seasonType}
-            onChange={(e) => {
-              const stParam = e.target.value === 'playoffs' ? '?season_type=playoffs' : '';
-              router.push(`/nba/players${stParam}`);
-            }}
+            onChange={(e) => router.push(playersHref(selectedSeason, e.target.value))}
             className="px-3 py-2 bg-ui-surface border border-ui-border rounded-lg text-sm
                        focus:outline-none focus:ring-2 focus:ring-brand/50 font-medium"
           >
