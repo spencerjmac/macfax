@@ -23,6 +23,8 @@ import MetricDefinitionsCard, { type MetricDefinition } from './MetricDefinition
 import { METRIC_DEFINITIONS, MetricMeta } from '@macfax/core/lib/metricMetadata';
 import { computeRanks, heatStyleFromPercentile, RankData } from '@macfax/core/lib/rankingUtils';
 import { withNullsLast } from '@/lib/nullsLast';
+import { ncaaTeamHref } from '@/lib/teamLinks';
+import { pickCurrentSeason } from '@macfax/core/lib/season';
 import HeatLegend from './HeatLegend';
 
 interface RankingsTableProps {
@@ -89,6 +91,8 @@ const TEAM_METRIC_DEFINITIONS: Record<TabId, MetricDefinition[]> = {
 
 export default function RankingsTable({ data, seasons = [], selectedSeason, isPreTournament = false }: RankingsTableProps) {
   const router = useRouter();
+  // Team links keep a past season (?season=); current season links stay plain
+  const currentSeason = pickCurrentSeason(seasons)?.year ?? null;
   const [activeTab, setActiveTab] = useState<TabId>('overview');
   const [sorting, setSorting] = useState<SortingState>([
     { id: 'rank', desc: false },
@@ -246,7 +250,7 @@ export default function RankingsTable({ data, seasons = [], selectedSeason, isPr
           const team = info.row.original;
           return (
             <Link
-              href={`/ncaa/team/${team.teamId}`}
+              href={ncaaTeamHref(team.teamId, selectedSeason, currentSeason)}
               className="flex items-center space-x-2 hover:text-brand transition-colors"
             >
               {team.logoUrl ? (
@@ -316,7 +320,7 @@ export default function RankingsTable({ data, seasons = [], selectedSeason, isPr
           const team = info.row.original;
           return (
             <Link
-              href={`/ncaa/team/${team.teamId}`}
+              href={ncaaTeamHref(team.teamId, selectedSeason, currentSeason)}
               className="flex items-center space-x-2 hover:text-brand transition-colors"
             >
               {team.logoUrl ? (
@@ -458,7 +462,7 @@ export default function RankingsTable({ data, seasons = [], selectedSeason, isPr
           createMetricColumn('luck_wins'),
         ];
     }
-  }, [activeTab, metricRanks]);
+  }, [activeTab, metricRanks, selectedSeason, currentSeason]);
 
   // Missing values sort last in both directions
   const sortedColumns = useMemo(() => withNullsLast(columns), [columns]);

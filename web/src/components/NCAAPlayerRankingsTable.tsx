@@ -32,6 +32,8 @@ import {
 import type { NCAAPlayerSeasonStats, SeasonInfo } from '@macfax/core/types';
 import { BPRConfidenceBadge, type BprSource } from './BPRConfidenceBadge';
 import { withNullsLast } from '@/lib/nullsLast';
+import { ncaaTeamHref } from '@/lib/teamLinks';
+import { pickCurrentSeason } from '@macfax/core/lib/season';
 import HeatLegend from './HeatLegend';
 
 type TabId = 'traditional' | 'impact' | 'fourfactors';
@@ -148,6 +150,8 @@ export default function NCAAPlayerRankingsTable({ data, selectedSeason, seasons 
     () => seasons.filter((x) => x.year >= PLAYER_FIRST_SEASON).sort((a, b) => b.year - a.year),
     [seasons],
   );
+  // Team links keep a past season (?season=); current season links stay plain
+  const currentSeason = pickCurrentSeason(seasons)?.year ?? null;
   // No season in the URL means the API's current season
   const seasonValue = selectedSeason ?? seasons.find((x) => x.is_current)?.year ?? '';
   // Early in a season BPR isn't computed yet; open on Traditional so the table isn't empty
@@ -382,7 +386,7 @@ export default function NCAAPlayerRankingsTable({ data, selectedSeason, seasons 
         );
         return p.team_slug ? (
           <Link
-            href={`/ncaa/team/${p.team_slug}`}
+            href={ncaaTeamHref(p.team_slug, selectedSeason, currentSeason)}
             className="flex items-center space-x-2 min-w-0 max-w-[170px] hover:text-brand transition-colors"
           >
             {inner}
@@ -653,7 +657,7 @@ export default function NCAAPlayerRankingsTable({ data, selectedSeason, seasons 
       ),
       withMeta(createSubColumn({ key: 'on_court_ffi', label: 'On-Ct FFI' }), { divider: true }),
     ];
-  }, [activeTab, metricRanks, pagination.pageIndex, sorting, tradOptional, allMetaMaps]);
+  }, [activeTab, metricRanks, pagination.pageIndex, sorting, tradOptional, allMetaMaps, selectedSeason, currentSeason]);
 
   // ── Table ─────────────────────────────────────────────────────────────────
   // Missing values sort last in both directions

@@ -9,7 +9,7 @@ The `api/` folder is the front desk of the backend: it receives questions from t
 - **The customer** = the website (`web/`) or the phone app (`apps/expo/`).
 - **The menu and the host** = `api/urls.py`. The customer says what they want ("rankings"); the host sends the order to the right kitchen station.
 - **The kitchen stations (chefs)** = the `*_views.py` files. Each station cooks one kind of dish.
-- **The recipes** = the "engine" files (`matchup_engine.py`, `bracket_engine.py`, `checklist.py`...). The chefs follow these to do the maths.
+- **The recipes** = the "engine" files (`matchup_engine.py`, `bracket_engine.py`...). The chefs follow these to do the maths.
 - **The pantry** = the database (tables like teams, games, ratings). The chefs take ingredients from it.
 - **The plating** = `serializers.py`. It arranges what came out of the pantry into a neat plate (JSON, defined below) so the customer can read it.
 - **The staff-only office** = `auth_views.py`, `job_views.py`, `job_tasks.py`. Only the manager (a logged-in admin) may go in, to log in and to start the big "re-cook everything" job.
@@ -59,7 +59,6 @@ Example: the website loads the Duke roster outlook page. It asks `GET /api/outlo
 |---|---|
 | `matchup_engine.py` | Forecasts a game between two teams: pace, expected points, win probability, volatility. About 840 lines of pure maths with no web code. |
 | `bracket_engine.py` | Simulates the NCAA tournament thousands of times (Monte Carlo = repeated random trials) to get each team's odds of reaching each round. |
-| `checklist.py` | An NCAA 15-item "national champion checklist" for one team. Only reachable through `TeamViewSet`'s `stats` and `profile` sub-routes, which nothing calls. The checklist the website actually shows is computed in `packages/core/src/lib/rankings.ts`, and the Crystal Ball page uses `crystal_ball_views.py`. Kept for now, with its tests (`tests/test_checklist.py`) brought up to date; retire it together with those two sub-routes if you decide they are not needed. |
 | `checklist_utils.py` | One small helper (`_item`) that builds one checklist row; shared by NCAA and NBA. |
 | `resume_utils.py` | NCAA "quadrant" logic (is this a Quad 1 win?). Only `get_quadrant` is used today; the rest is kept for planned resume features. |
 | `wp_reconstruction.py` | Rebuilds a game's win-probability curve from who was on the court (lineup "stints"). |
@@ -101,7 +100,7 @@ Example: the website loads the Duke roster outlook page. It asks `GET /api/outlo
 **3) `serializers.py`: the plating**
 - A **serializer** takes a database row (or a bundle of rows) and decides exactly which fields to show and how to name and round them.
 - `RankingsSerializer` builds each rankings row, with many computed fields.
-- `TeamSeasonStatsSerializer` (used only by `TeamViewSet`'s `stats` and `profile` sub-routes) carries a `national_champion_checklist` field that calls `compute_national_champion_checklist` from `checklist.py`.
+- `TeamSeasonStatsSerializer` (used only by `TeamViewSet`'s `stats` and `profile` sub-routes) serializes one team's season stats row.
 - Other serializers: seasons, conferences, teams, game logs, team metrics, player stats, pipeline config, job rows, placeholder archetypes.
 - *If missing:* the views have no way to produce their JSON; most endpoints would crash on import.
 - *Why it's long:* it does a lot of derived-stat maths inline. It is the file most worth splitting up someday.
