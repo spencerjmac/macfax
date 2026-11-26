@@ -9,6 +9,9 @@ Usage:
     python manage.py import_logos --dry-run
     python manage.py import_logos --logos-dir /path/to/logos
     python manage.py import_logos --clear-missing
+
+Afterwards it warns (does not fail) about current-season D1 teams that still have
+no logo, so a new D1 program or a renamed team shows up in the container start log.
 """
 
 import os
@@ -17,8 +20,10 @@ from pathlib import Path
 
 from django.conf import settings
 from django.core.management.base import BaseCommand
+from django.db import models
 
-from ncaa.models import Team
+from ncaa.models import Season, Team
+from ncaa.utils.d1 import d1_team_ids
 from ncaa.utils.team_logo_mapping import TEAM_NAME_TO_LOGO_STEM
 
 # Extensions we consider as logo images (order = preference when multiple exist)
@@ -130,5 +135,27 @@ class Command(BaseCommand):
             self.style.SUCCESS(
                 f"Done. Updated: {updated}, Cleared: {cleared}, No mapping: {no_mapping}, File missing: {no_file}"
                 + (" (dry run)" if dry_run else "")
+            )
+        )
+        self._warn_current_d1_without_logo(dry_run)
+
+    def _warn_current_d1_without_logo(self, dry_run):
+        """Warn about current-season D1 teams with no logo_url (a dry run reports today's state)."""
+        season = Season.objects.filter(is_current=True).first()
+        if season is None:
+            return
+        missing = list(
+            Team.objects.filter(id__in=d1_team_ids(season))
+            .filter(models.Q(logo_url__isnull=True) | models.Q(logo_url=""))
+            .order_by("name")
+            .values_list("name", flat=True)
+        )
+        if not missing:
+            self.stdout.write(f"All {season.year} D1 teams have a logo.")
+            return
+        self.stdout.write(
+            self.style.WARNING(
+                f"{season.year} D1 teams without a logo ({len(missing)}): " + ", ".join(missing)
+                + (" (before this dry run's changes)" if dry_run else "")
             )
         )
