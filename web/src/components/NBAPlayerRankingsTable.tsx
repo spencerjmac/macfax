@@ -137,6 +137,8 @@ const TAB_DEFAULT_SORT: Record<TabId, SortingState> = {
 };
 
 const PAGE_SIZE = 100;
+// Rank superscripts only for the top 100 (heat still covers everyone); team tables show every rank
+const MAX_SUPERSCRIPT_RANK = 100;
 
 export default function NBAPlayerRankingsTable({
   data, seasonDisplay, seasonType = 'regular', teamGames = NO_TEAM_GAMES,
@@ -244,6 +246,7 @@ export default function NBAPlayerRankingsTable({
             rank={rankData?.rank}
             showRank={graded && meta.showRank}
             column={info.column}
+            maxRank={MAX_SUPERSCRIPT_RANK}
           />
         );
       },

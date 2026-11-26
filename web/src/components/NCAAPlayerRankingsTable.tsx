@@ -137,6 +137,8 @@ const POSITIONS: Array<{ id: string; label: string }> = [
 const isLineupBpr = (p: NCAAPlayerSeasonStats) => p.bpr_source === 'rapm';
 
 const PAGE_SIZE = 100;
+// Rank superscripts only for the top 100 (heat still covers everyone); team tables show every rank
+const MAX_SUPERSCRIPT_RANK = 100;
 
 export default function NCAAPlayerRankingsTable({ data, selectedSeason, seasons = [] }: NCAAPlayerRankingsTableProps) {
   const router = useRouter();
@@ -280,6 +282,7 @@ export default function NCAAPlayerRankingsTable({ data, selectedSeason, seasons 
             rank={rankData?.rank}
             showRank={graded && meta.showRank}
             column={info.column}
+            maxRank={MAX_SUPERSCRIPT_RANK}
             variant={variant}
             marker={marker}
           />

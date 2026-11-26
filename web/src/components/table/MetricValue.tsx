@@ -19,10 +19,12 @@ interface MetricValueProps {
   variant?: 'full' | 'compact';
   /** Optional mark after the value (e.g. a † with a tooltip). */
   marker?: ReactNode;
+  /** Show the rank superscript only up to this rank (player tables: 100); unset = every rank. */
+  maxRank?: number;
 }
 
 /** Ratings-table value cell: heat background, value, optional rank superscript, '-' for missing. */
-export default function MetricValue({ text, heat, rank, showRank, column, variant = 'full', marker }: MetricValueProps) {
+export default function MetricValue({ text, heat, rank, showRank, column, variant = 'full', marker, maxRank }: MetricValueProps) {
   const compact = variant === 'compact';
   if (text == null) {
     return compact
@@ -38,7 +40,7 @@ export default function MetricValue({ text, heat, rank, showRank, column, varian
     >
       {text}
       {marker}
-      {showRank && rank && (
+      {showRank && rank && (maxRank == null || rank <= maxRank) && (
         <sup className={`text-[9px] ${heat.background ? 'text-slate-700' : 'text-muted'} ml-0.5 font-sans font-medium`}>{rank}</sup>
       )}
     </div>
