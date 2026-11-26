@@ -16,9 +16,11 @@
 #
 # fab sends this file over SSH (`bash -s`), so the fab tasks work before it is deployed. On the server,
 # wrap a write: /opt/macfax/ops/prod-lock.sh run "spencer/session-A" -- docker compose exec -T backend ...
-# PROD_LOCK_DIR overrides the location (default /opt/macfax/.prod-lock).
+# The nightly (scheduler container) takes the same lock as holder "nightly" through ncaa/prod_lock.py,
+# with /opt/macfax/.locks mounted at /locks: a deploy refuses while the nightly runs.
+# PROD_LOCK_DIR overrides the location (default /opt/macfax/.locks/prod).
 set -u
-LOCK_DIR="${PROD_LOCK_DIR:-/opt/macfax/.prod-lock}"
+LOCK_DIR="${PROD_LOCK_DIR:-/opt/macfax/.locks/prod}"
 
 show_info() {
   if [ -f "$LOCK_DIR/info" ]; then cat "$LOCK_DIR/info"; else echo "(lock directory without info: just taken, or left by a crash)"; fi

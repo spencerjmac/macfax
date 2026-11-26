@@ -69,7 +69,8 @@ def _conn():
 # ---------------------------------------------------------------------------
 
 LOCK_SCRIPT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ops", "prod-lock.sh")
-LOCK_DIR = f"{APP_DIR}/.prod-lock"
+# Under .locks/ so the scheduler container can mount the parent (the nightly takes the same lock)
+LOCK_DIR = f"{APP_DIR}/.locks/prod"
 
 
 def _lock_holder() -> str:
@@ -249,6 +250,8 @@ def pipeline_log(c, n=5):
         "for line in lines[-%d:]:\n"
         "    r = json.loads(line)\n"
         "    print(f\"{r['started'][:19]}  {r['command']:<22} rc={r['rc']}  {r['seconds']:>7.0f}s  {r.get('options', {}).get('season', '')}\")\n"
+        "    if r.get('reason'):\n"
+        "        print(f\"    {r['reason']}\")\n"
         "    for st in r['steps']:\n"
         "        sec = '' if st['seconds'] is None else f\"{st['seconds']:.0f}s\"\n"
         "        print(f\"    rc={st['rc']}  {sec:>7}  {st['name']}\" + (f\"  ({st['note']})\" if st['note'] else ''))\n"

@@ -97,5 +97,5 @@ mps/data/mps_dataset_with_consensus.csv
 # The recruiting priority list regenerates via check_recruiting_data.
 backend/backtest_output/
 
-# prod write lock directory (ops/prod-lock.sh) on the server checkout
-/.prod-lock/
+# prod write lock (ops/prod-lock.sh, ncaa/prod_lock.py) on the server checkout
+/.locks/

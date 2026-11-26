@@ -79,6 +79,10 @@ services:
       NBA_CACHE_DIR: /cache/nba
       # update_* run log (the nightly's steps, rc and timings), shared with the backend
       PIPELINE_LOG_DIR: /var/log/macfax
+      # Prod write lock shared with fab (ops/prod-lock.sh): the nightly holds it as "nightly" and
+      # waits up to NIGHTLY_LOCK_WAIT_MIN minutes for another holder, then skips (ncaa/prod_lock.py)
+      PROD_LOCK_DIR: /locks/prod
+      NIGHTLY_LOCK_WAIT_MIN: "60"
     depends_on:
       db:
         condition: service_healthy
@@ -94,6 +98,8 @@ services:
     volumes:
       - macfax_nba_cache:/cache/nba
       - macfax_pipeline_logs:/var/log/macfax
+      # host /opt/macfax/.locks (fab creates it as macfax when it first takes the lock)
+      - ./.locks:/locks
     command: ["python", "manage.py", "run_scheduler"]
 
   web:

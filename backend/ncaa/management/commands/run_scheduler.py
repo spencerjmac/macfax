@@ -10,6 +10,13 @@ Usage
   python manage.py run_scheduler --at 09:30
   python manage.py run_scheduler --run-now       # run once immediately, then keep the schedule
   python manage.py run_scheduler --once          # run once and exit
+
+Prod write lock (ncaa/prod_lock.py): with PROD_LOCK_DIR set, each run takes the lock fab and the
+server-side write scripts use, as holder "nightly", so a deploy can't recreate the containers under it
+(and refuses while it runs). If another session holds the lock, the nightly waits up to
+NIGHTLY_LOCK_WAIT_MIN (default 60) minutes, then skips that day and logs the skip (rc 75, reason) to
+the pipeline run log. At startup a lock still held by "nightly" is a leftover of a killed run (this
+process is the only nightly) and is cleared.
 """
 
 import os
@@ -21,9 +28,15 @@ from datetime import datetime, time, timedelta, timezone as dt_timezone
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
+from ncaa import prod_lock
+from ncaa.pipeline_log import append_run
+
 # 10:00 UTC is 06:00 ET: after the last West Coast NBA / NCAA finals are posted.
 DEFAULT_AT = "10:00"
 MAX_SLEEP_SECONDS = 60  # wake often so docker stop / clock changes are noticed
+LOCK_HOLDER = "nightly"
+DEFAULT_LOCK_WAIT_MIN = 60
+SKIP_RC = 75  # EX_TEMPFAIL: not run because the prod lock stayed held
 
 
 def parse_at(value: str) -> time:
@@ -54,6 +67,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         at = parse_at(options["at"])
+        self._clear_stale_lock()
 
         if options["once"] or options["run_now"]:
             self._run_update()
@@ -70,7 +84,50 @@ class Command(BaseCommand):
                 time_module.sleep(max(1.0, min(MAX_SLEEP_SECONDS, remaining)))
             self._run_update()
 
+    def _clear_stale_lock(self):
+        """A lock held by "nightly" at startup was left by a killed run: no nightly can be running now."""
+        if prod_lock.lock_dir() is None:
+            return
+        info = prod_lock.clear_if_holder(LOCK_HOLDER)
+        if info:
+            self.stdout.write(f"[scheduler] cleared a stale prod lock left by the nightly (started {info.get('started')})")
+
     def _run_update(self):
+        if prod_lock.lock_dir() is None:
+            self._run_update_locked()
+            return
+        wait_min = float(os.environ.get("NIGHTLY_LOCK_WAIT_MIN", DEFAULT_LOCK_WAIT_MIN))
+        asked = datetime.now(dt_timezone.utc)
+        held = prod_lock.read_info()
+        if held is not None:
+            self.stdout.write(f"[scheduler] prod lock held by {held.get('holder')} ({held.get('command')}, "
+                              f"since {held.get('started')}); waiting up to {wait_min:g} min")
+            self.stdout.flush()
+        token, holder, waited = prod_lock.acquire_waiting(LOCK_HOLDER, "update_daily", wait_min * 60)
+        if token is None:
+            self._log_skip(asked, holder or {}, waited)
+            return
+        try:
+            self._run_update_locked()
+        finally:
+            if not prod_lock.release(token):
+                self.stdout.write("[scheduler] WARNING: the prod lock was no longer ours at release")
+
+    def _log_skip(self, asked, holder: dict, waited: float):
+        reason = (f"prod lock held by {holder.get('holder', '?')} ({holder.get('command', '?')}, since "
+                  f"{holder.get('started', '?')}); waited {waited / 60:.0f} min, skipped today's run")
+        self.stdout.write(f"[scheduler] SKIPPED update_daily: {reason}")
+        self.stdout.flush()
+        finished = datetime.now(dt_timezone.utc)
+        append_run({
+            "command": "update_daily", "title": "DAILY UPDATE", "options": {},
+            "started": asked.isoformat(), "finished": finished.isoformat(),
+            "seconds": round((finished - asked).total_seconds(), 1),
+            "rc": SKIP_RC, "skipped": True, "reason": reason,
+            "host": os.uname().nodename, "pid": os.getpid(), "steps": [],
+        })
+
+    def _run_update_locked(self):
         started = datetime.now(dt_timezone.utc)
         self.stdout.write(f"[scheduler] {started:%Y-%m-%d %H:%M:%S} UTC: starting update_daily")
         self.stdout.flush()

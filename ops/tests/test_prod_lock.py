@@ -11,7 +11,10 @@ Run from the repo root with the interpreter fab uses:
   run refuses (and does not run the command) while another session holds the lock;
 - of many simultaneous acquires exactly one wins;
 - fab's _prod_lock takes and releases the lock around a task body, refuses while it is held, and
-  releases when the body fails.
+  releases when the body fails;
+- the nightly's Python lock (backend/ncaa/prod_lock.py) and the bash script are the same lock: each
+  sees and respects the other's holder, a token works in either, and a deploy refuses while the
+  nightly holds it.
 """
 import importlib.util
 import os
@@ -141,6 +144,56 @@ class FabWrapperTests(unittest.TestCase):
             with self.fab._prod_lock(self.conn, "fab migrate"):
                 raise RuntimeError("migration failed")
         self.assertEqual(self.status().strip(), "free")
+
+
+def _load_py_lock():
+    """backend/ncaa/prod_lock.py (pure Python), the nightly's side of the same lock."""
+    spec = importlib.util.spec_from_file_location(
+        "prod_lock_under_test", os.path.join(ROOT, "backend", "ncaa", "prod_lock.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+class NightlyInteropTests(unittest.TestCase):
+    """The nightly (Python, in the scheduler) and fab / server scripts (bash) share one lock."""
+
+    def setUp(self):
+        self.py = _load_py_lock()
+        self.lock = os.path.join(tempfile.mkdtemp(), "locks", "prod")
+
+    def sh(self, *args):
+        return subprocess.run(["bash", SCRIPT, *args], capture_output=True, text=True,
+                              env={**os.environ, "PROD_LOCK_DIR": self.lock})
+
+    def test_nightly_holds_it_and_bash_sees_and_respects_it(self):
+        from pathlib import Path
+        token = self.py.acquire("nightly", "update_daily", Path(self.lock))
+        status = self.sh("status").stdout
+        self.assertIn("holder=nightly", status)
+        self.assertIn("command=update_daily", status)
+        self.assertEqual(self.sh("acquire", "session-A", "fab deploy").returncode, 3)
+        self.assertEqual(self.sh("release", "other").returncode, 4)
+        self.assertEqual(self.sh("release", token).returncode, 0)   # same format: the token works in bash
+
+    def test_bash_holder_blocks_the_nightly(self):
+        from pathlib import Path
+        self.sh("acquire", "session-A", "backfill")
+        self.assertIsNone(self.py.acquire("nightly", "update_daily", Path(self.lock)))
+        self.assertEqual(self.py.read_info(Path(self.lock))["holder"], "session-A")
+
+    @unittest.skipUnless(importlib.util.find_spec("fabric"), "fabric is not installed for this interpreter")
+    def test_deploy_refuses_while_the_nightly_runs(self):
+        from pathlib import Path
+        self.py.acquire("nightly", "update_daily", Path(self.lock))
+        fab = _load_fabfile()
+        fab.LOCK_DIR = self.lock
+        ran = []
+        with self.assertRaises(SystemExit):
+            with fab._prod_lock(LocalConn(), "fab deploy"):
+                ran.append(True)
+        self.assertEqual(ran, [])
+        self.assertIn("holder=nightly", self.sh("status").stdout)
 
 
 if __name__ == "__main__":
