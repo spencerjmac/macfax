@@ -32,6 +32,7 @@ import {
   type PlayerMetricMeta,
 } from '@macfax/core/lib/playerMetricMetadata';
 import type { NCAAPlayerSeasonStats, SeasonInfo } from '@macfax/core/types';
+import { FEATURES } from '@macfax/core/config/features';
 import { withNullsLast } from '@/lib/nullsLast';
 import { ncaaTeamHref } from '@/lib/teamLinks';
 import { pickCurrentSeason } from '@macfax/core/lib/season';
@@ -152,7 +153,11 @@ export default function NCAAPlayerRankingsTable({ data, selectedSeason, seasons 
   const hasBpr = useMemo(() => data.some((p) => p.bpr != null), [data]);
   // Advanced rates and W.Add are filled by later pipeline steps; hide them for seasons without
   const hasAdvanced = useMemo(() => data.some((p) => p.usg_pct != null), [data]);
-  const hasWinsAdded = useMemo(() => data.some((p) => p.wins_added != null), [data]);
+  // W.Add column: behind a flag (off by default) and only for seasons with values
+  const hasWinsAdded = useMemo(
+    () => FEATURES.ncaaPlayerWinsAdded && data.some((p) => p.wins_added != null),
+    [data],
+  );
   const [activeTab, setActiveTab] = useState<TabId>(hasBpr ? 'impact' : 'traditional');
   const [sorting, setSorting] = useState<SortingState>(TAB_DEFAULT_SORT[hasBpr ? 'impact' : 'traditional']);
   const [globalFilter, setGlobalFilter] = useState('');
