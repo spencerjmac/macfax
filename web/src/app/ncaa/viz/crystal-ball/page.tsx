@@ -11,25 +11,20 @@ import clsx from 'clsx';
 // Helpers
 // ---------------------------------------------------------------------------
 
-const TIER_COLORS: Record<string, { bg: string; text: string; label: string }> = {
-  champion:  { bg: 'bg-amber-100  border-amber-400',  text: 'text-amber-900',  label: 'Championship Tier' },
-  contender: { bg: 'bg-green-50   border-green-400',  text: 'text-green-900',  label: 'Contender' },
-  threat:    { bg: 'bg-blue-50    border-blue-300',   text: 'text-blue-900',   label: 'Threat' },
-  pretender: { bg: 'bg-slate-50   border-slate-200',  text: 'text-slate-500',  label: 'Pretender' },
-};
-
-function getTier(score: number) {
-  if (score >= 12) return TIER_COLORS.champion;
-  if (score >= 9)  return TIER_COLORS.contender;
-  if (score >= 6)  return TIER_COLORS.threat;
-  return TIER_COLORS.pretender;
-}
-
 function ScoreBadge({ passed, total }: { passed: number; total: number }) {
-  const tier = getTier(passed);
   return (
-    <span className={clsx('inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-sm font-bold border', tier.bg, tier.text)}>
-      {passed}<span className="font-normal opacity-60">/{total}</span>
+    <span className="inline-flex items-center gap-1.5">
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-sm font-bold border border-ui-border bg-ui-surface text-text-primary">
+        {passed}<span className="font-normal opacity-60">/{total}</span>
+      </span>
+      {/* Fixed-width slot so scores line up whether or not the badge shows */}
+      <span className="inline-flex w-[6.5rem] justify-start">
+        {passed === total && (
+          <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-wide bg-brand text-white whitespace-nowrap">
+            Title Profile
+          </span>
+        )}
+      </span>
     </span>
   );
 }
@@ -82,7 +77,6 @@ function ChecklistDetail({ items }: { items: ChecklistItem[] }) {
 
 function TeamRow({ team, rank }: { team: CrystalBallTeam; rank: number }) {
   const [expanded, setExpanded] = useState(false);
-  const tier = getTier(team.checklist.passedCount);
 
   return (
     <>
@@ -155,11 +149,6 @@ function TeamRow({ team, rank }: { team: CrystalBallTeam; rank: number }) {
           <CheckDots items={team.checklist.items} />
         </td>
 
-        {/* Tier */}
-        <td className="px-3 py-3 hidden xl:table-cell">
-          <span className={clsx('text-xs font-medium', tier.text)}>{tier.label}</span>
-        </td>
-
         {/* Expand arrow */}
         <td className="px-3 py-3 text-center text-text-muted text-xs w-8">
           <span className={clsx('transition-transform inline-block', expanded ? 'rotate-90' : '')}>▶</span>
@@ -169,7 +158,7 @@ function TeamRow({ team, rank }: { team: CrystalBallTeam; rank: number }) {
       {/* Expanded checklist */}
       {expanded && (
         <tr className="border-b border-ui-border bg-ui-surface/50">
-          <td colSpan={8} className="px-4 py-3">
+          <td colSpan={7} className="px-4 py-3">
             <ChecklistDetail items={team.checklist.items} />
           </td>
         </tr>
@@ -220,17 +209,6 @@ export default function CrystalBallPage() {
   }, [data, search]);
 
   const hasTournamentData = data?.teams.some((t) => t.tournament_seed != null) ?? false;
-
-  // Tier summary counts
-  const tierCounts = useMemo(() => {
-    if (!data) return null;
-    const teams = data.teams;
-    return {
-      champion:  teams.filter((t) => t.checklist.passedCount >= 12).length,
-      contender: teams.filter((t) => t.checklist.passedCount >= 9 && t.checklist.passedCount < 12).length,
-      threat:    teams.filter((t) => t.checklist.passedCount >= 6 && t.checklist.passedCount < 9).length,
-    };
-  }, [data]);
 
   return (
     <div className="container mx-auto px-4 py-8 space-y-6">
@@ -288,30 +266,11 @@ export default function CrystalBallPage() {
         />
       </div>
 
-      {/* Tier legend + summary */}
-      {tierCounts && (
-        <div className="flex flex-wrap gap-3 text-sm">
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-300">
-            <span className="font-bold text-amber-800">12–15</span>
-            <span className="text-amber-700">Championship Tier</span>
-            <span className="font-mono font-bold text-amber-900">{tierCounts.champion}</span>
-          </div>
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-green-50 border border-green-300">
-            <span className="font-bold text-green-800">9–11</span>
-            <span className="text-green-700">Contender</span>
-            <span className="font-mono font-bold text-green-900">{tierCounts.contender}</span>
-          </div>
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-50 border border-blue-300">
-            <span className="font-bold text-blue-800">6–8</span>
-            <span className="text-blue-700">Threat</span>
-            <span className="font-mono font-bold text-blue-900">{tierCounts.threat}</span>
-          </div>
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-300">
-            <span className="font-bold text-slate-600">0–5</span>
-            <span className="text-slate-600">Pretender</span>
-          </div>
-        </div>
-      )}
+      {/* Historical context (backtest 2005–2026, skip 2020) */}
+      <p className="text-sm text-text-secondary">
+        On average, 2–3 teams a season have passed all 15. Every champion did except three UConn teams
+        (2011, 2014, 2023). Of the 55 that passed, 18 won the title and 31 reached the Final Four.
+      </p>
 
       {/* Checklist key */}
       <div className="text-xs text-text-muted flex items-center gap-2">
@@ -352,7 +311,6 @@ export default function CrystalBallPage() {
                 <th className="px-3 py-2 text-center text-xs font-semibold text-text-secondary uppercase tracking-wide hidden md:table-cell">AdjEM</th>
                 <th className="px-3 py-2 text-center text-xs font-semibold text-text-secondary uppercase tracking-wide">Score</th>
                 <th className="px-3 py-2 text-left text-xs font-semibold text-text-secondary uppercase tracking-wide hidden lg:table-cell">Profile (15 checks)</th>
-                <th className="px-3 py-2 text-left text-xs font-semibold text-text-secondary uppercase tracking-wide hidden xl:table-cell">Tier</th>
                 <th className="w-8" />
               </tr>
             </thead>
