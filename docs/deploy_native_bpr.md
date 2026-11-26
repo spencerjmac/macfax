@@ -30,8 +30,11 @@ passed. The swap window ran 15:15:05–15:15:37 (swap rc 0, health 200 after 15 
 1.4 min with a 543 MB peak and hit the box cache. Prod is now native, with `nba_old` kept for rollback (§7.5).
 The first scheduled native run is 2026-11-23 10:00 UTC (P17). **P18** (`DROP SCHEMA nba_old`) can go after
 the 7th clean daily run, 2026-11-29 10:00 UTC (03:00 MST), if every run from 2026-11-23 to 2026-11-29 is clean.
-It needs its own go. Code that adds `nba_*` columns (such as migration `0034_team_game_traditional`) is not
-deployed until P18 is done, because §7.5's rollback brings back `nba_old` without those columns.
+It needs its own go. **0034 shipped before P18 (2026-11-26):** migration `0034_team_game_traditional` adds four
+nullable columns (`ast`, `stl`, `blk`, `pf`) to `nba_nbateamgamestats`, and the same four were added by hand to
+`nba_old.nba_nbateamgamestats`, so §7.5's rollback still brings back tables that match the model (a P7-style
+`public` vs `nba_old` column check shows no differences). After a rollback those columns are null until
+`nba_sync_games` re-syncs the seasons. Any other `nba_*` column added before P18 needs the same step.
 
 **D.5 deployed (2026-11-21 evening, `fab deploy`):** prod now runs `35f3dba` (D.5 web `a5efaf2` plus docs); only `web`
 was recreated, because the backend and scheduler images did not change. Checks on both domains (outputs in

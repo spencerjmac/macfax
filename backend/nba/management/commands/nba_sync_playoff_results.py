@@ -4,14 +4,14 @@ NBATeamSeasonRatings (season_type='regular').
 
 conference_seed is derived from compute_standings() (pure computation from
 NBAGame results — no ingestion needed). playoff_finish comes from a small
-hardcoded table of public-record playoff results for 2016-2025 (16 playoff
+hardcoded table of public-record playoff results for 2016-2026 (16 playoff
 teams/season: champion, runner-up, 2 conference-finals losers, 4 conference-
 semifinals losers, 8 first-round losers). Teams not in the table for a given
 season missed the playoffs and keep playoff_finish=None.
 
 Usage:
     uv run python manage.py nba_sync_playoff_results
-    uv run python manage.py nba_sync_playoff_results --season 2025
+    uv run python manage.py nba_sync_playoff_results --season 2026
 """
 
 from django.core.management.base import BaseCommand, CommandError
@@ -92,16 +92,23 @@ PLAYOFF_RESULTS: dict[int, dict[str, list[str]]] = {
         "Conf Semis": ["CLE", "BOS", "DEN", "GSW"],
         "Round 1": ["MIA", "ORL", "DET", "MIL", "MEM", "HOU", "LAL", "LAC"],
     },
+    2026: {
+        "Champion": ["NYK"],
+        "Runner-Up": ["SAS"],
+        "Conf Finals": ["CLE", "OKC"],
+        "Conf Semis": ["DET", "PHI", "LAL", "MIN"],
+        "Round 1": ["ORL", "BOS", "ATL", "TOR", "PHX", "POR", "DEN", "HOU"],
+    },
 }
 
 
 class Command(BaseCommand):
-    help = "Fill conference_seed (from standings) and playoff_finish (hardcoded 2016-2025) on NBATeamSeasonRatings."
+    help = "Fill conference_seed (from standings) and playoff_finish (hardcoded 2016-2026) on NBATeamSeasonRatings."
 
     def add_arguments(self, parser):
         parser.add_argument(
             "--season", type=int, default=None,
-            help="Single season year. Default: all seasons 2016-2025.",
+            help="Single season year. Default: all seasons 2016-2026.",
         )
 
     def handle(self, *args, **options):

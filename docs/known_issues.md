@@ -44,18 +44,9 @@ Last checked: 2026-11-25. Prod checks were read-only.
   Vegas); see the 2026 list above.
 - **Fix:** needs a migration (a neutral-site field on `NBAGame`, filled by `nba_sync_games` when both rows read
   "@"), then `is_home=None` for those games in the ratings and a zero HCA sign in RAPM. **Do it after P18**
-  (`DROP SCHEMA nba_old`; see `deploy_native_bpr.md`). Until then, a new column in an `nba_*` table would break
-  the §7.5 rollback, which brings back `nba_old` without it.
-
-### 2026 champion is missing
-
-- **Where:** `NBATeamSeasonRatings.playoff_finish` for 2026 (local and prod). It feeds the Crystal Ball,
-  Landscape and backtest checklist views.
-- **Cause:** `nba_sync_playoff_results` reads a hard-coded `PLAYOFF_RESULTS` table that stops at 2025. It has
-  nothing to do with the 2026 Finals games, which were missing until 2026-11-24.
-- **Fix:** add 2026 to `PLAYOFF_RESULTS` (champion NYK, beat SAS 4-1 in the Finals, plus the runner-up,
-  conference finals, conference semifinal and first-round losers), then run
-  `nba_sync_playoff_results --season 2026`.
+  (`DROP SCHEMA nba_old`; see `deploy_native_bpr.md`). Until then, a new column in an `nba_*` table must also be
+  added to the same table in `nba_old`, as was done for 0034 on 2026-11-26, or the §7.5 rollback brings back a
+  table without it.
 
 ### Commit 708c911 points to "branch notes" that do not exist
 
