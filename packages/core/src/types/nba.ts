@@ -119,6 +119,25 @@ export interface NBATeamSeasonRatings {
   // FFI (PROVISIONAL — see ratings_config.py)
   ffi: number | null;
 
+  // Traditional per-game stats (Traditional tab). Each divides by the games that have it;
+  // percentages are 0-100. Null when no game has the stat.
+  gp: number | null;
+  ppg: number | null;
+  papg: number | null;
+  fg_pct: number | null;
+  fg2_pct: number | null;
+  fg3_pct: number | null;
+  ft_pct: number | null;
+  orpg: number | null;
+  drpg: number | null;
+  rpg: number | null;
+  apg: number | null;
+  spg: number | null;
+  bpg: number | null;
+  topg: number | null;
+  pfpg: number | null;
+  pfdpg: number | null;
+
   // Derived ranks (presentation only, not source of truth)
   rank_adj_net: number | null;
   rank_ffi: number | null;

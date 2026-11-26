@@ -29,7 +29,7 @@ import HeatLegend from './HeatLegend';
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
 
-type TabId = 'overview' | 'four-factors';
+type TabId = 'overview' | 'four-factors' | 'traditional';
 
 interface NBARankingsTableProps {
   data: NBATeamSeasonRatings[];
@@ -79,6 +79,7 @@ export default function NBARankingsTable({
   const tabs = [
     { id: 'overview' as TabId, label: 'Overview' },
     { id: 'four-factors' as TabId, label: 'Four Factors' },
+    { id: 'traditional' as TabId, label: 'Traditional' },
   ];
 
   const filteredData = useMemo(() => {
@@ -324,6 +325,28 @@ export default function NBARankingsTable({
             { key: 'fta_margin',   label: 'Net'    },
           ),
           withMeta(createSubColumn({ key: 'ffi', label: 'FFI' }), { emphasis: true }),
+        ];
+
+      // Same columns, order and colouring as the NCAA Traditional tab
+      case 'traditional':
+        return [
+          ...compactBaseColumns,
+          createSubColumn({ key: 'gp', label: 'GP' }),
+          createSubColumn({ key: 'ppg', label: 'PTS' }),
+          createSubColumn({ key: 'papg', label: 'OPP PTS' }),
+          createSubColumn({ key: 'fg_pct', label: 'FG%' }),
+          createSubColumn({ key: 'fg2_pct', label: '2P%' }),
+          createSubColumn({ key: 'fg3_pct', label: '3P%' }),
+          createSubColumn({ key: 'ft_pct', label: 'FT%' }),
+          createSubColumn({ key: 'orpg', label: 'OREB' }),
+          createSubColumn({ key: 'drpg', label: 'DREB' }),
+          createSubColumn({ key: 'rpg', label: 'REB' }),
+          createSubColumn({ key: 'apg', label: 'AST' }),
+          createSubColumn({ key: 'spg', label: 'STL' }),
+          createSubColumn({ key: 'bpg', label: 'BLK' }),
+          createSubColumn({ key: 'topg', label: 'TOV' }),
+          createSubColumn({ key: 'pfpg', label: 'PF' }),
+          createSubColumn({ key: 'pfdpg', label: 'PFD' }),
         ];
 
       default:

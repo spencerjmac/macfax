@@ -185,6 +185,24 @@ export const NBA_METRIC_DEFINITIONS: Record<string, NBAMetricMeta> = {
     showRank: true,
     heatmap: true,
   },
+  // Traditional per-game stats (same labels and colouring as the NCAA Traditional tab).
+  // Percentages arrive as 0-100 from the API, hence number1pct.
+  gp: { key: 'gp', label: 'GP', tooltip: 'Games played.', format: 'int', better: 'neutral', showRank: false, heatmap: false },
+  ppg: { key: 'ppg', label: 'PTS', tooltip: 'Points per game.', format: 'number1', better: 'higher', showRank: true, heatmap: true },
+  papg: { key: 'papg', label: 'OPP PTS', tooltip: 'Opponent points per game.', format: 'number1', better: 'lower', showRank: true, heatmap: true },
+  fg_pct: { key: 'fg_pct', label: 'FG%', tooltip: 'Field goal percentage.', format: 'number1pct', better: 'higher', showRank: true, heatmap: true },
+  fg2_pct: { key: 'fg2_pct', label: '2P%', tooltip: 'Two-point field goal percentage.', format: 'number1pct', better: 'higher', showRank: true, heatmap: true },
+  fg3_pct: { key: 'fg3_pct', label: '3P%', tooltip: 'Three-point field goal percentage.', format: 'number1pct', better: 'higher', showRank: true, heatmap: true },
+  ft_pct: { key: 'ft_pct', label: 'FT%', tooltip: 'Free throw percentage.', format: 'number1pct', better: 'higher', showRank: true, heatmap: true },
+  orpg: { key: 'orpg', label: 'OREB', tooltip: 'Offensive rebounds per game.', format: 'number1', better: 'higher', showRank: true, heatmap: true },
+  drpg: { key: 'drpg', label: 'DREB', tooltip: 'Defensive rebounds per game.', format: 'number1', better: 'higher', showRank: true, heatmap: true },
+  rpg: { key: 'rpg', label: 'REB', tooltip: 'Total rebounds per game.', format: 'number1', better: 'higher', showRank: true, heatmap: true },
+  apg: { key: 'apg', label: 'AST', tooltip: 'Assists per game.', format: 'number1', better: 'higher', showRank: true, heatmap: true },
+  spg: { key: 'spg', label: 'STL', tooltip: 'Steals per game.', format: 'number1', better: 'higher', showRank: true, heatmap: true },
+  bpg: { key: 'bpg', label: 'BLK', tooltip: 'Blocks per game.', format: 'number1', better: 'higher', showRank: true, heatmap: true },
+  topg: { key: 'topg', label: 'TOV', tooltip: 'Turnovers per game.', format: 'number1', better: 'lower', showRank: true, heatmap: true },
+  pfpg: { key: 'pfpg', label: 'PF', tooltip: 'Personal fouls committed per game.', format: 'number1', better: 'lower', showRank: true, heatmap: true },
+  pfdpg: { key: 'pfdpg', label: 'PFD', tooltip: 'Personal fouls drawn per game (opponent fouls).', format: 'number1', better: 'higher', showRank: true, heatmap: true },
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
