@@ -1,6 +1,7 @@
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { getTeamWithContext, getAllTeams } from '@/lib/data';
+import { getTeamWithContext, getAllSeasons } from '@/lib/data';
+import { pickCurrentSeason } from '@macfax/core/lib/season';
 import TeamPageTabs from '@/components/TeamPageTabs';
 import TeamHeader from '@/components/TeamHeader';
 
@@ -10,11 +11,19 @@ export const revalidate = 0;
 
 interface TeamPageProps {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ season?: string }>;
 }
 
-export async function generateMetadata({ params }: TeamPageProps): Promise<Metadata> {
+/** ?season=YYYY (ending year); anything else means the current season. */
+function parseSeason(raw?: string): number | undefined {
+  if (!raw || !/^\d{4}$/.test(raw)) return undefined;
+  return parseInt(raw, 10);
+}
+
+export async function generateMetadata({ params, searchParams }: TeamPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const teamData = await getTeamWithContext(slug);
+  const season = parseSeason((await searchParams).season);
+  const teamData = await getTeamWithContext(slug, season);
 
   if (!teamData) {
     return {
@@ -30,21 +39,24 @@ export async function generateMetadata({ params }: TeamPageProps): Promise<Metad
   };
 }
 
-export default async function TeamPage({ params }: TeamPageProps) {
+export default async function TeamPage({ params, searchParams }: TeamPageProps) {
   const { slug } = await params;
-  const teamData = await getTeamWithContext(slug);
-  
+  const season = parseSeason((await searchParams).season);
+  const [teamData, seasons] = await Promise.all([getTeamWithContext(slug, season), getAllSeasons()]);
+
   if (!teamData) {
     notFound();
   }
-  
+
   const { team, ranks, checklist, cinderella } = teamData;
-  
+  const currentYear = pickCurrentSeason(seasons)?.year;
+  // Past season: an explicit ?season= that isn't the current one
+  const pastSeason = season != null && currentYear != null && season !== currentYear ? season : undefined;
+
   return (
     <div>
-      <TeamHeader team={team} />
-      <TeamPageTabs team={team} ranks={ranks} checklist={checklist} cinderella={cinderella} />
+      <TeamHeader team={team} pastSeason={pastSeason} />
+      <TeamPageTabs team={team} ranks={ranks} checklist={checklist} cinderella={cinderella} pastSeason={pastSeason} />
     </div>
   );
 }
-

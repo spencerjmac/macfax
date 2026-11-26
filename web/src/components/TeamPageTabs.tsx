@@ -16,6 +16,8 @@ interface TeamPageTabsProps {
   ranks: TeamRanks;
   checklist: TeamChecklist | null;
   cinderella: CinderellaIndexResult;
+  /** Set when viewing a past season; current-season-only sections hide. */
+  pastSeason?: number;
 }
 
 type TabId = 'overview' | 'four-factors' | 'offense-defense' | 'resume' | 'charts' | 'game-log' | 'players';
@@ -31,7 +33,11 @@ function formatPercent(value: number | null | undefined, digits = 1): string {
   return `${pct.toFixed(digits)}%`;
 }
 
-export default function TeamPageTabs({ team, ranks, checklist, cinderella }: TeamPageTabsProps) {
+export default function TeamPageTabs({ team, ranks, checklist, cinderella, pastSeason }: TeamPageTabsProps) {
+  // Roster Outlook projects the next season from the current roster: current season only
+  const outlookAvailable = !isHiddenRoute('/ncaa/outlook');
+  const showOutlook = outlookAvailable && !pastSeason;
+
   const [activeTab, setActiveTab] = useState<TabId>('overview');
   const [players, setPlayers] = useState<NCAAPlayerSeasonStats[]>([]);
   const [playersLoading, setPlayersLoading] = useState(false);
@@ -81,7 +87,7 @@ export default function TeamPageTabs({ team, ranks, checklist, cinderella }: Tea
                 {tab.label}
               </button>
             ))}
-            {!isHiddenRoute('/ncaa/outlook') && (
+            {showOutlook && (
               <Link
                 href={`/ncaa/outlook/${team.teamId}`}
                 className="px-[18px] py-[14px] font-display font-semibold text-[14px] tracking-[0.05em] uppercase border-b-[3px] border-transparent text-ink-fg2 hover:text-white transition-colors inline-flex items-center gap-1"
@@ -96,6 +102,11 @@ export default function TeamPageTabs({ team, ranks, checklist, cinderella }: Tea
 
       {/* Tab Content */}
       <div className="max-w-[1240px] mx-auto px-8 py-8">
+        {pastSeason && outlookAvailable && (
+          <p className="mb-6 text-sm text-text-muted">
+            Viewing {team.season}. Roster Outlook covers the current season only, so it is hidden here.
+          </p>
+        )}
         {activeTab === 'overview' && <OverviewTab team={team} ranks={ranks} checklist={checklist} cinderella={cinderella} />}
         {activeTab === 'four-factors' && <FourFactorsTab team={team} ranks={ranks} />}
         {activeTab === 'offense-defense' && <OffenseDefenseTab team={team} ranks={ranks} />}

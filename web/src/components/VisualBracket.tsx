@@ -17,6 +17,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import type { BracketData, BracketTeamData, TeamRoundProbs } from '@macfax/core/types';
+import { useNcaaTeamHref } from '@/lib/teamLinks';
 
 // ─── layout constants ─────────────────────────────────────────────────────
 const SLOT_H   = 34;              // px per team row
@@ -133,6 +134,7 @@ function TeamCell({
   slot: SlotTeam | null; round: Round; isWinner: boolean; tooltipRight?: boolean;
 }) {
   const [show, setShow] = useState(false);
+  const teamHref = useNcaaTeamHref();
 
   if (!slot) {
     return (
@@ -149,7 +151,7 @@ function TeamCell({
   return (
     <div className="relative" style={{ height: SLOT_H }}>
       <Link
-        href={`/ncaa/team/${team.slug}`}
+        href={teamHref(team.slug)}
         onMouseEnter={() => setShow(true)}
         onMouseLeave={() => setShow(false)}
         className={[

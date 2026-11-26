@@ -6,9 +6,11 @@ import { ChevronLeft } from 'lucide-react';
 
 interface TeamHeaderProps {
   team: TeamSeason;
+  /** Set when viewing a past season (?season=); keeps it on the back link and labels it. */
+  pastSeason?: number;
 }
 
-export default function TeamHeader({ team }: TeamHeaderProps) {
+export default function TeamHeader({ team, pastSeason }: TeamHeaderProps) {
   const fmtEM = (v: number) => (v > 0 ? '+' : '') + v.toFixed(2);
 
   return (
@@ -21,7 +23,7 @@ export default function TeamHeader({ team }: TeamHeaderProps) {
       <div className="max-w-[1240px] mx-auto px-8 pt-[30px] relative">
         {/* back */}
         <Link
-          href="/ncaa/ratings"
+          href={pastSeason ? `/ncaa/ratings?season=${pastSeason}` : '/ncaa/ratings'}
           className="inline-flex items-center gap-[7px] text-ink-fg2 hover:text-brand2 font-semibold text-[13px] pb-[22px] transition-colors"
         >
           <ChevronLeft className="w-4 h-4" strokeWidth={1.5} />
@@ -49,6 +51,7 @@ export default function TeamHeader({ team }: TeamHeaderProps) {
             <div className="font-mono font-bold text-[12px] text-brand2 tracking-[0.1em] uppercase mb-[9px] inline-flex items-center gap-2">
               No. {team.rank}
               <span className="text-ink-fg2 font-normal">· {team.conference}</span>
+              {pastSeason && <span className="text-ink-fg2 font-normal">· {team.season}</span>}
             </div>
             <h1 className="font-display font-bold text-[clamp(38px,5vw,60px)] leading-[0.95] uppercase tracking-[0.005em] m-0 text-white">
               {team.teamName}

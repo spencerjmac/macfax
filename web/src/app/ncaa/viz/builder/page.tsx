@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import type { VizStats, VizScatterData, StatMetadata } from '@macfax/core/types';
 import SeasonSelect from '@/components/SeasonSelect';
+import { ncaaTeamHref, useCurrentSeasonYear } from '@/lib/teamLinks';
 
 export const dynamic = 'force-dynamic';
 
@@ -82,6 +83,7 @@ function VizBuilderPageInner() {
   const [yStat, setYStat] = useState(searchParams.get('y') || 'adj_d');
   // undefined = the API's current season (is_current)
   const [season, setSeason] = useState<number | undefined>(undefined);
+  const currentSeason = useCurrentSeasonYear();
   const [showRegression, setShowRegression] = useState(searchParams.get('reg') !== '0');
   const [colorByConference, setColorByConference] = useState(searchParams.get('color') !== '0');
   const [invertX, setInvertX] = useState(searchParams.get('invX') === '1');
@@ -408,7 +410,7 @@ function VizBuilderPageInner() {
   function handleChartClick(params: any) {
     if (params.componentType === 'series' && params.seriesType === 'scatter') {
       const point = params.data.point;
-      router.push(`/ncaa/team/${point.slug}`);
+      router.push(ncaaTeamHref(point.slug, season, currentSeason));
     }
   }
 

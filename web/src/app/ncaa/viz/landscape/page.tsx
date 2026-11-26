@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import type { EfficiencyLandscapeData, Conference } from '@macfax/core/types';
 import SeasonSelect from '@/components/SeasonSelect';
+import { ncaaTeamHref, useCurrentSeasonYear } from '@/lib/teamLinks';
 import {
   ResponsiveContainer,
   ScatterChart,
@@ -29,6 +30,7 @@ export default function EfficiencyLandscapePage() {
   // Filters
   // undefined = the API's current season (is_current)
   const [season, setSeason] = useState<number | undefined>(undefined);
+  const currentSeason = useCurrentSeasonYear();
   const [conferenceFilter, setConferenceFilter] = useState('ALL');
   const [topN, setTopN] = useState(365);
   const [debouncedTopN, setDebouncedTopN] = useState(365);
@@ -87,7 +89,7 @@ export default function EfficiencyLandscapePage() {
   }
   
   function handleTeamClick(teamSlug: string) {
-    router.push(`/ncaa/team/${teamSlug}`);
+    router.push(ncaaTeamHref(teamSlug, season, currentSeason));
   }
   
   return (

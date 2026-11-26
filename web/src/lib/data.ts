@@ -193,11 +193,13 @@ export async function getMetadata(season?: number, isPreTournament?: boolean): P
  * One team's Crystal Ball checklist from the API (same scoring and season context
  * as the Crystal Ball page). Null on any failure, so the card just doesn't render.
  */
-async function fetchTeamChecklist(slug: string): Promise<TeamChecklist | null> {
+async function fetchTeamChecklist(slug: string, season?: number): Promise<TeamChecklist | null> {
   const client = dataClient();
   try {
     const res = await client.fetch(
-      client.rawUrl(`/api/viz/crystal-ball/?team=${encodeURIComponent(slug)}`),
+      client.rawUrl(
+        `/api/viz/crystal-ball/?team=${encodeURIComponent(slug)}${season ? `&season=${season}` : ''}`,
+      ),
     );
     if (!res.ok) return null;
     const json = (await res.json()) as CrystalBallData;
@@ -221,7 +223,8 @@ async function fetchTeamChecklist(slug: string): Promise<TeamChecklist | null> {
   }
 }
 
-export async function getTeamWithContext(slug: string): Promise<
+/** Team page data for `season` (ending year); omitted = the API's current season. */
+export async function getTeamWithContext(slug: string, season?: number): Promise<
   | {
       team: TeamSeason;
       ranks: ReturnType<typeof buildTeamRanks>;
@@ -233,13 +236,16 @@ export async function getTeamWithContext(slug: string): Promise<
   if (isBuildPhase() || !slug) return null;
   // Checklist by URL slug, in parallel with rankings; refetched below only in the
   // rare case the slug matched a team by name rather than by slug.
-  const [apiData, slugChecklist] = await Promise.all([fetchRankingsFromApi(), fetchTeamChecklist(slug)]);
+  const [apiData, slugChecklist] = await Promise.all([
+    fetchRankingsFromApi(season),
+    fetchTeamChecklist(slug, season),
+  ]);
   const teams = apiData.teams;
   const team = teams.find((t) => t.teamId === slug || t.teamName?.toLowerCase() === slug.toLowerCase());
   if (!team) return null;
 
   const ranks = buildTeamRanks(teams, team);
-  const checklist = team.teamId === slug ? slugChecklist : await fetchTeamChecklist(team.teamId);
+  const checklist = team.teamId === slug ? slugChecklist : await fetchTeamChecklist(team.teamId, season);
   const cinderella = buildCinderellaIndex(teams, team);
 
   return { team, ranks, checklist, cinderella };

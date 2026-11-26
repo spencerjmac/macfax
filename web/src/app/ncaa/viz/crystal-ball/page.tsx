@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { api } from '@/lib/api';
 import type { CrystalBallData, CrystalBallTeam, ChecklistItem } from '@macfax/core/types';
 import { checklistBasisLabel } from '@macfax/core/lib/rankings';
+import { TeamLinkSeason, useNcaaTeamHref } from '@/lib/teamLinks';
 import SeasonSelect from '@/components/SeasonSelect';
 import clsx from 'clsx';
 
@@ -78,6 +79,7 @@ function ChecklistDetail({ items }: { items: ChecklistItem[] }) {
 
 function TeamRow({ team, rank }: { team: CrystalBallTeam; rank: number }) {
   const [expanded, setExpanded] = useState(false);
+  const teamHref = useNcaaTeamHref();
 
   return (
     <>
@@ -106,7 +108,7 @@ function TeamRow({ team, rank }: { team: CrystalBallTeam; rank: number }) {
             )}
             <div>
               <Link
-                href={`/ncaa/team/${team.team_slug}`}
+                href={teamHref(team.team_slug)}
                 className="font-semibold text-sm hover:text-brand transition-colors"
                 onClick={(e) => e.stopPropagation()}
               >
@@ -322,9 +324,11 @@ export default function CrystalBallPage() {
               </tr>
             </thead>
             <tbody>
-              {displayTeams.map((team, idx) => (
-                <TeamRow key={team.team_slug} team={team} rank={idx + 1} />
-              ))}
+              <TeamLinkSeason season={data.season}>
+                {displayTeams.map((team, idx) => (
+                  <TeamRow key={team.team_slug} team={team} rank={idx + 1} />
+                ))}
+              </TeamLinkSeason>
             </tbody>
           </table>
 

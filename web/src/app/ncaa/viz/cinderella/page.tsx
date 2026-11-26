@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { api } from '@/lib/api';
 import type { CinderellaData, CinderellaTeam } from '@macfax/core/types';
 import SeasonSelect from '@/components/SeasonSelect';
+import { TeamLinkSeason, useNcaaTeamHref } from '@/lib/teamLinks';
 import clsx from 'clsx';
 
 // ---------------------------------------------------------------------------
@@ -89,6 +90,7 @@ const COMPONENT_LABELS: Record<string, string> = {
 // ---------------------------------------------------------------------------
 
 function TeamRow({ team, rank }: { team: CinderellaTeam; rank: number }) {
+  const teamHref = useNcaaTeamHref();
   const [expanded, setExpanded] = useState(false);
   const { cinderella: cin } = team;
   const tier = getTier(cin.profile_score);
@@ -120,7 +122,7 @@ function TeamRow({ team, rank }: { team: CinderellaTeam; rank: number }) {
             )}
             <div>
               <Link
-                href={`/ncaa/team/${team.team_slug}`}
+                href={teamHref(team.team_slug)}
                 className="font-semibold text-sm hover:text-brand transition-colors"
                 onClick={(e) => e.stopPropagation()}
               >
@@ -509,9 +511,11 @@ export default function CinderellaPage() {
                   </td>
                 </tr>
               ) : (
-                filtered.map((team, i) => (
-                  <TeamRow key={team.team_slug} team={team} rank={i + 1} />
-                ))
+                <TeamLinkSeason season={data.season}>
+                  {filtered.map((team, i) => (
+                    <TeamRow key={team.team_slug} team={team} rank={i + 1} />
+                  ))}
+                </TeamLinkSeason>
               )}
             </tbody>
           </table>

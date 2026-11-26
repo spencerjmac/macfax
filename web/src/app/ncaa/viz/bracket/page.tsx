@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { api } from '@/lib/api';
 import type { BracketData, BracketTeamData, TeamRoundProbs } from '@macfax/core/types';
 import VisualBracket from '@/components/VisualBracket';
+import { TeamLinkSeason, ncaaTeamHref, useCurrentSeasonYear, useNcaaTeamHref } from '@/lib/teamLinks';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -68,6 +69,7 @@ function TeamRow({
   probs: TeamRoundProbs | undefined;
   isTop: boolean;
 }) {
+  const teamHref = useNcaaTeamHref();
   const p = probs ?? { p_r64: 1, p_r32: 0, p_s16: 0, p_e8: 0, p_ff: 0, p_final: 0, p_champion: 0 };
   const isFF = team.is_first_four;
 
@@ -85,7 +87,7 @@ function TeamRow({
       {/* Name + First Four badge */}
       <div className="flex-1 min-w-0">
         <Link
-          href={`/ncaa/team/${team.slug}`}
+          href={teamHref(team.slug)}
           className="text-sm font-medium text-text-primary hover:text-primary truncate block"
         >
           {team.name}
@@ -229,6 +231,7 @@ function RegionCard({
 // ---------------------------------------------------------------------------
 
 function Leaderboard({ data }: { data: BracketData }) {
+  const teamHref = useNcaaTeamHref();
   // Flatten all teams
   const allTeams: BracketTeamData[] = [];
   for (const region of REGIONS) {
@@ -272,7 +275,7 @@ function Leaderboard({ data }: { data: BracketData }) {
                 <tr key={team.slug} className={`border-b border-gray-100 hover:bg-gray-50 ${idx < 4 ? 'bg-yellow-50/30' : ''}`}>
                   <td className="px-3 py-2 text-xs text-text-muted">{idx + 1}</td>
                   <td className="px-3 py-2">
-                    <Link href={`/ncaa/team/${team.slug}`} className="font-medium hover:text-primary text-sm">
+                    <Link href={teamHref(team.slug)} className="font-medium hover:text-primary text-sm">
                       {team.name}
                     </Link>
                     {team.is_first_four && (
@@ -307,6 +310,7 @@ function Leaderboard({ data }: { data: BracketData }) {
 // ---------------------------------------------------------------------------
 
 export default function BracketPage() {
+  const currentSeason = useCurrentSeasonYear();
   const [data, setData] = useState<BracketData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -379,14 +383,14 @@ export default function BracketPage() {
       )}
 
       {data && (
-        <>
+        <TeamLinkSeason season={data.season}>
           {/* Top Favorites */}
           {topPicks.length > 0 && (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
               {topPicks.map(({ slug, probs, team }, idx) => (
                 <Link
                   key={slug}
-                  href={`/ncaa/team/${slug}`}
+                  href={ncaaTeamHref(slug, data.season, currentSeason)}
                   className={`rounded-xl border p-3 hover:shadow-md transition-shadow ${
                     idx === 0 ? 'border-yellow-300 bg-yellow-50' : 'border-gray-200 bg-white'
                   }`}
@@ -451,7 +455,7 @@ export default function BracketPage() {
               probs={data.probabilities}
             />
           )}
-        </>
+        </TeamLinkSeason>
       )}
     </div>
   );
