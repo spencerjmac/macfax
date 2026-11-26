@@ -28,6 +28,41 @@ SR_TEAM_ALIASES = {
 }
 
 
+# Canonical poll page (the old /cbb/seasons/{year}-polls.html redirects here).
+AP_POLLS_URL = "https://www.sports-reference.com/cbb/seasons/men/{year}-polls.html"
+SR_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+}
+
+
+def fetch_poll_page(year: int, timeout: int = 20) -> str:
+    """HTML of Sports-Reference's AP poll page for `year` (raises requests.RequestException)."""
+    resp = requests.get(AP_POLLS_URL.format(year=year), headers=SR_HEADERS, timeout=timeout)
+    resp.raise_for_status()
+    return resp.text
+
+
+def parse_week6(html: str):
+    """[(rank, school cell)] for AP Week 6, sorted by rank; None if the page has no Week 6 column yet.
+
+    In season the page leads with a 'current poll' table (no week columns); the week grid
+    (id="ap-polls") follows it. Pick the table that has 'Week Poll' columns, whatever its position.
+    """
+    for df in pd.read_html(StringIO(html)):
+        if not any(isinstance(c, tuple) and c[0] == 'Week Poll' for c in df.columns):
+            continue
+        week6_cols = [c for c in df.columns if isinstance(c, tuple) and c[0] == 'Week Poll' and str(c[1]).strip() == '6']
+        if not week6_cols:
+            return None
+        data = df[[df.columns[0], week6_cols[0]]].copy()
+        data.columns = ['School', 'Rank']
+        # Non-numeric ranks are repeated header rows in SR tables
+        data['Rank'] = pd.to_numeric(data['Rank'], errors='coerce')
+        data = data.dropna().sort_values('Rank')
+        return [(int(rank), school) for school, rank in zip(data['School'], data['Rank'])]
+    return None
+
+
 def clean_sr_name(raw) -> str:
     """Strip Sports-Reference's postseason tags and non-breaking spaces from a school cell."""
     return str(raw).replace('NCAA', '').replace('NIT', '').replace('CBI', '').replace('\xa0', ' ').strip()
@@ -72,60 +107,34 @@ class Command(BaseCommand):
             
         mapper = TeamMapper(source="ncaa")
         
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-        }
-        
         total_updated = 0
         total_missing = []
         
         for season in seasons:
             year = season.year
-            url = f"https://www.sports-reference.com/cbb/seasons/{year}-polls.html"
+            url = AP_POLLS_URL.format(year=year)
             self.stdout.write(f"\nFetching {year} AP Polls: {url}")
-            
+
             try:
-                resp = requests.get(url, headers=headers, timeout=10)
-                resp.raise_for_status()
+                html = fetch_poll_page(year, timeout=10)
             except requests.RequestException as e:
                 self.stderr.write(self.style.WARNING(f"  Failed to fetch {year} (might not exist): {e}"))
                 continue
-                
+
             try:
-                tables = pd.read_html(StringIO(resp.text))
-                df = tables[0]
+                week6 = parse_week6(html)
             except Exception as e:
                 self.stderr.write(self.style.WARNING(f"  Failed to parse tables for {year}: {e}"))
                 continue
-                
-            school_col = df.columns[0]
-            
-            # Find the Week 6 column (second level is '6' or contains '6')
-            week6_cols = [c for c in df.columns if len(c) >= 2 and c[0] == 'Week Poll' and str(c[1]).strip() == '6']
-            if not week6_cols:
+            if week6 is None:
                 self.stderr.write(self.style.WARNING(f"  Could not find 'Week 6' column for {year}."))
                 continue
-                
-            week6_col = week6_cols[0]
-            
-            data = df[[school_col, week6_col]].copy()
-            data.columns = ['School', 'Rank']
-            data = data.dropna()
-            
-            # Convert Rank to numeric, dropping non-numeric (like text headers repeated in SR tables)
-            data['Rank'] = pd.to_numeric(data['Rank'], errors='coerce')
-            data = data.dropna().sort_values('Rank')
-            
-            # Ensure it's integers
-            data['Rank'] = data['Rank'].astype(int)
-            
+
             season_updated = 0
             
-            for _, row in data.iterrows():
-                rank = row['Rank']
-
+            for rank, school in week6:
                 # Match team (SR aliases first, then the NCAA-name mapper)
-                team, sr_name = resolve_sr_team(row['School'], mapper)
+                team, sr_name = resolve_sr_team(school, mapper)
                 
                 if team:
                     ratings_qs = TeamSeasonRatings.all_objects.filter(season=season, team=team)

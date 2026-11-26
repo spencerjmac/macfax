@@ -242,6 +242,17 @@ class Command(BasePipelineCommand):
         # March: pre-tournament snapshot + tournament seeds (no-op before Selection Sunday)
         self._run_tournament_steps(season_year, steps)
 
+        # AP Week 6: fetch until the poll exists, then locked; also fills the snapshot rows
+        # created above (after ratings, so every rating row of the season exists by now)
+        self._run_step(
+            "AP Poll Week 6",
+            "update_ap_week6",
+            {"season": season_year},
+            steps,
+            fatal=False,
+            label="[ap]",
+        )
+
         # Show the new season once it has a final game (ratings exist by now)
         self._activate_latest_season(steps)
 
