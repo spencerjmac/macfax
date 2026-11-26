@@ -64,6 +64,8 @@ class MatchRulesTests(SimpleTestCase):
         events = [EventEntry("e2", {"100": 70, "300": 60})]
         m = match_espn_event(D, "100", "", 70, 60, board({D: events}), known_espn_ids={"100", "300"})
         self.assertFalse(m.ok)
+        # same score: reported as a likely duplicate team row, not as "no event"
+        self.assertIn("ESPN id 300 belongs to another of our teams", m.how)
 
     def test_one_team_needs_the_score(self):
         m = match_espn_event(D, "100", "", 70, 60, board({D: [EventEntry("e3", {"100": 71, "999": 60})]}))

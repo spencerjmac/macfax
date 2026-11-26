@@ -91,6 +91,7 @@ def match_espn_event(
     both = bool(home_espn and away_espn)
     anchor = home_espn or away_espn
     fetch_failed = []
+    known_opponent = None  # an event the one-team rule dropped because its opponent is another mapped team
 
     for offset in (0, 1):
         day = game_date - dt.timedelta(days=offset)
@@ -103,8 +104,11 @@ def match_espn_event(
             cands = [e for e in live if {home_espn, away_espn} <= e.team_ids]
         else:
             # the opponent's ESPN id is unknown to us; an event against another team we know is a different game
-            cands = [e for e in live if anchor in e.team_ids
-                     and not (e.team_ids - {anchor}) & set(known_espn_ids)]
+            with_anchor = [e for e in live if anchor in e.team_ids]
+            cands = [e for e in with_anchor if not (e.team_ids - {anchor}) & set(known_espn_ids)]
+            for e in with_anchor:
+                if e not in cands and _score_matches(e, home_score, away_score):
+                    known_opponent = known_opponent or (e.event_id, sorted(e.team_ids - {anchor})[0])
         if not both or offset:
             cands = [e for e in cands if _score_matches(e, home_score, away_score)]
         if len(cands) == 1:
@@ -115,6 +119,9 @@ def match_espn_event(
 
     if fetch_failed and len(fetch_failed) == 2:
         return Match(None, "scoreboard fetch failed", False)
+    if known_opponent:
+        return Match(None, f"ESPN event {known_opponent[0]} has this score, but its opponent's ESPN id "
+                           f"{known_opponent[1]} belongs to another of our teams (duplicate team row?)", False)
     return Match(None, "no ESPN event on the game's date or the day before"
                  + (" (one team without an ESPN id; score must match)" if not both else ""), False)
 
