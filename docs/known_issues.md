@@ -59,29 +59,17 @@ branch notes" for `0022500147` and `0022501230`. No such notes exist; this file 
 
 ### Stale rating and metric rows for teams that were not D1 that season (2005-2025)
 
-- **Where:** prod `TeamSeasonRatings` (69 full-season and 58 pre-tournament rows) and `TeamSeasonMetrics`
+- **Where:** prod `TeamSeasonRatings` (126 rows: 69 full-season, 57 pre-tournament) and `TeamSeasonMetrics`
   (114 rows), seasons 2005-2025, for teams with no D1 `TeamSeasonMembership` row that season. Most are in
   2005-2011 and 2019, for example Cal Baptist, Grand Canyon, North Florida, Seattle and UC San Diego in 2005,
   North Alabama in 2013, and 15 reclassifying arrivals in 2019. Local has none.
 - **Cause:** they were computed in June 2026, when prod's D1 set came from `Team.is_d1` (D1 today). Locally,
   Task 6d deleted them. The full chain of 2026-11-25 writes D1 rows only and deletes nothing, so they stayed.
-- **Effect:** they are unmaintained, with no luck, schedule or box-score fields. Combined with the next issue,
-  some appear in the public ratings table, for example 9 rows in 2005 and North Alabama in 2013. The Crystal
-  Ball views and backtest filter by membership, so those are unaffected.
-- **Fix:** delete them with a data fix (needs its own go). Removing these rows also needs the next fix;
-  otherwise the rankings still filter by today's D1 list.
-
-### The ratings table filters by today's D1 list, not the season's membership
-
-- **Where:** `RankingsViewSet` in `backend/api/views.py` (`team__is_d1=True`), on local and prod. It feeds
-  `/ncaa/ratings`.
-- **Effect:** for past seasons it hides real D1 teams that are not D1 today, and shows any team that is D1
-  today. Examples: 2005 drops Birmingham-Southern, Centenary, Hartford, Savannah St. and St. Francis Brooklyn,
-  and shows 9 teams that were not D1 then (336 rows against 332 D1 teams). 2013 drops Hartford, Savannah St.
-  and St. Francis Brooklyn, and shows North Alabama (345 against 347).
-- **Cause:** Task 6f.2 moved metrics, ratings and the Crystal Ball views to `ncaa/utils/d1.py` (`d1_q`), but
-  about 35 readers of `Team.is_d1` were left out of scope, this view among them.
-- **Fix:** use `d1_q(season, "team")` in the rankings view, then delete the stale rows above.
+- **Effect:** none on the site since 932d700 (season-scoped queries filter by membership). Only code that reads
+  these tables without a D1 filter would see them.
+- **Fix:** delete them. Script ready (`delete_stale_d1.sql` in prod `backups/`, rehearsal by default; a fresh
+  backup `pre-stale-d1-delete-20261126_053640.dump` was taken). Waiting for a go on the corrected count
+  (126 ratings rows, not 127).
 
 ## NCAA (local and prod)
 
