@@ -2,6 +2,8 @@
 NBA DRF Serializers — macfax NBA app
 """
 
+from datetime import date
+
 from rest_framework import serializers
 
 from .traditional import FIELDS as TRADITIONAL_FIELDS, team_traditional_stats
@@ -109,6 +111,15 @@ class NBAPlayerSeasonStatsSerializer(serializers.ModelSerializer):
     dbpr_replacement_adjusted = serializers.SerializerMethodField()
     # Which scale the row's obpr / dbpr / bpr / wins_added are on: "native-1" or "legacy".
     rating_scale = serializers.SerializerMethodField()
+    # Age on Feb 1 of the season (Basketball-Reference convention); None without a birth date.
+    age = serializers.SerializerMethodField()
+
+    def get_age(self, obj) -> int | None:
+        dob = obj.player.date_of_birth if obj.player_id else None
+        if dob is None:
+            return None
+        ref = date(obj.season.year, 2, 1)
+        return ref.year - dob.year - ((ref.month, ref.day) < (dob.month, dob.day))
 
     def get_rating_scale(self, obj) -> str:
         return "native-1" if row_is_native(obj) else "legacy"
@@ -135,7 +146,7 @@ class NBAPlayerSeasonStatsSerializer(serializers.ModelSerializer):
     class Meta:
         model = NBAPlayerSeasonStats
         fields = [
-            "id", "player", "player_id", "player_name",
+            "id", "player", "player_id", "player_name", "age",
             "team", "team_name", "team_slug", "team_abbreviation", "team_logo_url",
             "season", "season_display", "season_type",
             # Traditional box score

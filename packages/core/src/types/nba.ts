@@ -501,6 +501,8 @@ export interface NBAPlayerSeasonStats {
   team: number | null;
   team_name: string | null;
   team_slug: string | null;
+  /** Age on Feb 1 of the season; null without a birth date. */
+  age: number | null;
   team_abbreviation: string | null;
   team_logo_url: string | null;
   season: number;

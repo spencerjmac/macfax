@@ -120,6 +120,7 @@ const NBA_PLAYER_DEFINITIONS: Record<Exclude<TabId, 'impact'>, MetricDefinition[
 /** Impact definitions; W.Add's formula depends on the season's rating scale. */
 function nbaImpactDefinitions(waFormula: string): MetricDefinition[] {
   return [
+    { k: 'Age', v: 'Age on February 1 of the season.' },
     { k: 'BPR', v: 'Bayesian Performance Rating (OBPR + DBPR): career-stabilized box stats regularized toward single-season RAPM. Context-adjusted impact in points per 100 possessions above league average; it reflects role and team quality, not pure skill in isolation.' },
     { k: 'OBPR', v: 'Offensive BPR: estimated offensive points per 100 possessions added above league average.' },
     { k: 'DBPR', v: 'Defensive BPR: estimated defensive points per 100 possessions prevented above league average; higher is a better defender.' },
@@ -383,10 +384,24 @@ export default function NBAPlayerRankingsTable({
 
       const winsAddedCol = createMetricColumn('wins_added', `Wins Added above replacement · ${wa_formula}`);
 
-      // BPR is the hero: first metric, larger value, widest metric column
+      const ageCol: ColumnDef<NBAPlayerSeasonStats> = {
+        accessorKey: 'age',
+        header: () => <HeaderWithTooltip label="Age" better="neutral" tooltip="Age on Feb 1 of the season." />,
+        cell: (info) => {
+          const age = info.getValue<number | null>();
+          return age == null ? <span className="text-text-muted">-</span> : <span className="font-mono text-sm">{age}</span>;
+        },
+        sortDescFirst: false,
+        size: 48,
+      };
+
+      // BPR is the hero: first metric, larger value, widest metric column; Age sits after Team
       return [
         rankColumn,
-        ...baseColumns,
+        baseColumns[0],
+        baseColumns[1],
+        ageCol,
+        ...baseColumns.slice(2),
         { ...withMeta(createMetricColumn('bpr'), { emphasis: true, hero: true }), size: 120 },
         createMetricColumn('obpr'),
         createMetricColumn('dbpr'),

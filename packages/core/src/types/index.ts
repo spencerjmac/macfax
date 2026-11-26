@@ -598,6 +598,12 @@ export interface NCAAPlayerSeasonStats {
   ts_pct: number | null;
   ast_to: number | null;
   usg_pct: number | null;
+  // Advanced rates in percentage points (e.g. 14.5 = 14.5%)
+  tov_pct: number | null;
+  orb_pct: number | null;
+  drb_pct: number | null;
+  stl_pct: number | null;
+  blk_pct: number | null;
   fta_rate: number | null;
   fg3_rate: number | null;
   ast_usg: number | null;

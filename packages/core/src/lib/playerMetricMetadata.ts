@@ -399,6 +399,17 @@ export const NBA_IMPACT_METRICS: PlayerMetricMeta[] = [
   },
 ];
 
+// ─── NCAA Advanced (rates stored in percentage points, e.g. 14.5 = 14.5%) ─────
+// usg_pct and ts_pct come from PLAYER_TRADITIONAL_METRICS.
+
+export const NCAA_ADVANCED_METRICS: PlayerMetricMeta[] = [
+  { key: 'tov_pct', label: 'TOV%', tooltip: 'Turnover rate: turnovers per 100 plays used (FGA + 0.44 × FTA + TOV). Lower is better.', format: 'pct_raw', better: 'lower',  showRank: false, heatmap: true, tier: 'primary' },
+  { key: 'orb_pct', label: 'ORB%', tooltip: 'Offensive rebound rate: share of available offensive rebounds grabbed while on court.', format: 'pct_raw', better: 'higher', showRank: false, heatmap: true, tier: 'primary' },
+  { key: 'drb_pct', label: 'DRB%', tooltip: 'Defensive rebound rate: share of available defensive rebounds grabbed while on court.', format: 'pct_raw', better: 'higher', showRank: false, heatmap: true, tier: 'primary' },
+  { key: 'stl_pct', label: 'STL%', tooltip: 'Steal rate: steals per 100 opponent possessions while on court.', format: 'pct_raw', better: 'higher', showRank: false, heatmap: true, tier: 'primary' },
+  { key: 'blk_pct', label: 'BLK%', tooltip: 'Block rate: share of opponent two-point attempts blocked while on court.', format: 'pct_raw', better: 'higher', showRank: false, heatmap: true, tier: 'primary' },
+];
+
 // ─── Attempt floors ───────────────────────────────────────────────────────────
 
 /**

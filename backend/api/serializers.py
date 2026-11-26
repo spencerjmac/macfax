@@ -1056,6 +1056,8 @@ class PlayerSeasonStatsSerializer(serializers.ModelSerializer):
             "ftm_pg", "fta_pg", "oreb_pg", "dreb_pg",
             "efg_pct", "ts_pct", "ast_to",
             "usg_pct", "fta_rate", "fg3_rate", "ast_usg",
+            # Advanced rates (percentage points, from compute_ncaa_player_season_stats)
+            "tov_pct", "orb_pct", "drb_pct", "stl_pct", "blk_pct",
             # On-court raw ratings (from ESPN PBP lineup reconstruction)
             "on_court_secs_pg", "on_court_pts_pg", "on_court_def_pg",
             "on_court_net_pg",

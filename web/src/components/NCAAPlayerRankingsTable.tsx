@@ -26,6 +26,7 @@ import {
   PLAYER_TRADITIONAL_METRICS,
   NCAA_IMPACT_METRICS,
   NCAA_FF_METRICS,
+  NCAA_ADVANCED_METRICS,
   formatPlayerMetric,
   meetsAttemptFloor,
   type PlayerMetricMeta,
@@ -36,7 +37,7 @@ import { ncaaTeamHref } from '@/lib/teamLinks';
 import { pickCurrentSeason } from '@macfax/core/lib/season';
 import HeatLegend from './HeatLegend';
 
-type TabId = 'traditional' | 'impact' | 'fourfactors';
+type TabId = 'traditional' | 'impact' | 'advanced' | 'fourfactors';
 
 const BOX_ESTIMATE_NOTE = 'Box-score estimate — not enough lineup data yet';
 
@@ -62,6 +63,16 @@ const PLAYER_METRIC_DEFINITIONS: Record<TabId, MetricDefinition[]> = {
     { k: '3P%', v: 'Three-point percentage; shaded only at 1 or more three-point attempts per game.' },
     { k: 'FT%', v: 'Free throw percentage; shaded only at 1 or more free throw attempts per game.' },
     { k: 'TS%', v: 'True Shooting %: scoring efficiency that accounts for twos, threes, and free throws.' },
+  ],
+  advanced: [
+    { k: 'BPR', v: 'Bayesian Performance Rating, shown for reference; see the Impact tab. † marks a box-score estimate.' },
+    { k: 'USG%', v: 'Usage rate: share of team plays the player uses (shots, free throws, turnovers) while on the floor.' },
+    { k: 'TS%', v: 'True Shooting %: scoring efficiency that accounts for twos, threes, and free throws.' },
+    { k: 'TOV%', v: 'Turnover rate: turnovers per 100 plays used; lower is better.' },
+    { k: 'ORB%', v: 'Offensive rebound rate: share of available offensive rebounds grabbed while on court.' },
+    { k: 'DRB%', v: 'Defensive rebound rate: share of available defensive rebounds grabbed while on court.' },
+    { k: 'STL%', v: 'Steal rate: steals per 100 opponent possessions while on court.' },
+    { k: 'BLK%', v: 'Block rate: share of opponent two-point attempts blocked while on court.' },
   ],
   fourfactors: [
     { k: 'BPR', v: 'Bayesian Performance Rating, shown for reference; see the Impact tab. † marks a box-score estimate.' },
@@ -89,6 +100,7 @@ interface NCAAPlayerRankingsTableProps {
 // ── Column sets ───────────────────────────────────────────────────────────────
 const IMPACT_KEYS = ['bpr', 'obpr', 'dbpr', 'off_poss'];
 const TRAD_KEYS = ['pts', 'reb', 'ast', 'stl', 'blk', 'tov', 'fg_pct', 'fg3_pct', 'ft_pct', 'ts_pct'];
+const ADV_KEYS = ['usg_pct', 'ts_pct', 'tov_pct', 'orb_pct', 'drb_pct', 'stl_pct', 'blk_pct'];
 const FF_GROUPS: Array<{ id: string; label: string; keys: [string, string, string] }> = [
   { id: 'ff-impact-efg', label: 'eFG Impact',     keys: ['off_efg_impact', 'def_efg_impact', 'efg_impact_margin'] },
   { id: 'ff-impact-tov', label: 'TOV Impact',     keys: ['off_tov_impact', 'def_tov_impact', 'tov_impact_margin'] },
@@ -100,8 +112,17 @@ const FF_KEYS = ['four_factor_impact_index', ...FF_GROUPS.flatMap((g) => g.keys)
 const TAB_DEFAULT_SORT: Record<TabId, SortingState> = {
   impact:      [{ id: 'bpr', desc: true }],
   traditional: [{ id: 'pts', desc: true }],
+  advanced:    [{ id: 'ts_pct', desc: true }],
   fourfactors: [{ id: 'four_factor_impact_index', desc: true }],
 };
+
+// Position filter: PG/SG count as guards, SF/PF as forwards (the last letter)
+const POSITIONS: Array<{ id: string; label: string }> = [
+  { id: 'all', label: 'All Positions' },
+  { id: 'G', label: 'Guards' },
+  { id: 'F', label: 'Forwards' },
+  { id: 'C', label: 'Centers' },
+];
 
 /** BPR from lineup data (RAPM); anything else is a box-score or partial fallback. */
 const isLineupBpr = (p: NCAAPlayerSeasonStats) => p.bpr_source === 'rapm';
@@ -129,6 +150,7 @@ export default function NCAAPlayerRankingsTable({ data, selectedSeason, seasons 
   const autoMinMinutes = useMemo(() => autoNcaaMinMinutes(data), [data]);
   const minMinutes = minMinutesChoice === AUTO_THRESHOLD ? autoMinMinutes : minMinutesChoice;
   const [conferenceFilter, setConferenceFilter] = useState('all');
+  const [positionFilter, setPositionFilter] = useState('all');
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: PAGE_SIZE });
   // Off = lineup-based (RAPM) BPR only; on = also box-score and partial estimates
   const [includeBoxEstimates, setIncludeBoxEstimates] = useState(false);
@@ -136,6 +158,7 @@ export default function NCAAPlayerRankingsTable({ data, selectedSeason, seasons 
   const tabs: Array<{ id: TabId; label: string }> = [
     { id: 'impact',       label: 'Impact'       },
     { id: 'traditional',  label: 'Traditional'  },
+    { id: 'advanced',     label: 'Advanced'     },
     { id: 'fourfactors',  label: 'Four Factors' },
   ];
 
@@ -170,15 +193,16 @@ export default function NCAAPlayerRankingsTable({ data, selectedSeason, seasons 
     const q = globalFilter.toLowerCase();
     return rankBase.filter((p) => {
       if (conferenceFilter !== 'all' && p.conference_name !== conferenceFilter) return false;
+      if (positionFilter !== 'all' && !(p.position ?? '').toUpperCase().endsWith(positionFilter)) return false;
       if (q) return p.player_name.toLowerCase().includes(q) || p.team_name.toLowerCase().includes(q);
       return true;
     });
-  }, [rankBase, conferenceFilter, globalFilter]);
+  }, [rankBase, conferenceFilter, positionFilter, globalFilter]);
 
   // ── Meta map ──────────────────────────────────────────────────────────────
   const allMetaMaps: Record<string, PlayerMetricMeta> = useMemo(() => {
     const map: Record<string, PlayerMetricMeta> = {};
-    [...PLAYER_TRADITIONAL_METRICS, ...NCAA_IMPACT_METRICS, ...NCAA_FF_METRICS].forEach((m) => {
+    [...PLAYER_TRADITIONAL_METRICS, ...NCAA_IMPACT_METRICS, ...NCAA_FF_METRICS, ...NCAA_ADVANCED_METRICS].forEach((m) => {
       map[m.key] = m;
     });
     return map;
@@ -186,6 +210,7 @@ export default function NCAAPlayerRankingsTable({ data, selectedSeason, seasons 
 
   const activeTabKeys = useMemo(() => {
     if (activeTab === 'traditional') return ['bpr', ...TRAD_KEYS];
+    if (activeTab === 'advanced') return ['bpr', ...ADV_KEYS];
     if (activeTab === 'fourfactors') return ['bpr', ...FF_KEYS];
     return IMPACT_KEYS;
   }, [activeTab]);
@@ -373,9 +398,10 @@ export default function NCAAPlayerRankingsTable({ data, selectedSeason, seasons 
       ];
     }
 
-    // ── Traditional ──
-    if (activeTab === 'traditional') {
-      return [...base, ...pinnedBpr, ...TRAD_KEYS.map((k, i) => (i === 0 ? withMeta(createMetricColumn(k), { divider: true }) : createMetricColumn(k)))];
+    // ── Traditional / Advanced ──
+    if (activeTab === 'traditional' || activeTab === 'advanced') {
+      const keys = activeTab === 'traditional' ? TRAD_KEYS : ADV_KEYS;
+      return [...base, ...pinnedBpr, ...keys.map((k, i) => (i === 0 ? withMeta(createMetricColumn(k), { divider: true }) : createMetricColumn(k)))];
     }
 
     // ── Four Factors: FFII + the four Off / Def / Total impact groups ──
@@ -462,6 +488,20 @@ export default function NCAAPlayerRankingsTable({ data, selectedSeason, seasons 
             <option value="all">All Conferences</option>
             {conferences.map((c) => (
               <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <select
+            value={positionFilter}
+            onChange={(e) => {
+              setPositionFilter(e.target.value);
+              setPagination((p) => ({ ...p, pageIndex: 0 }));
+            }}
+            className="px-3 py-2 bg-ui-surface border border-ui-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand/50"
+          >
+            {POSITIONS.map((x) => (
+              <option key={x.id} value={x.id}>{x.label}</option>
             ))}
           </select>
         </div>
