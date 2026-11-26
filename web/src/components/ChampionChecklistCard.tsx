@@ -1,6 +1,6 @@
 'use client';
 
-import { ChecklistItem } from '@macfax/core/lib/rankings';
+import { ChecklistItem, ChecklistBasis, checklistBasisLabel } from '@macfax/core/lib/rankings';
 import clsx from 'clsx';
 
 // Simple SVG icons
@@ -22,12 +22,14 @@ interface ChampionChecklistCardProps {
   passedCount: number;
   total: number;
   items: ChecklistItem[];
+  basis: ChecklistBasis;
 }
 
 export default function ChampionChecklistCard({
   passedCount,
   total,
   items,
+  basis,
 }: ChampionChecklistCardProps) {
   const percentage = (passedCount / total) * 100;
   
@@ -37,9 +39,19 @@ export default function ChampionChecklistCard({
       <div className="mb-6">
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-2xl font-bold">🔮 Crystal Ball</h2>
-          <div className="text-sm font-mono px-3 py-1 bg-brand-orange text-white rounded-full">
-            {passedCount} / {total}
+          <div className="flex items-center gap-2">
+            {passedCount === total && (
+              <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-wide bg-brand text-white whitespace-nowrap">
+                Title Profile
+              </span>
+            )}
+            <span className="text-sm font-mono font-bold px-3 py-1 rounded-full border border-ui-border bg-ui-surface text-text-primary">
+              {passedCount} / {total}
+            </span>
           </div>
+        </div>
+        <div className="text-xs font-semibold uppercase tracking-wide text-text-secondary mb-1">
+          {checklistBasisLabel(basis)}
         </div>
         <p className="text-text-muted text-sm">
           National Champion Checklist — 15 criteria based on historical championship winners*
@@ -48,10 +60,7 @@ export default function ChampionChecklistCard({
         {/* Progress Bar */}
         <div className="mt-4 bg-ui-surface rounded-full h-3 overflow-hidden">
           <div
-            className={clsx(
-              'h-full transition-all duration-500 rounded-full',
-              percentage >= 80 ? 'bg-success' : percentage >= 60 ? 'bg-brand-orange' : 'bg-warning'
-            )}
+            className="h-full transition-all duration-500 rounded-full bg-text-muted"
             style={{ width: `${percentage}%` }}
           />
         </div>
@@ -59,7 +68,7 @@ export default function ChampionChecklistCard({
           {percentage.toFixed(0)}% complete
         </div>
         <div className="mt-4 text-[10px] text-text-muted italic bg-ui-surface/50 p-2 rounded border border-ui-border/50">
-          *The "UConn Rule": Four Factor criteria are calculated based on 19 of the last 21 National Champions, explicitly excluding the anomalous 2011 & 2014 UConn runs to ensure stricter, more accurate predictive thresholds.
+          *Benchmarks come from the national champions since 2005; every one passed all 15 except three UConn teams (2011, 2014, 2023).
         </div>
       </div>
       

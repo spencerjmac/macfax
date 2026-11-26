@@ -283,6 +283,8 @@ export interface CrystalBallData {
   season: number;
   season_display: string;
   filter: string;
+  /** Selection Sunday snapshot when the season has one, else full-season rows to date. */
+  basis?: 'selection_sunday' | 'live';
   total_teams: number;
   teams: CrystalBallTeam[];
 }

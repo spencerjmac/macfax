@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import type { CrystalBallData, CrystalBallTeam, ChecklistItem } from '@macfax/core/types';
+import { checklistBasisLabel } from '@macfax/core/lib/rankings';
 import SeasonSelect from '@/components/SeasonSelect';
 import clsx from 'clsx';
 
@@ -105,7 +106,7 @@ function TeamRow({ team, rank }: { team: CrystalBallTeam; rank: number }) {
             )}
             <div>
               <Link
-                href={`/team/${team.team_slug}`}
+                href={`/ncaa/team/${team.team_slug}`}
                 className="font-semibold text-sm hover:text-brand transition-colors"
                 onClick={(e) => e.stopPropagation()}
               >
@@ -264,6 +265,12 @@ export default function CrystalBallPage() {
           placeholder="Search team or conference..."
           className="px-3 py-2 bg-ui-surface border border-ui-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand/50 min-w-[220px]"
         />
+
+        {data?.basis && (
+          <span className="self-center text-xs font-semibold uppercase tracking-wide text-text-secondary">
+            {checklistBasisLabel(data.basis)}
+          </span>
+        )}
       </div>
 
       {/* Historical context (backtest 2005–2026, skip 2020) */}
@@ -330,7 +337,7 @@ export default function CrystalBallPage() {
       )}
 
       <div className="text-xs text-text-muted pt-2">
-        <Link href="/viz" className="hover:text-brand">← Back to Visualizations</Link>
+        <Link href="/ncaa/viz" className="hover:text-brand">← Back to Visualizations</Link>
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
-import type { TeamsData, TeamSeason, DatasetMetadata, SeasonInfo } from '@macfax/core/types';
+import type { TeamsData, TeamSeason, DatasetMetadata, SeasonInfo, CrystalBallData } from '@macfax/core/types';
 import type { OutlookTopTeamsResponse, RosterOutlookData } from '@macfax/core/types/outlook';
-import { buildTeamRanks, buildChampionChecklist, buildCinderellaIndex } from '@macfax/core/lib/rankings';
+import { buildTeamRanks, buildCinderellaIndex } from '@macfax/core/lib/rankings';
+import type { TeamChecklist } from '@macfax/core/lib/rankings';
 import { createApi } from '@macfax/core/api-client';
 import {
   LOCALHOST_API_ORIGIN,
@@ -188,23 +189,57 @@ export async function getMetadata(season?: number, isPreTournament?: boolean): P
   return apiData.metadata;
 }
 
+/**
+ * One team's Crystal Ball checklist from the API (same scoring and season context
+ * as the Crystal Ball page). Null on any failure, so the card just doesn't render.
+ */
+async function fetchTeamChecklist(slug: string): Promise<TeamChecklist | null> {
+  const client = dataClient();
+  try {
+    const res = await client.fetch(
+      client.rawUrl(`/api/viz/crystal-ball/?team=${encodeURIComponent(slug)}`),
+    );
+    if (!res.ok) return null;
+    const json = (await res.json()) as CrystalBallData;
+    const row = json.teams[0];
+    if (!row) return null;
+    return {
+      passedCount: row.checklist.passedCount,
+      total: row.checklist.totalCount,
+      basis: json.basis ?? 'live',
+      items: row.checklist.items.map((i) => ({
+        key: i.key,
+        label: i.label,
+        passed: i.pass,
+        valueDisplay: i.value,
+        thresholdDisplay: i.threshold,
+        detail: i.details,
+      })),
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function getTeamWithContext(slug: string): Promise<
   | {
       team: TeamSeason;
       ranks: ReturnType<typeof buildTeamRanks>;
-      checklist: ReturnType<typeof buildChampionChecklist>;
+      checklist: TeamChecklist | null;
       cinderella: ReturnType<typeof buildCinderellaIndex>;
     }
   | null
 > {
   if (isBuildPhase() || !slug) return null;
-  const apiData = await fetchRankingsFromApi();
+  // Checklist by URL slug, in parallel with rankings; refetched below only in the
+  // rare case the slug matched a team by name rather than by slug.
+  const [apiData, slugChecklist] = await Promise.all([fetchRankingsFromApi(), fetchTeamChecklist(slug)]);
   const teams = apiData.teams;
   const team = teams.find((t) => t.teamId === slug || t.teamName?.toLowerCase() === slug.toLowerCase());
   if (!team) return null;
 
   const ranks = buildTeamRanks(teams, team);
-  const checklist = buildChampionChecklist(team, ranks, teams);
+  const checklist = team.teamId === slug ? slugChecklist : await fetchTeamChecklist(team.teamId);
   const cinderella = buildCinderellaIndex(teams, team);
 
   return { team, ranks, checklist, cinderella };

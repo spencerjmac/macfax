@@ -155,9 +155,9 @@ def _check_balanced_dominance(r, ctx):
     thresh_adjd = adjd_mean + (MAX_Z_ADJD * adjd_std)
     thresh_adjem = adjem_mean + (MIN_Z_ADJEM * adjem_std)
     
-    adjo_z = (r.adj_o - adjo_mean) / adjo_std if r.adj_o else 0
-    adjd_z = (r.adj_d - adjd_mean) / adjd_std if r.adj_d else 0
-    adjem_z = (r.adj_em - adjem_mean) / adjem_std if r.adj_em else 0
+    adjo_z = (r.adj_o - adjo_mean) / adjo_std if r.adj_o and adjo_std else 0
+    adjd_z = (r.adj_d - adjd_mean) / adjd_std if r.adj_d and adjd_std else 0
+    adjem_z = (r.adj_em - adjem_mean) / adjem_std if r.adj_em and adjem_std else 0
     
     c1 = (adjo_z >= MIN_Z_ADJO) and (adjd_z <= MAX_Z_ADJD)
     c2 = (adjem_z >= MIN_Z_ADJEM)
@@ -424,11 +424,17 @@ class CrystalBallView(APIView):
     Query params:
       season  – year (default: current)
       filter  – "all" (default) | "tournament"
+      team    – team slug: score only that team (season context still comes
+                from every D1 team, so the result matches its row on the page)
+
+    Response includes basis: "selection_sunday" when the season has a
+    Selection Sunday snapshot, else "live" (full-season rows to date).
     """
 
     def get(self, request):
         season_year   = request.query_params.get("season")
         team_filter   = request.query_params.get("filter", "all").lower()
+        team_slug     = request.query_params.get("team")
         # Tournament eligibility: optionally drop programs in an NCAA D1 transition (default off)
         exclude_reclassifying = request.query_params.get("exclude_reclassifying", "false").lower() in ("1", "true", "yes")
 
@@ -466,7 +472,14 @@ class CrystalBallView(APIView):
         conf_serializer = RankingsSerializer()
 
         # Decide which teams to score
-        if team_filter == "tournament":
+        if team_slug:
+            scored_qs = all_qs.filter(team__slug=team_slug)
+            if not scored_qs.exists():
+                return Response(
+                    {"error": f"No rated D1 team '{team_slug}' in {season.year}"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+        elif team_filter == "tournament":
             scored_qs = all_qs.filter(tournament_seed__isnull=False)
         else:
             scored_qs = all_qs
@@ -499,6 +512,7 @@ class CrystalBallView(APIView):
             "season":       season.year,
             "season_display": season.display_name,
             "filter":       team_filter,
+            "basis":        "selection_sunday" if is_pre else "live",
             "total_teams":  len(results),
             "teams":        results,
         })

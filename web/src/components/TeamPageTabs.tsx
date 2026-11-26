@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { TeamSeason, NCAAPlayerSeasonStats } from '@macfax/core/types';
-import { TeamRanks, ChecklistItem, CinderellaIndexResult } from '@macfax/core/lib/rankings';
+import { TeamRanks, TeamChecklist, CinderellaIndexResult } from '@macfax/core/lib/rankings';
 import { StatCard, MetricCard, FactorCardWithRanks } from './StatCards';
 import ChampionChecklistCard from './ChampionChecklistCard';
 import Link from 'next/link';
@@ -14,11 +14,7 @@ import { isHiddenRoute } from '@macfax/core/lib/hiddenRoutes';
 interface TeamPageTabsProps {
   team: TeamSeason;
   ranks: TeamRanks;
-  checklist: {
-    passedCount: number;
-    total: number;
-    items: ChecklistItem[];
-  };
+  checklist: TeamChecklist | null;
   cinderella: CinderellaIndexResult;
 }
 
@@ -121,11 +117,7 @@ function OverviewTab({
 }: { 
   team: TeamSeason; 
   ranks: TeamRanks;
-  checklist: {
-    passedCount: number;
-    total: number;
-    items: ChecklistItem[];
-  };
+  checklist: TeamChecklist | null;
   cinderella: CinderellaIndexResult;
 }) {
   return (
@@ -215,11 +207,14 @@ function OverviewTab({
         </div>
         
         {/* Right: Champion Checklist */}
-        <ChampionChecklistCard
-          passedCount={checklist.passedCount}
-          total={checklist.total}
-          items={checklist.items}
-        />
+        {checklist && (
+          <ChampionChecklistCard
+            passedCount={checklist.passedCount}
+            total={checklist.total}
+            items={checklist.items}
+            basis={checklist.basis}
+          />
+        )}
       </div>
 
       {/* Cinderella Index — only shown for seeds 9+ after bracket is set */}

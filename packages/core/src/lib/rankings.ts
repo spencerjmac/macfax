@@ -36,6 +36,21 @@ export interface ChecklistItem {
   detail?: string;
 }
 
+/** Which rating rows the Crystal Ball checklist was scored on. */
+export type ChecklistBasis = 'selection_sunday' | 'live';
+
+export function checklistBasisLabel(basis: ChecklistBasis): string {
+  return basis === 'selection_sunday' ? 'Selection Sunday profile' : 'Current profile';
+}
+
+/** One team's Crystal Ball checklist, as the team page shows it. */
+export interface TeamChecklist {
+  passedCount: number;
+  total: number;
+  items: ChecklistItem[];
+  basis: ChecklistBasis;
+}
+
 function rankByMetric(teams: TeamSeason[], metric: keyof TeamSeason, better: 'higher' | 'lower'): Map<string, number> {
   const entries = teams
     .map((team) => ({ teamId: team.teamId, value: team[metric] as unknown as number | null }))
