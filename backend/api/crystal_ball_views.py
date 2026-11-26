@@ -141,7 +141,7 @@ def _check_balanced_dominance(r, ctx):
     stats = ctx.get("stats", {})
     # Z-scores from historical champions
     MIN_Z_ADJO = 1.66
-    MAX_Z_ADJD = -1.24
+    MAX_Z_ADJD = -1.23
     MIN_Z_ADJEM = 2.50 # High AdjEM threshold proxy for 30.0
     
     adjo_mean = stats.get("adjo_mean", 0)
@@ -213,7 +213,7 @@ def _check_elite_efficiency(r, ctx):
 def _check_three_point_pct(r, ctx):
     stats = ctx.get("stats", {})
     metrics = ctx.get("metrics_map", {}).get(r.team_id)
-    MIN_Z_3P = -0.52
+    MIN_Z_3P = -0.53
     
     fg3_mean = stats.get("fg3_pct_mean", 0.33)
     fg3_std = stats.get("fg3_pct_std", 0.03)
@@ -308,7 +308,7 @@ def _check_tov_edge(r, ctx):
     edge = r.adj_tov_edge
     stats = ctx.get("stats", {})
     
-    MIN_Z_TOV = 0.12  # 0.1225
+    MIN_Z_TOV = 0.11
     
     threshold = stats.get("tov_mean", 0) + (MIN_Z_TOV * stats.get("tov_std", 1))
     passed = edge >= threshold if edge is not None else False
@@ -333,25 +333,29 @@ def _check_ffi(r, ctx):
                  f"Adjusted FFI: {ffi:.1f}")
 
 
+# WAB bar scales with games played: 5.0 at 32+ games, pro rata below that,
+# so short seasons (e.g. 2021) and early-season snapshots face a fair bar.
+WAB_FULL_BAR = 5.0
+WAB_FULL_GAMES = 32
+
+
+def wab_bar(games):
+    return WAB_FULL_BAR * min(games, WAB_FULL_GAMES) / WAB_FULL_GAMES
+
+
 def _check_wab(r, ctx):
     wab = r.wab
     games = r.games_played or 0
-
-    # Short/anomalous seasons (e.g. 2021 COVID-truncated schedules) make a
-    # fixed WAB > 5.0 bar nearly unreachable, so exempt them.
-    if games < 27:
-        return _item("wab", "WAB (Wins Above Bubble)", True,
-                     f"{wab:.1f}" if wab is not None else "N/A",
-                     "> 5 (or <27-game season exception)",
-                     f"Short season ({games} games) - exempted, WAB={wab}")
+    bar = wab_bar(games)
+    threshold = f"> {bar:.2f}"
 
     if wab is None:
         return _item("wab", "WAB (Wins Above Bubble)", False,
-                     "N/A", "> 5", "WAB unavailable")
-    passed = wab > 5.0
+                     "N/A", threshold, "WAB unavailable")
+    passed = wab > bar
     return _item("wab", "WAB (Wins Above Bubble)", passed,
-                 f"{wab:.1f}", "> 5",
-                 f"WAB: {wab:.1f}")
+                 f"{wab:.1f}", threshold,
+                 f"WAB: {wab:.2f} vs bar {bar:.2f} (5 x {min(games, WAB_FULL_GAMES)}/{WAB_FULL_GAMES} games)")
 
 
 def _check_ft_pct(r, ctx):
