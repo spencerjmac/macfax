@@ -256,6 +256,16 @@ export interface ChecklistItem {
   value: string;
   threshold: string;
   details: string;
+  /** False when the check can't be judged yet this season (e.g. no AP poll); not counted. */
+  active?: boolean;
+  inactive_reason?: string | null;
+}
+
+/** A check that is inactive for the whole season, with the reason. */
+export interface InactiveCheck {
+  key: string;
+  label: string;
+  reason: string;
 }
 
 export interface CrystalBallTeam {
@@ -273,8 +283,11 @@ export interface CrystalBallTeam {
   tournament_finish?: string | null;
   checklist: {
     passedCount: number;
+    /** Active checks only */
     totalCount: number;
     score: number;
+    /** All 15 checks active and passed */
+    titleProfile?: boolean;
     items: ChecklistItem[];
   };
 }
@@ -285,6 +298,8 @@ export interface CrystalBallData {
   filter: string;
   /** Selection Sunday snapshot when the season has one, else full-season rows to date. */
   basis?: 'selection_sunday' | 'live';
+  /** Checks inactive for this season (early season), with reasons */
+  inactive_checks?: InactiveCheck[];
   total_teams: number;
   teams: CrystalBallTeam[];
 }

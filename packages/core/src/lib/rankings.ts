@@ -34,6 +34,9 @@ export interface ChecklistItem {
   valueDisplay: string;
   thresholdDisplay: string;
   detail?: string;
+  /** False when the check is inactive for the season; shown greyed with the reason, not counted. */
+  active: boolean;
+  inactiveReason?: string | null;
 }
 
 /** Which rating rows the Crystal Ball checklist was scored on. */
@@ -46,9 +49,19 @@ export function checklistBasisLabel(basis: ChecklistBasis): string {
 /** One team's Crystal Ball checklist, as the team page shows it. */
 export interface TeamChecklist {
   passedCount: number;
+  /** Active checks only */
   total: number;
+  /** All 15 checks active and passed */
+  titleProfile: boolean;
   items: ChecklistItem[];
   basis: ChecklistBasis;
+  inactive: { label: string; reason: string }[];
+}
+
+/** "Not active yet: AP Poll Week 6 (AP Week 6 poll not out yet); …", or null when every check is active. */
+export function inactiveChecksLine(inactive: { label: string; reason: string }[] | undefined): string | null {
+  if (!inactive || inactive.length === 0) return null;
+  return 'Not active yet: ' + inactive.map((c) => `${c.label} (${c.reason})`).join('; ');
 }
 
 function rankByMetric(teams: TeamSeason[], metric: keyof TeamSeason, better: 'higher' | 'lower'): Map<string, number> {

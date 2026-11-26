@@ -1,6 +1,6 @@
 'use client';
 
-import { ChecklistItem, ChecklistBasis, checklistBasisLabel } from '@macfax/core/lib/rankings';
+import { ChecklistItem, ChecklistBasis, checklistBasisLabel, inactiveChecksLine } from '@macfax/core/lib/rankings';
 import clsx from 'clsx';
 
 // Simple SVG icons
@@ -23,6 +23,10 @@ interface ChampionChecklistCardProps {
   total: number;
   items: ChecklistItem[];
   basis: ChecklistBasis;
+  /** All 15 checks active and passed */
+  titleProfile: boolean;
+  /** Checks inactive for this season, with reasons */
+  inactive: { label: string; reason: string }[];
 }
 
 export default function ChampionChecklistCard({
@@ -30,8 +34,12 @@ export default function ChampionChecklistCard({
   total,
   items,
   basis,
+  titleProfile,
+  inactive,
 }: ChampionChecklistCardProps) {
-  const percentage = (passedCount / total) * 100;
+  // total = active checks only
+  const percentage = total ? (passedCount / total) * 100 : 0;
+  const inactiveLine = inactiveChecksLine(inactive);
   
   return (
     <div className="bg-ui-card border border-ui-border rounded-lg p-6">
@@ -40,7 +48,7 @@ export default function ChampionChecklistCard({
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-2xl font-bold">🔮 Crystal Ball</h2>
           <div className="flex items-center gap-2">
-            {passedCount === total && (
+            {titleProfile && (
               <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-wide bg-brand text-white whitespace-nowrap">
                 Title Profile
               </span>
@@ -56,6 +64,9 @@ export default function ChampionChecklistCard({
         <p className="text-text-muted text-sm">
           National Champion Checklist — 15 criteria based on historical championship winners*
         </p>
+        {inactiveLine && (
+          <p className="mt-2 text-xs text-text-secondary">{inactiveLine}</p>
+        )}
         
         {/* Progress Bar */}
         <div className="mt-4 bg-ui-surface rounded-full h-3 overflow-hidden">
@@ -68,7 +79,7 @@ export default function ChampionChecklistCard({
           {percentage.toFixed(0)}% complete
         </div>
         <div className="mt-4 text-[10px] text-text-muted italic bg-ui-surface/50 p-2 rounded border border-ui-border/50">
-          *Benchmarks come from the national champions since 2005; every one passed all 15 except three UConn teams (2011, 2014, 2023).
+          *Benchmarks come from the national champions since 2005. Every champion since 2005 passed all 15 except two UConn teams (2011, 2014). Of the 57 that passed, 19 won the title and 32 reached the Final Four.
         </div>
       </div>
       
@@ -83,9 +94,10 @@ export default function ChampionChecklistCard({
 }
 
 function ChecklistItemRow({ item }: { item: ChecklistItem }) {
+  if (!item.active) return <InactiveItemRow item={item} />;
   const Icon = item.passed ? CheckCircle2Icon : XCircleIcon;
   const iconColor = item.passed ? 'text-success' : 'text-text-muted';
-  const isNA = item.valueDisplay === 'N/A';
+  const isNA = item.valueDisplay === 'No data';
   
   return (
     <div className={clsx(
@@ -112,7 +124,7 @@ function ChecklistItemRow({ item }: { item: ChecklistItem }) {
                 ? 'bg-ui-surface text-text-muted'
                 : 'bg-warning/20 text-warning'
             )}>
-              {item.passed ? 'PASS' : isNA ? 'N/A' : 'FAIL'}
+              {item.passed ? 'PASS' : isNA ? 'NO DATA' : 'FAIL'}
             </div>
           </div>
           
@@ -134,6 +146,26 @@ function ChecklistItemRow({ item }: { item: ChecklistItem }) {
               {item.detail}
             </p>
           )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** A check that can't be judged yet this season: greyed, with the reason, not counted. */
+function InactiveItemRow({ item }: { item: ChecklistItem }) {
+  return (
+    <div className="p-4 rounded-lg border border-dashed border-ui-border bg-ui-surface/50 opacity-70">
+      <div className="flex items-start gap-3">
+        <span className="w-5 h-5 flex-shrink-0 mt-0.5 rounded-full border-2 border-dashed border-text-muted" />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-2 mb-1">
+            <h3 className="font-semibold text-sm text-text-muted">{item.label}</h3>
+            <div className="text-xs font-mono px-2 py-0.5 rounded whitespace-nowrap bg-ui-surface text-text-muted">
+              INACTIVE
+            </div>
+          </div>
+          <p className="text-xs text-text-muted">{item.inactiveReason}</p>
         </div>
       </div>
     </div>

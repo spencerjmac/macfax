@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import type { CrystalBallData, CrystalBallTeam, ChecklistItem } from '@macfax/core/types';
-import { checklistBasisLabel } from '@macfax/core/lib/rankings';
+import { checklistBasisLabel, inactiveChecksLine } from '@macfax/core/lib/rankings';
 import { TeamLinkSeason, useNcaaTeamHref } from '@/lib/teamLinks';
 import SeasonSelect from '@/components/SeasonSelect';
 import clsx from 'clsx';
@@ -13,7 +13,8 @@ import clsx from 'clsx';
 // Helpers
 // ---------------------------------------------------------------------------
 
-function ScoreBadge({ passed, total }: { passed: number; total: number }) {
+/** passed/total over active checks; the Title Profile badge needs all 15 active and passed. */
+function ScoreBadge({ passed, total, titleProfile }: { passed: number; total: number; titleProfile: boolean }) {
   return (
     <span className="inline-flex items-center gap-1.5">
       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-sm font-bold border border-ui-border bg-ui-surface text-text-primary">
@@ -21,7 +22,7 @@ function ScoreBadge({ passed, total }: { passed: number; total: number }) {
       </span>
       {/* Fixed-width slot so scores line up whether or not the badge shows */}
       <span className="inline-flex w-[6.5rem] justify-start">
-        {passed === total && (
+        {titleProfile && (
           <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-wide bg-brand text-white whitespace-nowrap">
             Title Profile
           </span>
@@ -37,10 +38,16 @@ function CheckDots({ items }: { items: ChecklistItem[] }) {
       {items.map((item) => (
         <span
           key={item.key}
-          title={`${item.label}: ${item.pass ? '✓' : '✗'} (${item.value} — threshold ${item.threshold})`}
+          title={
+            item.active === false
+              ? `${item.label}: inactive (${item.inactive_reason})`
+              : `${item.label}: ${item.pass ? '✓' : '✗'} (${item.value} — threshold ${item.threshold})`
+          }
           className={clsx(
             'w-2.5 h-2.5 rounded-full transition-all',
-            item.pass ? 'bg-green-500' : 'bg-slate-300',
+            item.active === false
+              ? 'border border-dashed border-slate-400 bg-transparent'
+              : item.pass ? 'bg-green-500' : 'bg-slate-300',
           )}
         />
       ))}
@@ -51,7 +58,18 @@ function CheckDots({ items }: { items: ChecklistItem[] }) {
 function ChecklistDetail({ items }: { items: ChecklistItem[] }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 p-4 bg-ui-surface rounded-lg border border-ui-border">
-      {items.map((item) => (
+      {items.map((item) => item.active === false ? (
+        <div
+          key={item.key}
+          className="flex items-start gap-2 px-3 py-2 rounded-md border border-dashed border-slate-300 text-xs text-slate-400 bg-transparent"
+        >
+          <span className="mt-0.5 shrink-0 text-base">–</span>
+          <div>
+            <div className="font-semibold leading-tight">{item.label} · inactive</div>
+            <div className="mt-0.5">{item.inactive_reason}</div>
+          </div>
+        </div>
+      ) : (
         <div
           key={item.key}
           className={clsx(
@@ -144,7 +162,11 @@ function TeamRow({ team, rank }: { team: CrystalBallTeam; rank: number }) {
 
         {/* Score */}
         <td className="px-3 py-3 text-center">
-          <ScoreBadge passed={team.checklist.passedCount} total={team.checklist.totalCount} />
+          <ScoreBadge
+            passed={team.checklist.passedCount}
+            total={team.checklist.totalCount}
+            titleProfile={team.checklist.titleProfile ?? false}
+          />
         </td>
 
         {/* Check dots */}
@@ -277,9 +299,16 @@ export default function CrystalBallPage() {
 
       {/* Historical context (backtest 2005–2026, skip 2020) */}
       <p className="text-sm text-text-secondary">
-        On average, 2–3 teams a season have passed all 15. Every champion did except three UConn teams
-        (2011, 2014, 2023). Of the 55 that passed, 18 won the title and 31 reached the Final Four.
+        On average, 2–3 teams a season have passed all 15. Every champion since 2005 passed all 15 except
+        two UConn teams (2011, 2014). Of the 57 that passed, 19 won the title and 32 reached the Final Four.
       </p>
+
+      {/* Season-level checks not active yet (early season) */}
+      {inactiveChecksLine(data?.inactive_checks) && (
+        <p className="text-sm text-text-secondary border-l-2 border-ui-border pl-3">
+          {inactiveChecksLine(data?.inactive_checks)}. Scores count the {15 - (data?.inactive_checks?.length ?? 0)} active checks.
+        </p>
+      )}
 
       {/* Checklist key */}
       <div className="text-xs text-text-muted flex items-center gap-2">
@@ -287,6 +316,8 @@ export default function CrystalBallPage() {
         Pass
         <span className="w-2.5 h-2.5 rounded-full bg-slate-300 inline-block ml-2" />
         Fail
+        <span className="w-2.5 h-2.5 rounded-full border border-dashed border-slate-400 inline-block ml-2" />
+        Inactive
         <span className="ml-3 opacity-60">· Hover dots for details · Click any row to expand all 15 checks</span>
       </div>
 

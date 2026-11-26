@@ -34,7 +34,7 @@ from collections import defaultdict
 
 import numpy as np
 from django.conf import settings
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 
 from ncaa.models import Season, TeamSeasonRatings, TeamSeasonMetrics
 from ncaa.utils.d1 import d1_q
@@ -55,6 +55,10 @@ from api.crystal_ball_views import (
 SEASONS = [y for y in range(2005, 2027) if y != 2020]
 
 OUTPUT_DIR = os.path.join(settings.BASE_DIR, "backtest_output")
+
+# The UConn rule: the only champions the current checklist is not expected to
+# clear. Every other champion should be 15/15 (reported after the tables).
+EXEMPT_CHAMPIONS = {(2011, "Connecticut"), (2014, "Connecticut")}
 
 # Known historical near-misses, with the criteria they're spotlighted on.
 SPOTLIGHT = [
@@ -300,11 +304,19 @@ class Command(BaseCommand):
         }
         spotlight_results = {}
         csv_rows = []
+        champion_results = []  # (year, team, current passedCount, failed keys)
 
         for year, (ratings, metrics_map) in data_by_season.items():
             ctx = _build_season_context(ratings, metrics_map)
             if not ctx:
                 continue
+            # Selection Sunday snapshots must judge every check; an inactive one
+            # here means missing data, not an early season.
+            if ctx["inactive"]:
+                raise CommandError(
+                    f"{year} Selection Sunday has inactive checks: "
+                    + "; ".join(f"{k} ({why})" for k, why in ctx["inactive"].items())
+                )
             ctx["metrics_map"] = metrics_map
             ctx["extra_ranks"] = _build_extra_ranks(ratings)
 
@@ -345,6 +357,8 @@ class Command(BaseCommand):
                     passcounts["current"]["tourney"].append(cur["passedCount"])
                     passcounts["candidate"]["tourney"].append(cand["passedCount"])
                 if is_champ:
+                    champion_results.append((year, r.team.name, cur["passedCount"],
+                                             [k for k in CURRENT_KEYS_ORDER if not cur["items"][k]["pass"]]))
                     passcounts["current"]["champ"].append(cur["passedCount"])
                     passcounts["candidate"]["champ"].append(cand["passedCount"])
 
@@ -396,6 +410,19 @@ class Command(BaseCommand):
                     f"  {bucket:<8}: n={len(arr):<5} mean={arr.mean():.2f} "
                     f"median={np.median(arr):.1f} min={arr.min()} max={arr.max()}"
                 )
+
+        # ---- Champions vs the UConn-rule exemption ----
+        exempt_label = ", ".join(f"{y} {t}" for y, t in sorted(EXEMPT_CHAMPIONS))
+        held = [c for c in champion_results if (c[0], c[1]) not in EXEMPT_CHAMPIONS]
+        full = [c for c in held if c[2] == 15]
+        self.stdout.write(f"\n=== Champions (current 15), exempt: {exempt_label} ===")
+        self.stdout.write(f"  Non-exempt champions at 15/15: {len(full)}/{len(held)}")
+        for year, team, passed, failed in held:
+            if passed != 15:
+                self.stdout.write(self.style.WARNING(f"    MISS {year} {team}: {passed}/15, failed {', '.join(failed)}"))
+        for year, team, passed, failed in champion_results:
+            if (year, team) in EXEMPT_CHAMPIONS:
+                self.stdout.write(f"    exempt {year} {team}: {passed}/15")
 
         # ---- Spotlight before/after ----
         self.stdout.write("\n=== Spotlight: known historical near-misses ===")

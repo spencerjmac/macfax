@@ -116,7 +116,57 @@ def _build_season_context(ratings_qs, metrics_map=None):
         "def_ranks":   def_ranks,
         "em_ranks":    em_ranks,
         "stats":       stats,
+        "inactive":    _inactive_checks(ratings, metrics_map, stats),
     }
+
+
+# ---------------------------------------------------------------------------
+# Season-level check status
+# ---------------------------------------------------------------------------
+# A check is inactive for a whole season when its input isn't there yet (early
+# season). Inactive checks are shown with a reason and left out of
+# passedCount/totalCount. One team missing an input is not this: that check
+# stays active and the team fails it ("No data").
+
+INACTIVE_MIN_COVERAGE = 0.90      # share of D1 teams that must have the input
+WIN_PCT_MIN_MEDIAN_GAMES = 10
+
+CHECK_INPUTS = {
+    "trapezoid":          lambda r, m: r.adj_tempo is not None and r.adj_em is not None,
+    "balanced_dominance": lambda r, m: None not in (r.adj_o, r.adj_d, r.adj_em),
+    "title_favorite":     lambda r, m: r.adj_em is not None,
+    "elite_efficiency":   lambda r, m: r.adj_o is not None and r.adj_d is not None,
+    "three_point_pct":    lambda r, m: bool(m and m.total_fg3a),
+    "elite_adjem":        lambda r, m: r.adj_em is not None,
+    "efg_margin":         lambda r, m: r.adj_efg_margin is not None,
+    "ftr_margin":         lambda r, m: r.adj_ftr_margin is not None,
+    "rebounding_edge":    lambda r, m: r.adj_reb_edge is not None,
+    "turnover_edge":      lambda r, m: r.adj_tov_edge is not None,
+    "four_factor_index":  lambda r, m: r.ffi_adj is not None,
+    "wab":                lambda r, m: r.wab is not None,
+    "ft_pct":             lambda r, m: bool(m and m.total_fta),
+}
+
+
+def _inactive_checks(ratings, metrics_map, stats):
+    """{check key: reason} for checks that can't be judged yet this season."""
+    inactive = {}
+    if not any(r.ap_poll_week6 is not None for r in ratings):
+        inactive["ap_poll_week6"] = "AP Week 6 poll not out yet"
+
+    median_games = float(np.median([r.games_played or 0 for r in ratings]))
+    win_bar = stats["win_pct_mean"] + MIN_Z_WIN * stats["win_pct_std"]
+    if median_games < WIN_PCT_MIN_MEDIAN_GAMES:
+        inactive["win_pct"] = (f"Median {median_games:g} games played; "
+                               f"active from {WIN_PCT_MIN_MEDIAN_GAMES}")
+    elif win_bar > 1.0:
+        inactive["win_pct"] = f"Bar is {win_bar * 100:.0f}%, above 100%"
+
+    for key, has_input in CHECK_INPUTS.items():
+        coverage = sum(1 for r in ratings if has_input(r, metrics_map.get(r.team_id))) / len(ratings)
+        if coverage < INACTIVE_MIN_COVERAGE and key not in inactive:
+            inactive[key] = f"Data for {coverage:.0%} of D1 teams; active from {INACTIVE_MIN_COVERAGE:.0%}"
+    return inactive
 
 
 # ---------------------------------------------------------------------------
@@ -139,6 +189,9 @@ def _check_trapezoid(r, ctx):
 
 def _check_balanced_dominance(r, ctx):
     stats = ctx.get("stats", {})
+    if r.adj_o is None or r.adj_d is None or r.adj_em is None:
+        return _item("balanced_dominance", "Balanced Dominance", False, "No data",
+                     "AdjO, AdjD and AdjEM", "Efficiency ratings unavailable")
     # Z-scores from historical champions
     MIN_Z_ADJO = 1.66
     MAX_Z_ADJD = -1.23
@@ -172,16 +225,18 @@ def _check_title_favorite(r, ctx):
     rank = ctx.get("em_ranks", {}).get(r.team_id)
     if rank is None:
         return _item("title_favorite", "Title Favorite (AdjEM Top-22)", False,
-                     "N/A", "Rank ≤ 22")
+                     "No data", "Rank ≤ 22")
     passed = rank <= 22
     return _item("title_favorite", "Title Favorite (AdjEM Top-22)", passed,
                  f"#{rank}", "Rank ≤ 22",
                  f"AdjEM rank #{rank}")
 
 
+MIN_Z_WIN = 1.31
+
+
 def _check_win_pct(r, ctx):
     stats = ctx.get("stats", {})
-    MIN_Z_WIN = 1.31
     
     games = r.games_played or 0
     pct = (r.wins / games) if games else 0.0
@@ -202,7 +257,7 @@ def _check_elite_efficiency(r, ctx):
     def_rank = ctx.get("def_ranks", {}).get(r.team_id)
     if off_rank is None or def_rank is None:
         return _item("elite_efficiency", "Elite Efficiency", False,
-                     "N/A", "Off ≤ 16, Def ≤ 45")
+                     "No data", "Off ≤ 16, Def ≤ 45")
     passed = off_rank <= 16 and def_rank <= 45
     return _item("elite_efficiency", "Elite Efficiency", passed,
                  f"Off: #{off_rank} / Def: #{def_rank}",
@@ -225,7 +280,7 @@ def _check_three_point_pct(r, ctx):
         
     if fg3_pct is None:
         return _item("three_point_pct", "3-Point %", False,
-                     "N/A", f"≥ {threshold * 100:.1f}%", "3P% data unavailable")
+                     "No data", f"≥ {threshold * 100:.1f}%", "3P% data unavailable")
                      
     fg3_z = (fg3_pct - fg3_mean) / fg3_std if fg3_std else 0
     passed = fg3_z >= MIN_Z_3P
@@ -244,7 +299,7 @@ def _check_elite_adjem(r, ctx):
     
     if r.adj_em is None:
         return _item("elite_adjem", "Elite AdjEM", False,
-                     "N/A", f"≥ {threshold:.1f}")
+                     "No data", f"≥ {threshold:.1f}")
                      
     adjem_z = (r.adj_em - adjem_mean) / adjem_std if adjem_std else 0
     passed = adjem_z >= MIN_Z_ADJEM
@@ -274,7 +329,7 @@ def _check_efg_margin(r, ctx):
     threshold = stats.get("efg_mean", 0) + (MIN_Z_EFG * stats.get("efg_std", 1))
     passed = margin >= threshold if margin is not None else False
     return _item("efg_margin", "eFG Margin", passed,
-                 f"{margin:.2f}" if margin is not None else "N/A", f"≥ {threshold:.2f}",
+                 f"{margin:.2f}" if margin is not None else "No data", f"≥ {threshold:.2f}",
                  f"Adjusted eFG margin: {margin:.2f}" if margin is not None else "Unavailable")
 
 
@@ -287,7 +342,7 @@ def _check_ftr_margin(r, ctx):
     threshold = stats.get("ftr_mean", 0) + (MIN_Z_FTR * stats.get("ftr_std", 1))
     passed = margin >= threshold if margin is not None else False
     return _item("ftr_margin", "FTR Margin", passed,
-                 f"{margin:.2f}" if margin is not None else "N/A", f"≥ {threshold:.2f}",
+                 f"{margin:.2f}" if margin is not None else "No data", f"≥ {threshold:.2f}",
                  f"Adjusted FTR margin: {margin:.2f}" if margin is not None else "Unavailable")
 
 
@@ -300,7 +355,7 @@ def _check_reb_edge(r, ctx):
     threshold = stats.get("reb_mean", 0) + (MIN_Z_REB * stats.get("reb_std", 1))
     passed = edge >= threshold if edge is not None else False
     return _item("rebounding_edge", "Rebounding Edge", passed,
-                 f"{edge:.2f}" if edge is not None else "N/A", f"≥ {threshold:.2f}",
+                 f"{edge:.2f}" if edge is not None else "No data", f"≥ {threshold:.2f}",
                  f"Adjusted rebounding edge: {edge:.2f}" if edge is not None else "Unavailable")
 
 
@@ -313,7 +368,7 @@ def _check_tov_edge(r, ctx):
     threshold = stats.get("tov_mean", 0) + (MIN_Z_TOV * stats.get("tov_std", 1))
     passed = edge >= threshold if edge is not None else False
     return _item("turnover_edge", "Turnover Edge", passed,
-                 f"{edge:.2f}" if edge is not None else "N/A", f"≥ {threshold:.2f}",
+                 f"{edge:.2f}" if edge is not None else "No data", f"≥ {threshold:.2f}",
                  f"Adjusted turnover edge: {edge:.2f}" if edge is not None else "Unavailable")
 
 
@@ -326,16 +381,18 @@ def _check_ffi(r, ctx):
     threshold = stats.get("ffi_mean", 0) + (MIN_Z_FFI * stats.get("ffi_std", 1))
     if ffi is None:
         return _item("four_factor_index", "Four Factor Index", False,
-                     "N/A", f"≥ {threshold:.1f}", "FFI unavailable")
+                     "No data", f"≥ {threshold:.1f}", "FFI unavailable")
     passed = ffi >= threshold
     return _item("four_factor_index", "Four Factor Index", passed,
                  f"{ffi:.1f}", f"≥ {threshold:.1f}",
                  f"Adjusted FFI: {ffi:.1f}")
 
 
-# WAB bar scales with games played: 5.0 at 32+ games, pro rata below that,
+# WAB bar scales with games played: 4.6 at 32+ games, pro rata below that,
 # so short seasons (e.g. 2021) and early-season snapshots face a fair bar.
-WAB_FULL_BAR = 5.0
+# 4.6 is the lowest full-season WAB among champions outside the UConn rule
+# (UConn 2023: 4.64 in 33 games).
+WAB_FULL_BAR = 4.6
 WAB_FULL_GAMES = 32
 
 
@@ -351,11 +408,11 @@ def _check_wab(r, ctx):
 
     if wab is None:
         return _item("wab", "WAB (Wins Above Bubble)", False,
-                     "N/A", threshold, "WAB unavailable")
+                     "No data", threshold, "WAB unavailable")
     passed = wab > bar
     return _item("wab", "WAB (Wins Above Bubble)", passed,
                  f"{wab:.1f}", threshold,
-                 f"WAB: {wab:.2f} vs bar {bar:.2f} (5 x {min(games, WAB_FULL_GAMES)}/{WAB_FULL_GAMES} games)")
+                 f"WAB: {wab:.2f} vs bar {bar:.2f} ({WAB_FULL_BAR:g} x {min(games, WAB_FULL_GAMES)}/{WAB_FULL_GAMES} games)")
 
 
 def _check_ft_pct(r, ctx):
@@ -373,7 +430,7 @@ def _check_ft_pct(r, ctx):
         
     if ft_pct is None:
         return _item("ft_pct", "Free Throw %", False,
-                     "N/A", f"≥ {threshold * 100:.1f}%", "FT% data unavailable")
+                     "No data", f"≥ {threshold * 100:.1f}%", "FT% data unavailable")
                      
     ft_z = (ft_pct - ft_mean) / ft_std if ft_std else 0
     passed = ft_z >= MIN_Z_FT
@@ -403,13 +460,28 @@ CHECKS = [
 
 
 def run_checklist(rating, ctx):
-    items = [fn(rating, ctx) for fn in CHECKS]
-    passed = sum(1 for i in items if i["pass"])
+    """Score one team. Inactive checks (season-level, see _inactive_checks) are
+    returned with active=False and a reason, and don't count toward passed/total.
+    A Title Profile needs every check active and passed."""
+    inactive = ctx.get("inactive", {})
+    items = []
+    for fn in CHECKS:
+        item = fn(rating, ctx)
+        reason = inactive.get(item["key"])
+        item["active"] = reason is None
+        item["inactive_reason"] = reason
+        if reason is not None:
+            item["pass"] = False
+        items.append(item)
+    active = [i for i in items if i["active"]]
+    passed = sum(1 for i in active if i["pass"])
+    total = len(active)
     return {
-        "passedCount": passed,
-        "totalCount":  len(items),
-        "score":       round(passed / len(items) * 100, 1),
-        "items":       items,
+        "passedCount":  passed,
+        "totalCount":   total,
+        "score":        round(passed / total * 100, 1) if total else 0.0,
+        "titleProfile": total == len(CHECKS) and passed == total,
+        "items":        items,
     }
 
 
@@ -513,6 +585,11 @@ class CrystalBallView(APIView):
             "season_display": season.display_name,
             "filter":       team_filter,
             "basis":        "selection_sunday" if is_pre else "live",
+            "inactive_checks": [
+                {"key": i["key"], "label": i["label"], "reason": i["inactive_reason"]}
+                for i in (results[0]["checklist"]["items"] if results else [])
+                if not i["active"]
+            ],
             "total_teams":  len(results),
             "teams":        results,
         })

@@ -224,6 +224,8 @@ function OverviewTab({
             total={checklist.total}
             items={checklist.items}
             basis={checklist.basis}
+            titleProfile={checklist.titleProfile}
+            inactive={checklist.inactive}
           />
         )}
       </div>

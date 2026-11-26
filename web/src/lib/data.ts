@@ -208,7 +208,9 @@ async function fetchTeamChecklist(slug: string, season?: number): Promise<TeamCh
     return {
       passedCount: row.checklist.passedCount,
       total: row.checklist.totalCount,
+      titleProfile: row.checklist.titleProfile ?? false,
       basis: json.basis ?? 'live',
+      inactive: (json.inactive_checks ?? []).map((c) => ({ label: c.label, reason: c.reason })),
       items: row.checklist.items.map((i) => ({
         key: i.key,
         label: i.label,
@@ -216,6 +218,8 @@ async function fetchTeamChecklist(slug: string, season?: number): Promise<TeamCh
         valueDisplay: i.value,
         thresholdDisplay: i.threshold,
         detail: i.details,
+        active: i.active ?? true,
+        inactiveReason: i.inactive_reason ?? null,
       })),
     };
   } catch {
