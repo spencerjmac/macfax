@@ -17,6 +17,11 @@ server-side write scripts use, as holder "nightly", so a deploy can't recreate t
 NIGHTLY_LOCK_WAIT_MIN (default 60) minutes, then skips that day and logs the skip (rc 75, reason) to
 the pipeline run log. At startup a lock still held by "nightly" is a leftover of a killed run (this
 process is the only nightly) and is cleared.
+
+Catch-up: when the scheduler starts after today's slot and the pipeline run log has no update_daily
+run (completed, failed or skipped) since that slot, it runs the nightly once now (taking the lock as
+usual): a deploy or crash around the slot no longer costs the day. With no run log yet (unset, or the
+first start after it was added) there is no history to judge by, so it does not catch up.
 """
 
 import os
@@ -29,7 +34,7 @@ from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
 from ncaa import prod_lock
-from ncaa.pipeline_log import append_run
+from ncaa.pipeline_log import append_run, read_runs
 
 # 10:00 UTC is 06:00 ET: after the last West Coast NBA / NCAA finals are posted.
 DEFAULT_AT = "10:00"
@@ -73,6 +78,9 @@ class Command(BaseCommand):
             self._run_update()
             if options["once"]:
                 return
+        elif self._missed_today(datetime.now(dt_timezone.utc), at):
+            self.stdout.write("[scheduler] today's run is missing from the pipeline run log: catching up now")
+            self._run_update()
 
         self.stdout.write(f"[scheduler] daily update at {at:%H:%M} UTC")
         while True:
@@ -83,6 +91,27 @@ class Command(BaseCommand):
                 remaining = (target - datetime.now(dt_timezone.utc)).total_seconds()
                 time_module.sleep(max(1.0, min(MAX_SLEEP_SECONDS, remaining)))
             self._run_update()
+
+    def _missed_today(self, now: datetime, at: time) -> bool:
+        """Today's slot has passed and no update_daily run (any outcome) is logged since it."""
+        slot = now.replace(hour=at.hour, minute=at.minute, second=0, microsecond=0)
+        if now < slot:
+            return False
+        runs = read_runs()
+        if runs is None:
+            return False   # no run log: nothing to judge by
+        for r in runs:
+            if r.get("command") != "update_daily":
+                continue
+            try:
+                started = datetime.fromisoformat(r["started"])
+            except (KeyError, ValueError):
+                continue
+            if started.tzinfo is None:
+                started = started.replace(tzinfo=dt_timezone.utc)
+            if started >= slot:
+                return False
+        return True
 
     def _clear_stale_lock(self):
         """A lock held by "nightly" at startup was left by a killed run: no nightly can be running now."""

@@ -49,6 +49,23 @@ def append_run(record: dict) -> Path | None:
         return None
 
 
+def read_runs() -> list[dict] | None:
+    """All logged runs, oldest first; None when there is no log (unset dir, or nothing written yet)."""
+    path = log_path()
+    if path is None or not path.exists():
+        return None
+    runs = []
+    try:
+        for line in path.read_text(encoding="utf-8").splitlines():
+            try:
+                runs.append(json.loads(line))
+            except ValueError:
+                continue   # a torn line (killed mid-write) is skipped, not fatal
+    except OSError:
+        return None
+    return runs
+
+
 def _jsonable(v) -> bool:
     try:
         json.dumps(v)
