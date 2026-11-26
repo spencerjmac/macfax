@@ -8,6 +8,7 @@ Endpoints:
 All stats are computed from our game log scraper and rating system.
 """
 
+from ncaa.utils.d1 import d1_q
 import numpy as np
 from scipy import stats as scipy_stats
 from rest_framework.views import APIView
@@ -157,9 +158,9 @@ class VizScatterView(APIView):
         
         # Query database - use TeamSeasonRatings (our computed data), D1 only
         queryset = TeamSeasonRatings.objects.filter(
+            d1_q(season, "team"),  # D1 that season (TeamSeasonMembership), not D1 today
             season=season,
-            team__is_d1=True,
-            games_played__gt=0,  # Exclude stubs (teams not D1 in this season)
+            games_played__gt=0,  # Exclude stubs
         ).select_related('team')
         
         # Use RankingsSerializer for conference lookup (same as trapezoid/landscape)

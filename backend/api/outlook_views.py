@@ -10,6 +10,8 @@ GET  /api/outlook/player-search/  – Search projected players for scenario add 
 
 from __future__ import annotations
 
+from ncaa.utils.d1 import d1_q
+
 import logging
 
 from django.db.models import Max
@@ -123,7 +125,8 @@ def _approx_rank_in_distribution(
     rank_low  = rank if the scenario team performed at scenario_em + 1σ_em
     rank_high = rank if the scenario team performed at scenario_em − 1σ_em
     """
-    pool = TeamSeasonProjection.objects.filter(from_season=season, team__is_d1=True)
+    # Projections from `season` are for the next season: D1 is that season's membership
+    pool = TeamSeasonProjection.objects.filter(d1_q(season.year + 1, "team"), from_season=season)
     if team is not None:
         pool = pool.exclude(team=team)
     existing_ems = list(pool.values_list("projected_adj_em", flat=True))
@@ -338,7 +341,7 @@ class ProjectedTopTeamsView(APIView):
             limit = 10
         rows = (
             TeamSeasonProjection.objects.filter(
-                from_season=season, team__is_d1=True,
+                d1_q(season.year + 1, "team"), from_season=season,
                 projected_national_rank__isnull=False,
             )
             .select_related("team")

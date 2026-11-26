@@ -7,7 +7,8 @@ App dir : /opt/macfax
 
 Usage
 -----
-  fab deploy              # git pull + build + restart
+  fab deploy              # git pull + build + restart (refuses while a manage.py command runs)
+  fab deploy --force      # deploy even if a manage.py command is running in the backend container
   fab pull                # git pull only
   fab build               # docker compose build only
   fab up                  # docker compose up -d only
@@ -80,15 +81,47 @@ def up(c):
             conn.run(f"{COMPOSE} up -d", pty=True)
 
 
+def _running_manage_commands(conn):
+    """manage.py commands running in the backend container (e.g. a `docker compose exec backend python
+    manage.py ...` job), as "pid args" lines. The container's own start command (migrate, collectstatic,
+    ... then gunicorn) is not one. Read with `docker top` on the host, so the image needs no ps.
+    None if the container is not running."""
+    cid = conn.run(f"{COMPOSE} ps -q backend", hide=True, warn=True).stdout.strip()
+    if not cid:
+        return None
+    top = conn.run(f"docker top {cid} -eo pid,args", hide=True, warn=True)
+    if not top.ok:
+        return None
+    return [line.strip() for line in top.stdout.splitlines()[1:]
+            if "manage.py" in line and "gunicorn" not in line]
+
+
 # ---------------------------------------------------------------------------
 # Composite tasks
 # ---------------------------------------------------------------------------
 
 @task
-def deploy(c):
-    """Full deploy: git pull → docker compose build → up -d."""
+def deploy(c, force=False):
+    """Full deploy: git pull → docker compose build → up -d.
+
+    Refuses while a manage.py command runs in the backend container: `up -d` recreates the container
+    when its image changes, which kills that command. --force deploys anyway.
+    """
     with _conn() as conn:
         with conn.cd(APP_DIR):
+            running = _running_manage_commands(conn)
+            if running is None:
+                print("── guard: backend container not running, nothing to check")
+            elif running:
+                print("── guard: manage.py commands running in the backend container:")
+                for line in running:
+                    print(f"     {line}")
+                if not force:
+                    raise SystemExit("Deploy refused: wait for them to finish, or pass --force.")
+                print("── guard: --force given, deploying anyway")
+            else:
+                print("── guard: no manage.py commands running")
+
             print("── git pull ──────────────────────────────")
             conn.run("git fetch origin && git reset --hard origin/main", pty=True)
 

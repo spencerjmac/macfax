@@ -52,6 +52,8 @@ Usage:
 
 from __future__ import annotations
 
+from ncaa.utils.d1 import d1_q
+
 import math
 import statistics
 
@@ -105,8 +107,8 @@ class Command(BaseCommand):
         """team_id → (d1_wins, d1_games) from final-scored D1-vs-D1 games."""
         rec: dict[int, list[int]] = {}
         qs = Game.objects.filter(
+            d1_q(year, "home_team"), d1_q(year, "away_team"),
             season_year=year,
-            home_team__is_d1=True, away_team__is_d1=True,
         ).exclude(home_score=0, away_score=0).only(
             "home_team_id", "away_team_id", "home_score", "away_score"
         )
@@ -125,7 +127,7 @@ class Command(BaseCommand):
         """team_id → adj_em, final snapshot, EXPLICIT filter + one-row assert."""
         rows = list(
             TeamSeasonRatings.all_objects.filter(
-                season__year=year, is_pre_tournament=False, team__is_d1=True,
+                d1_q(year, "team"), season__year=year, is_pre_tournament=False,
             ).values("team_id", "adj_em")
         )
         seen: dict[int, int] = {}
@@ -158,7 +160,7 @@ class Command(BaseCommand):
                 n += 1
             # game-level pairs for convention B
             for gobj in Game.objects.filter(
-                season_year=yr, home_team__is_d1=True, away_team__is_d1=True,
+                d1_q(yr, "home_team"), d1_q(yr, "away_team"), season_year=yr,
             ).exclude(home_score=0, away_score=0).only(
                 "home_team_id", "away_team_id", "home_score", "away_score", "neutral_site"
             ):
@@ -246,7 +248,7 @@ class Command(BaseCommand):
         self.stdout.write(f"\n{'='*70}\nSTEP 2 — actuals-side replacement level ({year})")
         rows = list(
             PlayerSeasonStats.objects.filter(
-                season__year=year, team__is_d1=True,
+                d1_q(year, "team"), season__year=year,
                 mpg__isnull=False, gp__isnull=False,
                 obpr__isnull=False, dbpr__isnull=False,
             ).values("team_id", "player_id", "mpg", "gp", "obpr", "dbpr")
@@ -274,7 +276,7 @@ class Command(BaseCommand):
     def _step2_marginal_wins(self, year, repl_o, repl_d, wpe):
         rows = list(
             PlayerSeasonStats.objects.filter(
-                season__year=year, team__is_d1=True,
+                d1_q(year, "team"), season__year=year,
                 mpg__isnull=False, obpr__isnull=False, dbpr__isnull=False,
             ).select_related("player", "team")
         )

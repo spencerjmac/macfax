@@ -24,6 +24,8 @@ Usage:
 
 from __future__ import annotations
 
+from ncaa.utils.d1 import d1_q
+
 import statistics
 
 from django.core.management.base import BaseCommand, CommandError
@@ -72,7 +74,7 @@ class Command(BaseCommand):
 
         rows = list(
             PlayerSeasonStats.objects.filter(
-                season=season, team__is_d1=True,
+                d1_q(season, "team"), season=season,
                 mpg__isnull=False, obpr__isnull=False, dbpr__isnull=False,
             ).select_related("player", "team")
         )

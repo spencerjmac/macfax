@@ -13,14 +13,15 @@ season. Rule: use the snapshot when the season has one, otherwise the
 full-season rows.
 """
 
+from ncaa.utils.d1 import d1_q
 from ncaa.models import Season, TeamSeasonRatings
 
 
 def use_pre_tournament_rows(season: Season) -> bool:
     """True if `season` has a Selection Sunday snapshot to show, else False."""
     return TeamSeasonRatings.all_objects.filter(
+        d1_q(season, "team"),
         season=season,
         is_pre_tournament=True,
-        team__is_d1=True,
         games_played__gt=0,
     ).exists()

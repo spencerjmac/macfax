@@ -34,6 +34,8 @@ Usage:
 """
 from __future__ import annotations
 
+from ncaa.utils.d1 import d1_q
+
 import math
 from collections import defaultdict
 
@@ -96,8 +98,8 @@ class Command(BaseCommand):
         # ── Step 1: Compute split date ────────────────────────────────────────
         all_game_dates = sorted(
             Game.objects.filter(
+                d1_q(season_year, "home_team"), d1_q(season_year, "away_team"),
                 season_year=season_year, status="final",
-                home_team__is_d1=True, away_team__is_d1=True,
             ).values_list("game_date", flat=True).distinct()
         )
         if not all_game_dates:
@@ -242,8 +244,8 @@ class Command(BaseCommand):
 
         # ── Step 5: Load TRAIN and TEST games ─────────────────────────────────
         base_q = Game.objects.filter(
+            d1_q(season_year, "home_team"), d1_q(season_year, "away_team"),
             season_year=season_year, status="final",
-            home_team__is_d1=True, away_team__is_d1=True,
             home_score__isnull=False, away_score__isnull=False,
         ).values(
             "id", "game_date", "home_team_id", "away_team_id",

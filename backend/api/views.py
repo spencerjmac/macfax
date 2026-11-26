@@ -2,6 +2,7 @@
 DRF Views for CBB Analytics API
 """
 
+from ncaa.utils.d1 import d1_q
 from django.core.cache import cache
 from django.views.decorators.cache import cache_page
 from django.utils.decorators import method_decorator
@@ -184,7 +185,7 @@ class RankingsViewSet(viewsets.ReadOnlyModelViewSet):
         # stored in rank_adj_em (which may have been computed before non-D1 teams
         # were purged and therefore contains gaps when filtered to D1 only).
         queryset = (
-            base_qs.filter(season=season, team__is_d1=True, games_played__gt=0)
+            base_qs.filter(d1_q(season, "team"), season=season, games_played__gt=0)
             .select_related("team", "season")
             .prefetch_related(
                 Prefetch(

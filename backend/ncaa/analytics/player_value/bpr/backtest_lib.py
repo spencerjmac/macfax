@@ -160,10 +160,18 @@ def load_games(seasons: list[int]) -> dict[int, list[dict]]:
     """games_by_year, D1-vs-D1 finals with scores, sorted by date."""
     from ncaa.models import Game
 
+    from functools import reduce
+    from operator import or_
+
+    from django.db.models import Q
+
+    from ncaa.utils.d1 import d1_q
+
     games_by_year: dict[int, list] = defaultdict(list)
+    # D1-vs-D1 that season (TeamSeasonMembership), not D1 today
+    d1_games = reduce(or_, (Q(season_year=y) & d1_q(y, "home_team") & d1_q(y, "away_team") for y in seasons), Q(pk__in=[]))
     for g in Game.objects.filter(
-        season_year__in=seasons, status="final",
-        home_team__is_d1=True, away_team__is_d1=True,
+        d1_games, status="final",
         home_score__isnull=False, away_score__isnull=False,
     ).values("id", "season_year", "game_date", "home_team_id", "away_team_id",
              "home_score", "away_score", "neutral_site"):
