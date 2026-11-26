@@ -96,3 +96,6 @@ mps/data/mps_dataset_with_consensus.csv
 # docs/bpr_audit/ (audit_bpr_data, backtest_bpr_suite, experiment harnesses).
 # The recruiting priority list regenerates via check_recruiting_data.
 backend/backtest_output/
+
+# prod write lock directory (ops/prod-lock.sh) on the server checkout
+/.prod-lock/
