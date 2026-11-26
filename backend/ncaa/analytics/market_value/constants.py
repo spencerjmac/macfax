@@ -27,6 +27,17 @@ import hashlib
 # them play. Same principle as the Phase 3 D1 demeaning ruling.
 WINS_PER_EM_NCAA: float = 1.007
 
+# ── Market-value chain slopes (2026-11-26 recalibration) ─────────────────────
+# EM per (minutes share × BPR above replacement), per side. The chain used the team-projection
+# slopes (SLOPE_OFF 0.73 / SLOPE_DEF 0.66), which are fit to forecast NEXT season from last
+# season's ratings and so carry forecasting shrinkage. Against the SAME season's results they
+# under-credit both sides: 2025-26 team sums of offensive / defensive marginal wins vs
+# 1.007·(GP/30)·(AdjO − D1 mean) / (D1 mean − AdjD) had slopes 0.701 / 0.614. With 1.0 / 1.0 the
+# closure slopes are 0.960 / 0.930 (r 0.980 / 0.965), stable on random halves of teams.
+# Projection slopes are untouched (team_projection/constants.py).
+MV_SLOPE_OFF: float = 1.0
+MV_SLOPE_DEF: float = 1.0
+
 # ── Replacement level, ACTUALS side (operator decision D3) ────────────────────
 # Minutes-weighted mean obpr/dbpr of players outside their team's top-8
 # actual-minutes rotation (rank>8 by mpg), season 2026, N=897.
@@ -54,8 +65,10 @@ MBB_POOL_HIGH: float = CAP_2026_27 * MBB_SHARE_HIGH  # $4.899M
 
 # ── $/marginal-win ────────────────────────────────────────────────────────────
 # pool ÷ median power-conference roster's total positive marginal wins.
-# Median = 18.77 (n=78 power rosters, 2026 actuals, derive_market_value).
-MEDIAN_POWER_ROSTER_MWINS: float = 18.77
+# Median = 26.74 (n=78 power rosters, 2026 actuals, derive_market_value with the 1.0/1.0 chain
+# slopes; 18.77 under the old 0.73/0.66). Re-derived with the slopes so dollars stay on the same pool:
+# D1 total positive value (low anchor) $678M before -> about $668M after.
+MEDIAN_POWER_ROSTER_MWINS: float = 26.74
 DOLLARS_PER_WIN_LOW: float = MBB_POOL_LOW / MEDIAN_POWER_ROSTER_MWINS    # ≈ $192.9k
 DOLLARS_PER_WIN_HIGH: float = MBB_POOL_HIGH / MEDIAN_POWER_ROSTER_MWINS  # ≈ $261.0k
 
@@ -65,13 +78,15 @@ DOLLARS_PER_WIN_HIGH: float = MBB_POOL_HIGH / MEDIAN_POWER_ROSTER_MWINS  # ≈ $
 # non-representative fraction of the market). Documented decline per the
 # Phase 3 D3 pattern; revisit only if a sourced multiplier appears.
 
-METHODOLOGY_VERSION: str = "1.0-pending-signoff"
+METHODOLOGY_VERSION: str = "1.1-pending-signoff"  # 1.1: own chain slopes 1.0/1.0, re-derived median
 
 
 def constants_hash() -> str:
     """Provenance hash of the committed constant set (stored per value row)."""
     blob = repr(sorted({
         "WINS_PER_EM_NCAA": WINS_PER_EM_NCAA,
+        "MV_SLOPE_OFF": MV_SLOPE_OFF,
+        "MV_SLOPE_DEF": MV_SLOPE_DEF,
         "REPLACEMENT_ACTUALS_OBPR": REPLACEMENT_ACTUALS_OBPR,
         "REPLACEMENT_ACTUALS_DBPR": REPLACEMENT_ACTUALS_DBPR,
         "CAP_2026_27": CAP_2026_27,

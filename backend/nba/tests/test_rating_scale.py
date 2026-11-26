@@ -20,6 +20,7 @@ from nba.injury_engine import compute_nba_injury_adjustment
 from nba.management.commands import nba_compute_native_bpr as nb
 from nba.management.commands.compute_nba_team_outlooks import REPLACEMENT_LEVEL
 from nba.management.commands.compute_nba_team_outlooks import Command as OutlookCommand
+from nba.rating_scale import WA_DIVISOR
 from nba.models import (NBAPlayer, NBAPlayerAvailability, NBAPlayerSeasonStats, NBASeason,
                         NBASeasonRatingScale, NBATeam)
 from nba.rating_scale import Scale, native_scale
@@ -75,7 +76,7 @@ class NativeScaleTests(Fixture):
         nb.write_native(2026, o, d, 1.25, 0.4)
         row = NBASeasonRatingScale.objects.get(season=self.native)
         self.assertEqual((row.bpr_model, row.centre_obpr, row.centre_dbpr, row.wins_divisor, row.replacement),
-                         ("native-1", 1.25, 0.4, 37.73, R))
+                         ("native-1", 1.25, 0.4, WA_DIVISOR, R))
 
     def test_serializer_native_row(self):
         data = NBAPlayerSeasonStatsSerializer(self.rows[(2026, 203999)]).data
@@ -209,14 +210,14 @@ class NativeConstantsTests(Fixture):
         # base_off 3.5, base_def 1.5 (league bases 0): legacy EM = SLOPE x 5.0
         self.assertAlmostEqual(res["legacy_adj_em"], oc.NATIVE_SLOPE * 5.0)
         self.assertAlmostEqual(slots[0]["wins_added"], 1.5 * (4.0 - R) * oc.NATIVE_WINS_ADDED_PER_SHARE)
-        self.assertAlmostEqual(oc.NATIVE_WINS_ADDED_PER_SHARE, 20 * 82 / 48 / 37.73)
+        self.assertAlmostEqual(oc.NATIVE_WINS_ADDED_PER_SHARE, 20 * 82 / 48 / WA_DIVISOR)
 
     def test_native_slot_and_player_wins_added_agree_at_equal_minutes(self):
         from nba import outlook_constants as oc
         share, bpr = 1.4, 3.3
         minutes = share * 20 * 82
         self.assertAlmostEqual(share * (bpr - R) * oc.NATIVE_WINS_ADDED_PER_SHARE,
-                               (bpr - R) * minutes / 48 / 37.73)
+                               (bpr - R) * minutes / 48 / WA_DIVISOR)
 
     def test_native_age_offset_in_development_delta(self):
         from nba.management.commands.compute_nba_team_outlooks import age_bpr_delta

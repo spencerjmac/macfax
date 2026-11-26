@@ -4,9 +4,9 @@
  */
 export const FEATURES = {
   /**
-   * NCAA player W.Add (to date) column on the Impact tab. The API field (wins_added) and
-   * the pipeline step (compute_market_values in update_ncaa_players) stay on; only the
-   * column is hidden while the NCAA win calibration is reviewed (2026-11-25).
+   * NCAA player W.Add (to date) column on the Impact tab. On since the 2026-11-26 calibration
+   * (market-value chain slopes 1.0/1.0: team W.Add sums track schedule-neutral expected wins
+   * with closure slopes 0.96 offense / 0.93 defense).
    */
-  ncaaPlayerWinsAdded: false,
+  ncaaPlayerWinsAdded: true,
 } as const;

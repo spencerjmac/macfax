@@ -12,6 +12,9 @@ Two sets, keyed by the source season's rating scale (nba.rating_scale.native_sca
     so the native set keeps every constant without a NATIVE_* override.
 """
 
+from nba.rating_scale import WA_DIVISOR
+
+
 # ── Calibration constants ──────────────────────────────────────────────────────
 REPLACEMENT_LEVEL = 2.0        # BPR units added above zero to form demand signal
 SHRINKAGE_RETURNER = 0.10      # 10% regression to league mean for returning players
@@ -130,10 +133,11 @@ NATIVE_ROOKIE_PRIOR_DBPR = -0.4583
 NATIVE_SLOPE = 0.240
 # Wins Added per slot on native seasons: share x (bpr - R) x NATIVE_WINS_ADDED_PER_SHARE, so a
 # projected slot and the player's stored Wins Added agree at equal minutes. One share = 20 MPG
-# over 82 games = 1640 minutes; player Wins Added = (bpr - R) x minutes / 48 / D (D = 37.73), so
-# the factor is 1640 / 48 / 37.73 = 0.9056. (The Z4 through-origin regression on 2022-2025 rosters
-# gives 0.5626 instead: demand shares are not real minutes and the fit attenuates.)
-NATIVE_WINS_ADDED_PER_SHARE = 20.0 * 82.0 / 48.0 / 37.73
+# over 82 games = 1640 minutes; player Wins Added = (bpr - R) x minutes / 48 / D (D = WA_DIVISOR,
+# 27.97 since 2026-11-26), so the factor is 1640 / 48 / D. Slot Wins Added is shown per player and
+# feeds only the top-two share (a ratio), not projected team wins. (The Z4 through-origin regression
+# on 2022-2025 rosters gives 0.5626 instead: demand shares are not real minutes and the fit attenuates.)
+NATIVE_WINS_ADDED_PER_SHARE = 20.0 * 82.0 / 48.0 / WA_DIVISOR
 # The aging knots were fitted on age at the start of the source season (Oct 1 of Y-1); the
 # pipeline's slot age is on Oct 1 of the source year, one year older. Native seasons apply the
 # curve at slot age minus this offset.

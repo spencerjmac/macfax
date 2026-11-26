@@ -2,7 +2,7 @@
  * NBA rating scale helpers (task 5.10b).
  *
  * native-1 rows carry centred BPR (league average = 0, replacement = −1.918) and
- * Wins Added = (BPR + 1.918) × minutes/48 ÷ 37.73. Rows on the earlier scale keep the
+ * Wins Added = (BPR + 1.918) × minutes/48 ÷ 27.97. Rows on the earlier scale keep the
  * old tier cutoffs and formula text exactly.
  *
  * Native cutoffs: each keeps the share of qualified players (minutes ≥ 18 × team games,
@@ -40,7 +40,7 @@ export function winsAddedCutoff(old: number, scale: RatingScale | undefined): nu
 }
 
 export const WINS_ADDED_FORMULA_LEGACY = '(MPR + 2.0) × MPG/48 × GP/56 · Replacement level = MPR −2.0';
-export const WINS_ADDED_FORMULA_NATIVE = '(MPR + 1.918) × minutes/48 ÷ 37.73 · Replacement level = MPR −1.918';
+export const WINS_ADDED_FORMULA_NATIVE = '(MPR + 1.918) × minutes/48 ÷ 27.97 · Replacement level = MPR −1.918';
 
 /** Wins Added formula text for a set of rows: the native formula when any row is native-1. */
 export function winsAddedFormula(rows: ReadonlyArray<{ rating_scale?: RatingScale }> | undefined): string {

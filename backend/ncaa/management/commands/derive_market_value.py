@@ -27,10 +27,10 @@ STEP 2 — Player marginal wins
   rank>8 pool's minutes-weighted mean obpr/dbpr = replacement. (Derived
   fresh; compared against — never assumed equal to — the projection-side
   REPLACEMENT_FILL constants.)
-    marginal_EM  = SLOPE_OFF·share·(obpr−repl_o) + SLOPE_DEF·share·(dbpr−repl_d)
+    marginal_EM  = MV_SLOPE_OFF·share·(obpr−repl_o) + MV_SLOPE_DEF·share·(dbpr−repl_d)
     share        = mpg/40 (the codebase's 5.0-pool convention)
     marginal_wins = marginal_EM × wins_per_EM (Step 1 convention)
-  Slopes reused from committed team_projection constants — never re-derived
+  Slopes: the market-value chain's own MV_SLOPE_OFF / MV_SLOPE_DEF (market_value/constants.py, 1.0/1.0 since 2026-11-26) — never re-derived
   here.
 
 STEP 3 — Dollar anchor (rev-share, carried as a RANGE)
@@ -64,9 +64,8 @@ from ncaa.models import Game, PlayerSeasonStats, Season, TeamSeasonRatings
 from ncaa.analytics.player_value.team_projection.constants import (
     REPLACEMENT_FILL_DBPR,
     REPLACEMENT_FILL_OBPR,
-    SLOPE_DEF,
-    SLOPE_OFF,
 )
+from ncaa.analytics.market_value.constants import MV_SLOPE_DEF, MV_SLOPE_OFF
 
 CAP_TOTAL = 21_300_000          # 2026-27 school rev-share cap (public reporting)
 MBB_SHARE_RANGE = (0.15, 0.25)  # typical power-conference MBB allocation share
@@ -283,8 +282,8 @@ class Command(BaseCommand):
         players = []
         for r in rows:
             share = (r.mpg or 0) / 40.0
-            mem = (SLOPE_OFF * share * (r.obpr - repl_o)
-                   + SLOPE_DEF * share * (r.dbpr - repl_d))
+            mem = (MV_SLOPE_OFF * share * (r.obpr - repl_o)
+                   + MV_SLOPE_DEF * share * (r.dbpr - repl_d))
             players.append({
                 "name": r.player.display_name,
                 "team": r.team.name, "slug": r.team.slug,

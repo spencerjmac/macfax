@@ -23,7 +23,7 @@ Task 5.6:
   no raw values (written before centring).
 - --write stores the fit as obpr_raw / dbpr_raw, obpr / dbpr = raw minus the
   minutes-weighted league means (so they average 0), bpr = obpr + dbpr, and
-  wins_added = (bpr + 1.918) x row minutes / 48 / 37.73 on every rated row;
+  wins_added = (bpr + 1.918) x row minutes / 48 / WA_DIVISOR on every rated row;
   unrated rows get null wins_added.
 
 Stint loading and the RAPM fit are stood in for; the write tests use the real
@@ -43,6 +43,7 @@ from django.test import SimpleTestCase, TestCase
 from nba.management.commands import nba_compute_native_bpr as nb
 from nba.management.commands.nba_experiment_final_bpr import Command as Harness
 from nba.models import NBAPlayer, NBAPlayerSeasonStats, NBASeason, NBATeam
+from nba.rating_scale import WA_DIVISOR
 
 MOD = "nba.management.commands.nba_compute_native_bpr"
 HARNESS = "nba.management.commands.nba_experiment_final_bpr.Command"
@@ -256,13 +257,13 @@ class CommandTests(TestCase):
                 self.assertAlmostEqual(row.obpr, o[p.player_id] - c_o, places=12)
                 self.assertAlmostEqual(row.dbpr, d[p.player_id] - c_d, places=12)
                 self.assertEqual(row.bpr, row.obpr + row.dbpr)
-                self.assertAlmostEqual(row.wins_added, (row.bpr + 1.918) * 60 * 25.0 / 48.0 / 37.73, places=12)
+                self.assertAlmostEqual(row.wins_added, (row.bpr + 1.918) * 60 * 25.0 / 48.0 / WA_DIVISOR, places=12)
                 self.assertEqual(row.bpr_model, "native-1")
                 self.assertIsNotNone(row.bpr_last_updated)
         for row in self.traded:                                # both team rows, each its own minutes
             row.refresh_from_db()
             self.assertEqual(row.bpr_model, "native-1")
-            self.assertAlmostEqual(row.wins_added, (row.bpr + 1.918) * 1500.0 / 48.0 / 37.73, places=12)
+            self.assertAlmostEqual(row.wins_added, (row.bpr + 1.918) * 1500.0 / 48.0 / WA_DIVISOR, places=12)
         self.unrated.refresh_from_db()                         # everything cleared, wins_added too
         self.assertEqual((self.unrated.obpr, self.unrated.dbpr, self.unrated.obpr_raw, self.unrated.dbpr_raw,
                           self.unrated.bpr, self.unrated.bpr_model, self.unrated.bpr_last_updated,

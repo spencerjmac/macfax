@@ -19,7 +19,12 @@ from dataclasses import dataclass
 
 NATIVE_MODEL = "native-1"
 WA_REPLACEMENT = -1.918        # task 5.5c fit 2 on centred ratings
-WA_DIVISOR = 37.73
+# Wins Added divisor D (2026-11-26 recalibration; was 37.73, task 5.5c fit 2). Set so team sums of
+# Wins Added move one-for-one with schedule-neutral expected wins (G * k/4 * adj_net, k from each
+# season's home-win logistic): leave-one-season-out slope-1 divisors over the 21 full native seasons
+# 2006-2026, with season fixed effects (each season has its own replacement-level intercept), span
+# 27.71-28.17; this is their median. Recompute stored rows with `nba_recompute_wins_added --all`.
+WA_DIVISOR = 27.97
 REPLACEMENT_OFFENSE_SHARE = 0.8
 
 

@@ -37,16 +37,18 @@ from ncaa.analytics.market_value.constants import (
     DOLLARS_PER_WIN_HIGH,
     DOLLARS_PER_WIN_LOW,
     METHODOLOGY_VERSION,
+    MV_SLOPE_DEF,
+    MV_SLOPE_OFF,
     REPLACEMENT_ACTUALS_DBPR,
     REPLACEMENT_ACTUALS_OBPR,
     WINS_PER_EM_NCAA,
     constants_hash,
 )
-from ncaa.analytics.player_value.team_projection.constants import SLOPE_DEF, SLOPE_OFF
 
 PIPELINE_VERSION = "6.2"
 
-# V-a reference: Stage 1 derivation top-10 (2026 actuals, operator-reviewed).
+# V-a reference: Stage 1 derivation top-10 (2026 actuals, operator-reviewed). Rechecked 2026-11-26
+# under methodology 1.1 (chain slopes 1.0/1.0): the same ten players; only adjacent order swaps.
 STAGE1_TOP10_2026 = {
     "Cameron Boozer", "Yaxel Lendeborg", "Ja'Kobi Gillespie", "Sam Hoiberg",
     "Keaton Wagler", "Milan Momcilovic", "Joshua Dent", "Brayden Burries",
@@ -102,8 +104,8 @@ class Command(BaseCommand):
         computed = []
         for r in rows:
             share = (r.mpg or 0.0) / 40.0
-            mem = (SLOPE_OFF * share * (r.obpr - REPLACEMENT_ACTUALS_OBPR)
-                   + SLOPE_DEF * share * (r.dbpr - REPLACEMENT_ACTUALS_DBPR))
+            mem = (MV_SLOPE_OFF * share * (r.obpr - REPLACEMENT_ACTUALS_OBPR)
+                   + MV_SLOPE_DEF * share * (r.dbpr - REPLACEMENT_ACTUALS_DBPR))
             mwins = mem * WINS_PER_EM_NCAA
             computed.append({
                 "stats": r,
