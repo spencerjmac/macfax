@@ -30,6 +30,7 @@ import argparse
 import os
 import subprocess
 import sys
+import time
 from datetime import date
 
 from django.conf import settings
@@ -155,6 +156,8 @@ class Command(BasePipelineCommand):
         self.stdout.write(f"[RUN] {name} (subprocess, timeout {minutes:g} min)...")
         self.stdout.flush()
         sys.stdout.flush()
+        t0 = time.monotonic()
+        rc = None
         try:
             result = subprocess.run(cmd, cwd=settings.BASE_DIR, timeout=minutes * 60)
         except subprocess.TimeoutExpired:
@@ -162,8 +165,10 @@ class Command(BasePipelineCommand):
         except OSError as e:
             reason = f"could not start: {e}"
         else:
+            rc = result.returncode
             if result.returncode == 0:
                 steps.append((name, True, None))
+                self._time_step(steps, t0, rc=0)
                 self.stdout.write(self.style.SUCCESS(f"[OK] {name}\n"))
                 return
             if result.returncode < 0:
@@ -171,6 +176,7 @@ class Command(BasePipelineCommand):
             else:
                 reason = f"exited with status {result.returncode}"
         steps.append((name, False, reason))
+        self._time_step(steps, t0, rc=rc)
         self.stderr.write(self.style.ERROR(f"[FAIL] {name}: {reason}\n"))
 
     def _run(self, name: str, cmd: str, kwargs: dict, steps: list):
@@ -181,18 +187,23 @@ class Command(BasePipelineCommand):
         is a SystemExit (not an Exception), so it is caught explicitly here.
         """
         self.stdout.write(f"[RUN] {name}...")
+        t0 = time.monotonic()
         try:
             call_command(cmd, **kwargs)
         except SystemExit as e:
             if e.code in (0, None):
                 steps.append((name, True, None))
+                self._time_step(steps, t0, rc=0)
                 self.stdout.write(self.style.SUCCESS(f"[OK] {name}\n"))
             else:
                 steps.append((name, False, f"exited with status {e.code}"))
+                self._time_step(steps, t0, rc=e.code if isinstance(e.code, int) else 1)
                 self.stderr.write(self.style.ERROR(f"[FAIL] {name}: exited with status {e.code}\n"))
         except Exception as e:
             steps.append((name, False, str(e)))
+            self._time_step(steps, t0, rc=1)
             self.stderr.write(self.style.ERROR(f"[FAIL] {name}: {e}\n"))
         else:
             steps.append((name, True, None))
+            self._time_step(steps, t0, rc=0)
             self.stdout.write(self.style.SUCCESS(f"[OK] {name}\n"))

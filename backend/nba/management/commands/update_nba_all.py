@@ -66,6 +66,7 @@ from nba.analytics.lebron_utils import lebron_csv_path
 from nba.models import NBAGame, NBAPlayerSeasonStats
 from nba.native_pipeline import MAX_MISMATCH_SHARE, last_season_is_native, minutes_check
 from nba.seasons import activate_latest_season, resolve_season_year
+from ncaa.pipeline_log import PipelineRunLogMixin
 
 TOTAL_STEPS = 11
 NATIVE_TOTAL_STEPS = 14
@@ -76,7 +77,7 @@ MISMATCH_LINES = 10
 MIN_RAPM_TARGETS = 20
 
 
-class Command(BaseCommand):
+class Command(PipelineRunLogMixin, BaseCommand):
     help = "Run the complete NBA data pipeline"
 
     def add_arguments(self, parser):
@@ -521,9 +522,11 @@ class Command(BaseCommand):
         try:
             call_command(cmd, **kwargs)
             steps.append((name, True, None))
+            self._time_step(steps, t0)
             self.stdout.write(self.style.SUCCESS(f"[OK] {name} ({time.monotonic() - t0:.1f}s)\n"))
         except Exception as e:
             steps.append((name, False, str(e)))
+            self._time_step(steps, t0)
             self.stderr.write(self.style.ERROR(f"[FAIL] {name}: {e} ({time.monotonic() - t0:.1f}s)\n"))
             if fatal:
                 self._print_summary(timezone.now(), timezone.now(), 0, steps, True)
@@ -552,6 +555,8 @@ class Command(BaseCommand):
         self.stdout.write(f"Finished: {end_time.strftime('%Y-%m-%d %H:%M:%S')}")
         self.stdout.write(f"Duration: {duration:.1f}s ({duration / 60:.1f} min)")
         self.stdout.write("\n" + "=" * 80 + "\n")
+
+        self._persist_run("NBA FULL PIPELINE", steps)
 
         if not failed:
             self.stdout.write(self.style.SUCCESS("All NBA data updated successfully!"))

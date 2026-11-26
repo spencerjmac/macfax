@@ -6,6 +6,7 @@ inherit from BasePipelineCommand for consistent step execution and output.
 """
 
 import sys
+import time
 from datetime import date
 
 from django.core.management import call_command
@@ -14,6 +15,7 @@ from django.db import connection
 from django.utils import timezone
 
 from ncaa.models import Season
+from ncaa.pipeline_log import PipelineRunLogMixin
 from ncaa.seasons import selection_sunday_for
 
 # Ratings (pre-tournament rows with WAB) needed before a snapshot counts as complete
@@ -29,7 +31,7 @@ PRE_TOURNAMENT_CHAIN = (
 )
 
 
-class BasePipelineCommand(BaseCommand):
+class BasePipelineCommand(PipelineRunLogMixin, BaseCommand):
 
     def _ensure_season(self, season_year: int) -> "Season":
         season, created = Season.objects.get_or_create(
@@ -84,12 +86,15 @@ class BasePipelineCommand(BaseCommand):
     ):
         prefix = label or "[--]"
         self.stdout.write(f"{prefix} {name}...")
+        t0 = time.monotonic()
         try:
             call_command(cmd, **kwargs)
             steps.append((name, True, None))
+            self._time_step(steps, t0)
             self.stdout.write(self.style.SUCCESS(f"[OK] {name}\n"))
         except Exception as e:
             steps.append((name, False, str(e)))
+            self._time_step(steps, t0)
             self.stderr.write(self.style.ERROR(f"[FAIL] {name}: {e}\n"))
             if fatal:
                 self._print_summary(timezone.now(), timezone.now(), 0.0, steps)
@@ -213,6 +218,7 @@ class BasePipelineCommand(BaseCommand):
         self.stdout.write(f"Finished: {end_time.strftime('%Y-%m-%d %H:%M:%S')}")
         self.stdout.write(f"Duration: {duration:.1f}s ({duration / 60:.1f} min)")
         self.stdout.write("=" * 70 + "\n")
+        self._persist_run(title, steps)
 
     def _header(self, title: str, season_year: int):
         self.stdout.write("\n" + "=" * 70)
