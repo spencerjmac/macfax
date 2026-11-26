@@ -47,12 +47,16 @@ from ncaa.analytics.market_value.constants import (
 
 PIPELINE_VERSION = "6.2"
 
-# V-a reference: Stage 1 derivation top-10 (2026 actuals, operator-reviewed). Rechecked 2026-11-26
-# under methodology 1.1 (chain slopes 1.0/1.0): the same ten players; only adjacent order swaps.
+# V-a reference: the reviewed 2025-26 national top 10 by marginal wins (operator-reviewed).
+# Updated 2026-11-26: the 2026-11-25 prod history run recomputed 2025-26 player ratings, which moved
+# Burries, Thornton and Fears out and Bradley, Stirtz and Bidunga in (under the old 0.73/0.66 slopes
+# as well as the methodology-1.1 1.0/1.0 slopes). Re-validated on prod's 2025-26 data with the 1.1
+# constants: closure slopes offense 0.973 / defense 0.941, D1 total value -1.4% vs the old constants,
+# top-10 changes old -> new adjacent swaps only.
 STAGE1_TOP10_2026 = {
-    "Cameron Boozer", "Yaxel Lendeborg", "Ja'Kobi Gillespie", "Sam Hoiberg",
-    "Keaton Wagler", "Milan Momcilovic", "Joshua Dent", "Brayden Burries",
-    "Bruce Thornton", "Jeremy Fears Jr.",
+    "Cameron Boozer", "Yaxel Lendeborg", "Ja'Kobi Gillespie", "Joshua Dent",
+    "Sam Hoiberg", "Keaton Wagler", "Milan Momcilovic", "Jaden Bradley",
+    "Bennett Stirtz", "Flory Bidunga",
 }
 CLOSURE_PROGRAMS = ["duke", "florida", "kansas", "gonzaga", "vermont"]
 
