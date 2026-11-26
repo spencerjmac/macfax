@@ -39,15 +39,23 @@ import HeatLegend from './HeatLegend';
 
 type TabId = 'traditional' | 'impact' | 'advanced' | 'fourfactors';
 
-const BOX_ESTIMATE_NOTE = 'Box-score estimate — not enough lineup data yet';
+const BOX_ESTIMATE_NOTE = 'Box-score estimate (all or part) — not enough lineup data yet';
+
+// W.Add lives on the row (from PlayerMarketValue) but not in playerMetricMetadata — add inline
+const WINS_ADDED_META: PlayerMetricMeta = {
+  key: 'wins_added', label: 'W.Add',
+  tooltip: 'Wins Added to date above replacement: season marginal wins × GP / 30.',
+  format: 'signed1', better: 'higher', showRank: true, heatmap: true, tier: 'primary',
+};
 
 const PLAYER_METRIC_DEFINITIONS: Record<TabId, MetricDefinition[]> = {
   impact: [
     { k: 'BPR', v: 'Bayesian Performance Rating (OBPR + DBPR): estimated total player impact in points per 100 possessions above an average D-I player.' },
     { k: 'OBPR', v: 'Offensive BPR: estimated offensive points per 100 possessions added relative to an average D-I player.' },
     { k: 'DBPR', v: 'Defensive BPR: estimated defensive points per 100 possessions prevented relative to an average D-I player; higher is better.' },
+    { k: 'W.Add', v: 'Wins Added to date above a replacement-level player: the season marginal-wins rate from BPR and minutes, times games played / 30.' },
     { k: 'Poss', v: 'Offensive possessions played from lineup segments; used to qualify and stabilize player impact ratings.' },
-    { k: 'Box-score estimates', v: 'Off by default, so the table lists only players rated from lineup data (RAPM). Turn it on to include players whose BPR is a box-score estimate; their BPR is marked †.' },
+    { k: 'Box-score estimates', v: 'Off by default, so the table lists only players rated from lineup data (RAPM). Turn it on to include players whose BPR is a box-score estimate in whole or in part; their BPR and W.Add are marked †. Players with no BPR are never listed here.' },
   ],
   traditional: [
     { k: 'GP', v: 'Games played.' },
@@ -98,7 +106,7 @@ interface NCAAPlayerRankingsTableProps {
 }
 
 // ── Column sets ───────────────────────────────────────────────────────────────
-const IMPACT_KEYS = ['bpr', 'obpr', 'dbpr', 'off_poss'];
+const IMPACT_KEYS = ['bpr', 'obpr', 'dbpr', 'wins_added', 'off_poss'];
 const TRAD_KEYS = ['pts', 'reb', 'ast', 'stl', 'blk', 'tov', 'fg_pct', 'fg3_pct', 'ft_pct', 'ts_pct'];
 const ADV_KEYS = ['usg_pct', 'ts_pct', 'tov_pct', 'orb_pct', 'drb_pct', 'stl_pct', 'blk_pct'];
 const FF_GROUPS: Array<{ id: string; label: string; keys: [string, string, string] }> = [
@@ -142,6 +150,9 @@ export default function NCAAPlayerRankingsTable({ data, selectedSeason, seasons 
   const seasonValue = selectedSeason ?? seasons.find((x) => x.is_current)?.year ?? '';
   // Early in a season BPR isn't computed yet; open on Traditional so the table isn't empty
   const hasBpr = useMemo(() => data.some((p) => p.bpr != null), [data]);
+  // Advanced rates and W.Add are filled by later pipeline steps; hide them for seasons without
+  const hasAdvanced = useMemo(() => data.some((p) => p.usg_pct != null), [data]);
+  const hasWinsAdded = useMemo(() => data.some((p) => p.wins_added != null), [data]);
   const [activeTab, setActiveTab] = useState<TabId>(hasBpr ? 'impact' : 'traditional');
   const [sorting, setSorting] = useState<SortingState>(TAB_DEFAULT_SORT[hasBpr ? 'impact' : 'traditional']);
   const [globalFilter, setGlobalFilter] = useState('');
@@ -158,7 +169,7 @@ export default function NCAAPlayerRankingsTable({ data, selectedSeason, seasons 
   const tabs: Array<{ id: TabId; label: string }> = [
     { id: 'impact',       label: 'Impact'       },
     { id: 'traditional',  label: 'Traditional'  },
-    { id: 'advanced',     label: 'Advanced'     },
+    ...(hasAdvanced ? [{ id: 'advanced' as TabId, label: 'Advanced' }] : []),
     { id: 'fourfactors',  label: 'Four Factors' },
   ];
 
@@ -174,6 +185,12 @@ export default function NCAAPlayerRankingsTable({ data, selectedSeason, seasons 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasBpr]);
 
+  // Same for a season with no advanced rates yet
+  useEffect(() => {
+    if (!hasAdvanced && activeTab === 'advanced') switchTab('traditional');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasAdvanced]);
+
   // ── Conference list ───────────────────────────────────────────────────────
   const conferences = useMemo(() => {
     const seen = new Set<string>();
@@ -185,7 +202,9 @@ export default function NCAAPlayerRankingsTable({ data, selectedSeason, seasons 
   // Also the rank and heat base, so colors compare like with like.
   const rankBase = useMemo(() => {
     const base = data.filter((p) => p.mpg * p.gp >= minMinutes);
-    return activeTab === 'impact' && !includeBoxEstimates ? base.filter(isLineupBpr) : base;
+    if (activeTab !== 'impact') return base;
+    // Off: lineup-rated (RAPM) BPR only. On: any BPR, box estimates included; never rows with no BPR.
+    return base.filter(includeBoxEstimates ? (p) => p.bpr != null : isLineupBpr);
   }, [data, minMinutes, activeTab, includeBoxEstimates]);
 
   // ── Filter ────────────────────────────────────────────────────────────────
@@ -202,7 +221,7 @@ export default function NCAAPlayerRankingsTable({ data, selectedSeason, seasons 
   // ── Meta map ──────────────────────────────────────────────────────────────
   const allMetaMaps: Record<string, PlayerMetricMeta> = useMemo(() => {
     const map: Record<string, PlayerMetricMeta> = {};
-    [...PLAYER_TRADITIONAL_METRICS, ...NCAA_IMPACT_METRICS, ...NCAA_FF_METRICS, ...NCAA_ADVANCED_METRICS].forEach((m) => {
+    [...PLAYER_TRADITIONAL_METRICS, ...NCAA_IMPACT_METRICS, ...NCAA_FF_METRICS, ...NCAA_ADVANCED_METRICS, WINS_ADDED_META].forEach((m) => {
       map[m.key] = m;
     });
     return map;
@@ -245,8 +264,8 @@ export default function NCAAPlayerRankingsTable({ data, selectedSeason, seasons 
         const graded = meetsAttemptFloor(p, key);
         const rankData = graded ? metricRanks.get(key)?.get(p.player_id) : undefined;
         const hs = raw != null && graded && meta.heatmap ? heatStyleFromPercentile(rankData?.percentile ?? null, meta.better) : {};
-        // BPR that isn't from lineup data gets a † (only shown when such rows are listed)
-        const marker = key === 'bpr' && raw != null && !isLineupBpr(p)
+        // BPR (and W.Add, built from it) that isn't from lineup data gets a †
+        const marker = (key === 'bpr' || key === 'wins_added') && raw != null && !isLineupBpr(p)
           ? <span title={BOX_ESTIMATE_NOTE} aria-label={BOX_ESTIMATE_NOTE} className="ml-0.5 font-sans text-[10px] text-muted cursor-help">†</span>
           : undefined;
         return (
@@ -394,6 +413,7 @@ export default function NCAAPlayerRankingsTable({ data, selectedSeason, seasons 
         { ...withMeta(createMetricColumn('bpr'), { emphasis: true, hero: true }), size: 120 },
         createMetricColumn('obpr'),
         createMetricColumn('dbpr'),
+        ...(hasWinsAdded ? [createMetricColumn('wins_added')] : []),
         createMetricColumn('off_poss'),
       ];
     }
@@ -418,7 +438,7 @@ export default function NCAAPlayerRankingsTable({ data, selectedSeason, seasons 
       })),
     ];
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, metricRanks, pagination.pageIndex, sorting, allMetaMaps, hasBpr, selectedSeason, currentSeason]);
+  }, [activeTab, metricRanks, pagination.pageIndex, sorting, allMetaMaps, hasBpr, hasWinsAdded, selectedSeason, currentSeason]);
 
   // ── Table ─────────────────────────────────────────────────────────────────
   // Missing values sort last in both directions
@@ -622,9 +642,9 @@ export default function NCAAPlayerRankingsTable({ data, selectedSeason, seasons 
       )}
 
       <MetricDefinitionsCard
-        definitions={hasBpr
-          ? PLAYER_METRIC_DEFINITIONS[activeTab]
-          : PLAYER_METRIC_DEFINITIONS[activeTab].filter((d) => d.k !== 'BPR')}
+        definitions={PLAYER_METRIC_DEFINITIONS[activeTab].filter(
+          (d) => (hasBpr || d.k !== 'BPR') && (hasWinsAdded || d.k !== 'W.Add'),
+        )}
       />
     </div>
   );

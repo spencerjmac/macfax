@@ -25,6 +25,7 @@ from ncaa.models import (
     NationalAverages,
     PipelineConfig,
     PlayerSeasonStats,
+    PlayerMarketValue,
 )
 from .serializers import (
     SeasonSerializer,
@@ -53,6 +54,15 @@ from .matchup_engine import (
     compute_volatility_score,
     format_recent_form,
 )
+
+
+def with_market_value(qs):
+    """Annotate PlayerSeasonStats rows with their PlayerMarketValue (for W.Add to date)."""
+    pmv = PlayerMarketValue.objects.filter(player=OuterRef("player"), season=OuterRef("season"))
+    return qs.annotate(
+        pmv_marginal_wins=Subquery(pmv.values("marginal_wins")[:1]),
+        pmv_minutes_share=Subquery(pmv.values("minutes_share")[:1]),
+    )
 
 
 class SeasonViewSet(viewsets.ReadOnlyModelViewSet):
@@ -1140,7 +1150,7 @@ class LeaguePlayersView(generics.ListAPIView):
             if season is None:
                 return PlayerSeasonStats.objects.none()
 
-        qs = (
+        qs = with_market_value(
             PlayerSeasonStats.objects
             .filter(season=season, gp__gte=min_gp)
             .select_related("player", "team", "season")
@@ -1188,9 +1198,9 @@ class TeamRosterView(generics.ListAPIView):
 
         team = get_object_or_404(Team, slug=slug)
 
-        qs = PlayerSeasonStats.objects.filter(team=team).select_related(
+        qs = with_market_value(PlayerSeasonStats.objects.filter(team=team).select_related(
             "player", "team", "season"
-        )
+        ))
         if season_year:
             qs = qs.filter(season__year=season_year)
 

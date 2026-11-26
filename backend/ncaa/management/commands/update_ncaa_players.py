@@ -14,6 +14,9 @@ Usage:
   python manage.py update_ncaa_players --season 2021  # backfill example
   python manage.py update_ncaa_players --season 2026 --no-em-calibrate  # skip EM box BPR calibration
 
+Step 6 (compute_market_values) turns the new BPR into PlayerMarketValue rows; the
+player tables show W.Add to date from them (marginal_wins × GP / 30).
+
 BPR step (step 5) uses Evan Miya historical ratings (evan_miya_reference.RAW_DATA) as
 box BPR training targets by default.  Add new seasons to RAW_DATA to automatically
 improve calibration on future runs.  Use --no-em-calibrate to disable.
@@ -27,7 +30,7 @@ from django.utils import timezone
 from ncaa.management.commands._pipeline_base import BasePipelineCommand
 from ncaa.seasons import resolve_season_year
 
-TOTAL_STEPS = 11
+TOTAL_STEPS = 12
 
 
 class Command(BasePipelineCommand):
@@ -146,13 +149,22 @@ class Command(BasePipelineCommand):
             fatal=False,
             label=f"[5/{TOTAL_STEPS}]",
         )
+        # Player W.Add (PlayerMarketValue) reads the BPR the previous step just wrote
+        self._run_step(
+            "Compute NCAA player market values (W.Add)",
+            "compute_market_values",
+            {"season": season_year},
+            steps,
+            fatal=False,
+            label=f"[6/{TOTAL_STEPS}]",
+        )
         self._run_step(
             "Compute NCAA player FFI",
             "compute_player_ffi",
             {"season": season_year},
             steps,
             fatal=False,
-            label=f"[6/{TOTAL_STEPS}]",
+            label=f"[7/{TOTAL_STEPS}]",
         )
         self._run_step(
             "Compute player projections (Phase 1)",
@@ -160,7 +172,7 @@ class Command(BasePipelineCommand):
             {"season": season_year},
             steps,
             fatal=False,
-            label=f"[7/{TOTAL_STEPS}]",
+            label=f"[8/{TOTAL_STEPS}]",
         )
         self._run_step(
             "Compute player minutes (Phase 2)",
@@ -168,7 +180,7 @@ class Command(BasePipelineCommand):
             {"season": season_year},
             steps,
             fatal=False,
-            label=f"[8/{TOTAL_STEPS}]",
+            label=f"[9/{TOTAL_STEPS}]",
         )
         self._run_step(
             "Compute roster fit (Phase 3+4)",
@@ -176,7 +188,7 @@ class Command(BasePipelineCommand):
             {"season": season_year},
             steps,
             fatal=False,
-            label=f"[9/{TOTAL_STEPS}]",
+            label=f"[10/{TOTAL_STEPS}]",
         )
         self._run_step(
             "Compute team projections (Phase 5)",
@@ -184,7 +196,7 @@ class Command(BasePipelineCommand):
             {"season": season_year},
             steps,
             fatal=False,
-            label=f"[10/{TOTAL_STEPS}]",
+            label=f"[11/{TOTAL_STEPS}]",
         )
         self._run_step(
             "Build placeholder archetypes",
@@ -192,7 +204,7 @@ class Command(BasePipelineCommand):
             {"season": season_year},
             steps,
             fatal=False,
-            label=f"[11/{TOTAL_STEPS}]",
+            label=f"[12/{TOTAL_STEPS}]",
         )
 
         end_time = timezone.now()

@@ -4,6 +4,7 @@ DRF Serializers for CBB Analytics API
 
 from django.db import models
 from rest_framework import serializers
+from ncaa.analytics.market_value.to_date import is_valued_row, wins_added_to_date
 from ncaa.models import (
     Season,
     Conference,
@@ -1045,6 +1046,8 @@ class PlayerSeasonStatsSerializer(serializers.ModelSerializer):
     team_logo = serializers.SerializerMethodField()
     conference_name = serializers.CharField(allow_null=True, read_only=True)
     season_display = serializers.CharField(source="season.display_name", read_only=True)
+    # W.Add to date from PlayerMarketValue (needs the with_market_value() annotation)
+    wins_added = serializers.SerializerMethodField()
 
     class Meta:
         model = PlayerSeasonStats
@@ -1058,6 +1061,7 @@ class PlayerSeasonStatsSerializer(serializers.ModelSerializer):
             "usg_pct", "fta_rate", "fg3_rate", "ast_usg",
             # Advanced rates (percentage points, from compute_ncaa_player_season_stats)
             "tov_pct", "orb_pct", "drb_pct", "stl_pct", "blk_pct",
+            "wins_added",
             # On-court raw ratings (from ESPN PBP lineup reconstruction)
             "on_court_secs_pg", "on_court_pts_pg", "on_court_def_pg",
             "on_court_net_pg",
@@ -1093,6 +1097,13 @@ class PlayerSeasonStatsSerializer(serializers.ModelSerializer):
 
     def get_team_name(self, obj):
         return obj.team.name if obj.team else ""
+
+    def get_wins_added(self, obj):
+        share = getattr(obj, "pmv_minutes_share", None)
+        if not is_valued_row(share, obj.mpg):
+            return None
+        value = wins_added_to_date(getattr(obj, "pmv_marginal_wins", None), obj.gp)
+        return round(value, 3) if value is not None else None
 
     def get_team_slug(self, obj):
         return obj.team.slug if obj.team else None

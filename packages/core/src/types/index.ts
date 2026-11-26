@@ -604,6 +604,8 @@ export interface NCAAPlayerSeasonStats {
   drb_pct: number | null;
   stl_pct: number | null;
   blk_pct: number | null;
+  /** W.Add to date: PlayerMarketValue marginal_wins × GP / 30; null when not valued. */
+  wins_added: number | null;
   fta_rate: number | null;
   fg3_rate: number | null;
   ast_usg: number | null;
