@@ -3,7 +3,7 @@
 Open data and code issues that are known but not fixed yet. Each entry says where it shows up, what is
 known about the cause, and what a fix needs. Remove an entry when its fix ships.
 
-Last checked: 2026-11-24. Prod checks were read-only.
+Last checked: 2026-11-25. Prod checks were read-only.
 
 ## NBA
 
@@ -57,32 +57,31 @@ branch notes" for `0022500147` and `0022501230`. No such notes exist; this file 
 
 ## NCAA (prod)
 
-### Boston College's games sit under Boston University on prod (2005-2025)
+### Stale rating and metric rows for teams that were not D1 that season (2005-2025)
 
-- **Where:** prod only. Local was fixed on 2026-11-12 (Task 6c).
-- **What prod shows:** `boston-college` has games only for 2026 and 2027. `boston-university` has games for
-  every season 2005-2027, holding both schools' games through 2025. That is plain in the doubled counts of
-  2022-2025 (68, 63, 68 and 62 games), and BU's 2021 total (49) is merged the same way.
-- **Cause:** ESPN team id 103 (Boston College) was mapped to `boston-university`. `TeamMapper._normalize`
-  strips "university" and "college", so both names became "boston". The 2027 mapping was fixed on prod on
-  2026-11-24; the history was not.
-- **Effect:** prod's BU ratings, metrics, records and player boxes for 2005-2025 mix two teams, and BC is
-  missing from those seasons.
-- **Fix:** part of the planned prod history merge (local NCAA 2005-2026 into prod with an id remap). It is
-  not a separate data fix.
+- **Where:** prod `TeamSeasonRatings` (69 full-season and 58 pre-tournament rows) and `TeamSeasonMetrics`
+  (114 rows), seasons 2005-2025, for teams with no D1 `TeamSeasonMembership` row that season. Most are in
+  2005-2011 and 2019, for example Cal Baptist, Grand Canyon, North Florida, Seattle and UC San Diego in 2005,
+  North Alabama in 2013, and 15 reclassifying arrivals in 2019. Local has none.
+- **Cause:** they were computed in June 2026, when prod's D1 set came from `Team.is_d1` (D1 today). Locally,
+  Task 6d deleted them. The full chain of 2026-11-25 writes D1 rows only and deletes nothing, so they stayed.
+- **Effect:** they are unmaintained, with no luck, schedule or box-score fields. Combined with the next issue,
+  some appear in the public ratings table, for example 9 rows in 2005 and North Alabama in 2013. The Crystal
+  Ball views and backtest filter by membership, so those are unaffected.
+- **Fix:** delete them with a data fix (needs its own go). Removing these rows also needs the next fix;
+  otherwise the rankings still filter by today's D1 list.
 
-### Every 2027 D1 team is flagged "reclassifying: assumed" on prod
+### The ratings table filters by today's D1 list, not the season's membership
 
-- **Where:** prod `TeamSeasonMembership`, season 2027: all 365 D1 rows have `is_reclassifying = True` and a note
-  that includes `reclassifying: assumed (first D1 season 2027)`. That includes the 4 rows upgraded on 2026-11-24
-  (Boston College, New Haven, Southern Indiana, West Florida).
-- **Cause:** `sync_team_season_membership` assumes a team is reclassifying when its first D1 season in the
-  table is one of the last 4 seasons. Prod's table has membership rows for 2027 only, so every team looks new.
-- **Effect:** only opt-in filters read the flag (`exclude_reclassifying` on the Crystal Ball and Cinderella views,
-  and `backtest_checklist`). With it on, those views drop every 2027 team on prod.
-- **Fix:** comes with the prod history merge, which brings earlier membership seasons. Locally the flags were
-  checked against Wikipedia's standings marks (Tasks 8a.2 and 8b.2). The 4-season assumption itself is suspect
-  for later seasons; see `sync_team_season_membership`.
+- **Where:** `RankingsViewSet` in `backend/api/views.py` (`team__is_d1=True`), on local and prod. It feeds
+  `/ncaa/ratings`.
+- **Effect:** for past seasons it hides real D1 teams that are not D1 today, and shows any team that is D1
+  today. Examples: 2005 drops Birmingham-Southern, Centenary, Hartford, Savannah St. and St. Francis Brooklyn,
+  and shows 9 teams that were not D1 then (336 rows against 332 D1 teams). 2013 drops Hartford, Savannah St.
+  and St. Francis Brooklyn, and shows North Alabama (345 against 347).
+- **Cause:** Task 6f.2 moved metrics, ratings and the Crystal Ball views to `ncaa/utils/d1.py` (`d1_q`), but
+  about 35 readers of `Team.is_d1` were left out of scope, this view among them.
+- **Fix:** use `d1_q(season, "team")` in the rankings view, then delete the stale rows above.
 
 ## NCAA (local and prod)
 
