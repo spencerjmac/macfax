@@ -155,9 +155,9 @@ export function PlayerOutlookTable({
         <thead>
           <tr className="bg-ui-surface">
             <SortHeader label="Player" colKey="name" />
-            <SortHeader label="OBPR*" colKey="obpr" />
-            <SortHeader label="DBPR*" colKey="dbpr" />
-            <SortHeader label="BPR*" colKey="bpr" />
+            <SortHeader label="O-MPR*" colKey="obpr" />
+            <SortHeader label="D-MPR*" colKey="dbpr" />
+            <SortHeader label="MPR*" colKey="bpr" />
             <th className="table-header px-3 py-2 text-left">Role</th>
             <th className="table-header px-3 py-2 text-left">Recruitment</th>
             <SortHeader label="Min%" colKey="minutes" />
@@ -274,9 +274,9 @@ export function PlayerOutlookTable({
       </table>
       <div className="px-4 py-2 bg-ui-surface text-xs text-text-muted border-t border-ui-border">
         * Projected values for next season. Team forecasts are driven by
-        Projection Value — a separate forward-looking input that blends BPR
+        Projection Value — a separate forward-looking input that blends MPR
         with box-metric signal because it predicts future results better out
-        of sample. BPR itself remains the player evaluation rating shown on
+        of sample. MPR itself remains the player evaluation rating shown on
         player pages.
       </div>
     </div>

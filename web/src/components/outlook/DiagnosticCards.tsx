@@ -79,7 +79,7 @@ export function ContinuityCards({ projection, scenarioProjection }: ContinuityCa
           <StatBar value={projection.continuity_score} />
         )}
         <p className="text-xs text-text-muted mt-2">
-          BPR-weighted continuity index (0–100)
+          MPR-weighted continuity index (0–100)
         </p>
       </div>
     </div>

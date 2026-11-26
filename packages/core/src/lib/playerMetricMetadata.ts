@@ -58,49 +58,49 @@ export const PLAYER_TRADITIONAL_METRICS: PlayerMetricMeta[] = [
 export const NCAA_IMPACT_METRICS: PlayerMetricMeta[] = [
   // ── BPR (Bayesian Performance Rating) ──────────────────────────────────────
   {
-    key: 'bpr',    label: 'BPR',    group: 'BPR',
-    tooltip: 'Bayesian Performance Rating = OBPR + DBPR. Prior-informed RAPM estimate of total impact in pts/100 poss above average D1 player.',
+    key: 'bpr',    label: 'MPR',    group: 'MPR',
+    tooltip: 'Macfax Player Rating = O-MPR + D-MPR. Prior-informed RAPM estimate of total impact in pts/100 poss above average D1 player.',
     format: 'number1', better: 'higher', showRank: true, heatmap: true,
   },
   {
-    key: 'obpr',   label: 'OBPR',   group: 'BPR',
-    tooltip: 'Offensive BPR — estimated pts/100 poss added when the player is on offense, relative to an average D1 player.',
+    key: 'obpr',   label: 'O-MPR',   group: 'MPR',
+    tooltip: 'Offensive MPR — estimated pts/100 poss added when the player is on offense, relative to an average D1 player.',
     format: 'number1', better: 'higher', showRank: true, heatmap: true,
   },
   {
-    key: 'dbpr',   label: 'DBPR',   group: 'BPR',
-    tooltip: 'Defensive BPR — estimated pts/100 poss prevented when the player is on defense, relative to an average D1 player. Higher = better defender.',
+    key: 'dbpr',   label: 'D-MPR',   group: 'MPR',
+    tooltip: 'Defensive MPR — estimated pts/100 poss prevented when the player is on defense, relative to an average D1 player. Higher = better defender.',
     format: 'number1', better: 'higher', showRank: true, heatmap: true,
   },
   {
-    key: 'box_bpr',  label: 'Box BPR',  group: 'BPR',
-    tooltip: 'Box-score-only BPR estimate (no lineup data required). Trained to predict RAPM from per-100-poss box stats.',
+    key: 'box_bpr',  label: 'Box MPR',  group: 'MPR',
+    tooltip: 'Box-score-only MPR estimate (no lineup data required). Trained to predict RAPM from per-100-poss box stats.',
     format: 'number1', better: 'higher', showRank: false, heatmap: true,
   },
   {
-    key: 'box_obpr', label: 'Box OBPR', group: 'BPR',
-    tooltip: 'Offensive Box BPR (box-score model only).',
+    key: 'box_obpr', label: 'Box O-MPR', group: 'MPR',
+    tooltip: 'Offensive Box MPR (box-score model only).',
     format: 'number1', better: 'higher', showRank: false, heatmap: true,
   },
   {
-    key: 'box_dbpr', label: 'Box DBPR', group: 'BPR',
-    tooltip: 'Defensive Box BPR (box-score model only).',
+    key: 'box_dbpr', label: 'Box D-MPR', group: 'MPR',
+    tooltip: 'Defensive Box MPR (box-score model only).',
     format: 'number1', better: 'higher', showRank: false, heatmap: true,
   },
   // ── MPIR (legacy) ────────────────────────────────────────────────────────────
   {
-    key: 'mpir',   label: 'MPIR',   group: 'Macfax Impact',
-    tooltip: 'Macfax Player Impact Rating = O-MPIR + D-MPIR. Blends on-court efficiency with box-score prior weighted by minutes played.',
+    key: 'mpir',   label: 'On-court impact',   group: 'On-court impact',
+    tooltip: 'On-court impact = offensive + defensive on-court impact. Blends on-court efficiency with box-score prior weighted by minutes played.',
     format: 'number1', better: 'higher', showRank: true, heatmap: true,
   },
   {
-    key: 'o_mpir', label: 'O-MPIR', group: 'Macfax Impact',
-    tooltip: 'Offensive MPIR — blend of on-court offensive impact (ORtg vs league avg) and box-score scoring prior, weighted by minutes.',
+    key: 'o_mpir', label: 'Off. on-court impact', group: 'On-court impact',
+    tooltip: 'Offensive on-court impact — blend of on-court offensive impact (ORtg vs league avg) and box-score scoring prior, weighted by minutes.',
     format: 'number1', better: 'higher', showRank: false, heatmap: true,
   },
   {
-    key: 'd_mpir', label: 'D-MPIR', group: 'Macfax Impact',
-    tooltip: 'Defensive MPIR — blend of on-court defensive impact (DRtg vs league avg) and box-score defensive prior (stl+blk), weighted by minutes.',
+    key: 'd_mpir', label: 'Def. on-court impact', group: 'On-court impact',
+    tooltip: 'Defensive on-court impact — blend of on-court defensive impact (DRtg vs league avg) and box-score defensive prior (stl+blk), weighted by minutes.',
     format: 'number1', better: 'higher', showRank: false, heatmap: true,
   },
   {
@@ -141,7 +141,7 @@ export const NCAA_IMPACT_METRICS: PlayerMetricMeta[] = [
   // ── Possession count + adjusted lineup context ──────────────────────────────
   {
     key: 'off_poss', label: 'Poss', group: 'Lineup Context',
-    tooltip: 'Offensive possessions played during the season (from PBP lineup segments). Used for BPR qualification threshold.',
+    tooltip: 'Offensive possessions played during the season (from PBP lineup segments). Used for MPR qualification threshold.',
     format: 'int', better: 'neutral', showRank: false, heatmap: false,
   },
   {
@@ -316,50 +316,50 @@ export const NBA_ADVANCED_METRICS: PlayerMetricMeta[] = [
 export const NBA_IMPACT_METRICS: PlayerMetricMeta[] = [
   // ── BPR (prior-informed RAPM — primary displayed rating) ─────────────────────
   {
-    key: 'bpr',   label: 'BPR',   group: 'BPR',
-    tooltip: 'Bayesian Performance Rating (OBPR + DBPR). Career-stabilized box stats regularized toward single-season RAPM. Context-adjusted impact in pts/100 poss above league average — reflects role and team quality, not pure skill in isolation.',
+    key: 'bpr',   label: 'MPR',   group: 'MPR',
+    tooltip: 'Macfax Player Rating (O-MPR + D-MPR). Career-stabilized box stats regularized toward single-season RAPM. Context-adjusted impact in pts/100 poss above league average — reflects role and team quality, not pure skill in isolation.',
     format: 'number1', better: 'higher', showRank: true, heatmap: true, tier: 'primary',
   },
   {
-    key: 'obpr',  label: 'OBPR',  group: 'BPR',
-    tooltip: 'Offensive BPR — estimated offensive pts/100 poss added above league average.',
+    key: 'obpr',  label: 'O-MPR',  group: 'MPR',
+    tooltip: 'Offensive MPR — estimated offensive pts/100 poss added above league average.',
     format: 'number1', better: 'higher', showRank: true, heatmap: true, tier: 'primary',
   },
   {
-    key: 'dbpr',  label: 'DBPR',  group: 'BPR',
-    tooltip: 'Defensive BPR — estimated defensive pts/100 poss prevented above league average. Higher = better defender.',
+    key: 'dbpr',  label: 'D-MPR',  group: 'MPR',
+    tooltip: 'Defensive MPR — estimated defensive pts/100 poss prevented above league average. Higher = better defender.',
     format: 'number1', better: 'higher', showRank: true, heatmap: true, tier: 'primary',
   },
   // ── Box BPR (intermediate — available but not primary) ────────────────────────
   {
-    key: 'box_bpr',   label: 'Box BPR',   group: 'Box BPR',
-    tooltip: 'Box-score-only BPR — Ridge regression on per-100-poss box stats. Intermediate signal used as prior for final BPR.',
+    key: 'box_bpr',   label: 'Box MPR',   group: 'Box MPR',
+    tooltip: 'Box-score-only MPR — Ridge regression on per-100-poss box stats. Intermediate signal used as prior for final MPR.',
     format: 'number1', better: 'higher', showRank: false, heatmap: false, tier: 'optional',
   },
   {
-    key: 'box_obpr',  label: 'Box OBPR',  group: 'Box BPR',
-    tooltip: 'Offensive Box BPR (box-score model only).',
+    key: 'box_obpr',  label: 'Box O-MPR',  group: 'Box MPR',
+    tooltip: 'Offensive Box MPR (box-score model only).',
     format: 'number1', better: 'higher', showRank: false, heatmap: false, tier: 'optional',
   },
   {
-    key: 'box_dbpr',  label: 'Box DBPR',  group: 'Box BPR',
-    tooltip: 'Defensive Box BPR (box-score model only).',
+    key: 'box_dbpr',  label: 'Box D-MPR',  group: 'Box MPR',
+    tooltip: 'Defensive Box MPR (box-score model only).',
     format: 'number1', better: 'higher', showRank: false, heatmap: false, tier: 'optional',
   },
   // ── MPIR ─────────────────────────────────────────────────────────────────────
   {
-    key: 'mpir',          label: 'MPIR',      group: 'Macfax Impact',
-    tooltip: 'Macfax Player Impact Rating (O-MPIR + D-MPIR). Combines box production and on-court team efficiency into a single impact score.',
+    key: 'mpir',          label: 'On-court impact',      group: 'On-court impact',
+    tooltip: 'On-court impact (offensive + defensive). Combines box production and on-court team efficiency into a single impact score.',
     format: 'number1', better: 'higher', showRank: true, heatmap: true, tier: 'primary',
   },
   {
-    key: 'o_mpir',        label: 'O-MPIR',    group: 'Macfax Impact',
-    tooltip: 'Offensive MPIR — blend of on-court offensive impact and box-score offensive prior.',
+    key: 'o_mpir',        label: 'Off. on-court impact',    group: 'On-court impact',
+    tooltip: 'Offensive on-court impact — blend of on-court offensive impact and box-score offensive prior.',
     format: 'number1', better: 'higher', showRank: false, heatmap: true, tier: 'primary',
   },
   {
-    key: 'd_mpir',        label: 'D-MPIR',    group: 'Macfax Impact',
-    tooltip: 'Defensive MPIR — blend of on-court defensive impact and box-score defensive prior.',
+    key: 'd_mpir',        label: 'Def. on-court impact',    group: 'On-court impact',
+    tooltip: 'Defensive on-court impact — blend of on-court defensive impact and box-score defensive prior.',
     format: 'number1', better: 'higher', showRank: false, heatmap: true, tier: 'primary',
   },
   {

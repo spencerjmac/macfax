@@ -162,7 +162,7 @@ function SuggestedSection({
                   )}>
                     {p.projected_bpr != null ? `${p.projected_bpr >= 0 ? '+' : ''}${p.projected_bpr.toFixed(2)}` : '—'}
                   </div>
-                  <div className="text-xs text-text-muted">BPR</div>
+                  <div className="text-xs text-text-muted">MPR</div>
                 </div>
                 <div className="flex-shrink-0 ml-3 w-12 text-right">
                   {added
@@ -282,7 +282,7 @@ function SearchSection({
                     )}>
                       {p.projected_bpr?.toFixed(2) ?? '—'}
                     </div>
-                    <div className="text-xs text-text-muted">BPR</div>
+                    <div className="text-xs text-text-muted">MPR</div>
                   </div>
                   <div className="flex-shrink-0 ml-3 w-12 text-right">
                     {added
@@ -395,7 +395,7 @@ function ArchetypeSection({
                       <div className="text-sm font-mono font-semibold text-emerald-700">
                         +{eliteArchetype.projected_bpr.toFixed(2)}
                       </div>
-                      <div className="text-xs text-text-muted">BPR</div>
+                      <div className="text-xs text-text-muted">MPR</div>
                     </div>
                     <div className="flex-shrink-0 ml-3 w-12 text-right">
                       {added ? <span className="text-xs text-text-muted">Added</span>
@@ -430,7 +430,7 @@ function ArchetypeSection({
                       )}>
                         {a.projected_bpr >= 0 ? '+' : ''}{a.projected_bpr.toFixed(2)}
                       </div>
-                      <div className="text-xs text-text-muted">BPR</div>
+                      <div className="text-xs text-text-muted">MPR</div>
                     </div>
                     <div className="flex-shrink-0 ml-3 w-12 text-right">
                       {added ? <span className="text-xs text-text-muted">Added</span>
@@ -473,7 +473,7 @@ function RosterTable({
           <tr className="bg-ui-surface border-b border-ui-border">
             <th className="text-left px-4 py-2.5 font-medium text-text-muted text-xs uppercase tracking-wider">Player</th>
             <th className="text-center px-3 py-2.5 font-medium text-text-muted text-xs uppercase tracking-wider">Pos</th>
-            <th className="text-right px-3 py-2.5 font-medium text-text-muted text-xs uppercase tracking-wider">BPR</th>
+            <th className="text-right px-3 py-2.5 font-medium text-text-muted text-xs uppercase tracking-wider">MPR</th>
             <th className="text-right px-3 py-2.5 font-medium text-text-muted text-xs uppercase tracking-wider">MPG</th>
             <th className="text-center px-3 py-2.5 font-medium text-text-muted text-xs uppercase tracking-wider">Role</th>
             <th className="text-center px-3 py-2.5 font-medium text-text-muted text-xs uppercase tracking-wider">Type</th>
@@ -773,7 +773,7 @@ export default function RosterOutlookPage({ data }: RosterOutlookPageProps) {
                 <span className="font-medium">Replacement fill</span>
                 <span>
                   {((scenarioResult.replacement_fill_share ?? 0) / 5 * 100).toFixed(0)}% of team minutes
-                  {' · '}BPR {scenarioResult.replacement_fill_bpr != null ? `${scenarioResult.replacement_fill_bpr > 0 ? '+' : ''}${scenarioResult.replacement_fill_bpr.toFixed(2)}` : '—'}
+                  {' · '}MPR {scenarioResult.replacement_fill_bpr != null ? `${scenarioResult.replacement_fill_bpr > 0 ? '+' : ''}${scenarioResult.replacement_fill_bpr.toFixed(2)}` : '—'}
                   {' — unfilled minutes the model projected at replacement level'}
                 </span>
               </div>

@@ -136,7 +136,7 @@ function ArchetypeRow({
         )}>
           {archetype.projected_bpr.toFixed(2)}
         </div>
-        <div className="text-xs text-text-muted">BPR</div>
+        <div className="text-xs text-text-muted">MPR</div>
       </div>
 
       <div className="flex-shrink-0 ml-3">
@@ -355,7 +355,7 @@ export function PlayerSearchModal({
                       )}>
                         {player.projected_bpr?.toFixed(2) ?? '—'}
                       </div>
-                      <div className="text-xs text-text-muted">BPR</div>
+                      <div className="text-xs text-text-muted">MPR</div>
                     </div>
 
                     <div className="flex-shrink-0 ml-3">

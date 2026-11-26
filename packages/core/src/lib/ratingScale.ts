@@ -39,8 +39,8 @@ export function winsAddedCutoff(old: number, scale: RatingScale | undefined): nu
   return isNativeScale(scale) ? (NATIVE_WINS_ADDED_CUTOFF[String(old)] ?? old) : old;
 }
 
-export const WINS_ADDED_FORMULA_LEGACY = '(BPR + 2.0) × MPG/48 × GP/56 · Replacement level = BPR −2.0';
-export const WINS_ADDED_FORMULA_NATIVE = '(BPR + 1.918) × minutes/48 ÷ 37.73 · Replacement level = BPR −1.918';
+export const WINS_ADDED_FORMULA_LEGACY = '(MPR + 2.0) × MPG/48 × GP/56 · Replacement level = MPR −2.0';
+export const WINS_ADDED_FORMULA_NATIVE = '(MPR + 1.918) × minutes/48 ÷ 37.73 · Replacement level = MPR −1.918';
 
 /** Wins Added formula text for a set of rows: the native formula when any row is native-1. */
 export function winsAddedFormula(rows: ReadonlyArray<{ rating_scale?: RatingScale }> | undefined): string {
@@ -50,6 +50,6 @@ export function winsAddedFormula(rows: ReadonlyArray<{ rating_scale?: RatingScal
 /** Replacement offset text used by "BPR adj" labels. */
 export function replacementAdjustText(rows: ReadonlyArray<{ rating_scale?: RatingScale }> | undefined): string {
   return rows?.some((r) => isNativeScale(r.rating_scale))
-    ? 'BPR adj = BPR + 1.918 (replacement offset)'
-    : 'BPR adj = stored BPR + 2.0 (replacement offset)';
+    ? 'MPR adj = MPR + 1.918 (replacement offset)'
+    : 'MPR adj = stored MPR + 2.0 (replacement offset)';
 }

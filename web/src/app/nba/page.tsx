@@ -22,7 +22,7 @@ const NBA_CONFIG: Omit<HubConfig, 'facts'> = {
   secondaryCtaHref: '/nba/viz',
   tools: [
     { icon: Trophy,       title: 'Team Ratings',   body: 'Net-rating table for all 30 teams with offense and defense splits, sortable by any column.',      href: '/nba/ratings' },
-    { icon: Users,        title: 'Player Ratings', body: 'Player leaderboards across BPR impact and traditional production, by season and season type.',    href: '/nba/players' },
+    { icon: Users,        title: 'Player Ratings', body: 'Player leaderboards across MPR impact and traditional production, by season and season type.',    href: '/nba/players' },
     { icon: ScatterChart, title: 'Visualizations', body: 'Efficiency Landscape and team-trend charts built on the NBA model.',                              href: '/nba/viz' },
     { icon: Gauge,        title: 'Model Health',   body: 'Calibration and accuracy for the NBA model this season.',                                         href: '/nba/model-health' },
     { icon: Users,        title: 'Player Compare', body: 'Side-by-side player comparison across impact metrics.',                                            href: '/nba/compare', soon: true },

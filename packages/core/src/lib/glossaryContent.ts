@@ -174,50 +174,50 @@ export const GLOSSARY_TERMS: GlossaryTerm[] = [
   // ─── Player Ratings ───────────────────────────────────────────────────────
 
   {
-    id: 'bpr',
-    term: 'Bayesian Performance Rating',
-    aliases: ['BPR'],
+    id: 'mpr',
+    term: 'Macfax Player Rating',
+    aliases: ['MPR'],
     category: 'player-ratings',
     shortDefinition: 'Overall player impact rating combining box-score contributions and on-court influence.',
     detailedDefinition:
-      'BPR is Macfax\'s primary player evaluation metric. It combines box-score contributions (scoring, rebounding, assists, steals, blocks, turnovers) with on-court lineup impact to estimate a player\'s net effect on team performance per 100 possessions, adjusted for teammates, opponents, and schedule. The Bayesian component stabilizes estimates for players with limited minutes. BPR = OBPR + DBPR. Each rating carries a source label — On-court (lineup data drives it), Box-based (box-score model fills in when lineup sample is thin), or Mixed — and a confidence level that reflects sample size, not player quality. College note: play-by-play before the 2024-25 season contains no substitution data, so pre-2025 college ratings are driven by box score and team context rather than true lineup impact; ratings from 2025 onward use full lineup data and are validated out-of-sample against the strongest public college metrics.',
+      'MPR is Macfax\'s primary player evaluation metric. It combines box-score contributions (scoring, rebounding, assists, steals, blocks, turnovers) with on-court lineup impact to estimate a player\'s net effect on team performance per 100 possessions, adjusted for teammates, opponents, and schedule. The Bayesian component stabilizes estimates for players with limited minutes. MPR = O-MPR + D-MPR. Each rating carries a source label — On-court (lineup data drives it), Box-based (box-score model fills in when lineup sample is thin), or Mixed — and a confidence level that reflects sample size, not player quality. College note: play-by-play before the 2024-25 season contains no substitution data, so pre-2025 college ratings are driven by box score and team context rather than true lineup impact; ratings from 2025 onward use full lineup data and are validated out-of-sample against the strongest public college metrics.',
     formula: {
-      display: '\\text{BPR} = \\text{OBPR} + \\text{DBPR}',
+      display: '\\text{MPR} = \\text{O-MPR} + \\text{D-MPR}',
     },
     howToInterpret:
-      'Positive BPR means the player helps the team. Above +5 is All-Conference caliber; above +10 is elite. Negative BPR suggests the player hurts performance when on the court. Context matters — a BPR of +3 on a top-10 team means something different than on a bottom-50 team. BPR answers "how good is this player, in context, right now" — team forecasts may separately use a blended projection value where it predicts future results better out of sample.',
-    methodologySlug: 'bayesian-performance-rating',
-    relatedTerms: ['obpr', 'dbpr'],
+      'Positive MPR means the player helps the team. Above +5 is All-Conference caliber; above +10 is elite. Negative MPR suggests the player hurts performance when on the court. Context matters — a MPR of +3 on a top-10 team means something different than on a bottom-50 team. MPR answers "how good is this player, in context, right now" — team forecasts may separately use a blended projection value where it predicts future results better out of sample.',
+    methodologySlug: 'macfax-player-rating',
+    relatedTerms: ['o_mpr', 'd_mpr'],
     isHigherBetter: true,
   },
 
   {
-    id: 'obpr',
-    term: 'Offensive BPR',
-    aliases: ['OBPR'],
+    id: 'o_mpr',
+    term: 'Offensive MPR',
+    aliases: ['O-MPR'],
     category: 'player-ratings',
-    shortDefinition: 'Offensive component of BPR — estimated offensive contribution per 100 possessions.',
+    shortDefinition: 'Offensive component of MPR — estimated offensive contribution per 100 possessions.',
     detailedDefinition:
-      'OBPR isolates a player\'s offensive impact: scoring efficiency, assist creation, offensive rebounding, and avoiding turnovers. It is normalized per 100 possessions and adjusted for teammate and opponent quality. Higher OBPR means the player meaningfully improves the offense when on the court.',
+      'O-MPR isolates a player\'s offensive impact: scoring efficiency, assist creation, offensive rebounding, and avoiding turnovers. It is normalized per 100 possessions and adjusted for teammate and opponent quality. Higher O-MPR means the player meaningfully improves the offense when on the court.',
     howToInterpret:
-      'Elite offensive players typically post OBPR above +6. Average contributors are around 0 to +3. Negative OBPR suggests the player is a net drain offensively.',
-    methodologySlug: 'bayesian-performance-rating',
-    relatedTerms: ['bpr', 'dbpr'],
+      'Elite offensive players typically post O-MPR above +6. Average contributors are around 0 to +3. Negative O-MPR suggests the player is a net drain offensively.',
+    methodologySlug: 'macfax-player-rating',
+    relatedTerms: ['mpr', 'd_mpr'],
     isHigherBetter: true,
   },
 
   {
-    id: 'dbpr',
-    term: 'Defensive BPR',
-    aliases: ['DBPR'],
+    id: 'd_mpr',
+    term: 'Defensive MPR',
+    aliases: ['D-MPR'],
     category: 'player-ratings',
-    shortDefinition: 'Defensive component of BPR — estimated defensive contribution per 100 possessions.',
+    shortDefinition: 'Defensive component of MPR — estimated defensive contribution per 100 possessions.',
     detailedDefinition:
-      'DBPR captures defensive impact through steal rates, block rates, defensive rebounding, and defensive on-court influence. It is harder to measure than offensive impact because defense shows up less clearly in box scores. The Bayesian component is especially important for stabilizing defensive estimates with limited data.',
+      'D-MPR captures defensive impact through steal rates, block rates, defensive rebounding, and defensive on-court influence. It is harder to measure than offensive impact because defense shows up less clearly in box scores. The Bayesian component is especially important for stabilizing defensive estimates with limited data.',
     howToInterpret:
-      'Elite defenders post DBPR above +4. Average is near 0. Negative DBPR means the player is being exploited defensively. High DBPR players often anchor a team\'s defensive system without showing up in traditional stat lines.',
-    methodologySlug: 'bayesian-performance-rating',
-    relatedTerms: ['bpr', 'obpr'],
+      'Elite defenders post D-MPR above +4. Average is near 0. Negative D-MPR means the player is being exploited defensively. High D-MPR players often anchor a team\'s defensive system without showing up in traditional stat lines.',
+    methodologySlug: 'macfax-player-rating',
+    relatedTerms: ['mpr', 'o_mpr'],
     isHigherBetter: true,
   },
 

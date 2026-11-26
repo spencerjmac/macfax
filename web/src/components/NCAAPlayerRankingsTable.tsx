@@ -51,17 +51,17 @@ const WINS_ADDED_META: PlayerMetricMeta = {
 
 const PLAYER_METRIC_DEFINITIONS: Record<TabId, MetricDefinition[]> = {
   impact: [
-    { k: 'BPR', v: 'Bayesian Performance Rating (OBPR + DBPR): estimated total player impact in points per 100 possessions above an average D-I player.' },
-    { k: 'OBPR', v: 'Offensive BPR: estimated offensive points per 100 possessions added relative to an average D-I player.' },
-    { k: 'DBPR', v: 'Defensive BPR: estimated defensive points per 100 possessions prevented relative to an average D-I player; higher is better.' },
-    { k: 'W.Add', v: 'Wins Added to date above a replacement-level player: the season marginal-wins rate from BPR and minutes, times games played / 30.' },
+    { k: 'MPR', v: 'Macfax Player Rating (O-MPR + D-MPR): estimated total player impact in points per 100 possessions above an average D-I player.' },
+    { k: 'O-MPR', v: 'Offensive MPR: estimated offensive points per 100 possessions added relative to an average D-I player.' },
+    { k: 'D-MPR', v: 'Defensive MPR: estimated defensive points per 100 possessions prevented relative to an average D-I player; higher is better.' },
+    { k: 'W.Add', v: 'Wins Added to date above a replacement-level player: the season marginal-wins rate from MPR and minutes, times games played / 30.' },
     { k: 'Poss', v: 'Offensive possessions played from lineup segments; used to qualify and stabilize player impact ratings.' },
-    { k: 'Box-score estimates', v: 'Off by default, so the table lists only players rated from lineup data (RAPM). Turn it on to include players whose BPR is a box-score estimate in whole or in part; their BPR and W.Add are marked †. Players with no BPR are never listed here.' },
+    { k: 'Box-score estimates', v: 'Off by default, so the table lists only players rated from lineup data (RAPM). Turn it on to include players whose MPR is a box-score estimate in whole or in part; their MPR and W.Add are marked †. Players with no MPR are never listed here.' },
   ],
   traditional: [
     { k: 'GP', v: 'Games played.' },
     { k: 'MPG', v: 'Minutes per game; the minutes filter uses total minutes played.' },
-    { k: 'BPR', v: 'Bayesian Performance Rating, shown for reference; see the Impact tab. † marks a box-score estimate.' },
+    { k: 'MPR', v: 'Macfax Player Rating, shown for reference; see the Impact tab. † marks a box-score estimate.' },
     { k: 'PPG', v: 'Points per game.' },
     { k: 'RPG', v: 'Total rebounds per game.' },
     { k: 'APG', v: 'Assists per game.' },
@@ -74,7 +74,7 @@ const PLAYER_METRIC_DEFINITIONS: Record<TabId, MetricDefinition[]> = {
     { k: 'TS%', v: 'True Shooting %: scoring efficiency that accounts for twos, threes, and free throws.' },
   ],
   advanced: [
-    { k: 'BPR', v: 'Bayesian Performance Rating, shown for reference; see the Impact tab. † marks a box-score estimate.' },
+    { k: 'MPR', v: 'Macfax Player Rating, shown for reference; see the Impact tab. † marks a box-score estimate.' },
     { k: 'USG%', v: 'Usage rate: share of team plays the player uses (shots, free throws, turnovers) while on the floor.' },
     { k: 'TS%', v: 'True Shooting %: scoring efficiency that accounts for twos, threes, and free throws.' },
     { k: 'TOV%', v: 'Turnover rate: turnovers per 100 plays used; lower is better.' },
@@ -84,7 +84,7 @@ const PLAYER_METRIC_DEFINITIONS: Record<TabId, MetricDefinition[]> = {
     { k: 'BLK%', v: 'Block rate: share of opponent two-point attempts blocked while on court.' },
   ],
   fourfactors: [
-    { k: 'BPR', v: 'Bayesian Performance Rating, shown for reference; see the Impact tab. † marks a box-score estimate.' },
+    { k: 'MPR', v: 'Macfax Player Rating, shown for reference; see the Impact tab. † marks a box-score estimate.' },
     { k: 'FFII', v: 'Four Factor Impact Index: 0-100 RAPM-based estimate of how much a player moves shooting, turnovers, rebounding, and free throw rate.' },
     { k: 'Off', v: 'Estimated player effect on the team factor while on offense; positive is better.' },
     { k: 'Def', v: 'Estimated player effect on the opponent factor while defending; positive is better.' },
@@ -648,7 +648,7 @@ export default function NCAAPlayerRankingsTable({ data, selectedSeason, seasons 
 
       <MetricDefinitionsCard
         definitions={PLAYER_METRIC_DEFINITIONS[activeTab].filter(
-          (d) => (hasBpr || d.k !== 'BPR') && (hasWinsAdded || d.k !== 'W.Add'),
+          (d) => (hasBpr || d.k !== 'MPR') && (hasWinsAdded || d.k !== 'W.Add'),
         )}
       />
     </div>

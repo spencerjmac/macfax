@@ -656,7 +656,7 @@ function ProjectedCoreFiveSection({ detail }: { detail: TeamSeasonOutlookDetail 
             <div className="mb-4 flex items-center justify-between gap-2">
               <span className="kicker-sport text-brand text-[11px]">{player.position || 'Core'}</span>
               <span className={`font-mono text-[12px] font-semibold ${getBprTier(player.bpr, player.scale).className}`}>
-                {formatSignedNumber(player.bpr)} BPR
+                {formatSignedNumber(player.bpr)} MPR
               </span>
             </div>
             <p className="text-[15px] font-semibold leading-tight text-text-primary m-0">{player.name}</p>
@@ -715,7 +715,7 @@ function RotationTable({ slots }: { slots: NBAProjectedRosterSlot[] }) {
 
   return (
     <section>
-      {sectionTitle('Projected Rotation', 'BPR scale: +5 All-Star, +2 starter, 0 replacement-level, negative rotation drag.')}
+      {sectionTitle('Projected Rotation', 'MPR scale: +5 All-Star, +2 starter, 0 replacement-level, negative rotation drag.')}
       <div className="overflow-hidden rounded-lg border border-ui-border bg-ui-card">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[760px]">
@@ -723,9 +723,9 @@ function RotationTable({ slots }: { slots: NBAProjectedRosterSlot[] }) {
               <tr className="border-b border-ui-border">
                 <th className="table-header px-4 py-3 text-left">Player</th>
                 <th className="table-header px-3 py-3 text-left">Role</th>
-                <th className="table-header px-3 py-3 text-center">BPR</th>
-                <th className="table-header px-3 py-3 text-center">OBPR</th>
-                <th className="table-header px-3 py-3 text-center">DBPR</th>
+                <th className="table-header px-3 py-3 text-center">MPR</th>
+                <th className="table-header px-3 py-3 text-center">O-MPR</th>
+                <th className="table-header px-3 py-3 text-center">D-MPR</th>
                 <th className="table-header px-3 py-3 text-center">Min%</th>
                 <th className="table-header px-4 py-3 text-right">Type</th>
               </tr>

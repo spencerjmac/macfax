@@ -162,22 +162,22 @@ export const methodologyContent: MethodologyContent[] = [
   },
 
   {
-    slug: 'bayesian-performance-rating',
+    slug: 'macfax-player-rating',
     section: 'player-evaluation',
-    title: 'Macfax Bayesian Performance Rating',
+    title: 'Macfax Player Rating (MPR)',
     subtitle: 'Player impact in points per 100 possessions above Division I average',
     description: 'How Macfax estimates offensive, defensive, and total player impact using box-score signals and lineup data.',
     bestUsedFor: 'Evaluating how much a player improves or hurts their team when on the court',
     summary:
-      'Macfax Bayesian Performance Rating (BPR) is a player impact estimate expressed in points per 100 possessions above the Division I average. It combines what a player\'s box-score production predicts about their value with what actual on-court lineup data reveals, then uses Bayesian regularization to produce stable estimates even for players with limited minutes. BPR separates into an offensive component (OBPR) and a defensive component (DBPR).',
+      'Macfax Player Rating (MPR) is a player impact estimate expressed in points per 100 possessions above the Division I average. It combines what a player\'s box-score production predicts about their value with what actual on-court lineup data reveals, then uses Bayesian regularization to produce stable estimates even for players with limited minutes. MPR separates into an offensive component (O-MPR) and a defensive component (D-MPR).',
     whatItMeasures:
-      'BPR measures how many points per 100 possessions a player adds to their team\'s scoring margin when on the court, relative to a Division I average player. Positive values mean the player improves the team; negative values mean the team performs worse with that player on the court. OBPR measures offensive contribution, DBPR measures defensive contribution, and total BPR is their sum. This is fundamentally different from counting stats — a player scoring 18 points per game on poor shooting can have a negative OBPR, while a player scoring 8 on elite efficiency with good decision-making can have a high OBPR.',
+      'MPR measures how many points per 100 possessions a player adds to their team\'s scoring margin when on the court, relative to a Division I average player. Positive values mean the player improves the team; negative values mean the team performs worse with that player on the court. O-MPR measures offensive contribution, D-MPR measures defensive contribution, and total MPR is their sum. This is fundamentally different from counting stats — a player scoring 18 points per game on poor shooting can have a negative O-MPR, while a player scoring 8 on elite efficiency with good decision-making can have a high O-MPR.',
     whyItMatters:
-      'Volume stats reward usage, not efficiency. A player who takes more shots generates more raw points regardless of whether those shots help the team. BPR controls for pace and playing time by measuring per possession, and incorporates actual on-court lineup results to capture contributions that box scores miss entirely — spacing, off-ball defense, screening, communication. It also adjusts for schedule strength, so a player putting up big numbers against weak competition is not rated the same as one doing the same against elite opponents.',
+      'Volume stats reward usage, not efficiency. A player who takes more shots generates more raw points regardless of whether those shots help the team. MPR controls for pace and playing time by measuring per possession, and incorporates actual on-court lineup results to capture contributions that box scores miss entirely — spacing, off-ball defense, screening, communication. It also adjusts for schedule strength, so a player putting up big numbers against weak competition is not rated the same as one doing the same against elite opponents.',
     howToInterpret:
-      'BPR is centered at 0, representing replacement level — the typical contribution of a player who can fill a roster spot but does not meaningfully improve the team. Positive BPR means the player adds value; negative means they subtract it in the current model. A player with OBPR +5 and DBPR −1 is a strong offensive contributor who is slightly below average defensively. Always check the source label: RAPM-based estimates (from lineup data) are more reliable than box-only estimates for players with limited minutes.',
+      'MPR is centered at 0, representing replacement level — the typical contribution of a player who can fill a roster spot but does not meaningfully improve the team. Positive MPR means the player adds value; negative means they subtract it in the current model. A player with O-MPR +5 and D-MPR −1 is a strong offensive contributor who is slightly below average defensively. Always check the source label: RAPM-based estimates (from lineup data) are more reliable than box-only estimates for players with limited minutes.',
     basicFormula: {
-      prose: 'BPR = OBPR + DBPR\n\nBoth OBPR and DBPR expressed in points per 100 possessions above D1 average.',
+      prose: 'MPR = O-MPR + D-MPR\n\nBoth O-MPR and D-MPR expressed in points per 100 possessions above D1 average.',
     },
     interpretationBands: [
       { label: 'Elite / All-American', range: '+8 and above', color: 'success', description: 'Transformative impact. Among the best individual contributors in Division I.' },
@@ -187,24 +187,24 @@ export const methodologyContent: MethodologyContent[] = [
       { label: 'Below Replacement', range: 'below −1', color: 'negative', description: 'Team performs measurably worse with this player on the court in the current model.' },
     ],
     technicalNotes: [
-      'BPR combines two sources: box-score predictions (what production patterns predict about value) and lineup-based RAPM (what actually happens on the court with this player in). The two are blended using Bayesian regularization.',
-      'Players with sufficient on-court lineup data receive RAPM-based estimates. Players with limited minutes receive box-score-based estimates. Each BPR value is labeled by its primary data source.',
+      'MPR combines two sources: box-score predictions (what production patterns predict about value) and lineup-based RAPM (what actually happens on the court with this player in). The two are blended using Bayesian regularization.',
+      'Players with sufficient on-court lineup data receive RAPM-based estimates. Players with limited minutes receive box-score-based estimates. Each MPR value is labeled by its primary data source.',
       'Multi-year lineup data is pooled where available to improve stability for returning players. Prior seasons contribute context without overriding current-season performance.',
       'Schedule strength is factored in — players whose teams face stronger opponents are adjusted relative to those producing similar stats against weaker competition.',
       'On-court performance is compared against the team\'s overall level to separate individual contribution from team-quality effects.',
-      'Defensive BPR carries materially more uncertainty than offensive BPR. Defensive impact is harder to isolate from box scores and lineup data. DBPR should be interpreted with appropriate caution.',
+      'Defensive MPR carries materially more uncertainty than offensive MPR. Defensive impact is harder to isolate from box scores and lineup data. D-MPR should be interpreted with appropriate caution.',
       'Exact feature weights, regularization parameters, and calibration values are internal to Macfax and may be recalibrated as additional validation data accumulates.',
     ],
     knownLimitations: [
       'Player ratings are noisier than team ratings by design. College basketball sample sizes are small and lineup combinations repeat infrequently.',
-      'DBPR is particularly uncertain. Most box-score defensive indicators are weak proxies for actual defensive contribution.',
+      'D-MPR is particularly uncertain. Most box-score defensive indicators are weak proxies for actual defensive contribution.',
       'Freshmen and low-minute players lack lineup data — their ratings rely more heavily on box-score priors, which carry their own uncertainty.',
       'Transfer players have a break in on-court data continuity. First-season transfer estimates carry more uncertainty than returning players.',
       'Injuries, foul trouble, and mid-season role changes affect lineup data quality but are not explicitly modeled.',
-      'BPR should not be the sole basis for player evaluation. Role, system fit, and usage context matter in ways the model cannot fully capture.',
+      'MPR should not be the sole basis for player evaluation. Role, system fit, and usage context matter in ways the model cannot fully capture.',
     ],
     example:
-      'Illustrative — not based on a specific live season. Guard A: OBPR +5.8, DBPR +1.4, BPR +7.2. Scores efficiently, protects the ball, draws fouls, and on-court lineup data confirms the team scores more with him on the floor. Source: RAPM-based. Guard B on the same team: OBPR +6.1, DBPR −2.3, BPR +3.8. Higher raw offensive production, but opponents score more when he defends. Box stats alone would overrate Guard B — BPR separates the two clearly. Same team, same playing time, very different actual impact.',
+      'Illustrative — not based on a specific live season. Guard A: O-MPR +5.8, D-MPR +1.4, MPR +7.2. Scores efficiently, protects the ball, draws fouls, and on-court lineup data confirms the team scores more with him on the floor. Source: RAPM-based. Guard B on the same team: O-MPR +6.1, D-MPR −2.3, MPR +3.8. Higher raw offensive production, but opponents score more when he defends. Box stats alone would overrate Guard B — MPR separates the two clearly. Same team, same playing time, very different actual impact.',
     relatedMetrics: [
       { label: 'Adjusted Ratings', slug: 'adjusted-ratings' },
       { label: 'Resume Metrics', slug: 'resume-metrics' },
@@ -506,11 +506,11 @@ export const methodologyContent: MethodologyContent[] = [
     howToInterpret:
       'The projected AdjEM, AdjO, and AdjD are the model\'s central estimates for next season. The national ranking estimate shows where that efficiency profile would rank among Division I teams in a typical season. Uncertainty bands (shown as a projected rank range) reflect how wide the realistic distribution of outcomes is — a team with a narrow range has a more predictable outlook, while a team with a wide range has more variance in either direction. Fit grades run from A+ (elite roster composition) to F (significant structural weaknesses), separated into offensive fit and defensive fit. A team can have strong individual talent but a B- fit grade if the roster lacks spacing, playmaking, or defensive structure. Player tiers — All-American, All-Conference, Starter, Reserve, Bench — reflect the projected quality level for each player relative to Division I averages. Recruitment type labels (Returner, Transfer, Newcomer) show where projected production is coming from and where it carries more uncertainty.',
     technicalNotes: [
-      'Player talent estimates use Bayesian Performance Rating (BPR) as the core input. For returning players, BPR is based on prior college performance with appropriate regression toward the mean. For transfers, prior college BPR is adjusted for the change in competition level and role. For freshmen and other newcomers, recruiting rank and star rating serve as priors where college performance data is unavailable.',
+      'Player talent estimates use Macfax Player Rating (MPR) as the core input. For returning players, MPR is based on prior college performance with appropriate regression toward the mean. For transfers, prior college MPR is adjusted for the change in competition level and role. For freshmen and other newcomers, recruiting rank and star rating serve as priors where college performance data is unavailable.',
       'Minutes allocation is projected using a minutes model that accounts for role, quality tier, roster depth, and historical minutes patterns. Minutes projections are a key uncertainty source — a player whose role expands or contracts significantly will produce differently than the model expects.',
       'Roster fit is evaluated separately for offensive and defensive dimensions. Offensive fit assesses playmaking coverage, spacing distribution, ball security, finishing quality, and free-throw pressure. Defensive fit assesses rim protection, defensive rebounding, perimeter coverage, and structural composition. Each dimension receives a letter grade. The exact subcomponent weights and structural penalty logic are internal to Macfax.',
       'Contextual adjustments incorporate the team\'s stylistic identity — pace tendency and offensive and defensive scheme — to assess whether the projected roster aligns with how the coaching staff has historically deployed talent.',
-      'Continuity is measured as both a minutes fraction (how much of projected playing time comes from returners) and a talent-weighted score (how much of projected BPR production is retained). High transfer dependence without strong fit scores increases projection uncertainty.',
+      'Continuity is measured as both a minutes fraction (how much of projected playing time comes from returners) and a talent-weighted score (how much of projected MPR production is retained). High transfer dependence without strong fit scores increases projection uncertainty.',
       'Team-level projected ratings are derived by translating the aggregate talent and fit signals into an efficiency margin estimate, calibrated against the historical relationship between roster quality and on-court performance. The translation is not linear — fit matters, and the same aggregate talent level produces better ratings when the pieces complement each other.',
       'Uncertainty bands represent roughly a ±2 standard deviation range around the central projection, reflecting player projection variance, minutes uncertainty, and continuity risk. The central estimate is more likely than any outcome at the edges of the range, but outcomes outside the range are possible.',
       'The scenario editor on the Roster Outlook page allows users to modify the projected roster — adding, removing, or swapping players — and see how those changes would shift the projection. Scenario results use the same model as the baseline projection.',
@@ -527,7 +527,7 @@ export const methodologyContent: MethodologyContent[] = [
     example:
       'Illustrative: a team projects AdjEM +18.5 with a national rank estimate of #22, but with a rank range of #14–#35. Their offensive fit is B+ (strong spacing and playmaking, slight ball-security concern from a high-usage transfer) and defensive fit is B (solid rim protection, but limited perimeter stopper in the backcourt rotation). Continuity score is 62 — meaning roughly 62% of projected production comes from returners, with the rest dependent on two transfers. If the transfers perform to projection, the upper end of the range is realistic. If they underperform their college history, the team slides toward the lower end.',
     relatedMetrics: [
-      { label: 'Bayesian Performance Rating', slug: 'bayesian-performance-rating' },
+      { label: 'Macfax Player Rating', slug: 'macfax-player-rating' },
       { label: 'Adjusted Ratings', slug: 'adjusted-ratings' },
       { label: 'The Four Factors', slug: 'four-factors' },
       { label: 'Resume Metrics', slug: 'resume-metrics' },
@@ -594,7 +594,7 @@ export const METHODOLOGY_SECTIONS: {
   {
     id: 'player-evaluation',
     title: 'Player Evaluation',
-    slugs: ['bayesian-performance-rating'],
+    slugs: ['macfax-player-rating'],
   },
   {
     id: 'roster-projections',

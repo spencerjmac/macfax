@@ -232,15 +232,15 @@ def _check_star_player(r, ctx):
     if season_year is not None and season_year < cfg.STAR_BPR_EXEMPT_BEFORE_YEAR:
         return _item("star_player", "Star Player Impact", True,
                      "N/A", f"≥ {cfg.MIN_STAR_BPR} (exempt before {cfg.STAR_BPR_EXEMPT_BEFORE_YEAR})",
-                     "No player BPR data before 2022 — exempted")
+                     "No player MPR data before 2022 — exempted")
     best_bpr = ctx.get("team_max_bpr", {}).get(r.team_id)
     if best_bpr is None:
         return _item("star_player", "Star Player Impact", False,
-                     "N/A", f"≥ {cfg.MIN_STAR_BPR}", "No player BPR data")
+                     "N/A", f"≥ {cfg.MIN_STAR_BPR}", "No player MPR data")
     passed = best_bpr >= cfg.MIN_STAR_BPR
     return _item("star_player", "Star Player Impact", passed,
                  f"{best_bpr:.1f}", f"≥ {cfg.MIN_STAR_BPR}",
-                 f"Best roster BPR {best_bpr:.1f}")
+                 f"Best roster MPR {best_bpr:.1f}")
 
 
 # Ordered list of check functions

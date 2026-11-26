@@ -31,8 +31,8 @@ export default async function PlayerScoutingPage({ params, searchParams }: Props
       </div>
       <PlayerScoutingCard player={player} className="w-full" />
       <p className="mt-4 text-xs text-slate-600 text-center">
-        BPR = Bayesian Performance Rating (pts/100 above avg, prior-informed RAPM) ·{" "}
-        Wins added = (BPR + 2.0) × MPG/48 × GP/56
+        MPR = Macfax Player Rating (pts/100 above avg, prior-informed RAPM) ·{" "}
+        Wins added = (MPR + 2.0) × MPG/48 × GP/56
       </p>
     </main>
   );

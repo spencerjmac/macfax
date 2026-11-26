@@ -108,7 +108,7 @@ export function TeamRosterValueView({
 
               {/* BPR adj */}
               <div className="w-16 text-right text-xs text-slate-500 tabular-nums">
-                {fmtSigned(player.bpr_replacement_adjusted, 1)} BPR
+                {fmtSigned(player.bpr_replacement_adjusted, 1)} MPR
               </div>
             </div>
           );

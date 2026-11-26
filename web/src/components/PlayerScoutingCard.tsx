@@ -86,52 +86,52 @@ export function PlayerScoutingCard({ player, peakBpr, careerBpr, className }: Pr
       {/* BPR split — replacement-adjusted */}
       <div className="grid grid-cols-3 divide-x divide-slate-700/60 border-b border-slate-700/60">
         <BPRCell
-          label="BPR (adj)"
+          label="MPR (adj)"
           value={player.bpr_replacement_adjusted}
           tierValue={player.bpr}
           scale={player.rating_scale}
-          tooltip="BPR replacement-adjusted — 0 = replacement level"
+          tooltip="MPR replacement-adjusted — 0 = replacement level"
           primary
         />
         <BPRCell
-          label="Off BPR"
+          label="Off MPR"
           value={player.obpr_replacement_adjusted}
           tierValue={player.obpr}
           scale={player.rating_scale}
-          tooltip="Offensive BPR replacement-adjusted"
+          tooltip="Offensive MPR replacement-adjusted"
         />
         <BPRCell
-          label="Def BPR"
+          label="Def MPR"
           value={player.dbpr_replacement_adjusted}
           tierValue={player.dbpr}
           scale={player.rating_scale}
-          tooltip="Defensive BPR replacement-adjusted"
+          tooltip="Defensive MPR replacement-adjusted"
         />
       </div>
 
       {/* Career / Peak */}
       <div className="grid grid-cols-2 divide-x divide-slate-700/60 border-b border-slate-700/60">
         <BPRCell
-          label="Career BPR"
+          label="Career MPR"
           value={careerBpr ?? null}
           scale={player.rating_scale}
-          tooltip="Minutes-weighted career average BPR (qualifying seasons ≥500 min)"
+          tooltip="Minutes-weighted career average MPR (qualifying seasons ≥500 min)"
           small
         />
         <BPRCell
-          label="Peak BPR"
+          label="Peak MPR"
           value={peakBpr ?? null}
           scale={player.rating_scale}
-          tooltip="Best single-season BPR (qualifying seasons ≥500 min)"
+          tooltip="Best single-season MPR (qualifying seasons ≥500 min)"
           small
         />
       </div>
 
       {/* Raw stored BPR — footnote */}
       <div className="px-5 py-3 text-xs text-slate-600 flex items-center gap-4">
-        <span>BPR (raw): {fmtSigned(player.bpr, 2)}</span>
-        <span>OBPR: {fmtSigned(player.obpr, 2)}</span>
-        <span>DBPR: {fmtSigned(player.dbpr, 2)}</span>
+        <span>MPR (raw): {fmtSigned(player.bpr, 2)}</span>
+        <span>O-MPR: {fmtSigned(player.obpr, 2)}</span>
+        <span>D-MPR: {fmtSigned(player.dbpr, 2)}</span>
         <BPRConfidenceBadge
           league="nba"
           source="rapm"

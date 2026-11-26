@@ -19,10 +19,10 @@ interface CompareRow {
 
 const COMPARE_ROWS: CompareRow[] = [
   { key: "wins_added",                label: "Wins Added",       higherIsBetter: true },
-  { key: "bpr_replacement_adjusted",  label: "BPR (repl adj)",  higherIsBetter: true },
-  { key: "obpr_replacement_adjusted", label: "Off BPR (adj)",   higherIsBetter: true },
-  { key: "dbpr_replacement_adjusted", label: "Def BPR (adj)",   higherIsBetter: true },
-  { key: "bpr",                        label: "BPR (raw)",        higherIsBetter: true },
+  { key: "bpr_replacement_adjusted",  label: "MPR (repl adj)",  higherIsBetter: true },
+  { key: "obpr_replacement_adjusted", label: "Off MPR (adj)",   higherIsBetter: true },
+  { key: "dbpr_replacement_adjusted", label: "Def MPR (adj)",   higherIsBetter: true },
+  { key: "bpr",                        label: "MPR (raw)",        higherIsBetter: true },
 ];
 
 export function PlayerCompareView({ players, className }: Props) {

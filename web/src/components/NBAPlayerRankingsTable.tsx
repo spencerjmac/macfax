@@ -85,7 +85,7 @@ const WINS_ADDED_META: PlayerMetricMeta = {
   format: 'signed1', better: 'higher', showRank: true, heatmap: true, tier: 'primary',
 };
 
-const BPR_REFERENCE = { k: 'BPR', v: 'Bayesian Performance Rating, shown for reference; see the Impact tab.' };
+const BPR_REFERENCE = { k: 'MPR', v: 'Macfax Player Rating, shown for reference; see the Impact tab.' };
 
 // Written from each column's tooltip (playerMetricMetadata.ts and the inline meta above)
 const NBA_PLAYER_DEFINITIONS: Record<Exclude<TabId, 'impact'>, MetricDefinition[]> = {
@@ -121,9 +121,9 @@ const NBA_PLAYER_DEFINITIONS: Record<Exclude<TabId, 'impact'>, MetricDefinition[
 function nbaImpactDefinitions(waFormula: string): MetricDefinition[] {
   return [
     { k: 'Age', v: 'Age on February 1 of the season.' },
-    { k: 'BPR', v: 'Bayesian Performance Rating (OBPR + DBPR): career-stabilized box stats regularized toward single-season RAPM. Context-adjusted impact in points per 100 possessions above league average; it reflects role and team quality, not pure skill in isolation.' },
-    { k: 'OBPR', v: 'Offensive BPR: estimated offensive points per 100 possessions added above league average.' },
-    { k: 'DBPR', v: 'Defensive BPR: estimated defensive points per 100 possessions prevented above league average; higher is a better defender.' },
+    { k: 'MPR', v: 'Macfax Player Rating (O-MPR + D-MPR): career-stabilized box stats regularized toward single-season RAPM. Context-adjusted impact in points per 100 possessions above league average; it reflects role and team quality, not pure skill in isolation.' },
+    { k: 'O-MPR', v: 'Offensive MPR: estimated offensive points per 100 possessions added above league average.' },
+    { k: 'D-MPR', v: 'Defensive MPR: estimated defensive points per 100 possessions prevented above league average; higher is a better defender.' },
     { k: 'W.Add', v: `Wins Added above replacement: ${waFormula}.` },
     { k: 'Poss', v: 'Estimated possessions played on court this season.' },
     { k: 'Role', v: 'Player archetype from the box-score profile (creator, scorer, interior, 3&D, stretch, connector).' },

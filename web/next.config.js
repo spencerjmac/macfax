@@ -33,6 +33,8 @@ const nextConfig = {
       { source: '/ncaa/rankings', destination: '/ncaa/ratings', permanent: true },
       { source: '/nba/rankings', destination: '/nba/ratings', permanent: true },
       { source: '/rankings', destination: '/ncaa/ratings', permanent: true },
+      // BPR was renamed Macfax Player Rating (MPR); keep the old methodology URL working
+      { source: '/methodology/bayesian-performance-rating', destination: '/methodology/macfax-player-rating', permanent: true },
       ...hiddenRoutes.map((r) => ({
         source: `${r.path}/:path*`,
         destination: r.redirectTo,
