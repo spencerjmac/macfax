@@ -34,7 +34,7 @@ function mapApiRowToTeamSeason(team: Record<string, unknown>): TeamSeason {
     teamName: (team.team_name as string) || '',
     teamNameAlt: [(team.team_name as string) || ''],
     conference: (team.conference as string) || 'Ind',
-    logoUrl: (team.team_logo as string) || '/logos/default.png',
+    logoUrl: (team.team_logo as string) || '/static/logos/default.svg',
     season: (team.season_display as string) || '',
     lastUpdated,
     games,

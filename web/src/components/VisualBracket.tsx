@@ -149,7 +149,7 @@ function TeamCell({
   return (
     <div className="relative" style={{ height: SLOT_H }}>
       <Link
-        href={`/teams/${team.slug}`}
+        href={`/ncaa/team/${team.slug}`}
         onMouseEnter={() => setShow(true)}
         onMouseLeave={() => setShow(false)}
         className={[

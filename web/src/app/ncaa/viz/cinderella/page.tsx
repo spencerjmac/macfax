@@ -120,7 +120,7 @@ function TeamRow({ team, rank }: { team: CinderellaTeam; rank: number }) {
             )}
             <div>
               <Link
-                href={`/team/${team.team_slug}`}
+                href={`/ncaa/team/${team.team_slug}`}
                 className="font-semibold text-sm hover:text-brand transition-colors"
                 onClick={(e) => e.stopPropagation()}
               >

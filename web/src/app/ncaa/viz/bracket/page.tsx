@@ -85,7 +85,7 @@ function TeamRow({
       {/* Name + First Four badge */}
       <div className="flex-1 min-w-0">
         <Link
-          href={`/teams/${team.slug}`}
+          href={`/ncaa/team/${team.slug}`}
           className="text-sm font-medium text-text-primary hover:text-primary truncate block"
         >
           {team.name}
@@ -272,7 +272,7 @@ function Leaderboard({ data }: { data: BracketData }) {
                 <tr key={team.slug} className={`border-b border-gray-100 hover:bg-gray-50 ${idx < 4 ? 'bg-yellow-50/30' : ''}`}>
                   <td className="px-3 py-2 text-xs text-text-muted">{idx + 1}</td>
                   <td className="px-3 py-2">
-                    <Link href={`/teams/${team.slug}`} className="font-medium hover:text-primary text-sm">
+                    <Link href={`/ncaa/team/${team.slug}`} className="font-medium hover:text-primary text-sm">
                       {team.name}
                     </Link>
                     {team.is_first_four && (
@@ -345,7 +345,7 @@ export default function BracketPage() {
       {/* Header */}
       <div className="mb-6">
         <div className="flex items-center gap-2 text-text-muted text-sm mb-2">
-          <Link href="/viz" className="hover:text-primary">Visualizations</Link>
+          <Link href="/ncaa/viz" className="hover:text-primary">Visualizations</Link>
           <span>/</span>
           <span>Bracket Simulator</span>
         </div>
@@ -386,7 +386,7 @@ export default function BracketPage() {
               {topPicks.map(({ slug, probs, team }, idx) => (
                 <Link
                   key={slug}
-                  href={`/teams/${slug}`}
+                  href={`/ncaa/team/${slug}`}
                   className={`rounded-xl border p-3 hover:shadow-md transition-shadow ${
                     idx === 0 ? 'border-yellow-300 bg-yellow-50' : 'border-gray-200 bg-white'
                   }`}

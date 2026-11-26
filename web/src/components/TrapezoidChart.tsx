@@ -166,7 +166,7 @@ export default function TrapezoidChart({ teams }: TrapezoidChartProps) {
     // Handle click to navigate
     chartInstance.current.on('click', (params: any) => {
       if (params.data && params.data.teamId) {
-        window.location.href = `/team/${params.data.teamId}`;
+        window.location.href = `/ncaa/team/${params.data.teamId}`;
       }
     });
     
