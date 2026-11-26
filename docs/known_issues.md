@@ -5,6 +5,14 @@ known about the cause, and what a fix needs. Remove an entry when its fix ships.
 
 Last checked: 2026-11-25. Prod checks were read-only.
 
+## Deploys
+
+### The deploy guard does not see nightly jobs in the scheduler
+
+- `fab deploy` refuses while a `manage.py` command runs in the backend container (`--force` overrides), but
+  the nightly jobs run inside the scheduler container's own process, so the guard cannot see them. Deploys
+  still stay outside 02:00-04:30 MST (the nightly starts at 03:00 MST, 10:00 UTC).
+
 ## NBA
 
 ### Two neutral-site games store the opposite home team from NBA.com
@@ -54,22 +62,6 @@ Last checked: 2026-11-25. Prod checks were read-only.
 The message of 708c911 (`fix(nba): neutral-site games keep their stored home team on re-sync`) says "see the
 branch notes" for `0022500147` and `0022501230`. No such notes exist; this file is where that information lives
 (see the first NBA entry). The commit is on `main` and pushed, so its message is left as it is.
-
-## NCAA (prod)
-
-### Stale rating and metric rows for teams that were not D1 that season (2005-2025)
-
-- **Where:** prod `TeamSeasonRatings` (126 rows: 69 full-season, 57 pre-tournament) and `TeamSeasonMetrics`
-  (114 rows), seasons 2005-2025, for teams with no D1 `TeamSeasonMembership` row that season. Most are in
-  2005-2011 and 2019, for example Cal Baptist, Grand Canyon, North Florida, Seattle and UC San Diego in 2005,
-  North Alabama in 2013, and 15 reclassifying arrivals in 2019. Local has none.
-- **Cause:** they were computed in June 2026, when prod's D1 set came from `Team.is_d1` (D1 today). Locally,
-  Task 6d deleted them. The full chain of 2026-11-25 writes D1 rows only and deletes nothing, so they stayed.
-- **Effect:** none on the site since 932d700 (season-scoped queries filter by membership). Only code that reads
-  these tables without a D1 filter would see them.
-- **Fix:** delete them. Script ready (`delete_stale_d1.sql` in prod `backups/`, rehearsal by default; a fresh
-  backup `pre-stale-d1-delete-20261126_053640.dump` was taken). Waiting for a go on the corrected count
-  (126 ratings rows, not 127).
 
 ## NCAA (local and prod)
 
