@@ -20,7 +20,6 @@ from ncaa.models import (
     PlaceholderArchetype,
 )
 from ncaa.conf_utils import get_team_conference
-from .checklist import compute_national_champion_checklist, compute_season_context
 
 
 class SeasonSerializer(serializers.ModelSerializer):
@@ -51,7 +50,6 @@ class TeamSeasonStatsSerializer(serializers.ModelSerializer):
     conference_name = serializers.CharField(source="conference.name", read_only=True)
     season_year = serializers.IntegerField(source="season.year", read_only=True)
     record = serializers.CharField(read_only=True)
-    national_champion_checklist = serializers.SerializerMethodField()
 
     class Meta:
         model = TeamSeasonStats
@@ -129,25 +127,12 @@ class TeamSeasonStatsSerializer(serializers.ModelSerializer):
             "luck",
             "sos_adj_em",
             "ncsos_adj_em",
-            # National Champion Checklist
-            "national_champion_checklist",
             # Provenance
             "has_kenpom",
             "has_torvik",
             "has_cbb_analytics",
             "last_updated",
         ]
-
-    def get_national_champion_checklist(self, obj):
-        """Compute the national champion checklist for this team"""
-        # Check if we have cached season context in the serializer context
-        context = self.context.get("season_context")
-
-        # If not cached, compute it (less efficient, but works)
-        if context is None:
-            context = compute_season_context(obj.season)
-
-        return compute_national_champion_checklist(obj, context)
 
 
 class RankingsSerializer(serializers.Serializer):
