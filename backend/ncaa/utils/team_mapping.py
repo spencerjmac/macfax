@@ -92,6 +92,51 @@ class TeamMapper:
         self.search_index = {k: next(iter(v)) for k, v in self.stripped_index.items() if len(v) == 1}
         self.ambiguous_keys = {k: sorted(v) for k, v in self.stripped_index.items() if len(v) > 1}
 
+    def _index_team(self, team: Team):
+        """Add a team created during this run to the name indexes, so later games reuse it."""
+        self.teams[team.id] = team
+        for name in [team.name, *(team.aliases or [])]:
+            if name:
+                self.literal_index.setdefault(self._literal(name), set()).add(team.id)
+                self.stripped_index.setdefault(self._normalize(name), set()).add(team.id)
+
+    def _espn_name_index(self) -> Dict[str, set]:
+        """_literal(ESPN external_name) -> team ids, built once on first use."""
+        if not hasattr(self, '_espn_names'):
+            self._espn_names: Dict[str, set] = {}
+            for team_id, name in TeamExternalId.objects.filter(source='espn').values_list('team_id', 'external_name'):
+                if name:
+                    self._espn_names.setdefault(self._literal(name), set()).add(team_id)
+        return self._espn_names
+
+    def _existing_team_for_ncaa_name(self, external_name: str) -> Optional[Team]:
+        """
+        An existing team for an NCAA name that is not in the D1 mappings, before creating a non-D1 one.
+
+        The NCAA ingest used to create non-D1 opponents with get_or_create(name=...), which never saw a
+        team that already had that name as an alias or that the ESPN side had created under its own
+        name: five non-D1 schools got a second row (2026-11-27, e.g. "Mt. St. Mary (NY)" beside ESPN's
+        "Mount St Mary"), and their games then could not be matched to ESPN. Reuse a team whose name or
+        alias, or whose ESPN mapping's name, equals this name (case and punctuation ignored). Several
+        candidates: ambiguous, logged, and the old exact-name lookup decides.
+        """
+        literal = self._literal(external_name)
+        if not literal:
+            return None
+        ids = set(self.literal_index.get(literal, set())) | set(self._espn_name_index().get(literal, set()))
+        ids &= set(self.teams)
+        if len(ids) == 1:
+            team = self.teams[next(iter(ids))]
+            logger.info(f"Reusing existing team '{team.name}' (id {team.id}) for NCAA name '{external_name}'")
+            return team
+        if len(ids) > 1:
+            names = sorted(self.teams[t].name for t in ids)
+            logger.warning(f"AMBIGUOUS existing teams for NCAA name '{external_name}': {names}; "
+                           f"falling back to the exact name")
+            self.ambiguous.append({'external_name': external_name, 'reason': 'several existing teams',
+                                   'candidates': names})
+        return None
+
     @staticmethod
     def _literal(name: str) -> str:
         """Lowercase, '&' -> 'and', drop other punctuation, collapse spaces. Keeps every word.
@@ -286,14 +331,16 @@ class TeamMapper:
         if team is None:
             # For NCAA source, create non-D1 team if allowed
             if self.source == 'ncaa' and allow_non_d1 and not dry_run:
-                logger.info(f"Creating non-D1 team for '{external_name}'")
-                from ncaa.models import Team
-                team, created = Team.objects.get_or_create(
-                    name=external_name,
-                    defaults={'is_d1': False}
-                )
-                if created:
-                    logger.info(f"Created non-D1 team: {external_name}")
+                team = self._existing_team_for_ncaa_name(external_name)
+                if team is None:
+                    logger.info(f"Creating non-D1 team for '{external_name}'")
+                    team, created = Team.objects.get_or_create(
+                        name=external_name.strip(),
+                        defaults={'is_d1': False}
+                    )
+                    if created:
+                        logger.info(f"Created non-D1 team: {external_name}")
+                        self._index_team(team)
                 confidence = 1.0
                 is_override = False
             else:

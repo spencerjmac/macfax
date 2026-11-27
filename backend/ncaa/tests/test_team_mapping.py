@@ -174,3 +174,55 @@ class NcaaRenamedTeamTests(TestCase):
         mapping = m.map_and_save("LSU New Orleans ", "6652878_home")
         self.assertEqual(mapping.team, self.uno)
         self.assertEqual(Team.objects.count(), 1)
+
+
+class NcaaNonD1ReuseTests(TestCase):
+    """2026-11-27: the NCAA ingest created non-D1 opponents with get_or_create(name=...), so a school the
+    ESPN side had already created under its own name got a second row ("Mt. St. Mary (NY)" beside
+    "Mount St Mary"), and its games could not be matched to ESPN. Before creating a non-D1 team,
+    map_and_save reuses a team whose name, alias, or ESPN mapping name equals the NCAA name."""
+
+    def mapper(self):
+        return TeamMapper(source="ncaa", override_file="/nonexistent/overrides.yml")
+
+    def test_reuses_a_team_with_the_name_as_alias(self):
+        keep = Team.objects.create(slug="mount-st-mary", name="Mount St Mary", is_d1=False,
+                                   aliases=["Mt. St. Mary (NY)", "Mount St Mary Knights"])
+        mapping = self.mapper().map_and_save("Mt. St. Mary (NY)", "6649646_away")
+        self.assertEqual(mapping.team, keep)
+        self.assertEqual(Team.objects.count(), 1)
+
+    def test_reuses_a_team_by_its_espn_mapping_name(self):
+        keep = make("East West", is_d1=False)
+        TeamExternalId.objects.create(team=keep, source="espn", external_id="3107", external_name="East-West U.")
+        mapping = self.mapper().map_and_save("East-West U.", "6648874_away")
+        self.assertEqual(mapping.team, keep)
+        self.assertEqual(Team.objects.count(), 1)
+        self.assertEqual(TeamExternalId.objects.get(team=keep, source="espn").external_id, "3107")   # untouched
+
+    def test_name_match_ignores_case_punctuation_and_padding(self):
+        keep = make("St. Joseph's (Brkln)", is_d1=False, slug="st-josephs-brooklyn")
+        mapping = self.mapper().map_and_save(" st josephs (brkln) ", "6656306_away")
+        self.assertEqual(mapping.team, keep)
+        self.assertEqual(Team.objects.count(), 1)
+
+    def test_new_school_is_created_once_and_reused(self):
+        m = self.mapper()
+        first = m.map_and_save("Warner", "1_away").team
+        self.assertFalse(first.is_d1)
+        self.assertEqual(m.map_and_save("Warner", "2_away").team, first)          # same run
+        self.assertEqual(self.mapper().map_and_save("WARNER", "3_away").team, first)   # later run
+        self.assertEqual(Team.objects.count(), 1)
+
+    def test_several_candidates_are_ambiguous_and_neither_is_reused(self):
+        a = Team.objects.create(slug="trinity-tx", name="Trinity (TX)", is_d1=False, aliases=["Trinity"])
+        b = Team.objects.create(slug="trinity-ct", name="Trinity (CT)", is_d1=False, aliases=["Trinity"])
+        m = self.mapper()
+        team = m.map_and_save("Trinity", "9_away").team
+        self.assertNotIn(team, (a, b))
+        self.assertEqual(team.name, "Trinity")
+        self.assertTrue(any(x["reason"] == "several existing teams" for x in m.ambiguous))
+
+    def test_dry_run_creates_nothing(self):
+        self.assertIsNone(self.mapper().map_and_save("Warner", "1_away", dry_run=True))
+        self.assertEqual(Team.objects.count(), 0)
