@@ -7,7 +7,12 @@ container is recreated (a deploy). On prod PIPELINE_LOG_DIR is a named volume (d
 the log survives recreation. Unset (dev, tests by default): nothing is written.
 
 Record: {"command", "title", "options", "started", "finished", "seconds", "rc", "host", "pid",
-         "steps": [{"name", "ok", "rc", "seconds", "note"}]}
+         "lock_holder", "lock_wait_seconds", "steps": [{"name", "ok", "rc", "seconds", "note"}]}
+
+lock_holder / lock_wait_seconds: who held the prod write lock (ncaa/prod_lock.py) during the run and how
+long the run waited for it. The nightly (run_scheduler) passes both to update_daily in the environment;
+any other run under the lock (ops/prod-lock.sh run, which never waits) gets the holder from the lock file
+and a wait of 0. No lock held: both null. A skipped nightly records the holder it waited behind.
 Read it with `fab pipeline_log` or `tail .../pipeline_runs.jsonl`.
 """
 from __future__ import annotations
@@ -21,7 +26,11 @@ from pathlib import Path
 
 from django.utils import timezone
 
+from ncaa import prod_lock
+
 ENV_DIR = "PIPELINE_LOG_DIR"
+ENV_LOCK_HOLDER = "PIPELINE_LOCK_HOLDER"
+ENV_LOCK_WAIT = "PIPELINE_LOCK_WAIT_SECONDS"
 FILENAME = "pipeline_runs.jsonl"
 # BaseCommand options that say nothing about the run
 _DJANGO_OPTIONS = {"verbosity", "settings", "pythonpath", "traceback", "no_color", "force_color",
@@ -64,6 +73,24 @@ def read_runs() -> list[dict] | None:
     except OSError:
         return None
     return runs
+
+
+def lock_fields() -> dict:
+    """{"lock_holder", "lock_wait_seconds"} for this run (see the module docstring)."""
+    holder = os.environ.get(ENV_LOCK_HOLDER)
+    if holder:
+        try:
+            wait = round(float(os.environ.get(ENV_LOCK_WAIT, "")), 1)
+        except ValueError:
+            wait = None
+        return {"lock_holder": holder, "lock_wait_seconds": wait}
+    try:
+        info = prod_lock.read_info()
+    except OSError:
+        info = None
+    if info and info.get("holder"):
+        return {"lock_holder": info["holder"], "lock_wait_seconds": 0.0}
+    return {"lock_holder": None, "lock_wait_seconds": None}
 
 
 def _jsonable(v) -> bool:
@@ -120,5 +147,6 @@ class PipelineRunLogMixin:
             "rc": 0 if all(r["ok"] for r in rows) else 1,
             "host": socket.gethostname(),
             "pid": os.getpid(),
+            **lock_fields(),
             "steps": rows,
         })

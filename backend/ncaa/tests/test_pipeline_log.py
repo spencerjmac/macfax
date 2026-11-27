@@ -5,6 +5,8 @@ timings to $PIPELINE_LOG_DIR/pipeline_runs.jsonl, so the nightly's result surviv
 - a run records each step's name, ok, rc, seconds and note, the options, and an overall rc;
 - the fatal-step exit path writes the run once;
 - update_daily records the real exit code of the NBA subprocess and of a failed NCAA pipeline;
+- each run records the prod lock holder and wait: from the nightly's environment, else the lock file
+  (wait 0), else null;
 - without PIPELINE_LOG_DIR nothing is written and nothing fails.
 """
 import json
@@ -18,6 +20,7 @@ from django.core.management import call_command
 from django.test import SimpleTestCase, TestCase
 from django.utils import timezone
 
+from ncaa import prod_lock
 from ncaa.management.commands._pipeline_base import BasePipelineCommand
 from ncaa.pipeline_log import FILENAME, append_run
 
@@ -97,6 +100,38 @@ class RunLogTests(TestCase):
         self.assertEqual([s["rc"] for s in failed_ncaa], [1])
         self.assertIsInstance(steps["NBA pipeline"]["seconds"], float)
         self.assertIsInstance(failed_ncaa[0]["seconds"], float)
+
+
+class LockFieldTests(TestCase):
+    def setUp(self):
+        self.dir = tempfile.mkdtemp()
+        env = mock.patch.dict(os.environ, {"PIPELINE_LOG_DIR": self.dir,
+                                           "PROD_LOCK_DIR": os.path.join(self.dir, "locks", "prod")})
+        env.start()
+        self.addCleanup(env.stop)
+        for k in ("PIPELINE_LOCK_HOLDER", "PIPELINE_LOCK_WAIT_SECONDS"):
+            os.environ.pop(k, None)
+
+    def _lock(self):
+        with mock.patch(BASE_CALL):
+            call_command(_Demo(), stdout=StringIO(), stderr=StringIO())
+        with open(os.path.join(self.dir, FILENAME)) as f:
+            rec = json.loads(f.read().splitlines()[-1])
+        return rec["lock_holder"], rec["lock_wait_seconds"]
+
+    def test_nightly_environment(self):
+        os.environ.update({"PIPELINE_LOCK_HOLDER": "nightly", "PIPELINE_LOCK_WAIT_SECONDS": "1234.56"})
+        prod_lock.acquire("nightly", "update_daily")
+        self.assertEqual(self._lock(), ("nightly", 1234.6))
+
+    def test_lock_file_when_run_under_prod_lock_sh(self):
+        prod_lock.acquire("spencer/session-A", "docker compose exec -T backend python manage.py update_ncaa_all")
+        self.assertEqual(self._lock(), ("spencer/session-A", 0.0))
+
+    def test_no_lock(self):
+        self.assertEqual(self._lock(), (None, None))
+        os.environ.pop("PROD_LOCK_DIR")
+        self.assertEqual(self._lock(), (None, None))
 
 
 class NoLogDirTests(SimpleTestCase):

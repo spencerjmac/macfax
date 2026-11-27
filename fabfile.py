@@ -18,7 +18,7 @@ Usage
   fab logs --service=backend  # tail a specific service
   fab ps                  # show container status
   fab pipeline-log        # last update_* runs (steps, rc, timings) from the pipeline run log
-  fab pipeline-log --n=20
+  fab pipeline-log -n 20
   fab shell               # open a bash shell in the backend container
   fab db-push             # DESTRUCTIVE: overwrite prod db with local (backs up prod first)
   fab lock-status         # who holds the prod write lock, if anyone
@@ -235,7 +235,7 @@ def logs(c, service=""):
 @task
 def pipeline_log(c, n=5):
     """
-    Show the last n update_* runs from the pipeline run log (read-only).
+    Show the last n update_* runs from the pipeline run log (read-only): fab pipeline-log -n 20
 
     The log (ncaa/pipeline_log.py) is one JSON line per run on the macfax_pipeline_logs volume,
     so it survives container recreation. Read through the scheduler container, which mounts it.
@@ -250,6 +250,8 @@ def pipeline_log(c, n=5):
         "for line in lines[-%d:]:\n"
         "    r = json.loads(line)\n"
         "    print(f\"{r['started'][:19]}  {r['command']:<22} rc={r['rc']}  {r['seconds']:>7.0f}s  {r.get('options', {}).get('season', '')}\")\n"
+        "    if r.get('lock_holder'):\n"
+        "        print(f\"    lock: {r['lock_holder']}, waited {r.get('lock_wait_seconds')}s\")\n"
         "    if r.get('reason'):\n"
         "        print(f\"    {r['reason']}\")\n"
         "    for st in r['steps']:\n"

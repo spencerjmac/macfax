@@ -34,7 +34,7 @@ from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
 from ncaa import prod_lock
-from ncaa.pipeline_log import append_run, read_runs
+from ncaa.pipeline_log import ENV_LOCK_HOLDER, ENV_LOCK_WAIT, append_run, read_runs
 
 # 10:00 UTC is 06:00 ET: after the last West Coast NBA / NCAA finals are posted.
 DEFAULT_AT = "10:00"
@@ -123,7 +123,7 @@ class Command(BaseCommand):
 
     def _run_update(self):
         if prod_lock.lock_dir() is None:
-            self._run_update_locked()
+            self._run_update_locked(None, None)
             return
         wait_min = float(os.environ.get("NIGHTLY_LOCK_WAIT_MIN", DEFAULT_LOCK_WAIT_MIN))
         asked = datetime.now(dt_timezone.utc)
@@ -137,7 +137,7 @@ class Command(BaseCommand):
             self._log_skip(asked, holder or {}, waited)
             return
         try:
-            self._run_update_locked()
+            self._run_update_locked(LOCK_HOLDER, waited)
         finally:
             if not prod_lock.release(token):
                 self.stdout.write("[scheduler] WARNING: the prod lock was no longer ours at release")
@@ -153,17 +153,25 @@ class Command(BaseCommand):
             "started": asked.isoformat(), "finished": finished.isoformat(),
             "seconds": round((finished - asked).total_seconds(), 1),
             "rc": SKIP_RC, "skipped": True, "reason": reason,
+            # who held the lock instead, and how long the nightly waited for it
+            "lock_holder": holder.get("holder"), "lock_wait_seconds": round(waited, 1),
             "host": os.uname().nodename, "pid": os.getpid(), "steps": [],
         })
 
-    def _run_update_locked(self):
+    def _run_update_locked(self, holder: str | None, waited: float | None):
         started = datetime.now(dt_timezone.utc)
         self.stdout.write(f"[scheduler] {started:%Y-%m-%d %H:%M:%S} UTC: starting update_daily")
         self.stdout.flush()
         # Subprocess, so a crash or SystemExit in the pipeline can't kill the scheduler.
+        # Every update_* run it starts records the holder and the wait (ncaa/pipeline_log.py).
+        env = {k: v for k, v in os.environ.items() if k not in (ENV_LOCK_HOLDER, ENV_LOCK_WAIT)}
+        if holder is not None:
+            env[ENV_LOCK_HOLDER] = holder
+            env[ENV_LOCK_WAIT] = f"{waited:.1f}"
         result = subprocess.run(
             [sys.executable, "manage.py", "update_daily"],
             cwd=settings.BASE_DIR,
+            env=env,
         )
         elapsed = (datetime.now(dt_timezone.utc) - started).total_seconds()
         level = "finished" if result.returncode == 0 else f"FAILED (exit {result.returncode})"

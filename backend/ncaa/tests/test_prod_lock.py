@@ -4,8 +4,10 @@ Prod write lock, container side (ncaa/prod_lock.py) and the nightly's use of it 
 - acquire takes the lock (world-writable, so fab's macfax user can release a stale one), refuses a
   second holder; only the token releases; clear_if_holder clears only that holder's lock;
 - acquire_waiting waits while held and gives up after the wait, returning the holder;
-- the nightly runs update_daily holding the lock as "nightly" and releases it after;
-- while another session holds it the nightly waits, then skips and logs rc 75 with the reason;
+- the nightly runs update_daily holding the lock as "nightly" and releases it after, passing the
+  holder and the seconds it waited to update_daily (which logs them);
+- while another session holds it the nightly waits, then skips and logs rc 75 with the reason, the
+  holder and the wait;
 - at startup a lock left by "nightly" is cleared, anyone else's is kept;
 - without PROD_LOCK_DIR the nightly runs without a lock;
 - catch-up: at startup after today's slot, with no update_daily run (any outcome) logged since the
@@ -88,12 +90,13 @@ class NightlyLockTests(SimpleTestCase):
     def test_runs_holding_the_lock_and_releases(self):
         seen = []
         def run(cmd, **kw):
-            seen.append(prod_lock.read_info()["holder"])
+            seen.append((prod_lock.read_info()["holder"], kw["env"]["PIPELINE_LOCK_HOLDER"],
+                         float(kw["env"]["PIPELINE_LOCK_WAIT_SECONDS"])))
             return subprocess.CompletedProcess(cmd, 0)
         with mock.patch(SUB, side_effect=run) as sub:
             self.cmd._run_update()
         sub.assert_called_once()
-        self.assertEqual(seen, ["nightly"])
+        self.assertEqual(seen, [("nightly", "nightly", 0.0)])   # update_daily logs holder and wait
         self.assertIsNone(prod_lock.read_info())
 
     def test_released_even_when_the_run_crashes(self):
@@ -110,6 +113,7 @@ class NightlyLockTests(SimpleTestCase):
         (rec,) = [json.loads(line) for line in (self.logdir / "pipeline_runs.jsonl").read_text().splitlines()]
         self.assertEqual((rec["command"], rec["rc"], rec["skipped"], rec["steps"]), ("update_daily", SKIP_RC, True, []))
         self.assertIn("prod lock held by spencer/session-A (fab deploy", rec["reason"])
+        self.assertEqual((rec["lock_holder"], rec["lock_wait_seconds"]), ("spencer/session-A", 0.0))
         self.assertIn("SKIPPED update_daily", self.cmd.stdout.getvalue())
 
     def test_startup_clears_only_a_stale_nightly_lock(self):
@@ -122,9 +126,11 @@ class NightlyLockTests(SimpleTestCase):
 
     def test_no_lock_dir_runs_without_locking(self):
         os.environ.pop("PROD_LOCK_DIR")
+        os.environ["PIPELINE_LOCK_HOLDER"] = "stale"   # not passed on when there is no lock
         with mock.patch(SUB, return_value=subprocess.CompletedProcess([], 0)) as sub:
             self.cmd._run_update()
         sub.assert_called_once()
+        self.assertNotIn("PIPELINE_LOCK_HOLDER", sub.call_args.kwargs["env"])
         self.assertFalse(self.lock.exists())
 
 
