@@ -394,13 +394,13 @@ export const GLOSSARY_TERMS: GlossaryTerm[] = [
     term: 'Efficiency Landscape',
     aliases: ['Landscape'],
     category: 'visual-frameworks',
-    shortDefinition: 'A team-level breakdown showing all four efficiency components visualized together.',
+    shortDefinition: 'A scatter plot of every team by adjusted offense and adjusted defense, with diagonal tier lines for title, Final Four and tournament contention.',
     detailedDefinition:
-      'The Efficiency Landscape provides a comprehensive visual snapshot of a team\'s offensive and defensive profile across the Four Factors. Each factor is displayed as a bar relative to the national average, making it easy to see where a team excels or struggles. It\'s designed to answer: "How does this team win games?" at a glance.',
+      'The Efficiency Landscape plots every Division I team with AdjO on the vertical axis and AdjD on the horizontal axis (reversed, so better defense is to the right). Three diagonal lines mark constant net efficiency (AdjEM) values set 4.6, 8.4 and 15.3 points below the average AdjEM of the season\'s top 3 teams: Title Favorites, Final 4 and Hit or Miss. The distances were calibrated on Selection Sunday ratings from 2005 to 2026.',
     howToInterpret:
-      'Bars extending to the right of center indicate above-average performance; left of center is below average. A team with all bars strongly right is a dominant all-around team; uneven bars reveal specific strengths and weaknesses.',
+      'Upper-right is elite on both ends. Title Favorites: every champion since 2005 except UConn 2011 and 2014 was above this line on Selection Sunday. Final 4: 3 of every 4 Final Four teams since 2005 came from above this line. Hit or Miss: below this line, no champions and 4 of 84 Final Four teams since 2005. Teams on the same diagonal have the same AdjEM, however they split it between offense and defense.',
     methodologySlug: 'efficiency-landscape',
-    relatedTerms: ['efg_pct', 'tov_rate', 'orb_pct', 'ftr', 'ffi'],
+    relatedTerms: ['adj_o', 'adj_d', 'adj_em'],
     isHigherBetter: null,
   },
 

@@ -312,36 +312,38 @@ export const methodologyContent: MethodologyContent[] = [
     description: 'How Macfax maps every Division I team by adjusted offensive and defensive efficiency to show both team strength and team style.',
     bestUsedFor: 'Seeing how teams are strong — offensively, defensively, or both — at a glance',
     summary:
-      'The Efficiency Landscape maps every Division I team on a scatter plot with Adjusted Offensive Efficiency on the vertical axis and Adjusted Defensive Efficiency on the horizontal axis. Three diagonal tier lines divide the chart into zones based on each team\'s net efficiency margin relative to the season\'s top team. The result is a visual where both overall strength and stylistic profile are immediately visible — which teams are balanced, which are offense-first, which are defense-first.',
+      'The Efficiency Landscape maps every Division I team on a scatter plot with Adjusted Offensive Efficiency on the vertical axis and Adjusted Defensive Efficiency on the horizontal axis. Three diagonal tier lines sit 4.6, 8.4 and 15.3 points of net efficiency below the average AdjEM of the season\'s top 3 teams, distances calibrated on Selection Sunday ratings from 2005 to 2026. The result is a visual where both overall strength and stylistic profile are immediately visible — which teams are balanced, which are offense-first, which are defense-first.',
     whatItMeasures:
       'The landscape plots each team\'s offensive and defensive efficiency on the same chart, making it possible to see both how good a team is and how they achieve that quality. Net efficiency (AdjEM = AdjO − AdjD) is captured by the diagonal tier lines — teams above a given tier line have a stronger net rating than teams below it. Two teams with identical AdjEM can have very different profiles: one through elite offense and average defense, the other through the opposite.',
     whyItMatters:
       'AdjEM summarizes overall quality but erases the distinction between offense-driven and defense-driven teams. That distinction matters for matchup analysis, tournament projections, and stylistic understanding. The Efficiency Landscape makes the composition visible — a scout, analyst, or fan can see at a glance where a team sits on both dimensions and how unusual or typical their profile is compared to the rest of Division I.',
     howToInterpret:
-      'The vertical axis (Y) is Adjusted Offensive Efficiency — higher is better. The horizontal axis (X) is Adjusted Defensive Efficiency, oriented so that lower (better) defensive ratings appear toward the right side of the chart. Teams that combine elite offense and elite defense cluster in the upper-right corner of the plot, which is the championship-caliber zone. Three diagonal tier lines divide the chart based on net efficiency margins relative to the season\'s best team. Title Favorites are above the top tier line. Final Four Potential teams fall between the top and second lines. Hit or Miss teams fall between the second and third lines. The Rest fall below the third line. Clicking any team logo navigates to their full team profile.',
+      'The vertical axis (Y) is Adjusted Offensive Efficiency — higher is better. The horizontal axis (X) is Adjusted Defensive Efficiency, oriented so that lower (better) defensive ratings appear toward the right side of the chart. Teams that combine elite offense and elite defense cluster in the upper-right corner of the plot, which is the championship-caliber zone. The three diagonal lines are set a fixed distance below the average AdjEM of the top 3 teams. Title Favorites (top-3 average − 4.6): every champion since 2005 except UConn 2011 and 2014 was above this line on Selection Sunday. Final 4 (top-3 average − 8.4): 3 of every 4 Final Four teams since 2005 came from above this line. Hit or Miss (top-3 average − 15.3): below this line, no champions and 4 of 84 Final Four teams since 2005. The Rest fall below the Hit or Miss line. Clicking any team logo navigates to their full team profile.',
     technicalNotes: [
       'Tier lines are diagonal because they represent constant Adjusted Efficiency Margin values — AdjO minus AdjD equals a fixed number. Teams anywhere along a given diagonal line have the same net rating, regardless of how they divide that margin between offense and defense.',
-      'Tier thresholds are computed relative to the season\'s top team\'s AdjEM, not as fixed absolute values. This means the tier lines shift position each season as the national top-end changes, keeping the tiers calibrated to the actual competitive landscape each year.',
-      'The national baseline (the top team\'s AdjEM used to anchor tier lines) is computed from all Division I teams before any conference or tournament filter is applied. Applying a conference or region filter changes which teams are displayed but does not move the tier lines — they remain a stable national reference.',
+      'Each line is the average AdjEM of the season\'s top 3 teams minus a fixed distance: 4.6 (Title Favorites), 8.4 (Final 4) and 15.3 (Hit or Miss). The lines move each season with the top of the field. Anchoring to the top 3 rather than the single best team keeps one dominant team from pulling every line up.',
+      'The distances were calibrated on Selection Sunday ratings for 2005–2026 (no 2020 tournament): 21 champions and 84 Final Four teams, with UConn 2011 and 2014 (16th and 25th in AdjEM on Selection Sunday) treated as exceptions. Title Favorites is the smallest distance with every other champion above it; Final 4 has 75% of Final Four teams above it; Hit or Miss has no champion and at most 5% of Final Four teams below it.',
+      'The top-3 reference is computed from all Division I teams before any conference, tournament or top-N filter is applied. Applying a filter changes which teams are displayed but does not move the tier lines — they remain a stable national reference.',
+      'Once a season has a Selection Sunday snapshot, the chart shows those frozen pre-tournament ratings. Before that it shows the current full-season ratings, which the lines were not calibrated on.',
       'The defensive axis is reversed relative to its numerical direction: as you move right on the chart, adjusted defensive efficiency numbers decrease (i.e., fewer points allowed per 100 possessions). This orientation places elite defenders on the right side, consistent with the standard convention that rightward or upward always means better on both axes.',
-      'Average lines for both AdjO and AdjD are overlaid on the chart, representing the national Division I mean for that season.',
     ],
     knownLimitations: [
       'The landscape is a snapshot, not a projection. Teams can shift significantly as the season progresses and adjusted ratings stabilize.',
       'Being in the Title Favorites zone does not guarantee a title — it means the team\'s efficiency profile is among the strongest relative to the current national field.',
-      'Early-season placements carry more uncertainty because adjusted ratings are less stable before 15+ games are played.',
+      'Early-season placements carry more uncertainty because adjusted ratings are less stable before 15+ games are played, and the tier lines were calibrated on Selection Sunday ratings.',
+      'The calibration rests on 21 tournaments, so the exact distances carry sampling noise; a team just below a line is not meaningfully different from one just above it.',
       'The landscape captures two efficiency dimensions but does not directly reflect Four Factor style, resume strength, or tournament matchup dynamics.',
       'Teams with unusual stylistic profiles (extreme tempo, heavy zone, high foul-rate play) may sit in atypical chart positions relative to their win-loss record.',
     ],
     example:
-      'Illustrative: Team A has AdjO 120.0 and AdjD 94.0, placing them in the upper-right corner above the Title Favorites tier line. Team B has AdjO 115.0 and AdjD 94.0 — same defense, less offense — placing them slightly lower on the chart, in the Final Four Potential zone. Team C has AdjO 120.0 and AdjD 101.0 — same offense as Team A but weaker defense — placing them to the left and below. All three are strong teams, but the landscape makes their stylistic and quality differences immediately readable.',
+      'Illustrative: suppose the top 3 teams average an AdjEM of +30.0, so the lines sit at +25.4 (Title Favorites), +21.6 (Final 4) and +14.7 (Hit or Miss). Team A has AdjO 120.0 and AdjD 94.0 (AdjEM +26.0), placing them in the upper-right corner above the Title Favorites line. Team B has AdjO 116.0 and AdjD 94.0 — same defense, less offense (AdjEM +22.0) — placing them slightly lower, in the Final 4 zone. Team C has AdjO 120.0 and AdjD 101.0 — same offense as Team A but weaker defense (AdjEM +19.0) — placing them to the left, in the Hit or Miss zone. All three are strong teams, but the landscape makes their stylistic and quality differences immediately readable.',
     relatedMetrics: [
       { label: 'Adjusted Ratings', slug: 'adjusted-ratings' },
       { label: 'Trapezoid of Excellence', slug: 'trapezoid-of-excellence' },
       { label: 'The Crystal Ball', slug: 'the-crystal-ball' },
     ],
-    lastUpdated: '2025-11',
-    methodologyVersion: '2.1',
+    lastUpdated: '2026-11',
+    methodologyVersion: '2.2',
   },
 
   {
