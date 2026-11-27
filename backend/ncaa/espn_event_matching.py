@@ -1,8 +1,9 @@
 """
 Match NCAA-sourced games (stored without an ESPN event id) to ESPN scoreboard events.
 
-Used by sync_ncaa_player_gamelogs. Pure: the caller fetches scoreboards (one per date, on demand)
-and passes a `day_entries(date)` callable, so the matching rules can be tested without the network.
+Used by sync_ncaa_player_gamelogs and sync_ncaa_pbp. The rules are pure: the caller passes a
+`day_entries(date)` callable (scoreboard_day_entries builds the real one, fetching each date once), so
+they can be tested without the network. resolve_games and report_unresolved are the shared driver.
 
 Rules, in order, for the game's date and then the day before (late tips: Game.game_date can be the
 UTC date, a day after the date ESPN lists the game under):
@@ -45,6 +46,8 @@ class Match:
     event_id: str | None
     how: str      # "both teams", "one team", plus ", day before" — or the reason it failed
     ok: bool
+    # One-team matches: the event's other team (the side we have no ESPN id for); else ""
+    other_espn_id: str = ""
 
 
 def entries_from_scoreboard(events: Iterable[dict]) -> list[EventEntry]:
@@ -113,7 +116,8 @@ def match_espn_event(
             cands = [e for e in cands if _score_matches(e, home_score, away_score)]
         if len(cands) == 1:
             how = ("both teams" if both else "one team") + (", day before" if offset else "")
-            return Match(cands[0].event_id, how, True)
+            other = "" if both else sorted(cands[0].team_ids - {anchor})[0]
+            return Match(cands[0].event_id, how, True, other)
         if len(cands) > 1:
             return Match(None, f"ambiguous: {len(cands)} ESPN events on {day.isoformat()}", False)
 
@@ -142,3 +146,69 @@ def flag_shared_events(matches: dict[int, Match]) -> dict[int, Match]:
             for gid in rest:
                 out[gid] = Match(None, f"same ESPN event {event_id} as game {keep} (likely a duplicate game)", False)
     return out
+
+
+def scoreboard_day_entries(client, logger=None) -> Callable[[dt.date], list[EventEntry] | None]:
+    """day_entries for match_espn_event: that date's D1 scoreboard via `client` (an ESPNAPIClient),
+    fetched once per date; None when the fetch fails."""
+    boards: dict = {}
+
+    def day_entries(day: dt.date):
+        if day not in boards:
+            try:
+                client._rate_limit()
+                resp = client.session.get(
+                    f"{client.BASE_URL}/scoreboard",
+                    params={"dates": day.strftime("%Y%m%d"), "groups": "50", "limit": "500"},
+                    timeout=client.timeout,
+                )
+                resp.raise_for_status()
+                boards[day] = entries_from_scoreboard(resp.json().get("events", []))
+            except Exception as e:  # network, HTTP or JSON: that date is unresolvable this run
+                if logger:
+                    logger.warning(f"Scoreboard fetch failed for {day}: {e}")
+                boards[day] = None
+        return boards[day]
+
+    return day_entries
+
+
+def resolve_games(games, team_pk_to_espn: dict, known_espn_ids, day_entries) -> dict[int, Match]:
+    """Match for every game (objects with pk, game_date, home/away_team_id, home/away_score)."""
+    matches = {
+        g.pk: match_espn_event(
+            g.game_date,
+            team_pk_to_espn.get(g.home_team_id, ""),
+            team_pk_to_espn.get(g.away_team_id, ""),
+            g.home_score, g.away_score, day_entries, known_espn_ids,
+        )
+        for g in games
+    }
+    return flag_shared_events(matches)
+
+
+def report_unresolved(write, matches: dict[int, Match], games) -> dict[int, str]:
+    """
+    Print the resolution summary and every game left without an ESPN event (count, ids, reasons) through
+    `write(text, warn: bool)`. Returns {game pk: reason} for the unresolved games.
+    """
+    by_pk = {g.pk: g for g in games}
+    unresolved = {pk: m.how for pk, m in matches.items() if not m.ok}
+    how: dict[str, int] = {}
+    for m in matches.values():
+        if m.ok:
+            how[m.how] = how.get(m.how, 0) + 1
+    write(f"  Resolved {len(matches) - len(unresolved)}/{len(matches)} NCAA games to ESPN event IDs"
+          + (f" ({', '.join(f'{k}: {v}' for k, v in sorted(how.items()))})" if how else "") + ".", False)
+    if unresolved:
+        write(f"  Unresolved: {len(unresolved)} games — ids {sorted(unresolved)}", True)
+        by_reason: dict[str, list] = {}
+        for pk, reason in unresolved.items():
+            by_reason.setdefault(reason, []).append(pk)
+        for reason, pks in sorted(by_reason.items(), key=lambda kv: -len(kv[1])):
+            write(f"    {len(pks):>4}  {reason}", True)
+        for pk in sorted(unresolved):
+            g = by_pk[pk]
+            write(f"      {pk}  {g.game_date}  {g.home_team.slug} v {g.away_team.slug}: {unresolved[pk]}", False)
+    return unresolved
+

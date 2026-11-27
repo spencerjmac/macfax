@@ -36,14 +36,13 @@ Box entries ESPN blanked (no athlete id, no stats) are counted per game and repo
 import time
 import logging
 import threading
-from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.db.models import Q
 
-from ncaa.espn_event_matching import entries_from_scoreboard, flag_shared_events, match_espn_event
+from ncaa.espn_event_matching import report_unresolved, resolve_games, scoreboard_day_entries
 from ncaa.models import Game, Player, PlayerGameStats, Team, TeamExternalId
 from ncaa.seasons import resolve_season_year
 from ncaa.utils.d1 import d1_q
@@ -160,55 +159,16 @@ class Command(BaseCommand):
         for g in espn_direct:
             game_espn_map[g.pk] = g.source_game_id
 
-        unresolved: dict[int, str] = {}  # game pk -> reason
         if ncaa_sourced:
             self.stdout.write(
                 f"Resolving ESPN event IDs for {len(ncaa_sourced)} NCAA-sourced games..."
             )
-            client = ESPNAPIClient(rate_limit_delay=sleep_secs)
-            boards: dict = {}  # date -> [EventEntry], or None when the fetch failed
-
-            def day_entries(day):
-                """That date's scoreboard (D1 group), fetched once per date, on demand."""
-                if day not in boards:
-                    try:
-                        client._rate_limit()
-                        resp = client.session.get(
-                            f"{client.BASE_URL}/scoreboard",
-                            params={"dates": day.strftime("%Y%m%d"), "groups": "50", "limit": "500"},
-                            timeout=client.timeout,
-                        )
-                        resp.raise_for_status()
-                        boards[day] = entries_from_scoreboard(resp.json().get("events", []))
-                    except Exception as e:
-                        logger.warning(f"Scoreboard fetch failed for {day}: {e}")
-                        boards[day] = None
-                return boards[day]
-
-            known = frozenset(espn_team_map)
-            matches = {}
-            for g in ncaa_sourced:
-                matches[g.pk] = match_espn_event(
-                    g.game_date,
-                    team_pk_to_espn_id.get(g.home_team_id, ""),
-                    team_pk_to_espn_id.get(g.away_team_id, ""),
-                    g.home_score, g.away_score, day_entries, known,
-                )
-            matches = flag_shared_events(matches)
-            how = defaultdict(int)
-            for g in ncaa_sourced:
-                m = matches[g.pk]
+            day_entries = scoreboard_day_entries(ESPNAPIClient(rate_limit_delay=sleep_secs), logger)
+            matches = resolve_games(ncaa_sourced, team_pk_to_espn_id, frozenset(espn_team_map), day_entries)
+            for pk, m in matches.items():
                 if m.ok:
-                    game_espn_map[g.pk] = m.event_id
-                    how[m.how] += 1
-                else:
-                    unresolved[g.pk] = m.how
-            self.stdout.write(
-                f"  Resolved {len(ncaa_sourced) - len(unresolved)}/{len(ncaa_sourced)} NCAA games to ESPN event IDs"
-                + (f" ({', '.join(f'{k}: {v}' for k, v in sorted(how.items()))})" if how else "") + "."
-            )
-            if unresolved:
-                self._report_unresolved(unresolved, {g.pk: g for g in ncaa_sourced})
+                    game_espn_map[pk] = m.event_id
+            report_unresolved(self._write, matches, ncaa_sourced)
 
         # game_list: list of (game_pk, espn_event_id)
         game_list = [(pk, eid) for pk, eid in game_espn_map.items()]
@@ -298,18 +258,8 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING(f"Failed summary requests (game ids): {sorted(failed)[:50]}"))
 
 
-    def _report_unresolved(self, unresolved: dict, games: dict):
-        """Every game left without an ESPN event: count, ids, and per-game reason (never a silent skip)."""
-        by_reason = defaultdict(list)
-        for gid, reason in unresolved.items():
-            by_reason[reason].append(gid)
-        self.stdout.write(self.style.WARNING(
-            f"  Unresolved: {len(unresolved)} games — ids {sorted(unresolved)}"))
-        for reason, gids in sorted(by_reason.items(), key=lambda kv: -len(kv[1])):
-            self.stdout.write(self.style.WARNING(f"    {len(gids):>4}  {reason}"))
-        for gid in sorted(unresolved):
-            g = games[gid]
-            self.stdout.write(f"      {gid}  {g.game_date}  {g.home_team.slug} v {g.away_team.slug}: {unresolved[gid]}")
+    def _write(self, text: str, warn: bool):
+        self.stdout.write(self.style.WARNING(text) if warn else text)
 
 
 def write_player_rows(game_id: int, rows: list, team_by_espn: dict, force: bool = False):

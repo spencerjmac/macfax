@@ -45,19 +45,19 @@ class MatchRulesTests(SimpleTestCase):
         # Missouri St. (2623) v Lincoln (MO), which had no ESPN id
         m = match_espn_event(D, "2623", "", 88, 60,
                              board({D: [EventEntry("401928621", {"2623": 88, "2876": 60}, "STATUS_FINAL")]}))
-        self.assertEqual(m, Match("401928621", "one team", True))
+        self.assertEqual(m, Match("401928621", "one team", True, "2876"))
 
     def test_one_team_late_tip_day_before(self):
         # Hawaii (62) v Bethesda (no id), stored a day after ESPN's date
         m = match_espn_event(D, "62", "", 90, 52, board({PREV: [EventEntry("401929001", {"62": 90, "3246": 52})]}))
-        self.assertEqual(m, Match("401929001", "one team, day before", True))
+        self.assertEqual(m, Match("401929001", "one team, day before", True, "3246"))
 
     def test_one_team_drops_postponed_event_on_same_day(self):
         # UNC Wilmington (350): Montreat final + a postponed event the same day
         events = [EventEntry("401934189", {"350": 95, "2410": 61}, "STATUS_FINAL"),
                   EventEntry("401926864", {"350": None, "309": None}, "STATUS_POSTPONED")]
         m = match_espn_event(D, "350", "", 95, 61, board({D: events}))
-        self.assertEqual(m, Match("401934189", "one team", True))
+        self.assertEqual(m, Match("401934189", "one team", True, "2410"))
 
     def test_one_team_rejects_event_against_another_known_team(self):
         # the anchor played a mapped team that day: a different game, even with the same score

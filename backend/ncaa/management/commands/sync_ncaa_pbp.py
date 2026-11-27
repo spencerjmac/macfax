@@ -56,6 +56,7 @@ from ncaa.models import (
     Team,
     TeamExternalId,
 )
+from ncaa.espn_event_matching import report_unresolved, resolve_games, scoreboard_day_entries
 from ncaa.utils.ncaa_api import ESPNAPIClient
 from ncaa.seasons import resolve_season_year
 
@@ -470,6 +471,9 @@ def reconstruct_stints(
 class Command(BaseCommand):
     help = "Reconstruct NCAA player lineup stints from ESPN play-by-play."
 
+    def _write(self, text: str, warn: bool):
+        self.stdout.write(self.style.WARNING(text) if warn else text)
+
     def add_arguments(self, parser):
         parser.add_argument(
             "--season", type=int, default=None,
@@ -563,8 +567,11 @@ class Command(BaseCommand):
         )
         all_games = [g for g in all_games if g.pk in has_player_stats]
 
-        # Resolve ESPN event IDs (same strategy as sync_ncaa_player_gamelogs)
+        # Resolve ESPN event IDs: the shared matcher (ncaa/espn_event_matching.py), as in
+        # sync_ncaa_player_gamelogs
         game_espn_map: dict[int, str] = {}
+        # game pk -> (ESPN id of the side we have no mapping for, that side's Team) for one-team matches
+        unmapped_side: dict[int, tuple[str, Team]] = {}
 
         espn_direct = [g for g in all_games if g.source == "espn"]
         ncaa_sourced = [g for g in all_games if g.source != "espn"]
@@ -574,54 +581,19 @@ class Command(BaseCommand):
 
         if ncaa_sourced:
             self.stdout.write(
-                f"Resolving ESPN IDs for {len(ncaa_sourced)} NCAA-sourced games..."
+                f"Resolving ESPN event IDs for {len(ncaa_sourced)} NCAA-sourced games..."
             )
-            import requests as _requests
-            by_date = defaultdict(list)
+            day_entries = scoreboard_day_entries(ESPNAPIClient(rate_limit_delay=sleep), logger)
+            matches = resolve_games(ncaa_sourced, team_pk_to_espn, frozenset(espn_team_map), day_entries)
             for g in ncaa_sourced:
-                by_date[g.game_date].append(g)
-
-            client = ESPNAPIClient(rate_limit_delay=sleep)
-            resolved = 0
-            for game_date, day_games in sorted(by_date.items()):
-                date_str = game_date.strftime("%Y%m%d")
-                try:
-                    client._rate_limit()
-                    url = f"{client.BASE_URL}/scoreboard"
-                    resp = client.session.get(
-                        url,
-                        params={"dates": date_str, "groups": "50", "limit": "500"},
-                        timeout=client.timeout,
-                    )
-                    resp.raise_for_status()
-                    events = resp.json().get("events", [])
-                except Exception as exc:
-                    logger.warning("Scoreboard fetch failed %s: %s", game_date, exc)
+                m = matches[g.pk]
+                if not m.ok:
                     continue
-
-                event_lookup: dict[frozenset, str] = {}
-                for event in events:
-                    comp = event.get("competitions", [{}])[0]
-                    team_ids = frozenset(
-                        str(c.get("team", {}).get("id", ""))
-                        for c in comp.get("competitors", [])
-                    )
-                    if team_ids:
-                        event_lookup[team_ids] = event["id"]
-
-                for g in day_games:
-                    home_espn = team_pk_to_espn.get(g.home_team_id, "")
-                    away_espn = team_pk_to_espn.get(g.away_team_id, "")
-                    if not home_espn or not away_espn:
-                        continue
-                    key = frozenset({home_espn, away_espn})
-                    if key in event_lookup:
-                        game_espn_map[g.pk] = event_lookup[key]
-                        resolved += 1
-
-            self.stdout.write(
-                f"  Resolved {resolved}/{len(ncaa_sourced)} NCAA→ESPN IDs."
-            )
+                game_espn_map[g.pk] = m.event_id
+                if m.other_espn_id:
+                    side = g.home_team if g.home_team_id not in team_pk_to_espn else g.away_team
+                    unmapped_side[g.pk] = (m.other_espn_id, side)
+            report_unresolved(self._write, matches, ncaa_sourced)
 
         game_list = [(g, game_espn_map[g.pk]) for g in all_games if g.pk in game_espn_map]
         total = len(game_list)
@@ -645,12 +617,16 @@ class Command(BaseCommand):
         for row in starter_rows:
             ath_id = row.player.espn_athlete_id
             espn_tid = team_pk_to_espn.get(row.team_id, "") if row.team_id else ""
+            if not espn_tid and row.game_id in unmapped_side:
+                # the player sync leaves an unmapped team's rows without a team: that side's starters
+                espn_tid = unmapped_side[row.game_id][0]
             if ath_id and espn_tid:
                 starters_by_game[row.game_id][ath_id] = espn_tid
 
         stints_created = 0
         games_processed = 0
         games_skipped = 0
+        team_mismatches = 0
 
         def _fetch(game_pk, espn_id):
             return game_pk, _fetch_plays(espn_id, sleep)
@@ -691,7 +667,22 @@ class Command(BaseCommand):
 
                 home_espn = team_pk_to_espn.get(game_obj.home_team_id, "")
                 away_espn = team_pk_to_espn.get(game_obj.away_team_id, "")
+                side = unmapped_side.get(game_obj.pk)
+                if side:   # one-team match: the event's other team is the side we have no id for
+                    if not home_espn:
+                        home_espn = side[0]
+                    else:
+                        away_espn = side[0]
                 if not home_espn or not away_espn:
+                    games_skipped += 1
+                    continue
+                play_teams = {str((p.get("team") or {}).get("id", "")) for p in plays} - {""}
+                if play_teams and not play_teams <= {home_espn, away_espn}:
+                    # the plays name a team that isn't one of this game's two: wrong event, never write
+                    team_mismatches += 1
+                    self.stdout.write(self.style.WARNING(
+                        f"  team mismatch: game {game_obj.pk} expects {home_espn}/{away_espn}, "
+                        f"plays have {sorted(play_teams)}; skipped"))
                     games_skipped += 1
                     continue
                 home_espn, away_espn = espn_sides(home_espn, away_espn, fetched_home.get(game_obj.pk), plays)
@@ -700,6 +691,8 @@ class Command(BaseCommand):
                     home_espn: espn_team_map.get(home_espn),
                     away_espn: espn_team_map.get(away_espn),
                 }
+                if side:   # the unmapped side's stints belong to this game's own team row
+                    local_team_map[side[0]] = side[1]
 
                 stints = reconstruct_stints(
                     plays=plays,
@@ -783,7 +776,7 @@ class Command(BaseCommand):
         self.stdout.write(
             self.style.SUCCESS(
                 f"Done.  games_processed={games_processed}  "
-                f"games_skipped={games_skipped}  "
+                f"games_skipped={games_skipped}  team_mismatches={team_mismatches}  "
                 f"stints={'created' if not dry_run else 'would-create'}={stints_created}"
                 + (" [DRY RUN]" if dry_run else "")
             )
