@@ -239,6 +239,16 @@ export interface EfficiencyLandscapeData {
   max_net: number;
   /** True once the season has seeds (day after Selection Sunday). */
   has_tournament: boolean;
+  /** True when these are the Selection Sunday snapshot rows the lines were calibrated on. */
+  is_pre_tournament: boolean;
+  /** Average Adj EM of the top 3 D1 teams (before filters); the lines hang off it. */
+  reference_net: number;
+  /** Tier lines as Adj EM values: reference_net minus each delta, on the 0.1 grid. */
+  lines: {
+    title: number;
+    final4: number;
+    hit_miss: number;
+  };
   defaults: {
     title_delta: number;
     final4_delta: number;

@@ -203,11 +203,20 @@ export default function EfficiencyLandscapePage() {
           <li><strong>X-axis:</strong> Adj D (Adjusted Defensive Rating - lower is better)</li>
           <li><strong>Y-axis:</strong> Adj O (Adjusted Offensive Rating - higher is better)</li>
           <li><strong>Adj EM:</strong> Adj O - Adj D (offense minus defense = net efficiency)</li>
-          <li><strong>Title Favorites:</strong> Adj EM ≥ Max - 6 (top contenders)</li>
-          <li><strong>Final Four Potential:</strong> Adj EM ≥ Max - 12 (strong teams)</li>
-          <li><strong>Hit or Miss:</strong> Adj EM ≥ Max - 18 (bubble teams)</li>
+          <li><strong>Title Favorites</strong> (top-3 average − 4.6): Every champion since 2005 except UConn 2011 and 2014 was above this line on Selection Sunday.</li>
+          <li><strong>Final 4</strong> (top-3 average − 8.4): 3 of every 4 Final Four teams since 2005 came from above this line.</li>
+          <li><strong>Hit or Miss</strong> (top-3 average − 15.3): Below this line: no champions and 4 of 84 Final Four teams since 2005.</li>
           <li><strong>The Rest:</strong> Teams below Hit or Miss threshold</li>
         </ul>
+
+        <p className="text-sm text-gray-600 mb-2">
+          Lines are set a fixed distance below the average of the top 3 teams.
+        </p>
+        {data && !data.is_pre_tournament && (
+          <p className="text-sm text-gray-600 mb-2">
+            Calibrated on Selection Sunday ratings; early-season ratings still move a lot.
+          </p>
+        )}
         
         <p className="text-sm text-gray-600">
           Diagonal lines represent constant Adjusted Efficiency Margins. Teams in the upper-left corner (great offense, great defense) 
@@ -316,7 +325,7 @@ function NCAALandscapeTooltip({ active, payload }: { active?: boolean; payload?:
 }
 
 function EfficiencyLandscapeChart({ data, onTeamClick }: EfficiencyLandscapeChartProps) {
-  const { teams, max_net, defaults } = data;
+  const { teams, lines } = data;
   const [hovered, setHovered] = useState<string | null>(null);
 
   const { dLo, dHi, oLo, oHi, tierDefs } = useMemo(() => {
@@ -328,9 +337,9 @@ function EfficiencyLandscapeChart({ data, onTeamClick }: EfficiencyLandscapeChar
     const oPad = (oMax - oMin) * 0.1;
 
     const tierDefs: NCAADef[] = [
-      { net: max_net - defaults.title_delta,  label: 'Title Favorites', color: '#ED713A', strokeWidth: 3, dash: 'none' },
-      { net: max_net - defaults.final4_delta,  label: 'Final 4',         color: '#30A2DA', strokeWidth: 2, dash: '5,5' },
-      { net: max_net - defaults.hit_miss_delta, label: 'Hit or Miss',     color: '#999',    strokeWidth: 2, dash: '5,5' },
+      { net: lines.title,    label: 'Title Favorites', color: '#ED713A', strokeWidth: 3, dash: 'none' },
+      { net: lines.final4,   label: 'Final 4',         color: '#30A2DA', strokeWidth: 2, dash: '5,5' },
+      { net: lines.hit_miss, label: 'Hit or Miss',     color: '#999',    strokeWidth: 2, dash: '5,5' },
     ];
 
     return {
@@ -338,7 +347,7 @@ function EfficiencyLandscapeChart({ data, onTeamClick }: EfficiencyLandscapeChar
       oLo: oMin - oPad, oHi: oMax + oPad,
       tierDefs,
     };
-  }, [teams, max_net, defaults]);
+  }, [teams, lines]);
 
   const renderDot = useCallback((props: any) => {
     const { cx, cy, payload } = props;

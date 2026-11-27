@@ -4,7 +4,8 @@ Efficiency Landscape API View
 Provides data for the Efficiency Landscape visualization showing team positioning
 by our computed Adjusted Offensive (Adj O), Adjusted Defensive (Adj D), and 
 Adjusted Efficiency Margin (Adj EM) ratings.
-Teams are categorized into tiers based on their Adj EM relative to the best team.
+Tier lines sit a fixed distance below the average Adj EM of the top 3 teams; see
+api/landscape_lines.py for the calibration.
 """
 
 from rest_framework.views import APIView
@@ -15,12 +16,12 @@ from django.shortcuts import get_object_or_404
 from ncaa.models import Season, TeamSeasonRatings
 from ncaa.utils.d1 import d1_q
 from .viz_snapshot import use_pre_tournament_rows
-
-
-# Default tier deltas (can be made configurable later)
-TITLE_FAVORITES_DELTA = 6
-FINAL_FOUR_DELTA = 12
-HIT_OR_MISS_DELTA = 18
+from .landscape_lines import (
+    FINAL_FOUR_DELTA,
+    HIT_OR_MISS_DELTA,
+    TITLE_FAVORITES_DELTA,
+    landscape_lines,
+)
 
 
 class EfficiencyLandscapeView(APIView):
@@ -41,10 +42,17 @@ class EfficiencyLandscapeView(APIView):
         "conference": "ALL",
         "top": 365,
         "max_net": 25.5,
+        "is_pre_tournament": true,
+        "reference_net": 24.13,
+        "lines": {
+            "title": 19.6,
+            "final4": 15.8,
+            "hit_miss": 8.9
+        },
         "defaults": {
-            "title_delta": 6,
-            "final4_delta": 12,
-            "hit_miss_delta": 18
+            "title_delta": 4.6,
+            "final4_delta": 8.4,
+            "hit_miss_delta": 15.3
         },
         "teams": [
             {
@@ -127,9 +135,10 @@ class EfficiencyLandscapeView(APIView):
                 'conference_name': conference_name,
             })
         
-        # NATIONAL BASELINE: Calculate max_net from ALL D1 teams (before conference filter)
-        # This ensures tier boundaries stay constant regardless of conference selection
+        # NATIONAL BASELINE: max_net and the tier lines come from ALL D1 teams (before the
+        # conference / tournament / top-N filters), so the lines stay put when filters change
         max_net = max(t['rating'].adj_em for t in all_teams_data)
+        tiers = landscape_lines(t['rating'].adj_em for t in all_teams_data)
         
         # The season has a bracket once seeds load (day after Selection Sunday);
         # the frontend shows its tournament filters only then.
@@ -182,6 +191,10 @@ class EfficiencyLandscapeView(APIView):
             'top': top_n,
             'max_net': round(max_net, 1),
             'has_tournament': has_tournament,
+            # False before Selection Sunday: full-season rows, which the lines weren't calibrated on
+            'is_pre_tournament': is_pre,
+            'reference_net': round(tiers['reference'], 2),
+            'lines': tiers['lines'],
             'defaults': {
                 'title_delta': TITLE_FAVORITES_DELTA,
                 'final4_delta': FINAL_FOUR_DELTA,
