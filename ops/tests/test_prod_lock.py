@@ -16,7 +16,9 @@ Run from the repo root with the interpreter fab uses:
   sees and respects the other's holder, a token works in either, and a deploy refuses while the
   nightly holds it.
 """
+import contextlib
 import importlib.util
+import io
 import os
 import subprocess
 import tempfile
@@ -144,6 +146,64 @@ class FabWrapperTests(unittest.TestCase):
             with self.fab._prod_lock(self.conn, "fab migrate"):
                 raise RuntimeError("migration failed")
         self.assertEqual(self.status().strip(), "free")
+
+
+class _RecordingConn:
+    """A fabric Connection stand-in that records commands; `fail` makes the matching command fail."""
+
+    def __init__(self, fail=None, fail_warn=None):
+        self.cmds, self.fail, self.fail_warn = [], fail, fail_warn
+
+    def run(self, cmd, warn=False, **kw):
+        self.cmds.append(cmd)
+        if self.fail and self.fail in cmd:
+            raise RuntimeError(f"UnexpectedExit: {cmd}")        # what fabric raises without warn
+        if self.fail_warn and self.fail_warn in cmd:
+            return SimpleNamespace(exited=1, stdout="", stderr="permission denied")
+        return SimpleNamespace(exited=0, stdout="Total reclaimed space: 1GB\n", stderr="")
+
+    def cd(self, path):
+        return contextlib.nullcontext()
+
+
+@unittest.skipUnless(importlib.util.find_spec("fabric"), "fabric is not installed for this interpreter")
+class DeployPruneTests(unittest.TestCase):
+    """fab deploy prunes old macfax images and week-old build cache after a successful deploy only."""
+
+    def setUp(self):
+        self.fab = _load_fabfile()
+        self.fab._prod_lock = lambda conn, what: contextlib.nullcontext()
+        self.fab._running_manage_commands = lambda conn: []
+
+    def deploy(self, conn):
+        self.fab._conn = lambda: contextlib.nullcontext(conn)
+        with contextlib.redirect_stdout(io.StringIO()) as out:
+            self.fab.deploy.body(None)
+        return out.getvalue()
+
+    def test_prunes_after_up(self):
+        conn = _RecordingConn()
+        out = self.deploy(conn)
+        prunes = [c for c in conn.cmds if "prune" in c]
+        self.assertEqual(prunes, ["docker image prune -f --filter label=com.docker.compose.project=macfax",
+                                  "docker builder prune -f --filter until=168h"])
+        self.assertLess(max(i for i, c in enumerate(conn.cmds) if c.endswith("up -d")),
+                        conn.cmds.index(prunes[0]))
+        self.assertFalse(any("volume" in c or "system prune" in c for c in conn.cmds))
+        self.assertIn("Deploy complete", out)
+
+    def test_failed_deploy_skips_the_prune(self):
+        for step in ("git fetch", "compose build", "up -d"):
+            conn = _RecordingConn(fail=step)
+            with self.assertRaises(RuntimeError):
+                self.deploy(conn)
+            self.assertFalse(any("prune" in c for c in conn.cmds), step)
+
+    def test_failed_prune_warns_and_the_deploy_still_succeeds(self):
+        conn = _RecordingConn(fail_warn="image prune")
+        out = self.deploy(conn)
+        self.assertIn("WARNING: `docker image prune", out)
+        self.assertIn("docker builder prune -f --filter until=168h", conn.cmds)   # the other one still runs
 
 
 def _load_py_lock():

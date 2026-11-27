@@ -7,7 +7,7 @@ App dir : /opt/macfax
 
 Usage
 -----
-  fab deploy              # git pull + build + restart (refuses while a manage.py command runs)
+  fab deploy              # git pull + build + restart + prune old macfax images (refuses while a manage.py command runs)
   fab deploy --force      # deploy even if a manage.py command is running in the backend container
   fab pull                # git pull only
   fab build               # docker compose build only
@@ -160,7 +160,7 @@ def _running_manage_commands(conn):
 
 @task
 def deploy(c, force=False):
-    """Full deploy: git pull → docker compose build → up -d.
+    """Full deploy: git pull → docker compose build → up -d → prune old macfax images and build cache.
 
     Refuses while a manage.py command runs in the backend container: `up -d` recreates the container
     when its image changes, which kills that command. --force deploys anyway.
@@ -191,6 +191,28 @@ def deploy(c, force=False):
                 conn.run(f"{COMPOSE} up -d", pty=True)
 
                 print("✓ Deploy complete")
+                _prune_after_deploy(conn)
+
+
+# After a successful deploy (a failed step raises first, so these never run): old macfax images only
+# (the other services on the server keep theirs; images in use are never removed), and build cache
+# older than a week, so the next build stays fast. Volumes are never touched.
+PRUNE_AFTER_DEPLOY = (
+    "docker image prune -f --filter label=com.docker.compose.project=macfax",
+    "docker builder prune -f --filter until=168h",
+)
+
+
+def _prune_after_deploy(conn):
+    """A failed prune is reported and never fails the deploy, which has already succeeded."""
+    print("── prune old macfax images and build cache ──")
+    for cmd in PRUNE_AFTER_DEPLOY:
+        r = conn.run(cmd, hide=True, warn=True)
+        lines = (r.stdout or "").strip().splitlines()
+        if r.exited == 0:
+            print(f"   {cmd.split(' -f')[0]}: {lines[-1] if lines else 'done'}")
+        else:
+            print(f"   WARNING: `{cmd}` exited {r.exited}: {(r.stderr or '').strip()[-300:]}")
 
 
 @task
