@@ -49,9 +49,10 @@
   --heat-neg-3: rgba(184, 53, 46, 0.27);
   --negative-ink: #b8352e;
 
-  /* Champion gold (2026.2) — historical champions only; never a fill flood */
+  /* Title Profile (passed all 15): edges, bars and text only, never a background fill */
   --gold:        #b8912f;
   --gold-strong: #96751f;
+  --gold-ink:    #8a6a1a;  /* text: 5.0:1 on white */
   --gold-bg:     rgba(184, 145, 47, 0.13);
   --gold-line:   rgba(184, 145, 47, 0.55);
 

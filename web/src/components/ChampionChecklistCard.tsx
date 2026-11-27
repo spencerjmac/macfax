@@ -49,11 +49,16 @@ export default function ChampionChecklistCard({
           <h2 className="text-2xl font-bold">🔮 Crystal Ball</h2>
           <div className="flex items-center gap-2">
             {titleProfile && (
-              <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-wide bg-brand text-white whitespace-nowrap">
+              <span className="text-xs font-semibold text-gold-ink" title="Title Profile: passed all 15">
                 Title Profile
               </span>
             )}
-            <span className="text-sm font-mono font-bold px-3 py-1 rounded-full border border-ui-border bg-ui-surface text-text-primary">
+            <span
+              className={clsx(
+                'text-sm font-mono font-bold px-3 py-1 rounded-full border border-ui-border bg-ui-surface',
+                titleProfile ? 'text-gold-ink' : 'text-text-primary',
+              )}
+            >
               {passedCount} / {total}
             </span>
           </div>
@@ -71,7 +76,10 @@ export default function ChampionChecklistCard({
         {/* Progress Bar */}
         <div className="mt-4 bg-ui-surface rounded-full h-3 overflow-hidden">
           <div
-            className="h-full transition-all duration-500 rounded-full bg-text-muted"
+            className={clsx(
+              'h-full transition-all duration-500 rounded-full',
+              titleProfile ? 'bg-gold-strong' : 'bg-text-muted',
+            )}
             style={{ width: `${percentage}%` }}
           />
         </div>

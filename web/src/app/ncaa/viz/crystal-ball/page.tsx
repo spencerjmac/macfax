@@ -13,21 +13,18 @@ import clsx from 'clsx';
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** passed/total over active checks; the Title Profile badge needs all 15 active and passed. */
+/** passed/total over active checks; a Title Profile (all 15 active and passed) shows the score in gold. */
 function ScoreBadge({ passed, total, titleProfile }: { passed: number; total: number; titleProfile: boolean }) {
   return (
-    <span className="inline-flex items-center gap-1.5">
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-sm font-bold border border-ui-border bg-ui-surface text-text-primary">
-        {passed}<span className="font-normal opacity-60">/{total}</span>
-      </span>
-      {/* Fixed-width slot so scores line up whether or not the badge shows */}
-      <span className="inline-flex w-[6.5rem] justify-start">
-        {titleProfile && (
-          <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-wide bg-brand text-white whitespace-nowrap">
-            Title Profile
-          </span>
-        )}
-      </span>
+    <span
+      className={clsx(
+        'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-sm font-bold border border-ui-border bg-ui-surface',
+        titleProfile ? 'text-gold-ink' : 'text-text-primary',
+      )}
+      title={titleProfile ? 'Title Profile: passed all 15' : undefined}
+    >
+      {passed}<span className="font-normal opacity-60">/{total}</span>
+      {titleProfile && <span className="sr-only">Title Profile</span>}
     </span>
   );
 }
@@ -108,8 +105,13 @@ function TeamRow({ team, rank }: { team: CrystalBallTeam; rank: number }) {
         )}
         onClick={() => setExpanded((v) => !v)}
       >
-        {/* Rank */}
-        <td className="px-3 py-3 text-center text-sm font-mono font-semibold text-text-muted w-12">
+        {/* Rank; a Title Profile row gets a gold left edge (transparent otherwise, so columns line up) */}
+        <td
+          className={clsx(
+            'px-3 py-3 text-center text-sm font-mono font-semibold text-text-muted w-12 border-l-[3px]',
+            team.checklist.titleProfile ? 'border-l-gold-strong' : 'border-l-transparent',
+          )}
+        >
           {rank}
         </td>
 
@@ -318,6 +320,8 @@ export default function CrystalBallPage() {
         Fail
         <span className="w-2.5 h-2.5 rounded-full border border-dashed border-slate-400 inline-block ml-2" />
         Inactive
+        <span className="w-[3px] h-3 bg-gold-strong inline-block ml-3" aria-hidden="true" />
+        <span className="text-gold-ink font-semibold">Title Profile: passed all 15</span>
         <span className="ml-3 opacity-60">· Hover dots for details · Click any row to expand all 15 checks</span>
       </div>
 
@@ -345,7 +349,7 @@ export default function CrystalBallPage() {
           <table className="w-full text-sm">
             <thead className="bg-ui-surface border-b border-ui-border">
               <tr>
-                <th className="px-3 py-2 text-center text-xs font-semibold text-text-secondary uppercase tracking-wide w-12">Rk</th>
+                <th className="px-3 py-2 text-center text-xs font-semibold text-text-secondary uppercase tracking-wide w-12 border-l-[3px] border-l-transparent">Rk</th>
                 <th className="px-3 py-2 text-left text-xs font-semibold text-text-secondary uppercase tracking-wide">Team</th>
                 <th className="px-3 py-2 text-center text-xs font-semibold text-text-secondary uppercase tracking-wide hidden sm:table-cell">Record</th>
                 <th className="px-3 py-2 text-center text-xs font-semibold text-text-secondary uppercase tracking-wide hidden md:table-cell">AdjEM</th>

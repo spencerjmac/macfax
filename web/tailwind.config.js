@@ -59,10 +59,11 @@ module.exports = {
           fg: 'var(--ink-fg)',
           fg2: 'var(--ink-fg2)',
         },
-        // Champion gold (2026.2)
+        // Title Profile (passed all 15): edges, bars and text only, never a background fill
         gold: {
           DEFAULT: 'var(--gold)',
           strong: 'var(--gold-strong)',
+          ink: 'var(--gold-ink)',
           bg: 'var(--gold-bg)',
           line: 'var(--gold-line)',
         },
