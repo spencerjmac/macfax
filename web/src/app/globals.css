@@ -132,3 +132,11 @@ body {
 .skeleton {
   @apply animate-pulse bg-ui-surface rounded;
 }
+
+/* NCAA Efficiency Landscape plot height: the whole chart (plot, axis labels, legend) fits on one
+   screen under the sticky nav on laptops and phones. 190px = nav (84px desktop) + card padding (24px)
+   + legend (24px, ~64px when it wraps on phones) + a little room. Capped at the old fixed 600px. */
+.landscape-chart-height {
+  height: clamp(320px, calc(100vh - 190px), 600px);
+  height: clamp(320px, calc(100svh - 190px), 600px);
+}

@@ -183,7 +183,7 @@ export default function EfficiencyLandscapePage() {
             
             <div className="mt-4 pt-4 border-t border-gray-200">
               <p className="text-xs text-gray-500 text-center">
-                Showing {data.teams.length} teams | Season {data.season_display} | Max Adj EM: {data.max_net}
+                Showing {data.teams.length} teams | Season {data.season_display} | Top-3 average Adj EM: {data.reference_net.toFixed(1)}
               </p>
             </div>
           </>
@@ -219,7 +219,7 @@ export default function EfficiencyLandscapePage() {
         )}
         
         <p className="text-sm text-gray-600">
-          Diagonal lines represent constant Adjusted Efficiency Margins. Teams in the upper-left corner (great offense, great defense) 
+          Diagonal lines represent constant Adjusted Efficiency Margins. Teams in the upper-right corner (great offense, great defense) 
           are championship-caliber. Click any team logo to view their detailed profile.
         </p>
       </div>
@@ -380,7 +380,8 @@ function EfficiencyLandscapeChart({ data, onTeamClick }: EfficiencyLandscapeChar
 
   return (
     <div>
-      <ResponsiveContainer width="100%" height={600}>
+      <div className="landscape-chart-height">
+      <ResponsiveContainer width="100%" height="100%">
         <ScatterChart margin={{ top: 20, right: 20, bottom: 50, left: 60 }}>
           <CartesianGrid stroke="#e5e7eb" strokeDasharray="3 3" />
           <XAxis
@@ -416,6 +417,7 @@ function EfficiencyLandscapeChart({ data, onTeamClick }: EfficiencyLandscapeChar
           />
         </ScatterChart>
       </ResponsiveContainer>
+      </div>
 
       {/* Tier legend */}
       <div className="flex items-center justify-center gap-6 mt-2 flex-wrap">
