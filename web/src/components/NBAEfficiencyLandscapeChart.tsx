@@ -250,6 +250,7 @@ export default function NBAEfficiencyLandscapeChart({ data }: Props) {
             <Tooltip
               content={<LandscapeTooltip />}
               cursor={{ strokeDasharray: '3 3', stroke: '#d1d5db' }}
+              isAnimationActive={false}
             />
 
             {/* Diagonal tier lines — v3 hooks (useXAxisScale/useYAxisScale) inside TierLinesBase */}

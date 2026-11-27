@@ -393,7 +393,7 @@ function EfficiencyLandscapeChart({ data, onTeamClick }: EfficiencyLandscapeChar
             tickFormatter={(v) => v.toFixed(1)}
             label={{ value: '↑ Adj O (higher is better)', angle: -90, position: 'insideLeft', offset: 10, fontSize: 12, fill: '#374151' }}
           />
-          <Tooltip content={<NCAALandscapeTooltip />} cursor={{ strokeDasharray: '3 3', stroke: '#d1d5db' }} />
+          <Tooltip content={<NCAALandscapeTooltip />} cursor={{ strokeDasharray: '3 3', stroke: '#d1d5db' }} isAnimationActive={false} />
           <Customized
             component={TierLinesNCAA as any}
             tierDefs={tierDefs}
