@@ -379,11 +379,11 @@ export const GLOSSARY_TERMS: GlossaryTerm[] = [
     term: 'Trapezoid of Excellence',
     aliases: ['Trapezoid', 'Trap'],
     category: 'visual-frameworks',
-    shortDefinition: 'A 2D scatter plot mapping teams by offensive and defensive efficiency with contextual regions.',
+    shortDefinition: 'A scatter plot of every team by tempo and Adj EM, with a trapezoid marking the elite-efficiency, typical-pace zone.',
     detailedDefinition:
-      'The Trapezoid of Excellence plots every team simultaneously using AdjO on the X-axis and AdjD on the Y-axis (inverted, so better defense is higher). Teams are color-coded by their bracket seeding or tier. The "trapezoid" shape outlines the realistic envelope of team quality — very few teams are both elite offensively and defensively, creating the characteristic shape.',
+      'The Trapezoid of Excellence plots every Division I team with Adjusted Tempo on the X-axis and Adjusted Efficiency Margin on the Y-axis. Its bottom edge is the 97th percentile of national AdjEM, roughly the 10th–11th best team, so only elite teams can be inside. Across the flat bottom (the pace band where most elite teams play) that floor is enough; the slanted sides raise the bar for teams with unusually slow or fast tempo. The shape is recomputed each season from all D1 teams. Concept by Ryan Hammer.',
     howToInterpret:
-      'Top-right quadrant: elite teams with great offense and defense. Top-left: defensive teams with weaker offense. Bottom-right: offensive teams that can\'t stop anyone. Bottom-left: teams struggling on both ends. Position relative to the national average lines shows overall quality.',
+      'Inside the trapezoid: an elite efficiency margin at a pace that is typical for elite teams, or an even higher margin at an unusual pace. Below the bottom edge: not elite by AdjEM, whatever the pace. Just outside a slanted side: elite, but with a pace that is rare among the top teams. Since 2005, 19 of 21 champions were inside on Selection Sunday.',
     methodologySlug: 'trapezoid-of-excellence',
     relatedTerms: ['adj_o', 'adj_d', 'adj_em'],
     isHigherBetter: null,

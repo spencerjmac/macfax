@@ -140,7 +140,7 @@ Base URL: `https://macfax.usu.edu/api/` (production) | `http://localhost:8000/ap
 | `GET /viz/stats/` | Stat catalog for viz builder |
 | `GET /viz/scatter/?x=adj_em&y=efg_pct` | Scatter plot data |
 | `GET /viz/landscape/` | Efficiency landscape data |
-| `GET /viz/trapezoid/` | Four Factors trapezoid data |
+| `GET /viz/trapezoid/` | Trapezoid of Excellence data (tempo vs Adj EM, per-season trapezoid boundaries) |
 | `GET /jobs/` | Data processing job status |
 
 Django admin: `/admin/`

@@ -387,12 +387,12 @@ export default function TrapezoidPage() {
         <ul className="list-disc list-inside space-y-2 mb-4">
           <li><strong>X-axis:</strong> Adjusted Tempo (pace of play)</li>
           <li><strong>Y-axis:</strong> Adjusted Efficiency Margin (net rating)</li>
-          <li><strong>Trapezoid Boundaries:</strong> Computed dynamically from percentiles of the filtered dataset</li>
+          <li><strong>Trapezoid Boundaries:</strong> Computed each season from percentiles of all D1 teams</li>
         </ul>
         
         <p className="text-sm text-gray-600">
-          The trapezoid boundaries adjust automatically based on the current season and your selected filters 
-          (Conference and Top Teams). This ensures the analysis reflects the actual distribution of teams in your view.
+          The trapezoid boundaries are recomputed for each season from every Division I team. The Conference and
+          Top Teams filters only change which teams are shown; they don&apos;t move the trapezoid.
         </p>
       </div>
     </div>

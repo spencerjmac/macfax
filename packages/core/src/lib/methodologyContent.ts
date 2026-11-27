@@ -277,31 +277,31 @@ export const methodologyContent: MethodologyContent[] = [
     whyItMatters:
       'AdjEM alone tells you how good a team is. Tempo alone tells you how fast they play. But the combination matters. A team that plays at an extreme pace and achieves high efficiency is doing something different than a team that achieves the same efficiency at a moderate pace. The Trapezoid captures both dimensions simultaneously, making it easy to see at a glance whether a team\'s overall profile — not just their rating — puts them in the national elite zone.',
     howToInterpret:
-      'Teams are plotted as points (or logos when available). Teams inside the trapezoid region are highlighted; teams outside appear with reduced emphasis. Average lines cross the chart at the national mean tempo and mean efficiency margin, giving reference points for where the typical D1 team sits. Teams in the upper portion of the trapezoid are the strongest nationally. The trapezoid shape is intentional: the top edge is wider, capturing the full range of tempos found among peak-efficiency teams. The bottom edge is narrower, meaning teams at the efficiency floor of the elite zone tend to play at a more typical pace. Very fast or very slow teams need higher efficiency margins to sit inside — extreme pace strategies carry more execution risk and this is reflected in where the boundary sits.',
+      'Teams are plotted as logos (or points when no logo is available; points are green inside the trapezoid and blue outside). Hovering a team shows whether it is inside. Average lines cross the chart at the national mean tempo and mean efficiency margin, giving reference points for where the typical D1 team sits. Teams in the upper portion of the trapezoid are the strongest nationally. The trapezoid shape is intentional: the top edge is wider, capturing the full range of tempos found among peak-efficiency teams. The bottom edge is narrower, meaning teams at the efficiency floor of the elite zone tend to play at a more typical pace. Very fast or very slow teams need higher efficiency margins to sit inside — extreme pace strategies carry more execution risk and this is reflected in where the boundary sits.',
     technicalNotes: [
       'Trapezoid boundaries are computed dynamically each season from the full Division I national distribution — not from tournament-qualifying teams only. This ensures the reference zone reflects the true national baseline for that season.',
       'The trapezoid is a fixed national reference. Applying a conference filter or top-N filter changes which teams are displayed but does not change the trapezoid shape. This is intentional — the trapezoid should remain a stable national benchmark regardless of the viewing context.',
-      'The bottom boundary of the trapezoid is anchored at a high-percentile threshold of national AdjEM, meaning only teams with elite efficiency margins can anchor the bottom corners. The exact percentile is internal to Macfax.',
+      'The bottom boundary of the trapezoid sits at the 97th percentile of national AdjEM, roughly the 10th–11th best team in a season, so only teams with elite efficiency margins can be inside. The bottom corners are the 30th and 75th percentiles of those elite teams\' tempos; the top corners extend 0.75 possessions beyond the slowest and fastest elite tempo.',
       'The slanted sides of the trapezoid use linear interpolation between corner points. Teams at extreme tempos (very slow or very fast) face a higher efficiency threshold to be considered inside — the slant reflects the elevated execution required at pace extremes.',
       'National average lines for both tempo and efficiency margin are overlaid on the visualization for reference. These represent the typical D1 team, not a competitive threshold.',
       'The trapezoid boundary is one of 15 benchmarks evaluated in the Crystal Ball championship checklist.',
     ],
     knownLimitations: [
-      'Being inside the trapezoid is descriptive, not predictive. Strong teams outside the trapezoid can and do win championships.',
+      'Being inside the trapezoid is descriptive, not predictive. Since 2005, 19 of 21 champions were inside on Selection Sunday; the two outside were UConn 2011 and 2014.',
       'The trapezoid is a snapshot based on current adjusted ratings. Early-season placements carry more uncertainty because adjusted ratings are noisier with fewer games played.',
       'Teams at the boundary of the trapezoid are not meaningfully different from teams just outside it. The boundary is not a hard threshold.',
       'Adjusted tempo reflects how fast a team plays on average — it does not capture whether that pace is by design or forced by opponents.',
       'The trapezoid captures two dimensions of team quality. It does not directly reflect Four Factor strengths, resume, or matchup-specific advantages.',
     ],
     example:
-      'Illustrative: a team with AdjEM +22 and Adjusted Tempo 68.5 (moderately paced) sits comfortably inside the trapezoid — their efficiency margin is elite and their pace is well within the typical range for strong teams. A team with the same AdjEM +22 but Adjusted Tempo 59 (very slow) may sit outside or on the border — not because they are worse, but because their efficiency-tempo combination is less common among historical contenders. The trapezoid does not penalize them; it simply notes that their profile is atypical. A third team with AdjEM +16 and Tempo 68.5 sits below the trapezoid — their pace is fine but their efficiency margin does not clear the elite zone threshold.',
+      'Because the floor is a percentile, the example works in any season. A team ranked 5th in AdjEM that plays at a pace typical of the elite teams sits inside: its margin clears the floor (about the 10th–11th best team) and it is on the flat bottom. A team ranked 20th is below the trapezoid at any pace — its margin does not reach the elite floor. A top-5 team with a pace slower or faster than nearly every other elite team lands on a slanted side and may fall outside: Houston in 2025 was 4th in AdjEM on Selection Sunday but, at a tempo of 62.0, sat 2.3 points below the left slant. That is not a judgment that the team is worse, only that its profile is rare among the top teams.',
     relatedMetrics: [
       { label: 'Adjusted Ratings', slug: 'adjusted-ratings' },
       { label: 'Efficiency Landscape', slug: 'efficiency-landscape' },
       { label: 'The Crystal Ball', slug: 'the-crystal-ball' },
     ],
-    lastUpdated: '2025-11',
-    methodologyVersion: '2.1',
+    lastUpdated: '2026-11',
+    methodologyVersion: '2.2',
   },
 
   {

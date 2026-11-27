@@ -1,8 +1,9 @@
 """
 Trapezoid of Excellence API View
 
-Provides data for the Trapezoid of Excellence visualization with dynamically
-calculated trapezoid boundaries based on the filtered dataset.
+Provides data for the Trapezoid of Excellence visualization. The trapezoid
+boundaries are computed each season from all D1 teams in that season's rows;
+the conference / tournament / top-N filters only change which teams are shown.
 """
 
 import numpy as np
