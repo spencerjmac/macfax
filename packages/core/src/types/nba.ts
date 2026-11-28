@@ -155,8 +155,10 @@ export interface NBALandscapeTeam {
   team_abbreviation: string;
   conference: 'East' | 'West';
   logo_url: string | null;
+  /** Full precision (plotted as is); format for display. */
   o_rate: number;
   d_rate: number;
+  /** Rounded to 0.1. */
   net: number;
   rank: number | null;
   record: string;

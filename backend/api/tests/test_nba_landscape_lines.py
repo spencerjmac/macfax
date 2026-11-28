@@ -69,8 +69,10 @@ class RankLineTests(SimpleTestCase):
         self.assertEqual(lines["contender"], {"n": 10, "net": -4.5})
         self.assertEqual(lines["playoff"], {"n": 15, "net": None})
 
-    def test_rounded_to_three_places(self):
-        self.assertEqual(landscape_lines([1.23456] * 7 + [1.0] + [0.0] * 8)["champion"]["net"], 1.117)
+    def test_not_rounded(self):
+        # 7th and 8th 0.0004 apart: a line rounded to 3 places (5.0) would put the 7th on it
+        lines = landscape_lines([9.0] * 6 + [5.0004, 5.0] + [0.0] * 8)
+        self.assertAlmostEqual(lines["champion"]["net"], 5.0002, places=9)
 
 
 class NBALandscapeApiLinesTests(IsolatedCacheTestCase):
@@ -112,6 +114,20 @@ class NBALandscapeApiLinesTests(IsolatedCacheTestCase):
         self.assertNotIn("tier_lines", data)
         above = [t for t in data["teams"] if t["net"] > data["lines"]["champion"]["net"]]
         self.assertEqual(len(above), 7)
+
+    def test_dots_plot_at_full_precision(self):
+        # 7th (4.06) and 8th (4.0) are 0.06 apart, so the Champion line is 4.03. With o/d rounded to
+        # 0.1 the 7th (114.03 / 109.97) would plot at 114.0 - 110.0 = 4.0, below its own line.
+        nets = [10.0 - i for i in range(6)] + [4.06, 4.0] + [-i for i in range(8)]
+        self._rate(nets)
+        data = self._get(season=2026)
+        line = data["lines"]["champion"]["net"]
+        self.assertAlmostEqual(line, 4.03, places=9)
+        above = [t for t in data["teams"] if t["o_rate"] - t["d_rate"] > line]
+        self.assertEqual(sorted(t["rank"] for t in above), list(range(1, 8)))
+        seventh = next(t for t in data["teams"] if t["rank"] == 7)
+        self.assertAlmostEqual(seventh["o_rate"], 114.03, places=9)
+        self.assertEqual(seventh["net"], 4.1)
 
     def test_current_season_by_default(self):
         self._rate(SCRAMBLED)

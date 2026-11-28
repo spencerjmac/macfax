@@ -40,8 +40,8 @@ class NBAEfficiencyLandscapeView(APIView):
                 "team_abbreviation": "OKC",
                 "conference": "West",
                 "logo_url": "...",
-                "o_rate": 118.4,
-                "d_rate": 109.1,
+                "o_rate": 118.4123,
+                "d_rate": 109.1047,
                 "net": 9.31,
                 "rank": 1,
                 "record": "12-3",
@@ -98,8 +98,10 @@ class NBAEfficiencyLandscapeView(APIView):
                 'team_abbreviation': rating.team.abbreviation,
                 'conference': rating.team.conference,
                 'logo_url': rating.team.logo_url,
-                'o_rate': round(rating.adj_off, 1),
-                'd_rate': round(rating.adj_def, 1),
+                # Full precision so each dot sits on the correct side of the tier lines
+                # (rounding o and d separately moved dots up to 0.1); pages format to 0.1.
+                'o_rate': rating.adj_off,
+                'd_rate': rating.adj_def,
                 'net': round(rating.adj_net, 1),
                 'rank': rating.rank_adj_net,
                 'record': record_str,

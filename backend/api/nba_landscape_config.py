@@ -22,8 +22,9 @@ Playoff line meant different things in different seasons. Ranks don't move with 
 below #1 or below the top-3 average don't move either, but they changed with the era: the cutoffs fit
 on 2005-15 missed 2 of the 11 champions from 2016-26. Rank fit top 7 for champions in both eras.
 
-The line uses unrounded adj_net, so it separates the Nth and (N+1)th teams' true values. If those two
-are tied, the line passes through both. With N teams or fewer there is no (N+1)th team, and the line
+The line uses unrounded adj_net and is returned unrounded, and the API sends each team's o_rate and
+d_rate at full precision, so every plotted dot lands on its true side of every line. If the Nth and
+(N+1)th teams are tied, the line passes through both. With N teams or fewer there is no (N+1)th team, and the line
 is left out (None).
 """
 
@@ -54,5 +55,5 @@ def landscape_lines(nets: Iterable[float]) -> dict:
     out = {}
     for key, n in LINE_RANKS.items():
         value = rank_line(nets, n)
-        out[key] = {"n": n, "net": None if value is None else round(value, 3)}
+        out[key] = {"n": n, "net": value}
     return out
