@@ -16,9 +16,10 @@ Calibration (2026-11-27; runs and data in macfax-runs/nba-landscape/, compare_me
                      (302/330, 91.5%); below it: no champion, 2/88 conference finalists
                      (2023 LAL 18th, 2023 MIA 20th)
 
-Why rank: our NBA adj_net is not centred on 0. The league mean drifts by season (-3.5 in 2020,
-+7.3 in 2012; see services/ratings_engine.iterative_adjust), so a fixed net such as the old 0.0
-Playoff line meant different things in different seasons. Ranks don't move with that drift. Gaps
+Why rank: when these lines were calibrated, our NBA adj_net was not centred on 0. The league mean
+drifted by season (-3.5 in 2020, +7.3 in 2012; the engine now re-centres, see
+services/ratings_engine.RatingsConfig.recentre), so a fixed net such as the old 0.0 Playoff line
+meant different things in different seasons. Ranks don't move with that drift. Gaps
 below #1 or below the top-3 average don't move either, but they changed with the era: the cutoffs fit
 on 2005-15 missed 2 of the 11 champions from 2016-26. Rank fit top 7 for champions in both eras.
 

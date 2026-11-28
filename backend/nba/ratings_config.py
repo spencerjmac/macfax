@@ -23,7 +23,9 @@ NBA_RATINGS_CONFIG = {
     # Small because 82-game schedule provides strong signal (NCAA uses ~15).
     "prior_games": 5.0,
     # League-average priors — update at season start from actual league averages.
-    # 2025-26 approximate values.
+    # 2025-26 approximate values. The solver starts every team here; after the solve the engine
+    # re-centres (RatingsConfig.recentre), so the stored level is the league's actual points per 100
+    # whatever these are.
     "prior_ortg": 115.0,
     "prior_drtg": 115.0,
     # Context adjustments — empirical 11-season averages (2016–2026) from nba_eval_model.

@@ -10,6 +10,8 @@ The algorithm:
   Iteratively solve: adj_off(team) = f(raw_off, opp adj_def)
                      adj_def(team) = f(raw_def, opp adj_off)
   Shrinkage toward the league prior is controlled by prior_games.
+  Then (RatingsConfig.recentre, on by default) shift all adj_off by one constant and all adj_def by
+  another so both average the league's actual points per 100 possessions: mean adj_net = 0.
 
 References:
   - Possession estimate: FGA - OREB + TO + 0.44*FTA  (standard NCAA/NBA formula)
@@ -60,6 +62,15 @@ class RatingsConfig:
     home_court_adj: float = 0.0
     rest_adj_per_day: float = 0.0  # bonus per day of rest beyond 1 day (capped at 3)
     b2b_penalty: float = 0.0       # shared penalty on both ends for back-to-back nights
+
+    # Re-centre after the solve: shift every team's adj_off and adj_def by one constant each so that
+    # mean adj_off = mean adj_def = the league's actual points per 100 possessions in these games
+    # (so mean adj_net = 0). The shift is the same for every team, so ranks and gaps are unchanged.
+    # Why: B2B/rest context is removed from the context team's own rows only, so the league offence and
+    # defence averages differ; with no re-centring the 8 iterations compound that into a league-mean
+    # net of -3.5 (2020) to +7.3 (2012), and the 115 start leaves O and D both too high
+    # (macfax-runs/nba-centering/notes.md). False reproduces the pre-2026-11-28 ratings.
+    recentre: bool = True
 
 
 def compute_possessions(fga: int, oreb: int, tov: int, fta: int) -> float:
@@ -178,6 +189,16 @@ def iterative_adjust(
 
         if max_delta < config.convergence_threshold:
             break
+
+    # ── Re-centre and re-anchor (see RatingsConfig.recentre) ────────────────
+    if config.recentre and team_ids:
+        # raw_ortg = 100 * pts / poss for each team row, so this is 100 * total points / total possessions
+        total_poss = sum(g.poss for g in active_games)
+        league_pp100 = sum(g.raw_ortg * g.poss for g in active_games) / total_poss
+        shift_off = league_pp100 - sum(adj_off[t] for t in team_ids) / len(team_ids)
+        shift_def = league_pp100 - sum(adj_def[t] for t in team_ids) / len(team_ids)
+        adj_off = {t: adj_off[t] + shift_off for t in team_ids}
+        adj_def = {t: adj_def[t] + shift_def for t in team_ids}
 
     # ── Build output dict ────────────────────────────────────────────────────
     results: dict[int, dict] = {}
