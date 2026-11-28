@@ -1152,7 +1152,8 @@ class LeaguePlayersView(generics.ListAPIView):
 
         qs = with_market_value(
             PlayerSeasonStats.objects
-            .filter(season=season, gp__gte=min_gp)
+            # D-I players only: rows on non-D-I teams (their games against D-I opponents) never list
+            .filter(d1_q(season, "team"), season=season, gp__gte=min_gp)
             .select_related("player", "team", "season")
             .annotate(
                 conference_name=Subquery(

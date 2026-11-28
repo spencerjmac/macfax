@@ -40,6 +40,7 @@ from ncaa.models import (
     Game, NationalAverages, PlayerGameStint, PlayerSeasonStats,
     Season, TeamSeasonRatings,
 )
+from ncaa.analytics.player_value.d1_games import d1_box_lines, d1_vs_d1_games_q
 from ncaa.seasons import resolve_season_year
 
 logger = logging.getLogger(__name__)
@@ -173,9 +174,11 @@ class Command(BaseCommand):
                 f"Season {season_year} not found.  Run season setup first."
             )
 
-        # All game IDs for this season
+        # D-I v D-I games only (ncaa/analytics/player_value/d1_games.py): games against non-D-I
+        # opponents credited every D-I player
         game_ids = set(
-            Game.objects.filter(season_year=season_year).values_list("id", flat=True)
+            Game.objects.filter(d1_vs_d1_games_q([season_year]), season_year=season_year)
+            .values_list("id", flat=True)
         )
         if not game_ids:
             self.stdout.write(self.style.WARNING(f"No games for season {season_year}."))
@@ -261,6 +264,8 @@ class Command(BaseCommand):
         season_stats_map: dict[tuple, PlayerSeasonStats] = {}
         for stat in PlayerSeasonStats.objects.filter(season=season).select_related("player", "team"):
             season_stats_map[(stat.player_id, stat.team_id)] = stat
+        # MPIR's box prior reads the D-I v D-I box line, not the every-game season line
+        d1_box = d1_box_lines(season_year)
 
         # ── First pass: compute all values and collect margins for FFI z-scores
         computed: dict[tuple, dict] = {}
@@ -378,9 +383,10 @@ class Command(BaseCommand):
                 ortg_vals.append(entry["on_court_ortg"])
             if entry.get("on_court_drtg") is not None:
                 drtg_vals.append(entry["on_court_drtg"])
-            if stat.mpg and stat.mpg > 5:
-                pts40_vals.append(stat.pts / stat.mpg * 40)
-                def40_vals.append((stat.stl * 2.5 + stat.blk) / stat.mpg * 40)
+            box = d1_box.get((pid, tid))
+            if box and box["mpg"] > 5:
+                pts40_vals.append(box["pts"] / box["mpg"] * 40)
+                def40_vals.append((box["stl"] * 2.5 + box["blk"]) / box["mpg"] * 40)
 
         league_avg_ortg  = statistics.mean(ortg_vals)  if ortg_vals  else 0.0
         league_avg_drtg  = statistics.mean(drtg_vals)  if drtg_vals  else 0.0
@@ -410,9 +416,10 @@ class Command(BaseCommand):
                 if entry.get("on_court_drtg") is not None else None
             )
 
-            if stat.mpg and stat.mpg >= 5 and stat.gp and stat.gp >= 3:
-                box_off = stat.pts / stat.mpg * 40 - league_avg_pts40
-                box_def = (stat.stl * 2.5 + stat.blk) / stat.mpg * 40 - league_avg_def40
+            box = d1_box.get((player_id, team_id))
+            if box and box["mpg"] >= 5 and box["gp"] >= 3:
+                box_off = box["pts"] / box["mpg"] * 40 - league_avg_pts40
+                box_def = (box["stl"] * 2.5 + box["blk"]) / box["mpg"] * 40 - league_avg_def40
             else:
                 box_off = box_def = None
 

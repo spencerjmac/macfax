@@ -82,12 +82,20 @@ from ncaa.analytics.player_value.bpr.box_bpr import (
     compute_prior_sds_from_r2,
 )
 from ncaa.analytics.player_value.bpr.preseason import build_prior_maps
+from ncaa.analytics.player_value.d1_games import overlay_d1_box
 from ncaa.analytics.player_value.bpr.preseason_model import (
     train_preseason_models,
     predict_preseason_priors,
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _d1_only(rows: list[dict], year: int | None = None) -> list[dict]:
+    """Prior-season training rows with box rates and possessions over D-I v D-I games only, still
+    meeting the possession minimums (the queryset filtered on the stored, every-game values)."""
+    rows = overlay_d1_box(rows, year=year, replace_poss=True)
+    return [r for r in rows if r["off_poss"] >= MIN_OFF_POSS_BPR and r["def_poss"] >= MIN_DEF_POSS_BPR]
 
 
 def run_bpr_season(
@@ -299,7 +307,8 @@ def run_bpr_season(
             "on_court_tov_edge",
             "on_court_reb_edge",
         )
-        player_season_stats = list(pss_qs)
+        # Box rates over D-I v D-I games only, like the RAPM dataset (ncaa/analytics/player_value/d1_games.py)
+        player_season_stats = overlay_d1_box(list(pss_qs), year=season_year)
     summary["phases"]["player_season_stats"] = {"n_records": len(player_season_stats)}
 
     opp_quality_map = (opp_quality_map_override
@@ -963,7 +972,7 @@ def _load_em_box_training_data(
             "on_court_reb_edge",
             "off_poss", "def_poss",
         )
-        db_records = list(qs)
+        db_records = _d1_only(list(qs), year=yr)
         if not db_records:
             continue
 
@@ -1140,7 +1149,7 @@ def _load_prior_season_box_data(
         "off_poss", "def_poss",
     )
 
-    prior_records = list(qs)
+    prior_records = _d1_only(list(qs))
     if not prior_records:
         return None
 
@@ -1279,7 +1288,7 @@ def _load_box_bpr_training_from_multi_year_rapm(
         )
     )
 
-    prior_records = list(qs)
+    prior_records = _d1_only(list(qs))
     if not prior_records:
         return None
 

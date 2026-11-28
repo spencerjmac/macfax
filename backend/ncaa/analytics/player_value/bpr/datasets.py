@@ -40,6 +40,7 @@ logger = logging.getLogger(__name__)
 
 # ── Possession estimator ───────────────────────────────────────────────────────
 from ncaa.analytics.player_value.bpr.constants import FTA_POSS_FACTOR, MIN_SEGMENT_POSS
+from ncaa.analytics.player_value.d1_games import d1_vs_d1_games_q
 
 
 def _est_poss(fga: float, fta: float, tov: float, oreb: float) -> float:
@@ -299,9 +300,11 @@ def build_rapm_dataset(season_years: "int | list[int]", verbose: bool = True) ->
     years = valid_years
     # ─────────────────────────────────────────────────────────────────────────
 
+    # D-I v D-I games only (ncaa/analytics/player_value/d1_games.py): games against non-D-I opponents
+    # credited every D-I player (RAPM shrinks the non-D-I players toward an average D-I level).
     games_qs = (
         Game.objects
-        .filter(season_year__in=years)
+        .filter(d1_vs_d1_games_q(years), season_year__in=years)
         .values("id", "home_team_id", "away_team_id", "neutral_site", "season_year")
     )
     game_list = list(games_qs)
@@ -316,7 +319,7 @@ def build_rapm_dataset(season_years: "int | list[int]", verbose: bool = True) ->
     # Load all stints for the requested seasons in one DB round-trip
     stints_qs = (
         PlayerGameStint.objects
-        .filter(game__season_year__in=years)
+        .filter(d1_vs_d1_games_q(years, "game__"), game__season_year__in=years)
         .values(
             "game_id", "player_id", "team_id", "period",
             "clock_start_secs", "clock_end_secs", "secs_on",
@@ -449,7 +452,7 @@ def build_rapm_dataset_through_date(
 
     games_qs = (
         Game.objects
-        .filter(season_year=season_year, game_date__lte=cutoff_date)
+        .filter(d1_vs_d1_games_q([season_year]), season_year=season_year, game_date__lte=cutoff_date)
         .values("id", "home_team_id", "away_team_id", "neutral_site", "season_year")
     )
     game_list = list(games_qs)
@@ -463,7 +466,8 @@ def build_rapm_dataset_through_date(
 
     stints_qs = (
         PlayerGameStint.objects
-        .filter(game__season_year=season_year, game__game_date__lte=cutoff_date)
+        .filter(d1_vs_d1_games_q([season_year], "game__"), game__season_year=season_year,
+                game__game_date__lte=cutoff_date)
         .values(
             "game_id", "player_id", "team_id", "period",
             "clock_start_secs", "clock_end_secs", "secs_on",
