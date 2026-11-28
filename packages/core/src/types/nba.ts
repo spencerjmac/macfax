@@ -163,14 +163,20 @@ export interface NBALandscapeTeam {
   playoff_finish: string | null;
 }
 
+export interface NBALandscapeLine {
+  n: number;
+  net: number | null;
+}
+
 export interface NBALandscapeData {
   season: number;
   season_display: string;
   max_net: number;
-  tier_lines: {
-    champion_net: number;
-    contender_net: number;
-    playoff_net: number;
+  /** Each line sits halfway between the Nth and (N+1)th team's adj_net; null with N teams or fewer. */
+  lines: {
+    champion: NBALandscapeLine;
+    contender: NBALandscapeLine;
+    playoff: NBALandscapeLine;
   };
   teams: NBALandscapeTeam[];
 }

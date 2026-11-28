@@ -161,8 +161,8 @@ export default function NBAVizPage() {
               </h2>
               <p className="text-[16.5px] leading-[1.6] text-ink-fg m-0 max-w-[46ch]">
                 All 30 teams plotted by Adj Off vs Adj Def, with three tier lines —
-                Champion, Contender, and Playoff — derived from a backtest of 10 seasons
-                of NBA history.
+                Champion (top 7), Contender (top 10) and Playoff (top 15) — set from where
+                champions, conference finalists and playoff teams ranked since 2005.
               </p>
               <div className="flex items-center gap-[10px] font-sans text-[12.5px] text-ink-fg2">
                 <span>MacFax Model</span>

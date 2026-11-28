@@ -3,12 +3,9 @@ NBA Efficiency Landscape API View
 
 Provides data for the NBA Efficiency Landscape visualization: team
 positioning by Adjusted Offensive (Adj Off) and Adjusted Defensive (Adj Def)
-rating, plus three backtested championship tier lines (Champion / Contender
-/ Playoff), each a constant-Adj-Net diagonal.
-
-Tier-line constants come from backend/api/nba_landscape_config.py, derived in
-backend/backtesting/management/commands/backtest_nba_landscape.py from 10
-seasons (2016-2025) of our own NBATeamSeasonRatings + playoff results.
+rating, plus three tier lines (Champion / Contender / Playoff), each a
+constant-Adj-Net diagonal halfway between the Nth and (N+1)th team (top 7 /
+top 10 / top 15). Ranks and calibration: backend/api/nba_landscape_config.py.
 """
 
 from rest_framework.views import APIView
@@ -31,10 +28,10 @@ class NBAEfficiencyLandscapeView(APIView):
         "season": 2026,
         "season_display": "2025-26",
         "max_net": 9.31,
-        "tier_lines": {
-            "champion_net": 3.16,
-            "contender_net": 1.23,
-            "playoff_net": 0.0
+        "lines": {
+            "champion": {"n": 7, "net": 2.515},
+            "contender": {"n": 10, "net": 1.173},
+            "playoff": {"n": 15, "net": 0.171}
         },
         "teams": [
             {
@@ -85,8 +82,7 @@ class NBAEfficiencyLandscapeView(APIView):
             )
 
         max_net = ratings[0].adj_net
-        champion_net = ratings[min(cfg.CHAMPION_RANK, len(ratings)) - 1].adj_net
-        contender_net = ratings[min(cfg.CONTENDER_RANK, len(ratings)) - 1].adj_net
+        lines = cfg.landscape_lines(r.adj_net for r in ratings)
 
         standings_by_team = {
             row['team_id']: row for row in compute_standings(season.year, season_type='regular')
@@ -114,11 +110,7 @@ class NBAEfficiencyLandscapeView(APIView):
             'season': season.year,
             'season_display': season.display_name,
             'max_net': round(max_net, 1),
-            'tier_lines': {
-                'champion_net': round(champion_net, 1),
-                'contender_net': round(contender_net, 1),
-                'playoff_net': cfg.PLAYOFF_NET,
-            },
+            'lines': lines,
             'teams': teams_list,
         }
 

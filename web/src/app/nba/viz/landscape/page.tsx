@@ -7,7 +7,7 @@ export const revalidate = 0;
 
 export const metadata: Metadata = {
   title: 'Efficiency Landscape | NBA | macfax',
-  description: 'NBA team efficiency landscape — Adj Off vs Adj Def with championship tier lines.',
+  description: 'NBA team efficiency landscape — Adj Off vs Adj Def with lines marking the top 7, top 10 and top 15 teams by net rating.',
 };
 
 interface Props {
@@ -30,7 +30,7 @@ export default async function NBALandscapePage({ searchParams }: Props) {
           </h1>
           <div className="flex items-center gap-[14px] flex-wrap">
             <p className="text-[15px] text-muted m-0">
-              Adj Off vs Adj Def for all 30 teams, with backtested championship tier lines
+              Adj Off vs Adj Def for all 30 teams, with lines marking the top 7, top 10 and top 15 by net rating
             </p>
             <span className="font-mono text-[12px] text-muted-2 inline-flex items-center gap-[7px] px-[10px] py-[5px] bg-ui-surface border border-ui-border rounded-md">
               <span className="w-1.5 h-1.5 rounded-full bg-brand2" />

@@ -26,6 +26,30 @@ const FINISH_BADGE: Record<string, string> = {
   'Conf Finals': '🥉',
 };
 
+// Line styles and captions. The ranks come from the API (lines.<key>.n); the captions are the
+// calibration results for top 7 / 10 / 15 (backend/api/nba_landscape_config.py).
+const LINE_STYLES: {
+  key: keyof NBALandscapeData['lines'];
+  label: string;
+  color: string;
+  strokeWidth: number;
+  dash: string;
+  caption: string;
+}[] = [
+  {
+    key: 'champion', label: 'Champion', color: 'var(--brand)', strokeWidth: 3, dash: 'none',
+    caption: 'Every champion since 2005 was a top-7 team by regular-season net rating.',
+  },
+  {
+    key: 'contender', label: 'Contender', color: '#30A2DA', strokeWidth: 2, dash: '5,5',
+    caption: '81 of 88 conference finalists since 2005 came from the top 10.',
+  },
+  {
+    key: 'playoff', label: 'Playoff', color: '#999', strokeWidth: 2, dash: '5,5',
+    caption: '92% of teams above this line made the playoffs. Below it: no champion, and 2 of 88 conference finalists.',
+  },
+];
+
 // ---------------------------------------------------------------------------
 // Pure helper — diagonal line endpoints clipped to axis bounds
 // Line equation: o = d + net  (adj_off − adj_def = constant net rating)
@@ -65,7 +89,9 @@ function computeDiagonal(
 
 interface TierDef {
   net: number;
+  n: number;
   label: string;
+  caption: string;
   color: string;
   strokeWidth: number;
   dash: string;
@@ -149,7 +175,7 @@ interface Props {
 export default function NBAEfficiencyLandscapeChart({ data }: Props) {
   const router = useRouter();
   const [hovered, setHovered] = useState<string | null>(null);
-  const { teams, max_net, tier_lines } = data;
+  const { teams, max_net, lines } = data;
 
   // Compute padded axis domain + tier defs (must match so diagonal clip is correct)
   const { oLo, oHi, dLo, dHi, tierDefs } = useMemo(() => {
@@ -160,18 +186,18 @@ export default function NBAEfficiencyLandscapeChart({ data }: Props) {
     const oPad = (oMax - oMin) * 0.1;
     const dPad = (dMax - dMin) * 0.1;
 
-    const tierDefs: TierDef[] = [
-      { net: tier_lines.champion_net,  label: 'Champion',  color: 'var(--brand)', strokeWidth: 3, dash: 'none' },
-      { net: tier_lines.contender_net, label: 'Contender', color: '#30A2DA',      strokeWidth: 2, dash: '5,5' },
-      { net: tier_lines.playoff_net,   label: 'Playoff',   color: '#999',         strokeWidth: 2, dash: '5,5' },
-    ];
+    // A line is null when the season has N teams or fewer rated; leave it out.
+    const tierDefs: TierDef[] = LINE_STYLES.flatMap(({ key, ...style }) => {
+      const line = lines[key];
+      return line.net == null ? [] : [{ ...style, net: line.net, n: line.n }];
+    });
 
     return {
       oLo: oMin - oPad, oHi: oMax + oPad,
       dLo: dMin - dPad, dHi: dMax + dPad,
       tierDefs,
     };
-  }, [teams, tier_lines]);
+  }, [teams, lines]);
 
   // Shape function closed over hover state
   const renderDot = useCallback((props: any) => {
@@ -210,7 +236,8 @@ export default function NBAEfficiencyLandscapeChart({ data }: Props) {
     <div className="space-y-6">
       {/* Chart */}
       <div className="bg-white border border-ui-border rounded-xl p-4">
-        <ResponsiveContainer width="100%" height={520}>
+        <div className="landscape-chart-height">
+        <ResponsiveContainer width="100%" height="100%">
           <ScatterChart margin={{ top: 20, right: 20, bottom: 50, left: 60 }}>
             <CartesianGrid stroke="#e5e7eb" strokeDasharray="3 3" />
 
@@ -268,9 +295,10 @@ export default function NBAEfficiencyLandscapeChart({ data }: Props) {
             />
           </ScatterChart>
         </ResponsiveContainer>
+        </div>
 
         {/* Tier legend + max net note */}
-        <div className="flex items-center justify-center gap-6 mt-2 flex-wrap">
+        <div className="flex items-center justify-center gap-x-6 gap-y-1 mt-2 flex-wrap">
           {tierDefs.map((tier) => (
             <div key={tier.label} className="flex items-center gap-2 text-xs text-text-muted">
               <svg width="24" height="8" aria-hidden>
@@ -283,9 +311,7 @@ export default function NBAEfficiencyLandscapeChart({ data }: Props) {
               </svg>
               <span>
                 {tier.label}
-                <span className="ml-1 font-mono text-[10px]">
-                  (Net ≥ {tier.net >= 0 ? '+' : ''}{tier.net.toFixed(1)})
-                </span>
+                <span className="ml-1 font-mono text-[10px]">(top {tier.n})</span>
               </span>
             </div>
           ))}
@@ -293,6 +319,16 @@ export default function NBAEfficiencyLandscapeChart({ data }: Props) {
             Max Net: {max_net >= 0 ? '+' : ''}{max_net.toFixed(1)}
           </span>
         </div>
+
+        {/* Line captions: what each rank cutoff meant, 2005-2026 */}
+        <ul className="mt-3 mx-auto max-w-[760px] space-y-1 text-xs text-text-muted">
+          {tierDefs.map((tier) => (
+            <li key={tier.label}>
+              <span className="font-semibold text-text-primary">{tier.label} (top {tier.n}):</span>{' '}
+              {tier.caption}
+            </li>
+          ))}
+        </ul>
       </div>
 
       {/* Data table */}
